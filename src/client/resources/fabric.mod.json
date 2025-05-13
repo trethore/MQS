@@ -1,0 +1,37 @@
+{
+	"schemaVersion": 1,
+	"id": "my-qol-scripts",
+	"version": "${version}",
+	"name": "My Qol Scripts",
+	"description": "This is just better than JsMacro.",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "nope",
+		"sources": "nope"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/my-qol-scripts/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"client": [
+			"net.me.Main"
+		]
+	},
+	"mixins": [
+		{
+			"config": "my-qol-scripts.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.16.13",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
