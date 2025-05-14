@@ -1,119 +1,286 @@
 package net.me.scripting;
-
-import net.fabricmc.loader.impl.lib.mappingio.MappingReader;
-import net.fabricmc.loader.impl.lib.mappingio.format.tiny.Tiny2FileReader;
-import net.fabricmc.loader.impl.lib.mappingio.tree.MappingTree;
-import net.fabricmc.loader.impl.lib.mappingio.tree.MemoryMappingTree;
-import net.me.scripting.js.*;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import net.fabricmc.loader.api.FabricLoader;
+import net.me.Main;
+import org.graalvm.polyglot.*;
+import net.me.mappings.MappingsManager;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import net.me.scripting.JsClassWrapper;
+import net.me.scripting.JsObjectWrapper;
 
 public class ScriptManager {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ScriptManager.class);
-    private final Context jsContext;
-    private final MappingData mappingData;
+    private static ScriptManager inst;
+    private Context ctx; // Make it an instance variable, not final if re-init is needed
+    private boolean contextInitialized = false;
 
-    public ScriptManager(Path mappingFilePath) {
-        MappingTree mappingTree = new MemoryMappingTree();
-        boolean parsed = false;
-        if (mappingFilePath != null && Files.exists(mappingFilePath)) {
-            try (InputStream is = Files.newInputStream(mappingFilePath)) {
-                Tiny2FileReader.read(actualFileReader, mappingTree);
-                parsed = true;
-            } catch (IOException e) {
-                LOGGER.error("Failed to parse mapping file: {}", mappingFilePath, e);
-            }
-        } else {
-            LOGGER.warn("No mapping file provided or found. Named access will be limited.");
-        }
+    private ScriptManager() {
+        // Don't build context here initially, or make it lighter
+    }
 
-        if (parsed) {
-            this.mappingData = new MappingData(mappingTree, "named", "official");
-        } else {
-            this.mappingData = null; // Or a dummy MappingData
-        }
+    public static ScriptManager getInstance() {
+        if (inst == null) inst = new ScriptManager();
+        return inst;
+    }
 
+    public void initializeContextAndExposeGlobals(Object mcClientJavaInstance) {
+        if (contextInitialized) return;
 
-        this.jsContext = Context.newBuilder("js")
-                .allowHostAccess(HostAccess.ALL)
-                .allowHostClassLookup(className -> true) // Allow any, we filter via proxies
+        ctx = Context.newBuilder("js")
                 .allowExperimentalOptions(true)
-                .option("js.nashorn-compat", "true")
-                .option("js.foreign-object-prototype", "true") // Important for proxy interaction
-                .option("engine.WarnInterpreterOnly", "false") // Suppress GraalVM warnings if not using Native Image
+                .option("js.ecmascript-version", "2021")
+                .allowHostAccess(HostAccess.NONE)
+                .allowHostClassLookup(name -> name.startsWith("net.minecraft.") || name.startsWith("java."))
                 .build();
 
-        try {
-            jsContext.eval(Source.newBuilder("js", "load('nashorn:mozilla_compat.js');", "NashornCompat").build());
-        } catch (IOException e) {
-            LOGGER.error("Failed to load Nashorn compatibility", e);
-        }
+        // grab all the mappings
+        MappingsManager mm = MappingsManager.getInstance();
+        Map<String, String> classMap       = mm.getClassMap();
+        Map<String, Map<String, List<String>>> methodMap = mm.getMethodMap();
+        Map<String, Map<String, String>>     fieldMap  = mm.getFieldMap();
+        Map<String, String>                  runtimeToYarn = mm.getRuntimeToYarnClassMap();
 
-        Value bindings = jsContext.getBindings("js");
+        JsPackage root = new JsPackage();   // for net.minecraft.*
 
-        if (this.mappingData != null) {
-            // Expose root packages (e.g., "net", "com")
-            // Collect unique root package names from your mappings
-            Set<String> rootPackageNames = new HashSet<>();
-            mappingData.getMappingTree().getClasses().stream()
-                .map(cls -> cls.getName(mappingData.getNamedNsId()))
-                .filter(Objects::nonNull)
-                .forEach(className -> {
-                    int firstSlash = className.indexOf('/');
-                    if (firstSlash > 0) {
-                        rootPackageNames.add(className.substring(0, firstSlash));
+        // loop over every Yarn class, but skip if it fails to load or init
+        for (String yarnFqcn : classMap.keySet()) {
+            if (!yarnFqcn.startsWith("net.")) continue;
+
+            String offFqcn = classMap.get(yarnFqcn);
+            try {
+                // load without running <clinit>
+                Class<?> cls = Class.forName(offFqcn, false, getClass().getClassLoader());
+
+                // merge in all inherited method & field info
+                Map<String, List<String>> combinedMethods = new HashMap<>();
+                Map<String, String>       combinedFields  = new HashMap<>();
+                Class<?> current = cls;
+                while (current != null) {
+                    String rtName = current.getName();
+                    String pyName = runtimeToYarn.get(rtName);
+                    if (pyName != null) {
+                        Map<String, List<String>> pm = methodMap.get(pyName);
+                        Map<String, String>       pf = fieldMap .get(pyName);
+                        if (pm != null) combinedMethods.putAll(pm);
+                        if (pf != null) combinedFields .putAll(pf);
                     }
-                });
+                    current = current.getSuperclass();
+                }
 
-            for (String rootPkgName : rootPackageNames) {
-                 // For "net.minecraft...", put "net" as the root. The JsNamespace will handle sub-packages.
-                 // The prefix for JsNamespace should end with a dot.
-                 bindings.putMember(rootPkgName, new JsNamespace(rootPkgName + ".", mappingData, this));
+                // find the right JsPackage
+                String[] parts = yarnFqcn.split("\\.");
+                JsPackage pkg = root;
+                for (int i = 0; i < parts.length - 1; i++) {
+                    String seg = parts[i];
+                    if (i == 0 && seg.equals("net")) continue;
+                    if (!pkg.hasMember(seg)) pkg.put(seg, new JsPackage());
+                    pkg = (JsPackage) pkg.getMember(seg);
+                }
+                String simple = parts[parts.length - 1];
+
+                // wrap it (skip on missing class or bad init)
+                try {
+                    pkg.put(simple, new JsClassWrapper(offFqcn, combinedMethods, combinedFields));
+                } catch (ClassNotFoundException
+                         | ExceptionInInitializerError
+                         | NoClassDefFoundError ignored) {
+                    // just skip
+                }
+            } catch (Exception e) {
+                Main.LOGGER.warn("Error wrapping {}: {}", yarnFqcn, e.toString());
             }
-        } else {
-            LOGGER.warn("Mappings not loaded. JavaScript will have limited named access.");
-            // You could still expose Java.type here, or a limited set of known official classes
-            bindings.putMember("Java", jsContext.getPolyglotBindings().getMember("Java"));
         }
 
-        bindings.putMember("console", new JsConsole());
-    }
+        // bind your 'net' root namespace
+        ctx.getBindings("js").putMember("net", root.getMember("minecraft"));
 
-    public MappingData getMappingParser() { // Renamed to getMappingData
-        return mappingData;
-    }
-
-    public Context getJsContext() {
-        return jsContext;
-    }
-
-    public Value executeScript(String scriptContent, String scriptName) {
+        // expose System and Thread
         try {
-            Source source = Source.newBuilder("js", scriptContent, scriptName).build();
-            return jsContext.eval(source);
+            Value sys    = ctx.eval("js", "Java.type('java.lang.System')");
+            Value thread = ctx.eval("js", "Java.type('java.lang.Thread')");
+            ctx.getBindings("js").putMember("System", sys);
+            ctx.getBindings("js").putMember("Thread", thread);
         } catch (Exception e) {
-            LOGGER.error("Error executing script '{}':", scriptName, e);
-            // Optionally, rethrow or return an error Value
-            throw new RuntimeException("Script execution failed: " + scriptName, e);
+            Main.LOGGER.error("Failed to expose System/Thread", e);
         }
+
+        // importClass helper, with same inheritance logic
+        ctx.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
+            String yarnName = args[0].asString();
+            String offName  = classMap.get(yarnName);
+            if (offName == null) throw new RuntimeException("Unknown class: " + yarnName);
+            try {
+                Class<?> cls = Class.forName(offName, false, getClass().getClassLoader());
+                Map<String, List<String>> combinedMethods = new HashMap<>();
+                Map<String, String>       combinedFields  = new HashMap<>();
+                Class<?> current = cls;
+                while (current != null) {
+                    String rtName = current.getName();
+                    String pyName = runtimeToYarn.get(rtName);
+                    if (pyName != null) {
+                        Map<String, List<String>> pm = methodMap.get(pyName);
+                        Map<String, String>       pf = fieldMap .get(pyName);
+                        if (pm != null) combinedMethods.putAll(pm);
+                        if (pf != null) combinedFields .putAll(pf);
+                    }
+                    current = current.getSuperclass();
+                }
+                return new JsClassWrapper(offName, combinedMethods, combinedFields);
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+        });
+
+        // expose the live MinecraftClient instance as 'client'
+        try {
+            String mcYarn = "net.minecraft.client.MinecraftClient";
+            if (classMap.containsKey(mcYarn)) {
+                Class<?> mcClass = Class.forName(classMap.get(mcYarn));
+                JsObjectWrapper clientWrapper = new JsObjectWrapper(
+                        mcClientJavaInstance,
+                        mcClass,
+                        methodMap.get(mcYarn),
+                        fieldMap .get(mcYarn)
+                );
+                ctx.getBindings("js").putMember("client", clientWrapper);
+                Main.LOGGER.info("Exposed MinecraftClient as 'client'");
+            } else {
+                Main.LOGGER.error("Mappings for MinecraftClient not found");
+            }
+        } catch (Exception e) {
+            Main.LOGGER.error("Failed to expose MinecraftClient", e);
+        }
+
+        contextInitialized = true;
     }
 
-    // Helper to quickly execute simple commands for testing
-    public Value eval(String command) {
-        return jsContext.eval("js", command);
+
+    public void init() {
+        createDir();
     }
 
-    public Logger getLogger() { return LOGGER; }
+    private void createDir() {
+        Path path = FabricLoader.getInstance().
+                getGameDir().resolve(Main.MOD_ID).resolve("scripts");
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+                Main.LOGGER.info("Created scripts directory");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    // Helper method to unwrap Polyglot Value arguments to Java Objects
+    public static Object[] unwrapArguments(Value[] polyglotArgs, Class<?>[] javaParamTypes) {
+        if (polyglotArgs == null) return new Object[0];
+        Object[] javaArgs = new Object[polyglotArgs.length];
+        for (int i = 0; i < polyglotArgs.length; i++) {
+            Value v = polyglotArgs[i];
+            Class<?> expectedType = (i < javaParamTypes.length) ? javaParamTypes[i] : null; // Be careful with varargs
+
+            if (v == null || v.isNull()) {
+                javaArgs[i] = null;
+            } else if (v.isBoolean()) {
+                javaArgs[i] = v.asBoolean();
+            } else if (v.isNumber()) {
+                if (expectedType != null) {
+                    if (expectedType == int.class || expectedType == Integer.class) javaArgs[i] = v.asInt();
+                    else if (expectedType == long.class || expectedType == Long.class) javaArgs[i] = v.asLong();
+                    else if (expectedType == double.class || expectedType == Double.class) javaArgs[i] = v.asDouble();
+                    else if (expectedType == float.class || expectedType == Float.class) javaArgs[i] = v.asFloat();
+                    else if (expectedType == short.class || expectedType == Short.class) javaArgs[i] = v.asShort();
+                    else if (expectedType == byte.class || expectedType == Byte.class) javaArgs[i] = v.asByte();
+                    else javaArgs[i] = v.asDouble(); // Default for numbers if type unknown
+                } else {
+                     javaArgs[i] = v.asDouble(); // Or v.isIntegralNumber() ? v.asLong() : v.asDouble();
+                }
+            } else if (v.isString()) {
+                javaArgs[i] = v.asString();
+            } else if (v.isHostObject()) { // If it's already a Java object (e.g., passed from another Java call)
+                javaArgs[i] = v.asHostObject();
+            } else if (v.isProxyObject()) { // If it's one of our own wrappers
+                Object proxied = v.asProxyObject();
+                if (proxied instanceof JsObjectWrapper) {
+                    javaArgs[i] = ((JsObjectWrapper) proxied).getJavaInstance();
+                } else {
+                    // Potentially handle other proxy types or throw error
+                    javaArgs[i] = proxied;
+                }
+            }
+            // Add more conversions if needed (e.g., for JS arrays to Java Lists/arrays)
+            else {
+                // Fallback or error
+                Main.LOGGER.warn("Cannot convert JS value to Java: " + v.toString());
+                javaArgs[i] = v.asHostObject(); // Try this as a last resort
+            }
+        }
+        return javaArgs;
+    }
+
+    // Helper method to wrap Java Objects to Polyglot Values or JsObjectWrappers
+    public static Object wrapReturnValue(Object javaRetVal) {
+        if (javaRetVal == null ||
+                javaRetVal instanceof String ||
+                javaRetVal instanceof Number ||
+                javaRetVal instanceof Boolean ||
+                javaRetVal.getClass().isPrimitive()) {
+            return javaRetVal;
+        }
+
+        Class<?> retClass = javaRetVal.getClass();
+        String runtimeFqcn = retClass.getName();
+
+        MappingsManager mm = MappingsManager.getInstance();
+        Map<String, String> runtimeToYarn = mm.getRuntimeToYarnClassMap();
+        Map<String, Map<String, List<String>>> allMethodMap = mm.getMethodMap();
+        Map<String, Map<String, String>>       allFieldMap  = mm.getFieldMap();
+
+        String yarnFqcn = runtimeToYarn.get(runtimeFqcn);
+        if (yarnFqcn != null) {
+            // Merge inherited methods & fields
+            Map<String, List<String>> combinedMethods = new HashMap<>();
+            Map<String, String>       combinedFields  = new HashMap<>();
+            Class<?> current = retClass;
+            while (current != null) {
+                String parentRuntime = current.getName();
+                String parentYarn    = runtimeToYarn.get(parentRuntime);
+                if (parentYarn != null) {
+                    Map<String, List<String>> pm = allMethodMap.get(parentYarn);
+                    Map<String, String>       pf = allFieldMap .get(parentYarn);
+                    if (pm != null) combinedMethods.putAll(pm);
+                    if (pf != null) combinedFields .putAll(pf);
+                }
+                current = current.getSuperclass();
+            }
+
+            // wrap with the _combined_ maps
+            try {
+                return new JsObjectWrapper(
+                        javaRetVal,
+                        retClass,
+                        combinedMethods,
+                        combinedFields
+                );
+            } catch (Exception e) {
+                // fallback to raw host object if something goes wrong
+            }
+        }
+
+        // if no Yarn mapping, or wrapper failed, fall back to raw host object
+        return Value.asValue(javaRetVal);
+    }
+
+
+    public Value run(String source) {
+        return ctx.eval("js", source);
+    }
 }
