@@ -53,8 +53,8 @@ public class ScriptManager {
         if (contextInitialized) return;
 
         ctx = Context.newBuilder("js")
-                .allowHostAccess(HostAccess.NONE)
-                .allowHostClassLookup(name -> name.startsWith("java."))
+                .allowHostAccess(HostAccess.ALL)
+                .allowHostClassLookup(name -> name.startsWith("java.") || name.startsWith("net.me."))
                 .option("js.ecmascript-version", "2021")
                 .build();
 
