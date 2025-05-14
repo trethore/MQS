@@ -2,7 +2,6 @@ package net.me.mappings;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.lib.mappingio.format.tiny.Tiny1FileReader;
-import net.fabricmc.loader.impl.lib.mappingio.format.tiny.Tiny2FileReader;
 import net.fabricmc.loader.impl.lib.mappingio.tree.MemoryMappingTree;
 import net.me.Main;
 
@@ -16,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 public class MappingsManager {
@@ -23,6 +23,7 @@ public class MappingsManager {
             "https://maven.fabricmc.net/net/fabricmc/yarn/1.21.4%2Bbuild.8/yarn-1.21.4%2Bbuild.8-tiny.gz";
     private static final Path OUTPUT_DIR = FabricLoader.getInstance().getGameDir().resolve(Main.MOD_ID).resolve("mappings");
     private static final Path OUTPUT_FILE = OUTPUT_DIR.resolve("yarn"+ Main.MC_VERSION+".tiny");
+
     private MemoryMappingTree mappingsTree;
     private Map<String, String>    classMap;
     private Map<String,Map<String, List<String>>> methodMap;
@@ -48,59 +49,57 @@ public class MappingsManager {
 
     private void buildLookupTables() {
         boolean isDev = FabricLoader.getInstance().isDevelopmentEnvironment();
+        String yarnType    = MappingNames.NAMED.getName();
+        String runtimeType = isDev ? yarnType : MappingNames.INTERMEDIARY.getName();
 
         classMap  = new HashMap<>();
         methodMap = new HashMap<>();
         fieldMap  = new HashMap<>();
 
         for (var cls : mappingsTree.getClasses()) {
-            // 1) Your “Yarn” name is always the named namespace:
-            String yarnFqcn = cls.getName("named").replace('/', '.');
+            String yarnRaw    = cls.getName(yarnType);
+            String runtimeRaw = cls.getName(runtimeType);
+            if (yarnRaw == null || runtimeRaw == null) continue;
 
-            // 2) Choose the runtime class name:
-            //    • Dev: game.jar is un-remapped, so use named (Yarn) names
-            //    • Prod: loader remaps to intermediary, so use intermediary names
-            String runtimeRaw = isDev
-                    ? cls.getName("named")
-                    : cls.getName("intermediary");
+            String yarnFqcn    = yarnRaw.replace('/', '.');
             String runtimeFqcn = runtimeRaw.replace('/', '.');
-
             classMap.put(yarnFqcn, runtimeFqcn);
 
-        // In buildLookupTables() method, after populating classMap:
-        this.runtimeToYarnClassMap = new HashMap<>();
-        for (Map.Entry<String, String> entry : classMap.entrySet()) {
-            this.runtimeToYarnClassMap.put(entry.getValue(), entry.getKey());
-        }
-
-        // 3) Methods: same pick between named vs intermediary
             Map<String, List<String>> mm = new HashMap<>();
             for (var m : cls.getMethods()) {
-                String yarnName     = m.getName("named");
-                String runtimeName  = isDev
-                        ? m.getName("named")
-                        : m.getName("intermediary");
-                mm.computeIfAbsent(yarnName, k -> new ArrayList<>())
-                        .add(runtimeName);
+                String yName = m.getName(yarnType);
+                String rName = m.getName(runtimeType);
+                if (yName != null && rName != null) {
+                    mm.computeIfAbsent(yName, k -> new ArrayList<>()).add(rName);
+                }
             }
             methodMap.put(yarnFqcn, mm);
 
-            // 4) Fields: likewise
             Map<String, String> fm = new HashMap<>();
             for (var f : cls.getFields()) {
-                String yarnName    = f.getName("named");
-                String runtimeName = isDev
-                        ? f.getName("named")
-                        : f.getName("intermediary");
-                fm.put(yarnName, runtimeName);
+                String yName = f.getName(yarnType);
+                String rName = f.getName(runtimeType);
+                if (yName != null && rName != null) {
+                    fm.put(yName, rName);
+                }
             }
             fieldMap.put(yarnFqcn, fm);
         }
 
-        Main.LOGGER.info("Lookup tables built for {} mode: {} classes",
+        runtimeToYarnClassMap = classMap.entrySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getValue,
+                        Map.Entry::getKey
+                ));
+
+        Main.LOGGER.info(
+                "Lookup tables built for {} mode: {} classes",
                 isDev ? "DEV (named)" : "PROD (intermediary)",
-                classMap.size());
+                classMap.size()
+        );
     }
+
 
     private void downloadMappings() {
         try (HttpClient client = HttpClient.newHttpClient()){
@@ -110,7 +109,6 @@ public class MappingsManager {
                 System.out.println("Mappings already downloaded at " + OUTPUT_FILE);
                 return;
             }
-
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(DOWNLOAD_URL))
@@ -127,18 +125,15 @@ public class MappingsManager {
                     os.write(buffer, 0, len);
                 }
             }
-
-            System.out.println("Mappings downloaded to " + OUTPUT_FILE);
+            Main.LOGGER.info("Mappings downloaded to {}", OUTPUT_FILE);
         } catch (IOException | InterruptedException e) {
-            System.err.println("Failed to download or extract mappings.");
+            Main.LOGGER.error("Failed to download or extract mappings.", e);
             e.printStackTrace();
         }
     }
     private void parseMappings() {
         mappingsTree = new MemoryMappingTree();
-        // Le tiny n'est plus compressé : on ouvre directement OUTPUT_FILE
         try (Reader reader = Files.newBufferedReader(OUTPUT_FILE)) {
-            // charge tout le fichier tiny dans l'arbre
             Tiny1FileReader.read(reader, mappingsTree);
             Main.LOGGER.info("Parsed {} classes from yarn.tiny", mappingsTree.getClasses().size());
         } catch (IOException e) {

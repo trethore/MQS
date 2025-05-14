@@ -44,9 +44,6 @@ dependencies {
 	shadow(implementation "org.graalvm.truffle:truffle-api:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-language:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-scriptengine:${graalVersion}")
-
-	shadow(implementation fileTree('libs') {include '*.jar'})
-
 }
 
 processResources {

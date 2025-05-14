@@ -1,8 +1,12 @@
 package net.me.scripting;
+
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
-import org.graalvm.polyglot.*;
 import net.me.mappings.MappingsManager;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 import java.io.IOException;
@@ -12,16 +16,27 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.me.scripting.JsClassWrapper;
-import net.me.scripting.JsObjectWrapper;
+import java.util.Set; // Ajout pour la liste d'exclusion
 
 public class ScriptManager {
     private static ScriptManager inst;
-    private Context ctx; // Make it an instance variable, not final if re-init is needed
+    private Context ctx;
     private boolean contextInitialized = false;
 
+    // Optionnel : Liste d'exclusion pour les classes connues pour poser problème
+    // même avec le chargement paresseux si elles sont appelées trop tôt par un script.
+    private static final Set<String> EXCLUDED_YARN_CLASSES = Set.of(
+            // "net.minecraft.server.ServerLinks", // Exemple
+            // "net.minecraft.network.state.ConfigurationStates" // Exemple
+    );
+
+    // Champs pour stocker les mappings une fois récupérés, pour les utiliser dans createActualJsClassWrapper
+    private Map<String, String> classMap; // Yarn FQCN -> Runtime FQCN
+    private Map<String, Map<String, List<String>>> methodMap;
+    private Map<String, Map<String, String>> fieldMap;
+    private Map<String, String> runtimeToYarnClassMap;
+
     private ScriptManager() {
-        // Don't build context here initially, or make it lighter
     }
 
     public static ScriptManager getInstance() {
@@ -29,141 +44,69 @@ public class ScriptManager {
         return inst;
     }
 
-    public void initializeContextAndExposeGlobals(Object mcClientJavaInstance) {
+    public void init() {
+        createDir();
+        initializeContext();
+    }
+
+    private synchronized void initializeContext() {
         if (contextInitialized) return;
 
         ctx = Context.newBuilder("js")
-                .allowExperimentalOptions(true)
-                .option("js.ecmascript-version", "2021")
                 .allowHostAccess(HostAccess.NONE)
-                .allowHostClassLookup(name -> name.startsWith("net.minecraft.") || name.startsWith("java."))
+                .allowHostClassLookup(name -> name.startsWith("java."))
+                .option("js.ecmascript-version", "2021")
                 .build();
 
-        // grab all the mappings
-        MappingsManager mm = MappingsManager.getInstance();
-        Map<String, String> classMap       = mm.getClassMap();
-        Map<String, Map<String, List<String>>> methodMap = mm.getMethodMap();
-        Map<String, Map<String, String>>     fieldMap  = mm.getFieldMap();
-        Map<String, String>                  runtimeToYarn = mm.getRuntimeToYarnClassMap();
+        var mm = MappingsManager.getInstance();
+        this.classMap = mm.getClassMap(); // Stocker pour usage ultérieur
+        this.methodMap = mm.getMethodMap();
+        this.fieldMap = mm.getFieldMap();
+        this.runtimeToYarnClassMap = mm.getRuntimeToYarnClassMap();
 
-        JsPackage root = new JsPackage();   // for net.minecraft.*
+        JsPackage globalPackageScope = new JsPackage();
 
-        // loop over every Yarn class, but skip if it fails to load or init
-        for (String yarnFqcn : classMap.keySet()) {
-            if (!yarnFqcn.startsWith("net.")) continue;
-
-            String offFqcn = classMap.get(yarnFqcn);
-            try {
-                // load without running <clinit>
-                Class<?> cls = Class.forName(offFqcn, false, getClass().getClassLoader());
-
-                // merge in all inherited method & field info
-                Map<String, List<String>> combinedMethods = new HashMap<>();
-                Map<String, String>       combinedFields  = new HashMap<>();
-                Class<?> current = cls;
-                while (current != null) {
-                    String rtName = current.getName();
-                    String pyName = runtimeToYarn.get(rtName);
-                    if (pyName != null) {
-                        Map<String, List<String>> pm = methodMap.get(pyName);
-                        Map<String, String>       pf = fieldMap .get(pyName);
-                        if (pm != null) combinedMethods.putAll(pm);
-                        if (pf != null) combinedFields .putAll(pf);
+        this.classMap.keySet().stream()
+                .filter(yarnName -> !EXCLUDED_YARN_CLASSES.contains(yarnName)) // Appliquer l'exclusion
+                .filter(yarnName -> yarnName.startsWith("net.minecraft.") || yarnName.startsWith("com.mojang."))
+                .forEach(yarnName -> {
+                    String runtimeName = this.classMap.get(yarnName);
+                    if (runtimeName == null) {
+                        Main.LOGGER.warn("No runtime name found for yarn class: {}", yarnName);
+                        return;
                     }
-                    current = current.getSuperclass();
-                }
+                    // Au lieu de créer JsClassWrapper, on crée LazyJsClassHolder
+                    LazyJsClassHolder holder = new LazyJsClassHolder(yarnName, runtimeName, this);
+                    insertIntoPackageHierarchy(globalPackageScope, yarnName, holder);
+                });
 
-                // find the right JsPackage
-                String[] parts = yarnFqcn.split("\\.");
-                JsPackage pkg = root;
-                for (int i = 0; i < parts.length - 1; i++) {
-                    String seg = parts[i];
-                    if (i == 0 && seg.equals("net")) continue;
-                    if (!pkg.hasMember(seg)) pkg.put(seg, new JsPackage());
-                    pkg = (JsPackage) pkg.getMember(seg);
-                }
-                String simple = parts[parts.length - 1];
-
-                // wrap it (skip on missing class or bad init)
-                try {
-                    pkg.put(simple, new JsClassWrapper(offFqcn, combinedMethods, combinedFields));
-                } catch (ClassNotFoundException
-                         | ExceptionInInitializerError
-                         | NoClassDefFoundError ignored) {
-                    // just skip
-                }
-            } catch (Exception e) {
-                Main.LOGGER.warn("Error wrapping {}: {}", yarnFqcn, e.toString());
-            }
+        var jsBindings = ctx.getBindings("js");
+        for (String topLevelPackageName : (String[]) globalPackageScope.getMemberKeys()) {
+            jsBindings.putMember(topLevelPackageName, globalPackageScope.getMember(topLevelPackageName));
         }
 
-        // bind your 'net' root namespace
-        ctx.getBindings("js").putMember("net", root.getMember("minecraft"));
+        exposeStandardJavaTypes();
+        // exposeImportClassFunction devra aussi potentiellement être paresseux ou utiliser createActualJsClassWrapper
+        exposeImportClassFunction();
 
-        // expose System and Thread
-        try {
-            Value sys    = ctx.eval("js", "Java.type('java.lang.System')");
-            Value thread = ctx.eval("js", "Java.type('java.lang.Thread')");
-            ctx.getBindings("js").putMember("System", sys);
-            ctx.getBindings("js").putMember("Thread", thread);
-        } catch (Exception e) {
-            Main.LOGGER.error("Failed to expose System/Thread", e);
-        }
-
-        // importClass helper, with same inheritance logic
-        ctx.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
-            String yarnName = args[0].asString();
-            String offName  = classMap.get(yarnName);
-            if (offName == null) throw new RuntimeException("Unknown class: " + yarnName);
-            try {
-                Class<?> cls = Class.forName(offName, false, getClass().getClassLoader());
-                Map<String, List<String>> combinedMethods = new HashMap<>();
-                Map<String, String>       combinedFields  = new HashMap<>();
-                Class<?> current = cls;
-                while (current != null) {
-                    String rtName = current.getName();
-                    String pyName = runtimeToYarn.get(rtName);
-                    if (pyName != null) {
-                        Map<String, List<String>> pm = methodMap.get(pyName);
-                        Map<String, String>       pf = fieldMap .get(pyName);
-                        if (pm != null) combinedMethods.putAll(pm);
-                        if (pf != null) combinedFields .putAll(pf);
-                    }
-                    current = current.getSuperclass();
-                }
-                return new JsClassWrapper(offName, combinedMethods, combinedFields);
-            } catch (ClassNotFoundException e) {
-                return null;
-            }
-        });
-
-        // expose the live MinecraftClient instance as 'client'
-        try {
-            String mcYarn = "net.minecraft.client.MinecraftClient";
-            if (classMap.containsKey(mcYarn)) {
-                Class<?> mcClass = Class.forName(classMap.get(mcYarn));
-                JsObjectWrapper clientWrapper = new JsObjectWrapper(
-                        mcClientJavaInstance,
-                        mcClass,
-                        methodMap.get(mcYarn),
-                        fieldMap .get(mcYarn)
-                );
-                ctx.getBindings("js").putMember("client", clientWrapper);
-                Main.LOGGER.info("Exposed MinecraftClient as 'client'");
-            } else {
-                Main.LOGGER.error("Mappings for MinecraftClient not found");
-            }
-        } catch (Exception e) {
-            Main.LOGGER.error("Failed to expose MinecraftClient", e);
-        }
 
         contextInitialized = true;
+        Main.LOGGER.info("Scripting context initialized with lazy class holders.");
     }
 
-
-    public void init() {
-        createDir();
+    // Nouvelle méthode pour la création réelle du JsClassWrapper, appelée par LazyJsClassHolder
+    // Cette méthode est publique ou package-private pour que LazyJsClassHolder puisse l'appeler
+    public JsClassWrapper createActualJsClassWrapper(String yarnName, String runtimeName) throws ClassNotFoundException {
+        // S'assurer que les mappings sont disponibles (déjà fait via le stockage des champs)
+        if (this.runtimeToYarnClassMap == null || this.methodMap == null || this.fieldMap == null) {
+            // Cela ne devrait pas arriver si init a bien fonctionné
+            throw new IllegalStateException("Mappings not available for creating JsClassWrapper.");
+        }
+        Class<?> cls = Class.forName(runtimeName, false, ScriptManager.class.getClassLoader());
+        ClassMappings combinedMappings = combineMappingsForClassAndSuperclasses(cls, this.runtimeToYarnClassMap, this.methodMap, this.fieldMap);
+        return new JsClassWrapper(runtimeName, combinedMappings.methods, combinedMappings.fields);
     }
+
 
     private void createDir() {
         Path path = FabricLoader.getInstance().
@@ -171,21 +114,20 @@ public class ScriptManager {
         try {
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
-                Main.LOGGER.info("Created scripts directory");
+                Main.LOGGER.info("Created scripts directory: {}", path);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Main.LOGGER.error("Failed to create scripts directory: {}", path, e);
         }
-
     }
 
-    // Helper method to unwrap Polyglot Value arguments to Java Objects
     public static Object[] unwrapArguments(Value[] polyglotArgs, Class<?>[] javaParamTypes) {
+        // ... (code inchangé)
         if (polyglotArgs == null) return new Object[0];
         Object[] javaArgs = new Object[polyglotArgs.length];
         for (int i = 0; i < polyglotArgs.length; i++) {
             Value v = polyglotArgs[i];
-            Class<?> expectedType = (i < javaParamTypes.length) ? javaParamTypes[i] : null; // Be careful with varargs
+            Class<?> expectedType = (i < javaParamTypes.length) ? javaParamTypes[i] : null;
 
             if (v == null || v.isNull()) {
                 javaArgs[i] = null;
@@ -199,88 +141,205 @@ public class ScriptManager {
                     else if (expectedType == float.class || expectedType == Float.class) javaArgs[i] = v.asFloat();
                     else if (expectedType == short.class || expectedType == Short.class) javaArgs[i] = v.asShort();
                     else if (expectedType == byte.class || expectedType == Byte.class) javaArgs[i] = v.asByte();
-                    else javaArgs[i] = v.asDouble(); // Default for numbers if type unknown
+                    else javaArgs[i] = v.asDouble();
                 } else {
-                     javaArgs[i] = v.asDouble(); // Or v.isIntegralNumber() ? v.asLong() : v.asDouble();
+                    javaArgs[i] = v.asDouble();
                 }
             } else if (v.isString()) {
                 javaArgs[i] = v.asString();
-            } else if (v.isHostObject()) { // If it's already a Java object (e.g., passed from another Java call)
+            } else if (v.isHostObject()) {
                 javaArgs[i] = v.asHostObject();
-            } else if (v.isProxyObject()) { // If it's one of our own wrappers
+            } else if (v.isProxyObject()) {
                 Object proxied = v.asProxyObject();
                 if (proxied instanceof JsObjectWrapper) {
                     javaArgs[i] = ((JsObjectWrapper) proxied).getJavaInstance();
                 } else {
-                    // Potentially handle other proxy types or throw error
                     javaArgs[i] = proxied;
                 }
             }
-            // Add more conversions if needed (e.g., for JS arrays to Java Lists/arrays)
             else {
-                // Fallback or error
-                Main.LOGGER.warn("Cannot convert JS value to Java: " + v.toString());
-                javaArgs[i] = v.asHostObject(); // Try this as a last resort
+                Main.LOGGER.warn("Cannot convert JS value to Java: {} (Meta: {})", v, v.getMetaObject());
+                try {
+                    javaArgs[i] = v.asHostObject();
+                } catch (PolyglotException e) {
+                    Main.LOGGER.error("Failed to convert value to host object: {}", v, e);
+                    javaArgs[i] = null;
+                }
             }
         }
         return javaArgs;
     }
 
-    // Helper method to wrap Java Objects to Polyglot Values or JsObjectWrappers
     public static Object wrapReturnValue(Object javaRetVal) {
-        if (javaRetVal == null ||
-                javaRetVal instanceof String ||
-                javaRetVal instanceof Number ||
-                javaRetVal instanceof Boolean ||
-                javaRetVal.getClass().isPrimitive()) {
+        // ... (code essentiellement inchangé, mais s'assurer qu'il utilise les mappings stockés du ScriptManager si besoin)
+        if (javaRetVal == null || javaRetVal instanceof String || javaRetVal instanceof Number || javaRetVal instanceof Boolean || javaRetVal.getClass().isPrimitive()) {
             return javaRetVal;
         }
 
         Class<?> retClass = javaRetVal.getClass();
         String runtimeFqcn = retClass.getName();
 
+        // Accéder aux mappings via l'instance de ScriptManager si on ne les passe pas partout
+        // ou s'assurer que cette méthode a accès aux mappings corrects.
+        // Pour l'instant, elle utilise MappingsManager.getInstance() ce qui est ok.
         MappingsManager mm = MappingsManager.getInstance();
-        Map<String, String> runtimeToYarn = mm.getRuntimeToYarnClassMap();
-        Map<String, Map<String, List<String>>> allMethodMap = mm.getMethodMap();
-        Map<String, Map<String, String>>       allFieldMap  = mm.getFieldMap();
+        Map<String, String> currentRuntimeToYarn = mm.getRuntimeToYarnClassMap();
+        Map<String, Map<String, List<String>>> currentAllMethodMap = mm.getMethodMap();
+        Map<String, Map<String, String>> currentAllFieldMap = mm.getFieldMap();
 
-        String yarnFqcn = runtimeToYarn.get(runtimeFqcn);
-        if (yarnFqcn != null) {
-            // Merge inherited methods & fields
-            Map<String, List<String>> combinedMethods = new HashMap<>();
-            Map<String, String>       combinedFields  = new HashMap<>();
-            Class<?> current = retClass;
-            while (current != null) {
-                String parentRuntime = current.getName();
-                String parentYarn    = runtimeToYarn.get(parentRuntime);
-                if (parentYarn != null) {
-                    Map<String, List<String>> pm = allMethodMap.get(parentYarn);
-                    Map<String, String>       pf = allFieldMap .get(parentYarn);
-                    if (pm != null) combinedMethods.putAll(pm);
-                    if (pf != null) combinedFields .putAll(pf);
-                }
-                current = current.getSuperclass();
-            }
-
-            // wrap with the _combined_ maps
+        String yarnFqcn = currentRuntimeToYarn.get(runtimeFqcn);
+        if (yarnFqcn != null || retClass.isArray()) {
+            ClassMappings combinedMappings = combineMappingsForClassAndSuperclasses(retClass, currentRuntimeToYarn, currentAllMethodMap, currentAllFieldMap);
             try {
                 return new JsObjectWrapper(
                         javaRetVal,
                         retClass,
-                        combinedMethods,
-                        combinedFields
+                        combinedMappings.methods,
+                        combinedMappings.fields
                 );
             } catch (Exception e) {
-                // fallback to raw host object if something goes wrong
+                Main.LOGGER.warn("Failed to wrap return value of type {}: {}. Falling back to raw host object.", runtimeFqcn, e.getMessage());
             }
         }
-
-        // if no Yarn mapping, or wrapper failed, fall back to raw host object
         return Value.asValue(javaRetVal);
     }
 
 
     public Value run(String source) {
-        return ctx.eval("js", source);
+        if (!contextInitialized) {
+            Main.LOGGER.error("ScriptManager context not initialized. Cannot run script.");
+            throw new IllegalStateException("ScriptManager context not initialized.");
+        }
+        try {
+            return ctx.eval("js", source);
+        } catch (PolyglotException e) {
+            Main.LOGGER.error("Error executing script: {}", e.getMessage());
+            // Pour déboguer les erreurs JS, il est utile de voir la stacktrace JS
+            if (e.isGuestException()) {
+                Value guestException = e.getGuestObject();
+                if (guestException != null && guestException.hasMember("stack")) {
+                    Main.LOGGER.error("JS Stacktrace: {}", guestException.getMember("stack").asString());
+                }
+            }
+            throw e;
+        }
+    }
+
+    private void exposeStandardJavaTypes() {
+        // ... (code inchangé)
+        try {
+            Value systemClass = ctx.eval("js", "Java.type('java.lang.System')");
+            Value threadClass = ctx.eval("js", "Java.type('java.lang.Thread')");
+            ctx.getBindings("js").putMember("java.lang.System", systemClass);
+            ctx.getBindings("js").putMember("java.lang.Thread", threadClass);
+
+        } catch (PolyglotException e) {
+            Main.LOGGER.error("Couldn’t expose standard Java types like System/Thread via Java.type() for pre-binding", e);
+        }
+    }
+
+    // exposeImportClassFunction modifiée pour utiliser la logique de chargement paresseux
+    private void exposeImportClassFunction() {
+        ctx.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
+            if (args.length == 0 || !args[0].isString()) {
+                throw new RuntimeException("importClass requires a String argument (Yarn FQCN)");
+            }
+            String yarnName = args[0].asString();
+
+            if (EXCLUDED_YARN_CLASSES.contains(yarnName)) {
+                throw new RuntimeException("Class " + yarnName + " is excluded from wrapping.");
+            }
+
+            String runtimeName = this.classMap.get(yarnName); // Utilise la map stockée
+            if (runtimeName == null) {
+                throw new RuntimeException("Class not found in mappings (or not a known mapped class): " + yarnName);
+            }
+            try {
+                // Directement créer le JsClassWrapper ici car importClass implique une utilisation immédiate.
+                return createActualJsClassWrapper(yarnName, runtimeName);
+            } catch (ClassNotFoundException ex) {
+                throw new RuntimeException("Runtime class not found for " + yarnName + " (mapped to " + runtimeName + ")", ex);
+            } catch (Exception e) { // Attraper d'autres erreurs de createActualJsClassWrapper
+                throw new RuntimeException("Failed to create class wrapper for " + yarnName + ": " + e.getMessage(), e);
+            }
+        });
+    }
+
+    // Déplacer ClassMappings et combineMappingsForClassAndSuperclasses pour qu'ils soient statiques
+    // ou accessibles par createActualJsClassWrapper si ce dernier n'est pas statique.
+    // Ici, ils sont statiques, donc c'sest bon.
+    record ClassMappings(
+            Map<String, List<String>> methods,
+            Map<String, String> fields
+    ) {}
+
+    static ClassMappings combineMappingsForClassAndSuperclasses(
+            Class<?> cls,
+            Map<String, String> runtimeToYarnMap,
+            Map<String, Map<String, List<String>>> allYarnMethodsMap,
+            Map<String, Map<String, String>> allYarnFieldsMap
+    ) {
+        // ... (code inchangé)
+        Map<String, List<String>> combinedMethods = new HashMap<>();
+        Map<String, String> combinedFields = new HashMap<>();
+
+        for (Class<?> currentClass = cls; currentClass != null; currentClass = currentClass.getSuperclass()) {
+            String currentRuntimeFqcn = currentClass.getName();
+            String currentYarnFqcn = runtimeToYarnMap.get(currentRuntimeFqcn);
+
+            if (currentYarnFqcn != null) {
+                var yarnMethodsForClass = allYarnMethodsMap.get(currentYarnFqcn);
+                if (yarnMethodsForClass != null) {
+                    yarnMethodsForClass.forEach(combinedMethods::putIfAbsent);
+                }
+
+                var yarnFieldsForClass = allYarnFieldsMap.get(currentYarnFqcn);
+                if (yarnFieldsForClass != null) {
+                    yarnFieldsForClass.forEach(combinedFields::putIfAbsent);
+                }
+            }
+        }
+        return new ClassMappings(combinedMethods, combinedFields);
+    }
+
+
+    // insertIntoPackageHierarchy modifiée pour insérer des LazyJsClassHolder
+    private static void insertIntoPackageHierarchy(JsPackage rootPackage, String fullYarnName, LazyJsClassHolder classHolder) {
+        String[] nameParts = fullYarnName.split("\\.");
+        if (nameParts.length == 0) {
+            Main.LOGGER.warn("Cannot insert class holder for empty or invalid name: {}", fullYarnName);
+            return;
+        }
+
+        JsPackage currentPackage = rootPackage;
+        // Itère jusqu'à l'avant-dernier segment (les segments de package)
+        for (int i = 0; i < nameParts.length - 1; i++) {
+            String packageSegment = nameParts[i];
+            Object existingMember = currentPackage.getMember(packageSegment);
+
+            if (existingMember instanceof JsPackage) {
+                currentPackage = (JsPackage) existingMember;
+            } else if (existingMember == null) {
+                JsPackage newPackage = new JsPackage();
+                currentPackage.put(packageSegment, newPackage); // put(String, Object)
+                currentPackage = newPackage;
+            } else if (existingMember instanceof LazyJsClassHolder || existingMember instanceof JsClassWrapper) {
+                // Conflit: un nom de package est déjà utilisé par une classe/holder
+                Main.LOGGER.error("Name conflict in package structure: tried to create package segment '{}' but a class/holder already exists at this path for FQCN '{}'.", packageSegment, fullYarnName);
+                return;
+            } else {
+                 Main.LOGGER.error("Unexpected object type in package hierarchy: {} for segment '{}'", existingMember.getClass().getName(), packageSegment);
+                 return;
+            }
+        }
+
+        // Le dernier segment est le nom de la classe simple
+        String className = nameParts[nameParts.length - 1];
+        if (currentPackage.hasMember(className)) {
+            // Conflit: une classe/holder avec ce nom simple existe déjà dans ce package
+            Main.LOGGER.warn("Class holder (or package with same name) '{}' already exists in package structure for FQCN '{}'. Skipping.", className, fullYarnName);
+            return;
+        }
+        currentPackage.put(className, classHolder); // put(String, Object)
     }
 }

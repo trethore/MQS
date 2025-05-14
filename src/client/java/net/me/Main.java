@@ -2,9 +2,12 @@ package net.me;
 
 import net.fabricmc.api.ClientModInitializer;
 
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.mappings.MappingsManager;
 import net.me.scripting.ScriptManager;
+import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,12 +23,9 @@ public class Main implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        LOGGER.info("Hello from MyQOLScripts!");
         MappingsManager.getInstance().init();
-        // ScriptManager.getInstance().init(); // init creates directory, that's fine
-        // Pass the client instance to ScriptManager to be wrapped and exposed
-        ScriptManager.getInstance().initializeContextAndExposeGlobals(net.minecraft.client.MinecraftClient.getInstance());
-
-        System.out.println("Hello from MyQOLScripts!");
+        ScriptManager.getInstance().init();
         try {
             Path path2script = FabricLoader.getInstance().getGameDir().resolve(Main.MOD_ID).resolve("scripts");
             path2script = path2script.resolve("test.js");
@@ -35,4 +35,6 @@ public class Main implements ClientModInitializer {
             e.printStackTrace();
         }
     }
+
+
 }
