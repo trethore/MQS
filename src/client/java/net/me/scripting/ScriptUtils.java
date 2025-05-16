@@ -8,10 +8,7 @@ import org.graalvm.polyglot.Value;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ScriptUtils {
 
@@ -242,26 +239,83 @@ public class ScriptUtils {
             Map<String, Map<String, List<String>>> allYarnMethodsMap,
             Map<String, Map<String, String>> allYarnFieldsMap
     ) {
-        Map<String, List<String>> combinedMethods = new HashMap<>();
-        Map<String, String> combinedFields = new HashMap<>();
-
-        for (Class<?> currentClass = cls; currentClass != null; currentClass = currentClass.getSuperclass()) {
-            String currentRuntimeFqcn = currentClass.getName();
-            String currentYarnFqcn = runtimeToYarnMap.get(currentRuntimeFqcn);
-
-            if (currentYarnFqcn != null) {
-                var yarnMethodsForClass = allYarnMethodsMap.get(currentYarnFqcn);
-                if (yarnMethodsForClass != null) {
-                    yarnMethodsForClass.forEach(combinedMethods::putIfAbsent);
-                }
-
-                var yarnFieldsForClass = allYarnFieldsMap.get(currentYarnFqcn);
-                if (yarnFieldsForClass != null) {
-                    yarnFieldsForClass.forEach(combinedFields::putIfAbsent);
-                }
+        Main.LOGGER.debug("[ScriptUtils.combineMappings] Starting combination for class: {} (Runtime: {})",
+                runtimeToYarnMap.get(cls.getName()), cls.getName()); // Log initial class
+        ClassMappings result = combineMappingsRecursive(cls, runtimeToYarnMap, allYarnMethodsMap, allYarnFieldsMap, new HashMap<>(), new HashMap<>(), new HashSet<>());
+        Main.LOGGER.debug("[ScriptUtils.combineMappings] Finished combination for class: {}. Methods found: {}, Fields found: {}",
+                runtimeToYarnMap.get(cls.getName()), result.methods().size(), result.fields().size());
+        if ("net.minecraft.client.MinecraftClient".equals(runtimeToYarnMap.get(cls.getName()))) { // Specific log for MCClient
+            Main.LOGGER.info("[ScriptUtils.combineMappings] For MinecraftClient, does combinedMethods contain 'execute'? {}", result.methods().containsKey("execute"));
+            if (result.methods().containsKey("execute")) {
+                Main.LOGGER.info("[ScriptUtils.combineMappings] For MinecraftClient, 'execute' maps to: {}", result.methods().get("execute"));
+            } else {
+                Main.LOGGER.warn("[ScriptUtils.combineMappings] For MinecraftClient, 'execute' IS MISSING from combined methods. Keys: {}", result.methods().keySet());
             }
         }
-        return new ClassMappings(combinedMethods, combinedFields);
+        return result;
+    }
+
+    private static ClassMappings combineMappingsRecursive(
+            Class<?> cls,
+            Map<String, String> runtimeToYarnMap,
+            Map<String, Map<String, List<String>>> allYarnMethodsMap,
+            Map<String, Map<String, String>> allYarnFieldsMap,
+            Map<String, List<String>> combinedMethods, // Accumulators
+            Map<String, String> combinedFields,       // Accumulators
+            Set<Class<?>> visited                      // To prevent cycles and redundant work
+    ) {
+        if (cls == null || !visited.add(cls)) {
+            // Return current state of accumulators if class is null or already visited
+            return new ClassMappings(combinedMethods, combinedFields);
+        }
+
+        // 1. Add mappings from the current class (cls)
+        String currentRuntimeFqcn = cls.getName();
+        String currentYarnFqcn = runtimeToYarnMap.get(currentRuntimeFqcn);
+
+        Main.LOGGER.debug("[ScriptUtils.combineRecursive] Processing class: {} (Runtime: {})", currentYarnFqcn, currentRuntimeFqcn);
+
+        if (currentYarnFqcn != null) {
+            var yarnMethodsForClass = allYarnMethodsMap.get(currentYarnFqcn);
+            if (yarnMethodsForClass != null) {
+                Main.LOGGER.debug("[ScriptUtils.combineRecursive]   Methods from allYarnMethodsMap for {}: {} (Adding {} methods)",
+                        currentYarnFqcn, yarnMethodsForClass.keySet(), yarnMethodsForClass.size());
+                yarnMethodsForClass.forEach((yarnMethodName, runtimeMethodNames) -> {
+                    if (combinedMethods.putIfAbsent(yarnMethodName, new ArrayList<>(runtimeMethodNames)) == null) {
+                         Main.LOGGER.debug("[ScriptUtils.combineRecursive]     Added method: {} -> {}", yarnMethodName, runtimeMethodNames);
+                    } else {
+                         Main.LOGGER.debug("[ScriptUtils.combineRecursive]     Skipped method (already present): {} -> {}", yarnMethodName, runtimeMethodNames);
+                    }
+                });
+                 // Specific check for ThreadExecutor and execute
+                if ("net.minecraft.util.thread.ThreadExecutor".equals(currentYarnFqcn) && yarnMethodsForClass.containsKey("execute")) {
+                    Main.LOGGER.info("[ScriptUtils.combineRecursive]   >>> ThreadExecutor has 'execute': {}. It was just processed for combinedMethods.", yarnMethodsForClass.get("execute"));
+                }
+            } else {
+                 Main.LOGGER.debug("[ScriptUtils.combineRecursive]   No direct methods in allYarnMethodsMap for {}.", currentYarnFqcn);
+            }
+            var yarnFieldsForClass = allYarnFieldsMap.get(currentYarnFqcn);
+            if (yarnFieldsForClass != null) {
+                yarnFieldsForClass.forEach(combinedFields::putIfAbsent);
+            }
+        } else {
+            Main.LOGGER.debug("[ScriptUtils.combineRecursive]   No YARN FQCN for runtime class {}, skipping direct map lookup.", currentRuntimeFqcn);
+        }
+
+
+        // 2. Recursively add mappings from interfaces of cls
+        for (Class<?> iface : cls.getInterfaces()) {
+            combineMappingsRecursive(iface, runtimeToYarnMap, allYarnMethodsMap, allYarnFieldsMap, combinedMethods, combinedFields, visited);
+        }
+
+        // 3. Recursively add mappings from the superclass of cls
+        // This ensures that superclass methods are processed *after* current class and its interfaces,
+        // so putIfAbsent correctly prioritizes more specific versions.
+        combineMappingsRecursive(cls.getSuperclass(), runtimeToYarnMap, allYarnMethodsMap, allYarnFieldsMap, combinedMethods, combinedFields, visited);
+
+        // The final maps are in combinedMethods and combinedFields directly due to side effects.
+        // The ClassMappings object is returned at the top level.
+        return new ClassMappings(combinedMethods, combinedFields); // This will be the final result from the initial call
     }
     public static Object jsValueToJavaOrProxy(Value v, boolean allowProxy) {
         if (v == null || v.isNull()) return null;

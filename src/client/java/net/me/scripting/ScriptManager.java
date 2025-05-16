@@ -47,7 +47,6 @@ public class ScriptManager {
 
     private synchronized void initializeContext() {
         if (contextInitialized) return;
-
         ctx = Context.newBuilder("js")
                 .allowHostAccess(HostAccess.ALL)
                 .allowHostClassLookup(name -> name.startsWith("java.") || name.startsWith("net.me."))
