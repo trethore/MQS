@@ -25,16 +25,16 @@ public class LazyJsClassHolder implements ProxyObject {
         return runtimeName;
     }
 
-    private JsClassWrapper resolve() {
+    public JsClassWrapper resolve() {
         if (resolvedWrapper == null) {
             Main.LOGGER.debug("Lazy loading JsClassWrapper for: {} (runtime: {})", yarnName, runtimeName);
             try {
-                this.resolvedWrapper = scriptManager.createActualJsClassWrapper(yarnName, runtimeName);
+                this.resolvedWrapper = scriptManager.createActualJsClassWrapper(runtimeName);
             } catch (ClassNotFoundException e) {
                 Main.LOGGER.error("Failed to lazy load class (ClassNotFoundException) for {}: {}", yarnName, e.getMessage());
                 throw new RuntimeException("Lazy load failed: Class not found " + runtimeName, e);
             } catch (Throwable t) {
-                Main.LOGGER.error("Failed to lazy load class for {} (runtime: {}): {}", yarnName, runtimeName, t.toString(), t);
+                Main.LOGGER.error("Failed to lazy load class for {} (runtime: {}): {}", yarnName, runtimeName, t, t);
                 throw new RuntimeException("Lazy load failed for " + yarnName + ": " + t.getMessage(), t);
             }
         }

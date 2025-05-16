@@ -1,8 +1,9 @@
 package net.me;
 
 import net.fabricmc.api.ClientModInitializer;
-
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
+import net.me.commands.TestJsCommand;
 import net.me.mappings.MappingsManager;
 import net.me.scripting.ScriptManager;
 import org.slf4j.Logger;
@@ -23,14 +24,11 @@ public class Main implements ClientModInitializer {
         LOGGER.info("Hello from MyQOLScripts!");
         MappingsManager.getInstance().init();
         ScriptManager.getInstance().init();
-        try {
-            Path path2script = FabricLoader.getInstance().getGameDir().resolve(Main.MOD_ID).resolve("scripts");
-            path2script = path2script.resolve("test.js");
-            String js  = Files.readString(path2script);
-            ScriptManager.getInstance().run(js);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
+        ClientCommandRegistrationCallback.EVENT.register(
+                (dispatcher, registryAccess) -> TestJsCommand.register(dispatcher)
+        );
+        LOGGER.info("Registered /testjs command.");
     }
 
 

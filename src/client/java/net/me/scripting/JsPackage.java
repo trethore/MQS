@@ -2,9 +2,10 @@ package net.me.scripting;
 
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
+
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set; // Ajout pour getMemberKeys
+import java.util.Set;
 
 public class JsPackage implements ProxyObject {
     private final Map<String, Object> children = new HashMap<>();
@@ -18,12 +19,7 @@ public class JsPackage implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        Object child = children.get(key);
-
-        if (child instanceof LazyJsClassHolder) {
-            return child;
-        }
-        return child;
+        return children.get(key);
     }
 
     @Override

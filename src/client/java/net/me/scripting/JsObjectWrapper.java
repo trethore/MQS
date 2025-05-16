@@ -2,10 +2,13 @@ package net.me.scripting;
 
 import net.me.Main;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.*;
-import org.jetbrains.annotations.NotNull;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,44 +45,60 @@ public class JsObjectWrapper implements ProxyObject {
         if (yarnToRuntimeMethodNames.containsKey(yarnNameKey)) {
             List<String> runtimeMethodNames = yarnToRuntimeMethodNames.get(yarnNameKey);
 
-            List<Method> candidateInstanceMethods = new ArrayList<>();
-            for (Method m : instanceClass.getMethods()) {
-                if (!Modifier.isStatic(m.getModifiers()) && runtimeMethodNames.contains(m.getName())) {
-                    candidateInstanceMethods.add(m);
+            List<Method> candidateInstanceMethods = ScriptUtils.findAndMakeAccessibleMethods(instanceClass, runtimeMethodNames, false);
+
+            if ("execute".equals(yarnNameKey) && instanceClassName.contains("MinecraftClient")) {
+                Main.LOGGER.info("[MyQOLScript-Debug] JsObjectWrapper.getMember for MinecraftClient.execute");
+                Main.LOGGER.info("[MyQOLScript-Debug] Runtime names for 'execute': " + runtimeMethodNames);
+                Main.LOGGER.info("[MyQOLScript-Debug] Candidate methods found: " + candidateInstanceMethods.size());
+                if (!candidateInstanceMethods.isEmpty()) {
+                    Main.LOGGER.info("[MyQOLScript-Debug] First candidate: " + candidateInstanceMethods.getFirst());
                 }
             }
 
             return (ProxyExecutable) polyglotArgs -> {
+                List<Method> matchingOverloads = new ArrayList<>();
                 for (Method method : candidateInstanceMethods) {
                     if (method.getParameterCount() == polyglotArgs.length) {
-                        try {
-                            Object[] javaArgs = ScriptManager.unwrapArguments(polyglotArgs, method.getParameterTypes());
-                            Object result = method.invoke(javaInstance, javaArgs);
-                            return ScriptManager.wrapReturnValue(result);
-                        } catch (IllegalAccessException | IllegalArgumentException e) {
-                            throw new RuntimeException(String.format("Erreur lors de l'invocation de la méthode d'instance %s.%s (runtime: %s) : %s",
-                                    instanceClassName, yarnNameKey, method.getName(), e.getMessage()), e);
-                        } catch (InvocationTargetException e) {
-                            throw new RuntimeException(String.format("La méthode d'instance %s.%s (runtime: %s) a levé une exception : %s",
-                                    instanceClassName, yarnNameKey, method.getName(), e.getCause().getMessage()), e.getCause());
-                        }
+                        matchingOverloads.add(method);
                     }
                 }
-                String availableOverloads = candidateInstanceMethods.stream()
-                        .map(m -> m.getParameterCount() + " args")
-                        .distinct()
-                        .collect(Collectors.joining(", "));
-                throw new RuntimeException(
-                        String.format("Aucune surcharge de méthode d'instance nommée '%s' trouvée sur l'objet de classe %s avec %d arguments. Surcharges disponibles pour '%s': [%s]",
-                                yarnNameKey, instanceClassName, polyglotArgs.length, yarnNameKey, availableOverloads.isEmpty() ? "aucune avec ce nom" : availableOverloads));
+
+                if (matchingOverloads.isEmpty()) {
+                    String availableOverloads = candidateInstanceMethods.stream()
+                            .map(m -> m.getParameterCount() + " args")
+                            .distinct().collect(Collectors.joining(", "));
+                    throw new RuntimeException(
+                            String.format("Aucune surcharge de méthode d'instance nommée '%s' trouvée sur l'objet de classe %s avec %d arguments. Surcharges disponibles pour les méthodes nommées '%s' (toutes accessibilités): [%s]",
+                                    yarnNameKey, instanceClassName, polyglotArgs.length, yarnNameKey, availableOverloads.isEmpty() ? "aucune avec ce nom" : availableOverloads));
+                }
+
+                Method methodToInvoke = matchingOverloads.getFirst();
+
+                try {
+                    Object[] javaArgs = ScriptUtils.unwrapArguments(polyglotArgs, methodToInvoke.getParameterTypes());
+                    Object result = methodToInvoke.invoke(javaInstance, javaArgs);
+                    return ScriptUtils.wrapReturnValue(result);
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                    throw new RuntimeException(String.format("Erreur lors de l'invocation de la méthode d'instance %s.%s (runtime: %s) : %s",
+                            instanceClassName, yarnNameKey, methodToInvoke.getName(), e.getMessage()), e);
+                } catch (InvocationTargetException e) {
+                    throw new RuntimeException(String.format("La méthode d'instance %s.%s (runtime: %s) a levé une exception : %s",
+                            instanceClassName, yarnNameKey, methodToInvoke.getName(), e.getCause().getMessage()), e.getCause());
+                }
             };
         }
 
         if (yarnToRuntimeFieldName.containsKey(yarnNameKey)) {
             String runtimeFieldName = yarnToRuntimeFieldName.get(yarnNameKey);
             try {
-                Field field = getField(yarnNameKey, runtimeFieldName);
-                return ScriptManager.wrapReturnValue(field.get(javaInstance));
+                Field field = ScriptUtils.findAndMakeAccessibleField(instanceClass, runtimeFieldName);
+                if (Modifier.isStatic(field.getModifiers())) {
+                    throw new RuntimeException(String.format(
+                            "Tentative d'accès au champ statique '%s' (runtime: '%s') via un wrapper d'instance de %s. Utilisez le wrapper de classe.",
+                            yarnNameKey, runtimeFieldName, instanceClassName));
+                }
+                return ScriptUtils.wrapReturnValue(field.get(javaInstance));
             } catch (NoSuchFieldException e) {
                 throw new RuntimeException(String.format("Champ d'instance '%s' (runtime: '%s') non trouvé sur l'objet de classe %s.",
                         yarnNameKey, runtimeFieldName, instanceClassName), e);
@@ -90,15 +109,6 @@ public class JsObjectWrapper implements ProxyObject {
         }
 
         return null;
-    }
-
-    private @NotNull Field getField(String yarnNameKey, String runtimeFieldName) throws NoSuchFieldException {
-        Field field = instanceClass.getField(runtimeFieldName);
-        if (Modifier.isStatic(field.getModifiers())) {
-            throw new RuntimeException(String.format("Tentative d'accès au champ statique '%s' (runtime: '%s') via un wrapper d'instance de %s. Utilisez le wrapper de classe.",
-                    yarnNameKey, runtimeFieldName, instanceClassName));
-        }
-        return field;
     }
 
     @Override
@@ -122,15 +132,19 @@ public class JsObjectWrapper implements ProxyObject {
             Field field = null;
 
             try {
-                field = getAccessibleField(yarnNameKey, runtimeFieldName);
+                field = ScriptUtils.findAndMakeAccessibleField(instanceClass, runtimeFieldName);
+
+                if (Modifier.isStatic(field.getModifiers())) {
+                    throw new UnsupportedOperationException("The field should no be static.");
+                }
 
                 if (Modifier.isFinal(field.getModifiers())) {
                     throw new UnsupportedOperationException(String.format(
-                            "Impossible de modifier le champ final '%s' (runtime: '%s') sur l'objet de classe %s.",
-                            yarnNameKey, runtimeFieldName, instanceClassName));
+                            "Cannot modify FINAL instance field '%s' on object of class %s.",
+                            yarnNameKey, instanceClassName));
                 }
 
-                Object javaValue = ScriptManager.unwrapArguments(
+                Object javaValue = ScriptUtils.unwrapArguments(
                         new Value[]{valueToSet},
                         new Class<?>[]{field.getType()}
                 )[0];
@@ -165,22 +179,5 @@ public class JsObjectWrapper implements ProxyObject {
                 String.format("Le membre '%s' n'est pas un champ modifiable connu (ou non trouvé) sur les objets de classe %s.",
                         yarnNameKey, instanceClassName));
     }
-    private @NotNull Field getAccessibleField(String yarnNameKey, String runtimeFieldName) throws NoSuchFieldException, IllegalAccessException {
-        Field field;
-        try {
-            field = instanceClass.getField(runtimeFieldName);
-        } catch (NoSuchFieldException e) {
-            Main.LOGGER.error("Impossible de trouver le champ public '{}' (runtime: '{}') sur l'objet de classe {}. Vérifiez la correspondance des noms.",
-                    yarnNameKey, runtimeFieldName, instanceClassName);
-            throw e;
-        }
 
-        if (Modifier.isStatic(field.getModifiers())) {
-            throw new RuntimeException(
-                    String.format("Tentative d'accès au champ statique '%s' (runtime: '%s') via un wrapper d'instance de %s. Utilisez le wrapper de classe.",
-                            yarnNameKey, runtimeFieldName, instanceClassName));
-        }
-
-        return field;
-    }
 }

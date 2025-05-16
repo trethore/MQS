@@ -5,12 +5,16 @@ import net.fabricmc.loader.impl.lib.mappingio.format.tiny.Tiny1FileReader;
 import net.fabricmc.loader.impl.lib.mappingio.tree.MemoryMappingTree;
 import net.me.Main;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -128,7 +132,6 @@ public class MappingsManager {
             Main.LOGGER.info("Mappings downloaded to {}", OUTPUT_FILE);
         } catch (IOException | InterruptedException e) {
             Main.LOGGER.error("Failed to download or extract mappings.", e);
-            e.printStackTrace();
         }
     }
     private void parseMappings() {
@@ -140,7 +143,7 @@ public class MappingsManager {
             Main.LOGGER.error("Erreur parsing yarn.tiny", e);
         }
     }
-
+    @SuppressWarnings("unused")
     public MemoryMappingTree getMappingsTree() {
         return mappingsTree;
     }
