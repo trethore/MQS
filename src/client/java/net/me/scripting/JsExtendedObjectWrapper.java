@@ -99,7 +99,7 @@ public class JsExtendedObjectWrapper implements ProxyObject {
             Value[] callArgs = new Value[args.length + 1];
             callArgs[0] = Value.asValue(this);
             System.arraycopy(args, 0, callArgs, 1, args.length);
-            Value result = fn.invokeMember("call",callArgs);
+            Value result = fn.invokeMember("call", (Object[]) callArgs);
             return ScriptUtils.wrapReturn(result);
         } catch (PolyglotException e) {
             Main.LOGGER.error("JavaScript error in function call: {}", e.getMessage());

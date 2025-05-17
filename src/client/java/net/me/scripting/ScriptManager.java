@@ -9,14 +9,12 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class ScriptManager {
     private static ScriptManager instance;
@@ -113,48 +111,85 @@ public class ScriptManager {
 
     private void bindExtendsFrom() {
         context.getBindings("js").putMember("extendsFrom", (ProxyExecutable) args -> {
-            if (args.length != 2)
-                throw new RuntimeException("extendsFrom(Base, Overrides) requires 2 args");
-            Value base = args[0];
-            Value overrides = args[1];
-            LazyJsClassHolder lazy = base.asProxyObject() instanceof LazyJsClassHolder lj ? lj : null;
-            JsClassWrapper wrapper = lazy != null ? lazy.getWrapper(): base.asProxyObject() instanceof JsClassWrapper cw ? cw : null;
-            if (wrapper == null)
-                throw new RuntimeException("First arg must be a class wrapper");
-            Class<?> javaBase = (Class<?>) wrapper.getMember("_class");
-            var cm = ScriptUtils.combineMappings(javaBase, runtimeToYarn, methodMap, fieldMap);
-            return (ProxyInstantiable) ctorArgs -> instantiateExtended(wrapper, cm, overrides, ctorArgs);
+            if (args.length < 2) {
+                throw new RuntimeException("extendsFrom requires at least one base and an overrides object");
+            }
+
+            // 1) Last arg is the overrides object
+            Value overrides = args[args.length - 1];
+
+            // 2) Resolve all base JsClassWrappers + their mappings
+            List<JsClassWrapper>    wrappers     = new ArrayList<>();
+            List<ScriptUtils.ClassMappings> mappingsList = new ArrayList<>();
+
+            for (int i = 0; i < args.length - 1; i++) {
+                Value v = args[i];
+                JsClassWrapper wrap;
+
+                // a) Java.type(...) → HostObject(Class<?>)
+                if (v.isHostObject()) {
+                    Object ho = v.asHostObject();
+                    if (!(ho instanceof Class<?> cls)) {
+                        throw new RuntimeException("Unsupported host object as base: " + ho);
+                    }
+                    try {
+                        wrap = createActualJsClassWrapper(cls.getName());
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                // b) LazyJsClassHolder or JsClassWrapper
+                else if (v.isProxyObject()) {
+                    ProxyObject po = v.asProxyObject();
+                    if      (po instanceof LazyJsClassHolder lj) wrap = lj.getWrapper();
+                    else if (po instanceof JsClassWrapper    cw) wrap = cw;
+                    else throw new RuntimeException("Unsupported proxy as base: " + po.getClass().getSimpleName());
+                }
+                else {
+                    throw new RuntimeException("Invalid base for extendsFrom(): " + v);
+                }
+
+                wrappers.add(wrap);
+                Class<?> javaBase = (Class<?>) wrap.getMember("_class");
+                mappingsList.add(
+                        ScriptUtils.combineMappings(javaBase, runtimeToYarn, methodMap, fieldMap)
+                );
+            }
+
+            // 3) If only one base, return the old single-super wrapper:
+            if (wrappers.size() == 1) {
+                JsClassWrapper onlyWrap = wrappers.getFirst();
+                ScriptUtils.ClassMappings cm = mappingsList.getFirst();
+
+                return (ProxyInstantiable) ctorArgs -> {
+                    Object inst = onlyWrap.newInstance(ctorArgs);
+                    Object javaInst = (inst instanceof JsObjectWrapper jw)
+                            ? jw.getJavaInstance()
+                            : inst;
+
+                    // _super will be a single SuperAccessWrapper:
+                    return new JsExtendedObjectWrapper(
+                            javaInst,
+                            javaInst.getClass(),
+                            cm.methods(),
+                            cm.fields(),
+                            overrides
+                    );
+                };
+            }
+
+            // 4) Multiple bases → return multi-super wrapper
+            return (ProxyInstantiable) ctorArgs -> {
+                Object inst = wrappers.getFirst().newInstance(ctorArgs);
+                Object javaInst = (inst instanceof JsObjectWrapper jw)
+                        ? jw.getJavaInstance()
+                        : inst;
+
+                // _super will be an array of SuperAccessWrappers:
+                return new MultiExtendedObjectWrapper(javaInst, mappingsList, overrides);
+            };
         });
     }
-
-    private Object instantiateExtended(
-            JsClassWrapper base,
-            ScriptUtils.ClassMappings cm,
-            Value overrides,
-            Value[] args
-    ) {
-        // 1) Invoke the “new” on your class wrapper, which currently returns a JsObjectWrapper proxy…
-        Object wrapped = base.newInstance(args);
-
-        // 2) …unwrap it to the raw Java instance if necessary
-        Object javaInstance;
-        if (wrapped instanceof net.me.scripting.JsObjectWrapper jw) {
-            javaInstance = jw.getJavaInstance();
-        } else {
-            javaInstance = wrapped;
-        }
-
-        // 3) Build and return your extended‐object proxy around the real Java instance
-        Class<?> cls = (Class<?>) base.getMember("_class");
-        return new net.me.scripting.JsExtendedObjectWrapper(
-                javaInstance,
-                cls,
-                cm.methods(),
-                cm.fields(),
-                overrides
-        );
-    }
-
 
     private JsClassWrapper createWrapper(String runtime) {
         try {
