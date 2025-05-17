@@ -2,16 +2,11 @@ package net.me;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.loader.api.FabricLoader;
 import net.me.commands.TestJsCommand;
 import net.me.mappings.MappingsManager;
 import net.me.scripting.ScriptManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 public class Main implements ClientModInitializer {
     public static final String MOD_ID = "my-qol-scripts";

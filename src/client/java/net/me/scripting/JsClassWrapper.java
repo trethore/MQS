@@ -3,192 +3,157 @@ package net.me.scripting;
 import net.me.Main;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-public class JsClassWrapper implements ProxyObject {
+public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     private final Class<?> targetClass;
     private final String targetClassName;
-    private final Map<String, List<String>> yarnToRuntimeMethodNames;
-    private final Map<String, String> yarnToRuntimeFieldName;
+    private final Map<String, List<String>> yarnToRuntimeMethods;
+    private final Map<String, String> yarnToRuntimeFields;
+    private final List<Constructor<?>> constructors;
 
     public JsClassWrapper(String runtimeFqcn,
                           Map<String, List<String>> methodLookup,
                           Map<String, String> fieldLookup
     ) throws ClassNotFoundException {
-        Main.LOGGER.debug("Création de JsClassWrapper pour : {}", runtimeFqcn);
+        Main.LOGGER.debug("Creating JsClassWrapper for: {}", runtimeFqcn);
         this.targetClass = Class.forName(runtimeFqcn);
-        this.targetClassName = this.targetClass.getName();
-        this.yarnToRuntimeMethodNames = Map.copyOf(methodLookup);
-        this.yarnToRuntimeFieldName = Map.copyOf(fieldLookup);
+        this.targetClassName = targetClass.getName();
+        this.yarnToRuntimeMethods = Map.copyOf(methodLookup);
+        this.yarnToRuntimeFields = Map.copyOf(fieldLookup);
+        this.constructors = List.of(targetClass.getConstructors());
+        this.constructors.forEach(c -> c.setAccessible(true));
     }
 
     @Override
-    public Object getMember(String yarnNameKey) {
-        if ("new".equals(yarnNameKey)) {
-            return (ProxyExecutable) polyglotArgs -> {
-                Constructor<?>[] constructors = targetClass.getConstructors();
-                for (Constructor<?> ctor : constructors) {
-                    if (ctor.getParameterCount() == polyglotArgs.length) {
-                        try {
-                            Object[] javaArgs = ScriptUtils.unwrapArguments(polyglotArgs, ctor.getParameterTypes());
-                            Object instance = ctor.newInstance(javaArgs);
-                            return ScriptUtils.wrapReturnValue(instance);
-                        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException e) {
-                            throw new RuntimeException(String.format("Erreur lors de l'instanciation de %s avec %d arguments : %s",
-                                    targetClassName, polyglotArgs.length, e.getMessage()), e);
-                        } catch (InvocationTargetException e) {
-                            throw new RuntimeException(String.format("Le constructeur de %s a levé une exception : %s",
-                                    targetClassName, e.getCause().getMessage()), e.getCause());
-                        }
-                    }
-                }
-                String availableConstructors = Stream.of(constructors)
-                        .map(c -> c.getParameterCount() + " args")
-                        .distinct()
-                        .collect(Collectors.joining(", "));
-                throw new RuntimeException(
-                        String.format("Aucun constructeur trouvé pour la classe %s avec %d arguments. Constructeurs disponibles : [%s]",
-                                targetClassName, polyglotArgs.length, availableConstructors.isEmpty() ? "aucun public" : availableConstructors));
-            };
+    public Object newInstance(Value... args) {
+        return invokeConstructor(args);
+    }
+
+    @Override
+    public Object getMember(String key) {
+        if ("_class".equals(key)) {
+            return targetClass;
         }
-
-        if (yarnToRuntimeMethodNames.containsKey(yarnNameKey)) {
-            List<String> runtimeNamesForYarnKey = yarnToRuntimeMethodNames.get(yarnNameKey);
-
-            List<Method> candidateStaticMethods = ScriptUtils.findAndMakeAccessibleMethods(targetClass, runtimeNamesForYarnKey, true /*isStatic*/);
-
-            return (ProxyExecutable) polyglotArgs -> {
-                List<Method> matchingOverloads = new ArrayList<>();
-                for (Method method : candidateStaticMethods) {
-                    if (method.getParameterCount() == polyglotArgs.length) {
-                        matchingOverloads.add(method);
-                    }
-                }
-
-                if (matchingOverloads.isEmpty()) {
-                    String availableOverloads = candidateStaticMethods.stream()
-                            .map(m -> m.getParameterCount() + " args")
-                            .distinct().collect(Collectors.joining(", "));
-                    throw new RuntimeException(
-                            String.format("Aucune surcharge de méthode statique nommée '%s' trouvée sur la classe %s avec %d arguments. Surcharges disponibles pour les méthodes nommées '%s' (toutes accessibilités): [%s]",
-                                    yarnNameKey, targetClassName, polyglotArgs.length, yarnNameKey, availableOverloads.isEmpty() ? "aucune avec ce nom" : availableOverloads));
-                }
-
-                Method methodToInvoke = matchingOverloads.getFirst();
-
-                try {
-                    Object[] javaArgs = ScriptUtils.unwrapArguments(polyglotArgs, methodToInvoke.getParameterTypes());
-                    Object result = methodToInvoke.invoke(null, javaArgs);
-                    return ScriptUtils.wrapReturnValue(result);
-                } catch (IllegalAccessException | IllegalArgumentException e) {
-                    throw new RuntimeException(String.format("Erreur lors de l'invocation de la méthode statique %s.%s (runtime: %s) : %s",
-                            targetClassName, yarnNameKey, methodToInvoke.getName(), e.getMessage()), e);
-                } catch (InvocationTargetException e) {
-                    throw new RuntimeException(String.format("La méthode statique %s.%s (runtime: %s) a levé une exception : %s",
-                            targetClassName, yarnNameKey, methodToInvoke.getName(), e.getCause().getMessage()), e.getCause());
-                }
-            };
+        if (yarnToRuntimeMethods.containsKey(key)) {
+            return createStaticMethodProxy(key);
         }
-
-        if (yarnToRuntimeFieldName.containsKey(yarnNameKey)) {
-            String runtimeFieldName = yarnToRuntimeFieldName.get(yarnNameKey);
-            try {
-                Field field = ScriptUtils.findAndMakeAccessibleField(targetClass, runtimeFieldName);
-                if (!Modifier.isStatic(field.getModifiers())) {
-                    throw new RuntimeException(String.format("Le champ '%s' (runtime: '%s') sur la classe %s n'est pas statique.",
-                            yarnNameKey, runtimeFieldName, targetClassName));
-                }
-                return ScriptUtils.wrapReturnValue(field.get(null));
-            } catch (NoSuchFieldException e) {
-                throw new RuntimeException(String.format("Champ statique '%s' (runtime: '%s') non trouvé sur la classe %s.",
-                        yarnNameKey, runtimeFieldName, targetClassName), e);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(String.format("Impossible d'accéder au champ statique '%s' (runtime: '%s') sur la classe %s.",
-                        yarnNameKey, runtimeFieldName, targetClassName), e);
-            }
+        if (yarnToRuntimeFields.containsKey(key)) {
+            return readStaticField(key);
         }
-        if ("_class".equals(yarnNameKey)) {
-            return this.targetClass;
-        }
-
         return null;
     }
 
     @Override
-    public boolean hasMember(String yarnNameKey) {
-        return "new".equals(yarnNameKey) || "_class".equals(yarnNameKey) ||
-                yarnToRuntimeMethodNames.containsKey(yarnNameKey) ||
-                yarnToRuntimeFieldName.containsKey(yarnNameKey);
+    public boolean hasMember(String key) {
+        return "_class".equals(key)
+                || yarnToRuntimeMethods.containsKey(key)
+                || yarnToRuntimeFields.containsKey(key);
     }
 
     @Override
     public Object getMemberKeys() {
-        Set<String> keys = new HashSet<>();
-        keys.add("new");
+        Set<String> keys = new LinkedHashSet<>();
         keys.add("_class");
-        keys.addAll(yarnToRuntimeMethodNames.keySet());
-        keys.addAll(yarnToRuntimeFieldName.keySet());
+        keys.addAll(yarnToRuntimeMethods.keySet());
+        keys.addAll(yarnToRuntimeFields.keySet());
         return keys.toArray(new String[0]);
     }
 
     @Override
     public void putMember(String key, Value value) {
-        if (yarnToRuntimeFieldName.containsKey(key)) {
-            String runtimeFieldName = yarnToRuntimeFieldName.get(key);
-            Field field = null;
+        if (yarnToRuntimeFields.containsKey(key)) {
+            writeStaticField(key, value);
+            return;
+        }
+        throw new UnsupportedOperationException("No writable member " + key);
+    }
 
-            try {
-                field = ScriptUtils.findAndMakeAccessibleField(targetClass, runtimeFieldName);
-
-                if (!Modifier.isStatic(field.getModifiers())) {
-                    throw new UnsupportedOperationException(String.format(
-                            "Le champ '%s' (runtime: '%s') sur la classe %s n'est pas statique. Modification via instance requise.",
-                            key, runtimeFieldName, targetClassName));
+    private Object invokeConstructor(Value[] polyglotArgs) {
+        int argCount = polyglotArgs.length;
+        for (Constructor<?> ctor : constructors) {
+            if (ctor.getParameterCount() == argCount) {
+                try {
+                    Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, ctor.getParameterTypes());
+                    Object instance = ctor.newInstance(javaArgs);
+                    return ScriptUtils.wrapReturn(instance);
+                } catch (Exception e) {
+                    throw new RuntimeException(
+                            String.format("Failed to instantiate %s: %s", targetClassName, e.getMessage()), e);
                 }
-
-                if (Modifier.isFinal(field.getModifiers())) {
-                    throw new UnsupportedOperationException(String.format(
-                            "Cannot modify FINAL static field '%s' on class %s.",
-                            key, targetClassName));
-                }
-
-
-                Object javaValue = ScriptUtils.unwrapArguments(
-                        new Value[]{value},
-                        new Class<?>[]{field.getType()}
-                )[0];
-
-                field.set(null, javaValue);
-                return;
-
-            } catch (NoSuchFieldException e) {
-                throw new RuntimeException(String.format(
-                        "Champ statique '%s' (runtime: '%s') non trouvé pour l'assignation sur la classe %s.",
-                        key, runtimeFieldName, targetClassName), e);
-            } catch (IllegalAccessException e) {
-
-                throw new RuntimeException(String.format(
-                        "Impossible d'assigner au champ statique '%s' (runtime: '%s') sur la classe %s en raison de restrictions d'accès.",
-                        key, runtimeFieldName, targetClassName), e);
-            } catch (IllegalArgumentException e) {
-                String fieldTypeName = (field != null) ? field.getType().getName() : "inconnu (champ non résolu)";
-                throw new RuntimeException(String.format(
-                        "Type de valeur incompatible pour l'assignation au champ statique '%s' (runtime: '%s', type attendu: %s) sur la classe %s.",
-                        key, runtimeFieldName, fieldTypeName, targetClassName), e);
-            } catch (Exception e) {
-                throw new RuntimeException(String.format(
-                        "Erreur inattendue lors de la tentative d'assignation au champ statique '%s' (runtime: '%s') sur la classe %s: %s",
-                        key, runtimeFieldName, targetClassName, e.getMessage()), e);
             }
         }
-
-        throw new UnsupportedOperationException(
-                String.format("Le membre '%s' n'est pas un champ statique modifiable connu (ou non trouvé) sur la classe %s, ou la modification de ce type de membre n'est pas supportée.",
-                        key, targetClassName));
+        String available = constructors.stream()
+                .map(c -> c.getParameterCount() + " args")
+                .distinct()
+                .collect(Collectors.joining(", "));
+        throw new RuntimeException(
+                String.format("No constructor for %s with %d args. Available: [%s]",
+                        targetClassName, argCount, available));
     }
+
+    private ProxyExecutable createStaticMethodProxy(String yarnKey) {
+        List<String> runtimeNames = yarnToRuntimeMethods.get(yarnKey);
+        // capture methods once
+        List<Method> methods = ScriptUtils.findMethods(targetClass, runtimeNames, true);
+        return polyglotArgs -> {
+            int argCount = polyglotArgs.length;
+            for (Method m : methods) {
+                if (m.getParameterCount() == argCount) {
+                    try {
+                        Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, m.getParameterTypes());
+                        Object result = m.invoke(null, javaArgs);
+                        return ScriptUtils.wrapReturn(result);
+                    } catch (Exception e) {
+                        throw new RuntimeException(
+                                String.format("Error calling %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
+                    }
+                }
+            }
+            throw new RuntimeException(
+                    String.format("No static overload for %s.%s with %d args", targetClassName, yarnKey, argCount));
+        };
+    }
+
+    private Object readStaticField(String yarnKey) {
+        String runtimeName = yarnToRuntimeFields.get(yarnKey);
+        try {
+            Field f = ScriptUtils.findField(targetClass, runtimeName);
+            if (!Modifier.isStatic(f.getModifiers())) {
+                throw new RuntimeException(yarnKey + " is not static");
+            }
+            return ScriptUtils.wrapReturn(f.get(null));
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    String.format("Error accessing %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
+        }
+    }
+
+    private void writeStaticField(String yarnKey, Value value) {
+        String runtimeName = yarnToRuntimeFields.get(yarnKey);
+        try {
+            Field f = ScriptUtils.findField(targetClass, runtimeName);
+            if (!Modifier.isStatic(f.getModifiers())) {
+                throw new UnsupportedOperationException(yarnKey + " is not static");
+            }
+            if (Modifier.isFinal(f.getModifiers())) {
+                throw new UnsupportedOperationException("Cannot modify final field " + yarnKey);
+            }
+            Object javaVal = ScriptUtils.unwrapArgs(new Value[]{value}, new Class[]{f.getType()})[0];
+            f.set(null, javaVal);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    String.format("Error setting %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
+        }
+    }
+
+
 }

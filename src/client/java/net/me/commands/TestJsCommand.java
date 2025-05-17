@@ -38,11 +38,6 @@ public class TestJsCommand {
 
             String js = Files.readString(path2script);
 
-            // Re-initialize ScriptManager or ensure its context is fresh if needed.
-            // For now, we assume ScriptManager.run() can be called multiple times
-            // and will use the existing, initialized context.
-            // If re-initialization is needed every time:
-            // ScriptManager.getInstance().reinitializeContext(); // You'd need to implement this
 
             ScriptManager.getInstance().run(js);
 
