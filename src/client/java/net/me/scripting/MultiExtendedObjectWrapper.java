@@ -23,7 +23,6 @@ public class MultiExtendedObjectWrapper implements ProxyObject {
         this.jsOverrides  = overrides;
         this.superList    = new ArrayList<>();
 
-        // create a SuperAccessWrapper for each base’s mappings
         Class<?> actualClass = javaInstance.getClass();
         for (var cm : mappingsList) {
             superList.add(new SuperAccessWrapper(
@@ -44,9 +43,7 @@ public class MultiExtendedObjectWrapper implements ProxyObject {
         if (jsOverrides != null && jsOverrides.hasMember(key)) {
             Value fn = jsOverrides.getMember(key);
             if (fn.canExecute()) {
-                return (ProxyExecutable) args -> {
-                    return fn.invokeMember("call", Value.asValue(this), args);
-                };
+                return (ProxyExecutable) args -> fn.invokeMember("call", Value.asValue(this), args);
             }
             return ScriptUtils.wrapReturn(fn);
         }

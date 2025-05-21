@@ -41,17 +41,13 @@ public class JsExtendedObjectWrapper implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        // 1. super accessor
         if ("_super".equals(key)) {
             return superAccessor;
         }
-        // 2. JS override
         Object override = handleJsOverride(key);
         if (override != null) return override;
-        // 3. Mapped instance method
         Object methodProxy = handleMappedMethod(key);
         if (methodProxy != null) return methodProxy;
-        // 4. Instance field
         return handleField(key);
     }
 

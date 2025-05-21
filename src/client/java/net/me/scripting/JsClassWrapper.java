@@ -102,7 +102,6 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
 
     private ProxyExecutable createStaticMethodProxy(String yarnKey) {
         List<String> runtimeNames = yarnToRuntimeMethods.get(yarnKey);
-        // capture methods once
         List<Method> methods = ScriptUtils.findMethods(targetClass, runtimeNames, true);
         return polyglotArgs -> {
             int argCount = polyglotArgs.length;

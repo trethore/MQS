@@ -24,6 +24,7 @@ public class ScriptUtils {
                 return f;
             } catch (NoSuchFieldException ignored) {}
         }
+        assert cls != null;
         throw new NoSuchFieldException("Field '" + name + "' not found in " + cls.getName());
     }
 

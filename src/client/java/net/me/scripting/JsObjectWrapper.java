@@ -64,8 +64,6 @@ public class JsObjectWrapper implements ProxyObject {
         throw new UnsupportedOperationException("No writable member: " + key);
     }
 
-    // --- Handlers ---
-
     private Object handleMappedMethod(String key) {
         List<Method> candidates = methods.findMethods(instanceClass, key);
         if (!candidates.isEmpty()) {
@@ -122,8 +120,6 @@ public class JsObjectWrapper implements ProxyObject {
             throw new RuntimeException("Field write failed: " + key, e);
         }
     }
-
-    // --- Nested lookup helpers ---
 
     public static class MethodLookup {
         private final Map<String, List<String>> map;

@@ -79,7 +79,6 @@ public class ScriptManager {
 
         var bindings = context.getBindings("js");
 
-        // root.getMemberKeys() returns a String[]
         Arrays.stream((String[]) root.getMemberKeys())
                 .forEach(key -> bindings.putMember(key, root.getMember(key)));
     }
@@ -114,11 +113,8 @@ public class ScriptManager {
             if (args.length < 2) {
                 throw new RuntimeException("extendsFrom requires at least one base and an overrides object");
             }
-
-            // 1) Last arg is the overrides object
             Value overrides = args[args.length - 1];
 
-            // 2) Resolve all base JsClassWrappers + their mappings
             List<JsClassWrapper>    wrappers     = new ArrayList<>();
             List<ScriptUtils.ClassMappings> mappingsList = new ArrayList<>();
 
@@ -126,7 +122,6 @@ public class ScriptManager {
                 Value v = args[i];
                 JsClassWrapper wrap;
 
-                // a) Java.type(...) → HostObject(Class<?>)
                 if (v.isHostObject()) {
                     Object ho = v.asHostObject();
                     if (!(ho instanceof Class<?> cls)) {
@@ -138,7 +133,7 @@ public class ScriptManager {
                         throw new RuntimeException(e);
                     }
                 }
-                // b) LazyJsClassHolder or JsClassWrapper
+
                 else if (v.isProxyObject()) {
                     ProxyObject po = v.asProxyObject();
                     if      (po instanceof LazyJsClassHolder lj) wrap = lj.getWrapper();
@@ -156,7 +151,6 @@ public class ScriptManager {
                 );
             }
 
-            // 3) If only one base, return the old single-super wrapper:
             if (wrappers.size() == 1) {
                 JsClassWrapper onlyWrap = wrappers.getFirst();
                 ScriptUtils.ClassMappings cm = mappingsList.getFirst();
@@ -167,7 +161,6 @@ public class ScriptManager {
                             ? jw.getJavaInstance()
                             : inst;
 
-                    // _super will be a single SuperAccessWrapper:
                     return new JsExtendedObjectWrapper(
                             javaInst,
                             javaInst.getClass(),
@@ -178,14 +171,12 @@ public class ScriptManager {
                 };
             }
 
-            // 4) Multiple bases → return multi-super wrapper
             return (ProxyInstantiable) ctorArgs -> {
                 Object inst = wrappers.getFirst().newInstance(ctorArgs);
                 Object javaInst = (inst instanceof JsObjectWrapper jw)
                         ? jw.getJavaInstance()
                         : inst;
 
-                // _super will be an array of SuperAccessWrappers:
                 return new MultiExtendedObjectWrapper(javaInst, mappingsList, overrides);
             };
         });
