@@ -98,13 +98,21 @@ public class ScriptManager {
         context.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
             if (args.length == 0 || !args[0].isString())
                 throw new RuntimeException("importClass requires Yarn FQCN string");
-            var yarn = args[0].asString();
-            if (EXCLUDED.contains(yarn))
-                throw new RuntimeException("Class excluded: " + yarn);
-            var runtime = classMap.get(yarn);
-            if (runtime == null)
-                throw new RuntimeException("Unknown class: " + yarn);
-            return createWrapper(runtime);
+            var name = args[0].asString();
+            if (EXCLUDED.contains(name))
+                throw new RuntimeException("Class excluded: " + name);
+            String runtime = classMap.get(name);
+            if (runtime != null) {
+                return createWrapper(runtime);
+            }
+            if (name.startsWith("java.")) {
+                try {
+                    return context.eval("js", "Java.type('" + name + "')");
+                } catch (Exception e) {
+                    throw new RuntimeException("Cannot load host class: " + name, e);
+                }
+            }
+            throw new RuntimeException("Unknown class: " + name);
         });
     }
 
