@@ -15,13 +15,23 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+// import java.util.concurrent.ConcurrentHashMap; // Replaced by WeakHashMap
 
 public class ScriptManager {
     private static ScriptManager instance;
-    private final Map<String, JsClassWrapper> wrapperCache = new ConcurrentHashMap<>();
+    // Changed to WeakHashMap
+    private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
     private Context context;
-    private boolean initialized;
+    private volatile boolean contextInitialized = false; // Changed from 'initialized' and made volatile
+
+    private final ExecutorService scriptExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "ScriptManager-Executor");
+        t.setDaemon(true);
+        return t;
+    });
 
     private Map<String, String> classMap;
     private Map<String, Map<String, List<String>>> methodMap;
@@ -39,28 +49,35 @@ public class ScriptManager {
 
     public void init() {
         ensureScriptDirectory();
-        initializeContext();
+        // initializeContext() is now called lazily
     }
 
-    private synchronized void initializeContext() {
-        if (initialized) return;
+    // Renamed from initializeContext and logic moved here
+    private synchronized void ensureContextInitialized() {
+        if (contextInitialized) return;
+        Main.LOGGER.info("Initializing GraalVM context for ScriptManager...");
+        long startTime = System.currentTimeMillis();
+
         context = Context.newBuilder("js")
                 .allowHostAccess(HostAccess.ALL)
                 .allowHostClassLookup(this::isClassAllowed)
                 .option("js.ecmascript-version", "2021")
                 .build();
 
-        loadMappings();
+        loadMappings(); // Depends on MappingsManager being initialized
         registerPackages();
         bindJavaTypes();
         bindImportClass();
         bindExtendsFrom();
 
-        initialized = true;
-        Main.LOGGER.info("Scripting context initialized with lazy class holders.");
+        contextInitialized = true;
+        long endTime = System.currentTimeMillis();
+        Main.LOGGER.info("Scripting context initialized in {}ms with lazy class holders.", (endTime - startTime));
     }
 
     private void loadMappings() {
+        // Ensure MappingsManager is initialized before trying to get maps
+        MappingsManager.getInstance().init(); // Make sure mappings are loaded if not already
         var mm = MappingsManager.getInstance();
         classMap = mm.getClassMap();
         methodMap = mm.getMethodMap();
@@ -221,25 +238,67 @@ public class ScriptManager {
         return new JsClassWrapper(runtime, cm.methods(), cm.fields());
     }
 
-    public Value run(String src) {
-        if (!initialized) throw new IllegalStateException("Context not initialized");
-        try { return context.eval("js", src); }
-        catch (PolyglotException e) {
-            handleException(e);
-            throw e;
+    // Original run method, now private and synchronous
+    private Value runSync(String src) {
+        // ensureContextInitialized() is called by the public run method before this
+        try {
+            return context.eval("js", src);
+        } catch (PolyglotException e) {
+            // The existing handleException logic re-throws, so we just let it propagate
+            // after logging more details.
+            handlePolyglotException(e);
+            throw e; // Re-throw to be caught by CompletableFuture logic
+        } catch (Exception e) {
+            // Catch other potential exceptions during script execution
+            Main.LOGGER.error("A non-Polyglot exception occurred during script execution:", e);
+            throw new RuntimeException("Script execution failed with an unexpected error.", e);
         }
     }
 
-    private void handleException(PolyglotException e) {
-        StringBuilder msg = new StringBuilder("Script error: ").append(e.getMessage());
+    public CompletableFuture<Value> run(String src) {
+        return CompletableFuture.supplyAsync(() -> {
+            ensureContextInitialized(); // Ensure context is ready before script execution
+            return runSync(src);
+        }, scriptExecutor).exceptionally(ex -> {
+            // Handle exceptions from runSync or context initialization
+            if (ex.getCause() instanceof PolyglotException polyglotException) {
+                // Already handled by runSync's catch block, but we can log here again if needed
+                // Or ensure the PolyglotException itself is the cause for more specific downstream handling
+                Main.LOGGER.error("Async script execution failed due to PolyglotException: {}", polyglotException.getMessage());
+                throw polyglotException; // Throw the original PolyglotException
+            } else {
+                Main.LOGGER.error("Async script execution failed with an unexpected error", ex);
+                throw new RuntimeException("Async script execution failed.", ex);
+            }
+        });
+    }
+
+
+    private void handlePolyglotException(PolyglotException e) {
+        StringBuilder msg = new StringBuilder("Script error: ");
+
+        if (e.isHostException()) {
+            Throwable hostException = e.asHostException();
+            msg.append("HostException: ").append(hostException.getMessage());
+            // Optionally log host stack trace here if desired, but it might be too verbose for typical user errors
+            // Main.LOGGER.error("Host Exception during script execution:", hostException);
+        } else {
+            msg.append(e.getMessage());
+        }
+
+        if (e.getSourceLocation() != null) {
+            msg.append(" at ").append(e.getSourceLocation().toString());
+        }
+
         if (e.isGuestException()) {
             Value ge = e.getGuestObject();
             if (ge != null && ge.hasMember("stack")) {
-                msg.append("\nJS Stack:\n")
-                        .append(ge.getMember("stack").asString());
+                msg.append("\nJS Stack:\n").append(ge.getMember("stack").asString());
             }
         }
-        throw new RuntimeException(msg.toString(), e);
+        // Instead of throwing a new RuntimeException, log it and let the original PolyglotException be thrown
+        Main.LOGGER.error(msg.toString());
+        // The original exception 'e' will be re-thrown by the caller (runSync)
     }
 
     private void ensureScriptDirectory() {
