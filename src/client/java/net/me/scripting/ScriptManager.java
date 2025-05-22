@@ -13,29 +13,12 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.*;
 
 public class ScriptManager {
     private static ScriptManager instance;
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
     private final Map<String, Script> scripts = new HashMap<>();
-    private Context context;
-    private volatile boolean contextInitialized = false; // Changed from 'initialized' and made volatile
-
-    private final ExecutorService scriptExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "ScriptManager-Executor");
-        t.setDaemon(true);
-        return t;
-    });
 
     private Map<String, String> classMap;
     private Map<String, Map<String, List<String>>> methodMap;
@@ -53,22 +36,10 @@ public class ScriptManager {
 
     public void init() {
         ensureScriptDirectory();
-        // ensureContextInitialized called by createDefaultScriptContext or run -> supplyAsync
-        // and by Script creation.
-        // No, it should be called here to ensure one-time setup is done early.
-        ensureContextInitialized(); 
-    }
-
-    // Helper method to configure any context
-    private void configureContext(Context contextToConfigure) {
-        registerPackages(contextToConfigure);
-        bindJavaTypes(contextToConfigure);
-        bindImportClass(contextToConfigure);
-        bindExtendsFrom(contextToConfigure);
+        loadMappings();
     }
 
     public Context createDefaultScriptContext() {
-        ensureContextInitialized(); // Ensures loadMappings() and other one-time setups are done.
         Main.LOGGER.info("Creating new default script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
         Context newContext = Context.newBuilder("js")
@@ -77,34 +48,18 @@ public class ScriptManager {
                 .option("js.ecmascript-version", "2024")
                 .build();
 
-        configureContext(newContext); // Apply common configurations
+        configureContext(newContext);
 
         long endTime = System.currentTimeMillis();
         Main.LOGGER.info("New default script context (ECMAScript 2024) created in {}ms.", (endTime - startTime));
         return newContext;
     }
 
-    private synchronized void ensureContextInitialized() {
-        if (contextInitialized) return;
-        Main.LOGGER.info("Performing one-time ScriptManager initialization (including Mappings)...");
-        long startTime = System.currentTimeMillis();
-
-        loadMappings(); // Load mappings once
-
-        // Initialize ScriptManager's own internal context with ECMAScript 2021
-        // This context is used by ScriptManager.run() and other internal operations.
-        Main.LOGGER.info("Initializing ScriptManager's internal context (ECMAScript 2021)...");
-        this.context = Context.newBuilder("js")
-                .allowHostAccess(HostAccess.ALL)
-                .allowHostClassLookup(this::isClassAllowed)
-                .option("js.ecmascript-version", "2021")
-                .build();
-        
-        configureContext(this.context); // Configure this internal context
-
-        contextInitialized = true;
-        long endTime = System.currentTimeMillis();
-        Main.LOGGER.info("ScriptManager one-time initialization and internal context setup complete in {}ms.", (endTime - startTime));
+    private void configureContext(Context contextToConfigure) {
+        registerPackages(contextToConfigure);
+        bindJavaTypes(contextToConfigure);
+        bindImportClass(contextToConfigure);
+        bindExtendsFrom(contextToConfigure);
     }
 
     private void loadMappings() {
@@ -170,7 +125,6 @@ public class ScriptManager {
             }
             if (isClassAllowed(name)) {
                 try {
-                    // Referring to the context passed to the function, not the member variable
                     return contextToConfigure.eval("js", "Java.type('" + name + "')");
                 } catch (Exception e) {
                     throw new RuntimeException("Cannot load host class: " + name, e);
@@ -268,57 +222,6 @@ public class ScriptManager {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
         var cm = ScriptUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
         return new JsClassWrapper(runtime, cm.methods(), cm.fields());
-    }
-
-    private Value runSync(String src) {
-        try {
-            return context.eval("js", src);
-        } catch (PolyglotException e) {
-            handlePolyglotException(e);
-            throw e;
-        } catch (Exception e) {
-            Main.LOGGER.error("A non-Polyglot exception occurred during script execution:", e);
-            throw new RuntimeException("Script execution failed with an unexpected error.", e);
-        }
-    }
-
-    public CompletableFuture<Value> run(String src) {
-        return CompletableFuture.supplyAsync(() -> {
-            ensureContextInitialized();
-            return runSync(src);
-        }, scriptExecutor).exceptionally(ex -> {
-            if (ex.getCause() instanceof PolyglotException polyglotException) {
-                Main.LOGGER.error("Async script execution failed due to PolyglotException: {}", polyglotException.getMessage());
-                throw polyglotException;
-            } else {
-                Main.LOGGER.error("Async script execution failed with an unexpected error", ex);
-                throw new RuntimeException("Async script execution failed.", ex);
-            }
-        });
-    }
-
-
-    private void handlePolyglotException(PolyglotException e) {
-        StringBuilder msg = new StringBuilder("Script error: ");
-
-        if (e.isHostException()) {
-            Throwable hostException = e.asHostException();
-            msg.append("HostException: ").append(hostException.getMessage());
-        } else {
-            msg.append(e.getMessage());
-        }
-
-        if (e.getSourceLocation() != null) {
-            msg.append(" at ").append(e.getSourceLocation().toString());
-        }
-
-        if (e.isGuestException()) {
-            Value ge = e.getGuestObject();
-            if (ge != null && ge.hasMember("stack")) {
-                msg.append("\nJS Stack:\n").append(ge.getMember("stack").asString());
-            }
-        }
-        Main.LOGGER.error(msg.toString());
     }
 
     private void ensureScriptDirectory() {

@@ -3,8 +3,7 @@ package net.me.scripting;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
-// Import ScriptManager
-import net.me.scripting.ScriptManager;
+
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,7 +13,6 @@ import java.util.List;
 
 public class Script {
     private final List<String> console;
-    private final Context context;
     private String name;
     private Path scriptPath;
 
@@ -26,11 +24,10 @@ public class Script {
         this.name = name;
         this.scriptPath = scriptPath;
         this.console = new ArrayList<>();
-        // Initialize context using ScriptManager's method
-        this.context = ScriptManager.getInstance().createDefaultScriptContext();
     }
 
     public void run() {
+        Context context = ScriptManager.getInstance().createDefaultScriptContext();
         console.clear();
         console.add("[" + name + "] Running script: " + name);
         try {
@@ -71,8 +68,4 @@ public class Script {
         console.clear();
     }
 
-    // Getter for the context
-    public Context getDefaultContext() {
-        return this.context;
-    }
 }
