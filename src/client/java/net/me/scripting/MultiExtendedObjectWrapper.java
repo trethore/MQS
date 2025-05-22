@@ -6,13 +6,6 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.*;
 
-/**
- * A ProxyObject that holds:
- *  - the real java instance
- *  - one SuperAccessWrapper per base
- *  - the JS overrides object
- * and exposes `this._super` as an array of those SuperAccessWrappers.
- */
 public class MultiExtendedObjectWrapper implements ProxyObject {
     private final List<SuperAccessWrapper> superList;
     private final Value jsOverrides;

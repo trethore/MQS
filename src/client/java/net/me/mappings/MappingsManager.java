@@ -42,7 +42,6 @@ public class MappingsManager {
 
     private static final MappingsManager INSTANCE = new MappingsManager();
 
-
     private MappingsManager() {}
 
     public static MappingsManager getInstance() {

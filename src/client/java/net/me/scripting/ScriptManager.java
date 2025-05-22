@@ -15,9 +15,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ScriptManager {
     private static ScriptManager instance;
+    private final Map<String, JsClassWrapper> wrapperCache = new ConcurrentHashMap<>();
     private Context context;
     private boolean initialized;
 
@@ -44,7 +46,7 @@ public class ScriptManager {
         if (initialized) return;
         context = Context.newBuilder("js")
                 .allowHostAccess(HostAccess.ALL)
-                .allowHostClassLookup(name -> name.startsWith("java.") || name.startsWith("net.me."))
+                .allowHostClassLookup(this::isClassAllowed)
                 .option("js.ecmascript-version", "2021")
                 .build();
 
@@ -70,8 +72,7 @@ public class ScriptManager {
         JsPackage root = new JsPackage();
         classMap.entrySet().stream()
                 .filter(e -> !EXCLUDED.contains(e.getKey()))
-                .filter(e -> e.getKey().startsWith("net.minecraft.") ||
-                        e.getKey().startsWith("com.mojang."))
+                .filter(e -> isClassInMc(e.getKey()))
                 .forEach(e -> {
                     var holder = new LazyJsClassHolder(e.getKey(), e.getValue(), this);
                     ScriptUtils.insertIntoPackageHierarchy(root, e.getKey(), holder);
@@ -82,6 +83,20 @@ public class ScriptManager {
         Arrays.stream((String[]) root.getMemberKeys())
                 .forEach(key -> bindings.putMember(key, root.getMember(key)));
     }
+
+    private boolean isClassInMc(String name) {
+        return isClassIncluded(name) &&
+                (name.startsWith("net.minecraft.") || name.startsWith("com.mojang."));
+    }
+
+    private boolean isClassAllowed(String name) {
+        return isClassIncluded(name) &&
+                (name.startsWith("java.") || name.startsWith("net.me"));
+    }
+    private boolean isClassIncluded(String name) {
+        return !EXCLUDED.contains(name);
+    }
+
     private void bindJavaTypes() {
         try {
             Value sys = context.eval("js", "Java.type('java.lang.System')");
@@ -105,7 +120,7 @@ public class ScriptManager {
             if (runtime != null) {
                 return createWrapper(runtime);
             }
-            if (name.startsWith("java.")) {
+            if (isClassAllowed(name)) {
                 try {
                     return context.eval("js", "Java.type('" + name + "')");
                 } catch (Exception e) {
@@ -191,11 +206,13 @@ public class ScriptManager {
     }
 
     private JsClassWrapper createWrapper(String runtime) {
-        try {
-            return createActualJsClassWrapper(runtime);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return wrapperCache.computeIfAbsent(runtime, r -> {
+            try {
+                return createActualJsClassWrapper(r);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
@@ -214,12 +231,15 @@ public class ScriptManager {
     }
 
     private void handleException(PolyglotException e) {
-        Main.LOGGER.error("Script error: {}", e.getMessage());
+        StringBuilder msg = new StringBuilder("Script error: ").append(e.getMessage());
         if (e.isGuestException()) {
             Value ge = e.getGuestObject();
-            if (ge != null && ge.hasMember("stack"))
-                Main.LOGGER.error("JS Stack: {}", ge.getMember("stack").asString());
+            if (ge != null && ge.hasMember("stack")) {
+                msg.append("\nJS Stack:\n")
+                        .append(ge.getMember("stack").asString());
+            }
         }
+        throw new RuntimeException(msg.toString(), e);
     }
 
     private void ensureScriptDirectory() {
