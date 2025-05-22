@@ -41,6 +41,9 @@ public class JsExtendedObjectWrapper implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
+        if ("_self".equals(key)) {
+            return this.getJavaInstance();
+        }
         if ("_super".equals(key)) {
             return superAccessor;
         }
@@ -53,6 +56,9 @@ public class JsExtendedObjectWrapper implements ProxyObject {
 
     @Override
     public boolean hasMember(String key) {
+        if ("_self".equals(key)) {
+            return true;
+        }
         if ("_super".equals(key)) return true;
         if (jsOverrides != null && jsOverrides.hasMember(key)) return true;
         return methodMap.containsKey(key) || fieldMap.containsKey(key);
@@ -61,6 +67,7 @@ public class JsExtendedObjectWrapper implements ProxyObject {
     @Override
     public Object getMemberKeys() {
         Set<String> keys = new HashSet<>();
+        keys.add("_self");
         keys.add("_super");
         if (jsOverrides != null) {
             keys.addAll(jsOverrides.getMemberKeys());

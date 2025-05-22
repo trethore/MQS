@@ -9,10 +9,12 @@ import java.util.*;
 public class MultiExtendedObjectWrapper implements ProxyObject {
     private final List<SuperAccessWrapper> superList;
     private final Value jsOverrides;
+    private final Object javaInstance;
 
     public MultiExtendedObjectWrapper(Object javaInstance,
                                       List<ScriptUtils.ClassMappings> mappingsList,
                                       Value overrides) {
+        this.javaInstance = javaInstance;
         this.jsOverrides  = overrides;
         this.superList    = new ArrayList<>();
 
@@ -29,6 +31,9 @@ public class MultiExtendedObjectWrapper implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
+        if ("_self".equals(key)) {
+            return this.javaInstance;
+        }
         if ("_super".equals(key)) {
             return superList.toArray(new SuperAccessWrapper[0]);
         }
@@ -52,6 +57,9 @@ public class MultiExtendedObjectWrapper implements ProxyObject {
 
     @Override
     public boolean hasMember(String key) {
+        if ("_self".equals(key)) {
+            return true;
+        }
         if ("_super".equals(key)) return true;
         if (jsOverrides != null && jsOverrides.hasMember(key)) return true;
         return superList.stream().anyMatch(sup -> sup.hasMember(key));
@@ -60,6 +68,7 @@ public class MultiExtendedObjectWrapper implements ProxyObject {
     @Override
     public Object getMemberKeys() {
         Set<String> keys = new LinkedHashSet<>();
+        keys.add("_self");
         keys.add("_super");
         if (jsOverrides != null) {
             keys.addAll(jsOverrides.getMemberKeys());
