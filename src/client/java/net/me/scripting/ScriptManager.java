@@ -1,7 +1,7 @@
 package net.me.scripting;
 
 import net.me.Main;
-import net.me.mappings.MappingsManager;
+import net.me.scripting.mappings.MappingsManager;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;

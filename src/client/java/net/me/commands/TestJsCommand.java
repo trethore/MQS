@@ -6,10 +6,8 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.Main;
 import net.me.scripting.Script;
-import net.me.scripting.ScriptManager;
 import net.minecraft.text.Text;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 

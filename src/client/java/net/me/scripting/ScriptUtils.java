@@ -1,6 +1,6 @@
 package net.me.scripting;
 
-import net.me.mappings.MappingsManager;
+import net.me.scripting.mappings.MappingsManager;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 

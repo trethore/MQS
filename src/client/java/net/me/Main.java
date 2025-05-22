@@ -4,7 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.commands.TestJsCommand;
-import net.me.mappings.MappingsManager;
+import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.ScriptManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +27,4 @@ public class Main implements ClientModInitializer {
         );
         LOGGER.info("Registered /testjs command.");
     }
-
-
 }
