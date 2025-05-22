@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
@@ -36,13 +37,14 @@ public class MappingsManager {
     private static final Path OUTPUT_DIR = Main.MOD_DIR.resolve("mappings");
     private static final Path OUTPUT_FILE = OUTPUT_DIR.resolve("yarn" + Main.MC_VERSION + ".tiny");
 
-    private MemoryMappingTree mappingsTree = new MemoryMappingTree(); // Removed final
+    private MemoryMappingTree mappingsTree = new MemoryMappingTree();
     private Map<String, String> classMap = Collections.emptyMap();
     private Map<String, Map<String, List<String>>> methodMap = Collections.emptyMap();
     private Map<String, Map<String, String>> fieldMap = Collections.emptyMap();
     private Map<String, String> runtimeToYarnClassMap = Collections.emptyMap();
 
     private final CompletableFuture<Void> initializationFuture = new CompletableFuture<>();
+    private final AtomicBoolean initializationStarted = new AtomicBoolean(false);
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "MappingsManager-Initializer");
         t.setDaemon(true);
@@ -62,19 +64,25 @@ public class MappingsManager {
             LOGGER.debug("Mappings initialization already completed or in progress.");
             return;
         }
-        executor.submit(() -> {
-            try {
-                downloadMappings();
-                parseMappings();
-                buildLookupTables();
-                mappingsTree = null; // Release memory
-                LOGGER.info("Mappings tree memory released.");
-                initializationFuture.complete(null);
-            } catch (Exception e) {
-                LOGGER.error("Failed to initialize mappings asynchronously", e);
-                initializationFuture.completeExceptionally(e);
-            }
-        });
+        if (initializationStarted.compareAndSet(false, true)) {
+            LOGGER.info("Starting asynchronous mappings initialization...");
+            executor.submit(() -> {
+                try {
+                    downloadMappings();
+                    parseMappings();
+                    buildLookupTables();
+                    mappingsTree = null;
+                    LOGGER.info("Mappings tree memory released after successful parsing and table building.");
+                    initializationFuture.complete(null);
+                    LOGGER.info("Mappings initialization successful.");
+                } catch (Exception e) {
+                    LOGGER.error("Failed to initialize mappings asynchronously", e);
+                    initializationFuture.completeExceptionally(e);
+                }
+            });
+        } else {
+            LOGGER.debug("Mappings initialization already started or submitted by another call. Current call will not re-submit.");
+        }
     }
 
     private void downloadMappings() {
@@ -102,6 +110,10 @@ public class MappingsManager {
     }
 
     private void parseMappings() {
+        if (mappingsTree == null) {
+            LOGGER.error("parseMappings called but mappingsTree is null. This should not happen with the init() guard.");
+            mappingsTree = new MemoryMappingTree();
+        }
         try (Reader reader = Files.newBufferedReader(OUTPUT_FILE)) {
             Tiny1FileReader.read(reader, mappingsTree);
         } catch (IOException e) {

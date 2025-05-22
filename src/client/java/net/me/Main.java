@@ -22,7 +22,6 @@ public class Main implements ClientModInitializer {
         LOGGER.info("Hello from MyQOLScripts!");
         MappingsManager.getInstance().init();
         ScriptManager.getInstance().init();
-
         ClientCommandRegistrationCallback.EVENT.register(
                 (dispatcher, registryAccess) -> TestJsCommand.register(dispatcher)
         );

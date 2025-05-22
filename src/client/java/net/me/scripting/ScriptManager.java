@@ -14,21 +14,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class ScriptManager {
     private static ScriptManager instance;
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
-    private Context context;
-    private volatile boolean contextInitialized = false; // Changed from 'initialized' and made volatile
-
-    private final ExecutorService scriptExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "ScriptManager-Executor");
-        t.setDaemon(true);
-        return t;
-    });
+    private final Map<String, Script> scripts = new HashMap<>();
 
     private Map<String, String> classMap;
     private Map<String, Map<String, List<String>>> methodMap;
@@ -46,28 +36,30 @@ public class ScriptManager {
 
     public void init() {
         ensureScriptDirectory();
+        loadMappings();
     }
 
-    private synchronized void ensureContextInitialized() {
-        if (contextInitialized) return;
-        Main.LOGGER.info("Initializing GraalVM context for ScriptManager...");
+    public Context createDefaultScriptContext() {
+        Main.LOGGER.info("Creating new default script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
-
-        context = Context.newBuilder("js")
+        Context newContext = Context.newBuilder("js")
                 .allowHostAccess(HostAccess.ALL)
                 .allowHostClassLookup(this::isClassAllowed)
-                .option("js.ecmascript-version", "2021")
+                .option("js.ecmascript-version", "2024")
                 .build();
 
-        loadMappings(); // Depends on MappingsManager being initialized
-        registerPackages();
-        bindJavaTypes();
-        bindImportClass();
-        bindExtendsFrom();
+        configureContext(newContext);
 
-        contextInitialized = true;
         long endTime = System.currentTimeMillis();
-        Main.LOGGER.info("Scripting context initialized in {}ms with lazy class holders.", (endTime - startTime));
+        Main.LOGGER.info("New default script context (ECMAScript 2024) created in {}ms.", (endTime - startTime));
+        return newContext;
+    }
+
+    private void configureContext(Context contextToConfigure) {
+        registerPackages(contextToConfigure);
+        bindJavaTypes(contextToConfigure);
+        bindImportClass(contextToConfigure);
+        bindExtendsFrom(contextToConfigure);
     }
 
     private void loadMappings() {
@@ -79,7 +71,7 @@ public class ScriptManager {
         runtimeToYarn = mm.getRuntimeToYarnClassMap();
     }
 
-    private void registerPackages() {
+    private void registerPackages(Context contextToConfigure) {
         JsPackage root = new JsPackage();
         classMap.entrySet().stream()
                 .filter(e -> !EXCLUDED.contains(e.getKey()))
@@ -89,7 +81,7 @@ public class ScriptManager {
                     ScriptUtils.insertIntoPackageHierarchy(root, e.getKey(), holder);
                 });
 
-        var bindings = context.getBindings("js");
+        var bindings = contextToConfigure.getBindings("js");
 
         Arrays.stream((String[]) root.getMemberKeys())
                 .forEach(key -> bindings.putMember(key, root.getMember(key)));
@@ -108,11 +100,11 @@ public class ScriptManager {
         return !EXCLUDED.contains(name);
     }
 
-    private void bindJavaTypes() {
+    private void bindJavaTypes(Context contextToConfigure) {
         try {
-            Value sys = context.eval("js", "Java.type('java.lang.System')");
-            Value thr = context.eval("js", "Java.type('java.lang.Thread')");
-            var b = context.getBindings("js");
+            Value sys = contextToConfigure.eval("js", "Java.type('java.lang.System')");
+            Value thr = contextToConfigure.eval("js", "Java.type('java.lang.Thread')");
+            var b = contextToConfigure.getBindings("js");
             b.putMember("java.lang.System", sys);
             b.putMember("java.lang.Thread", thr);
         } catch (PolyglotException e) {
@@ -120,8 +112,8 @@ public class ScriptManager {
         }
     }
 
-    private void bindImportClass() {
-        context.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
+    private void bindImportClass(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
             if (args.length == 0 || !args[0].isString())
                 throw new RuntimeException("importClass requires Yarn FQCN string");
             var name = args[0].asString();
@@ -133,7 +125,7 @@ public class ScriptManager {
             }
             if (isClassAllowed(name)) {
                 try {
-                    return context.eval("js", "Java.type('" + name + "')");
+                    return contextToConfigure.eval("js", "Java.type('" + name + "')");
                 } catch (Exception e) {
                     throw new RuntimeException("Cannot load host class: " + name, e);
                 }
@@ -142,8 +134,8 @@ public class ScriptManager {
         });
     }
 
-    private void bindExtendsFrom() {
-        context.getBindings("js").putMember("extendsFrom", (ProxyExecutable) args -> {
+    private void bindExtendsFrom(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("extendsFrom", (ProxyExecutable) args -> {
             if (args.length < 2) {
                 throw new RuntimeException("extendsFrom requires at least one base and an overrides object");
             }
@@ -232,57 +224,6 @@ public class ScriptManager {
         return new JsClassWrapper(runtime, cm.methods(), cm.fields());
     }
 
-    private Value runSync(String src) {
-        try {
-            return context.eval("js", src);
-        } catch (PolyglotException e) {
-            handlePolyglotException(e);
-            throw e;
-        } catch (Exception e) {
-            Main.LOGGER.error("A non-Polyglot exception occurred during script execution:", e);
-            throw new RuntimeException("Script execution failed with an unexpected error.", e);
-        }
-    }
-
-    public CompletableFuture<Value> run(String src) {
-        return CompletableFuture.supplyAsync(() -> {
-            ensureContextInitialized();
-            return runSync(src);
-        }, scriptExecutor).exceptionally(ex -> {
-            if (ex.getCause() instanceof PolyglotException polyglotException) {
-                Main.LOGGER.error("Async script execution failed due to PolyglotException: {}", polyglotException.getMessage());
-                throw polyglotException;
-            } else {
-                Main.LOGGER.error("Async script execution failed with an unexpected error", ex);
-                throw new RuntimeException("Async script execution failed.", ex);
-            }
-        });
-    }
-
-
-    private void handlePolyglotException(PolyglotException e) {
-        StringBuilder msg = new StringBuilder("Script error: ");
-
-        if (e.isHostException()) {
-            Throwable hostException = e.asHostException();
-            msg.append("HostException: ").append(hostException.getMessage());
-        } else {
-            msg.append(e.getMessage());
-        }
-
-        if (e.getSourceLocation() != null) {
-            msg.append(" at ").append(e.getSourceLocation().toString());
-        }
-
-        if (e.isGuestException()) {
-            Value ge = e.getGuestObject();
-            if (ge != null && ge.hasMember("stack")) {
-                msg.append("\nJS Stack:\n").append(ge.getMember("stack").asString());
-            }
-        }
-        Main.LOGGER.error(msg.toString());
-    }
-
     private void ensureScriptDirectory() {
         Path p = Main.MOD_DIR.resolve("scripts");
         try {
@@ -290,5 +231,21 @@ public class ScriptManager {
         } catch (IOException e) {
             Main.LOGGER.error("Failed create scripts dir: {}", p, e);
         }
+    }
+
+    public void addScript(Script script) {
+        scripts.put(script.getName(), script);
+    }
+
+    public Script getScript(String name) {
+        return scripts.get(name);
+    }
+
+    public void removeScript(String name) {
+        scripts.remove(name);
+    }
+
+    public Collection<Script> getAllScripts() {
+        return scripts.values();
     }
 }
