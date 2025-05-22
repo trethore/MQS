@@ -1,6 +1,5 @@
 package net.me.scripting;
 
-import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
 import net.me.mappings.MappingsManager;
 import org.graalvm.polyglot.Context;
@@ -96,12 +95,12 @@ public class ScriptManager {
                 .forEach(key -> bindings.putMember(key, root.getMember(key)));
     }
 
-    private boolean isClassInMc(String name) {
+    protected boolean isClassInMc(String name) {
         return isClassIncluded(name) &&
                 (name.startsWith("net.minecraft.") || name.startsWith("com.mojang."));
     }
 
-    private boolean isClassAllowed(String name) {
+    protected boolean isClassAllowed(String name) {
         return isClassIncluded(name) &&
                 (name.startsWith("java.") || name.startsWith("net.me"));
     }
