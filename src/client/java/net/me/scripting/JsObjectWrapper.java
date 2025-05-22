@@ -34,6 +34,9 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
+        if ("_self".equals(key)) {
+            return this.getJavaInstance();
+        }
         Object mapped = handleMappedMethod(key);
         if (mapped != null) return mapped;
         Object direct = handleDirectMethod(key);
@@ -43,6 +46,9 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public boolean hasMember(String key) {
+        if ("_self".equals(key)) {
+            return true;
+        }
         return methods.hasMapped(key)
                 || MethodLookup.hasDirect(instanceClass, key)
                 || fields.hasField(key);
@@ -52,6 +58,7 @@ public class JsObjectWrapper implements ProxyObject {
     public Object getMemberKeys() {
         Set<String> keys = new HashSet<>(methods.methodKeys());
         keys.addAll(fields.fieldKeys());
+        keys.add("_self");
         return keys.toArray(new String[0]);
     }
 
