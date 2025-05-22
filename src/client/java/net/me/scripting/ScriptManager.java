@@ -13,7 +13,13 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,6 +27,7 @@ import java.util.concurrent.Executors;
 public class ScriptManager {
     private static ScriptManager instance;
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
+    private final Map<String, Script> scripts = new HashMap<>();
     private Context context;
     private volatile boolean contextInitialized = false; // Changed from 'initialized' and made volatile
 
@@ -46,28 +53,58 @@ public class ScriptManager {
 
     public void init() {
         ensureScriptDirectory();
+        // ensureContextInitialized called by createDefaultScriptContext or run -> supplyAsync
+        // and by Script creation.
+        // No, it should be called here to ensure one-time setup is done early.
+        ensureContextInitialized(); 
+    }
+
+    // Helper method to configure any context
+    private void configureContext(Context contextToConfigure) {
+        registerPackages(contextToConfigure);
+        bindJavaTypes(contextToConfigure);
+        bindImportClass(contextToConfigure);
+        bindExtendsFrom(contextToConfigure);
+    }
+
+    public Context createDefaultScriptContext() {
+        ensureContextInitialized(); // Ensures loadMappings() and other one-time setups are done.
+        Main.LOGGER.info("Creating new default script context (ECMAScript 2024)...");
+        long startTime = System.currentTimeMillis();
+        Context newContext = Context.newBuilder("js")
+                .allowHostAccess(HostAccess.ALL)
+                .allowHostClassLookup(this::isClassAllowed)
+                .option("js.ecmascript-version", "2024")
+                .build();
+
+        configureContext(newContext); // Apply common configurations
+
+        long endTime = System.currentTimeMillis();
+        Main.LOGGER.info("New default script context (ECMAScript 2024) created in {}ms.", (endTime - startTime));
+        return newContext;
     }
 
     private synchronized void ensureContextInitialized() {
         if (contextInitialized) return;
-        Main.LOGGER.info("Initializing GraalVM context for ScriptManager...");
+        Main.LOGGER.info("Performing one-time ScriptManager initialization (including Mappings)...");
         long startTime = System.currentTimeMillis();
 
-        context = Context.newBuilder("js")
+        loadMappings(); // Load mappings once
+
+        // Initialize ScriptManager's own internal context with ECMAScript 2021
+        // This context is used by ScriptManager.run() and other internal operations.
+        Main.LOGGER.info("Initializing ScriptManager's internal context (ECMAScript 2021)...");
+        this.context = Context.newBuilder("js")
                 .allowHostAccess(HostAccess.ALL)
                 .allowHostClassLookup(this::isClassAllowed)
                 .option("js.ecmascript-version", "2021")
                 .build();
-
-        loadMappings(); // Depends on MappingsManager being initialized
-        registerPackages();
-        bindJavaTypes();
-        bindImportClass();
-        bindExtendsFrom();
+        
+        configureContext(this.context); // Configure this internal context
 
         contextInitialized = true;
         long endTime = System.currentTimeMillis();
-        Main.LOGGER.info("Scripting context initialized in {}ms with lazy class holders.", (endTime - startTime));
+        Main.LOGGER.info("ScriptManager one-time initialization and internal context setup complete in {}ms.", (endTime - startTime));
     }
 
     private void loadMappings() {
@@ -79,7 +116,7 @@ public class ScriptManager {
         runtimeToYarn = mm.getRuntimeToYarnClassMap();
     }
 
-    private void registerPackages() {
+    private void registerPackages(Context contextToConfigure) {
         JsPackage root = new JsPackage();
         classMap.entrySet().stream()
                 .filter(e -> !EXCLUDED.contains(e.getKey()))
@@ -89,7 +126,7 @@ public class ScriptManager {
                     ScriptUtils.insertIntoPackageHierarchy(root, e.getKey(), holder);
                 });
 
-        var bindings = context.getBindings("js");
+        var bindings = contextToConfigure.getBindings("js");
 
         Arrays.stream((String[]) root.getMemberKeys())
                 .forEach(key -> bindings.putMember(key, root.getMember(key)));
@@ -108,11 +145,11 @@ public class ScriptManager {
         return !EXCLUDED.contains(name);
     }
 
-    private void bindJavaTypes() {
+    private void bindJavaTypes(Context contextToConfigure) {
         try {
-            Value sys = context.eval("js", "Java.type('java.lang.System')");
-            Value thr = context.eval("js", "Java.type('java.lang.Thread')");
-            var b = context.getBindings("js");
+            Value sys = contextToConfigure.eval("js", "Java.type('java.lang.System')");
+            Value thr = contextToConfigure.eval("js", "Java.type('java.lang.Thread')");
+            var b = contextToConfigure.getBindings("js");
             b.putMember("java.lang.System", sys);
             b.putMember("java.lang.Thread", thr);
         } catch (PolyglotException e) {
@@ -120,8 +157,8 @@ public class ScriptManager {
         }
     }
 
-    private void bindImportClass() {
-        context.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
+    private void bindImportClass(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
             if (args.length == 0 || !args[0].isString())
                 throw new RuntimeException("importClass requires Yarn FQCN string");
             var name = args[0].asString();
@@ -133,7 +170,8 @@ public class ScriptManager {
             }
             if (isClassAllowed(name)) {
                 try {
-                    return context.eval("js", "Java.type('" + name + "')");
+                    // Referring to the context passed to the function, not the member variable
+                    return contextToConfigure.eval("js", "Java.type('" + name + "')");
                 } catch (Exception e) {
                     throw new RuntimeException("Cannot load host class: " + name, e);
                 }
@@ -142,8 +180,8 @@ public class ScriptManager {
         });
     }
 
-    private void bindExtendsFrom() {
-        context.getBindings("js").putMember("extendsFrom", (ProxyExecutable) args -> {
+    private void bindExtendsFrom(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("extendsFrom", (ProxyExecutable) args -> {
             if (args.length < 2) {
                 throw new RuntimeException("extendsFrom requires at least one base and an overrides object");
             }
@@ -290,5 +328,21 @@ public class ScriptManager {
         } catch (IOException e) {
             Main.LOGGER.error("Failed create scripts dir: {}", p, e);
         }
+    }
+
+    public void addScript(Script script) {
+        scripts.put(script.getName(), script);
+    }
+
+    public Script getScript(String name) {
+        return scripts.get(name);
+    }
+
+    public void removeScript(String name) {
+        scripts.remove(name);
+    }
+
+    public Collection<Script> getAllScripts() {
+        return scripts.values();
     }
 }

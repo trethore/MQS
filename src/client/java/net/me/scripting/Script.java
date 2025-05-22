@@ -1,9 +1,10 @@
 package net.me.scripting;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+// Import ScriptManager
+import net.me.scripting.ScriptManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,11 +26,8 @@ public class Script {
         this.name = name;
         this.scriptPath = scriptPath;
         this.console = new ArrayList<>();
-        this.context = Context.newBuilder("js")
-                .allowHostAccess(HostAccess.ALL)
-                .allowHostClassLookup(className ->ScriptManager.getInstance().isClassAllowed(className))
-                .option("js.ecmascript-version", "2024")
-                .build();
+        // Initialize context using ScriptManager's method
+        this.context = ScriptManager.getInstance().createDefaultScriptContext();
     }
 
     public void run() {
@@ -71,5 +69,10 @@ public class Script {
     }
     public void clearConsole() {
         console.clear();
+    }
+
+    // Getter for the context
+    public Context getDefaultContext() {
+        return this.context;
     }
 }
