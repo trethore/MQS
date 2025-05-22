@@ -33,8 +33,7 @@ public class MappingsManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(MappingsManager.class);
     private static final String DOWNLOAD_URL =
             "https://maven.fabricmc.net/net/fabricmc/yarn/1.21.4%2Bbuild.8/yarn-1.21.4%2Bbuild.8-tiny.gz";
-    private static final Path OUTPUT_DIR = FabricLoader.getInstance()
-            .getGameDir().resolve(Main.MOD_ID).resolve("mappings");
+    private static final Path OUTPUT_DIR = Main.MOD_DIR.resolve("mappings");
     private static final Path OUTPUT_FILE = OUTPUT_DIR.resolve("yarn" + Main.MC_VERSION + ".tiny");
 
     private MemoryMappingTree mappingsTree = new MemoryMappingTree(); // Removed final
@@ -46,7 +45,7 @@ public class MappingsManager {
     private final CompletableFuture<Void> initializationFuture = new CompletableFuture<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "MappingsManager-Initializer");
-        t.setDaemon(true); // Allow JVM to exit if this is the only thread running
+        t.setDaemon(true);
         return t;
     });
 
@@ -105,7 +104,6 @@ public class MappingsManager {
     private void parseMappings() {
         try (Reader reader = Files.newBufferedReader(OUTPUT_FILE)) {
             Tiny1FileReader.read(reader, mappingsTree);
-            LOGGER.info("Parsed {} classes from Yarn mappings", mappingsTree.getClasses().size());
         } catch (IOException e) {
             LOGGER.error("Error parsing mappings file {}: {}", OUTPUT_FILE, e.getMessage(), e);
         }
@@ -163,7 +161,7 @@ public class MappingsManager {
 
     public Map<String, String> getClassMap() {
         try {
-            initializationFuture.join(); // Wait for initialization to complete
+            initializationFuture.join();
         } catch (Exception e) {
             LOGGER.error("Mappings initialization failed. Returning empty map.", e);
             return Collections.emptyMap();
@@ -173,7 +171,7 @@ public class MappingsManager {
 
     public Map<String, Map<String, List<String>>> getMethodMap() {
         try {
-            initializationFuture.join(); // Wait for initialization to complete
+            initializationFuture.join();
         } catch (Exception e) {
             LOGGER.error("Mappings initialization failed. Returning empty map.", e);
             return Collections.emptyMap();
@@ -181,9 +179,9 @@ public class MappingsManager {
         return methodMap;
     }
 
-    public Map<String, String> getFieldMap() {
+    public Map<String, Map<String, String>> getFieldMap() {
         try {
-            initializationFuture.join(); // Wait for initialization to complete
+            initializationFuture.join();
         } catch (Exception e) {
             LOGGER.error("Mappings initialization failed. Returning empty map.", e);
             return Collections.emptyMap();
@@ -193,7 +191,7 @@ public class MappingsManager {
 
     public Map<String, String> getRuntimeToYarnClassMap() {
         try {
-            initializationFuture.join(); // Wait for initialization to complete
+            initializationFuture.join();
         } catch (Exception e) {
             LOGGER.error("Mappings initialization failed. Returning empty map.", e);
             return Collections.emptyMap();

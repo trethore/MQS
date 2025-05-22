@@ -18,11 +18,9 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-// import java.util.concurrent.ConcurrentHashMap; // Replaced by WeakHashMap
 
 public class ScriptManager {
     private static ScriptManager instance;
-    // Changed to WeakHashMap
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
     private Context context;
     private volatile boolean contextInitialized = false; // Changed from 'initialized' and made volatile
@@ -49,10 +47,8 @@ public class ScriptManager {
 
     public void init() {
         ensureScriptDirectory();
-        // initializeContext() is now called lazily
     }
 
-    // Renamed from initializeContext and logic moved here
     private synchronized void ensureContextInitialized() {
         if (contextInitialized) return;
         Main.LOGGER.info("Initializing GraalVM context for ScriptManager...");
@@ -76,8 +72,7 @@ public class ScriptManager {
     }
 
     private void loadMappings() {
-        // Ensure MappingsManager is initialized before trying to get maps
-        MappingsManager.getInstance().init(); // Make sure mappings are loaded if not already
+        MappingsManager.getInstance().init();
         var mm = MappingsManager.getInstance();
         classMap = mm.getClassMap();
         methodMap = mm.getMethodMap();
@@ -238,18 +233,13 @@ public class ScriptManager {
         return new JsClassWrapper(runtime, cm.methods(), cm.fields());
     }
 
-    // Original run method, now private and synchronous
     private Value runSync(String src) {
-        // ensureContextInitialized() is called by the public run method before this
         try {
             return context.eval("js", src);
         } catch (PolyglotException e) {
-            // The existing handleException logic re-throws, so we just let it propagate
-            // after logging more details.
             handlePolyglotException(e);
-            throw e; // Re-throw to be caught by CompletableFuture logic
+            throw e;
         } catch (Exception e) {
-            // Catch other potential exceptions during script execution
             Main.LOGGER.error("A non-Polyglot exception occurred during script execution:", e);
             throw new RuntimeException("Script execution failed with an unexpected error.", e);
         }
@@ -257,15 +247,12 @@ public class ScriptManager {
 
     public CompletableFuture<Value> run(String src) {
         return CompletableFuture.supplyAsync(() -> {
-            ensureContextInitialized(); // Ensure context is ready before script execution
+            ensureContextInitialized();
             return runSync(src);
         }, scriptExecutor).exceptionally(ex -> {
-            // Handle exceptions from runSync or context initialization
             if (ex.getCause() instanceof PolyglotException polyglotException) {
-                // Already handled by runSync's catch block, but we can log here again if needed
-                // Or ensure the PolyglotException itself is the cause for more specific downstream handling
                 Main.LOGGER.error("Async script execution failed due to PolyglotException: {}", polyglotException.getMessage());
-                throw polyglotException; // Throw the original PolyglotException
+                throw polyglotException;
             } else {
                 Main.LOGGER.error("Async script execution failed with an unexpected error", ex);
                 throw new RuntimeException("Async script execution failed.", ex);
@@ -280,8 +267,6 @@ public class ScriptManager {
         if (e.isHostException()) {
             Throwable hostException = e.asHostException();
             msg.append("HostException: ").append(hostException.getMessage());
-            // Optionally log host stack trace here if desired, but it might be too verbose for typical user errors
-            // Main.LOGGER.error("Host Exception during script execution:", hostException);
         } else {
             msg.append(e.getMessage());
         }
@@ -296,13 +281,11 @@ public class ScriptManager {
                 msg.append("\nJS Stack:\n").append(ge.getMember("stack").asString());
             }
         }
-        // Instead of throwing a new RuntimeException, log it and let the original PolyglotException be thrown
         Main.LOGGER.error(msg.toString());
-        // The original exception 'e' will be re-thrown by the caller (runSync)
     }
 
     private void ensureScriptDirectory() {
-        Path p = FabricLoader.getInstance().getGameDir().resolve(Main.MOD_ID).resolve("scripts");
+        Path p = Main.MOD_DIR.resolve("scripts");
         try {
             if (!Files.exists(p)) Files.createDirectories(p);
         } catch (IOException e) {
