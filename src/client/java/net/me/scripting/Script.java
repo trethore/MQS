@@ -1,5 +1,6 @@
 package net.me.scripting;
 
+import net.me.Main;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -37,8 +38,13 @@ public class Script {
         } catch (IOException e) {
             console.add("[" + name + "] Error reading script : " + e.getMessage());
         } catch (PolyglotException e) {
+            Main.LOGGER.error("[{}] Error : {}", name, e.getMessage());
             console.add("[" + name + "] Error : " + e.getMessage());
             Value guest = e.getGuestObject();
+            if (e.getCause() != null) {
+                Main.LOGGER.error("[{}] Java Cause Exception: {}", name, e.getCause().getMessage(), e.getCause());
+                console.add("[" + name + "] Java Cause : " + e.getCause().getMessage());
+            }
             if (guest != null && guest.hasMember("stack")) {
                 console.add("[" + name + "] JS : " + guest.getMember("stack").asString());
             }

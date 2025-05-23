@@ -136,8 +136,9 @@ public class JsExtendedObjectWrapper implements ProxyObject {
         for (Method m : methods) {
             if (m.getParameterCount() == count) {
                 try {
+                    Object target  = ScriptUtils.unwrapReceiver(javaInstance);
                     Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
-                    Object res = m.invoke(javaInstance, javaArgs);
+                    Object res = m.invoke(target, javaArgs);
                     return ScriptUtils.wrapReturn(res);
                 } catch (Exception e) {
                     throw new RuntimeException("Method invocation failed: " + m.getName(), e);

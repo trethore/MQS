@@ -1,5 +1,6 @@
 package net.me.scripting;
 
+import net.me.Main;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -103,11 +104,23 @@ public class JsObjectWrapper implements ProxyObject {
         int count = args.length;
         for (Method m : methods) {
             if (m.getParameterCount() == count) {
+                Object target = null;
+                Object[] javaArgs = null;
                 try {
-                    Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
-                    Object res = m.invoke(javaInstance, javaArgs);
+                    target = ScriptUtils.unwrapReceiver(javaInstance);
+                    javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
+                    Object res = m.invoke(target, javaArgs);
                     return ScriptUtils.wrapReturn(res);
                 } catch (Exception e) {
+                    Main.LOGGER.error("Error invoking method {}.{} with {} args (actual exception below):", instanceClass.getName(), m.getName(), count);
+                    Main.LOGGER.error("  -> Target: {}", target != null ? target.getClass().getName() : "null");
+                    if (javaArgs != null) {
+                        for (int i = 0; i < javaArgs.length; i++) {
+                            Main.LOGGER.error("  -> Arg {}: {} (Type: {})", i, javaArgs[i], javaArgs[i] != null ? javaArgs[i].getClass().getName() : "null");
+                        }
+                    }
+                    // Log the full stack trace of the actual exception 'e'
+                    Main.LOGGER.error("Original Exception:", e);
                     throw new RuntimeException("Method invocation failed: " + m.getName(), e);
                 }
             }

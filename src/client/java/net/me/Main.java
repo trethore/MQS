@@ -1,11 +1,11 @@
 package net.me;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
-import net.me.commands.TestJsCommand;
+import net.me.command.CommandManager;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.ScriptManager;
+import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,12 +19,10 @@ public class Main implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("Hello from MyQOLScripts!");
         MappingsManager.getInstance().init();
         ScriptManager.getInstance().init();
-        ClientCommandRegistrationCallback.EVENT.register(
-                (dispatcher, registryAccess) -> TestJsCommand.register(dispatcher)
-        );
-        LOGGER.info("Registered /testjs command.");
+        CommandManager.getInstance().init();
+        LOGGER.info("Hello from MyQOLScripts!");
+
     }
 }

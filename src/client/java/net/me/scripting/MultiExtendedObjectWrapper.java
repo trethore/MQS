@@ -96,4 +96,8 @@ public class MultiExtendedObjectWrapper implements ProxyObject {
         }
         throw new UnsupportedOperationException("No writable member: " + key);
     }
+
+    public Object getJavaInstance() {
+        return javaInstance;
+    }
 }

@@ -52,6 +52,12 @@ public class ScriptUtils {
 
     private static Object convertValue(Value v, Class<?> expected) {
         if (v == null || v.isNull()) return null;
+        System.out.println(v.getMetaObject());
+        if (expected != null) {
+            try {
+                return v.as(expected);
+            } catch (Exception ignored) {}
+        }
         if (v.isBoolean()) return v.asBoolean();
         if (v.isNumber()) return convertNumber(v, expected);
         if (v.isString()) return v.asString();
@@ -62,6 +68,13 @@ public class ScriptUtils {
             catch (Exception e) { /* fallback */ }
         }
         return v;
+    }
+    public static Object unwrapReceiver(Object o) {
+        if (o instanceof JsObjectWrapper w)            return w.getJavaInstance();
+        if (o instanceof JsExtendedObjectWrapper w)    return w.getJavaInstance();
+        if (o instanceof MultiExtendedObjectWrapper w) return w.getJavaInstance();
+        if (o instanceof SuperAccessWrapper   w)       return unwrapReceiver(w.getMember("_self"));
+        return o;   // déjà un host object ou un simple adapter
     }
 
     private static Object convertNumber(Value v, Class<?> expected) {
@@ -78,8 +91,8 @@ public class ScriptUtils {
         ProxyObject proxy = v.asProxyObject();
         if (proxy instanceof JsObjectWrapper) return ((JsObjectWrapper) proxy).getJavaInstance();
         if (proxy instanceof JsExtendedObjectWrapper) return ((JsExtendedObjectWrapper) proxy).getJavaInstance();
-        if (proxy instanceof LazyJsClassHolder && expected == Class.class) {
-            return ((LazyJsClassHolder) proxy).getWrapper().getMember("_class");
+        if (expected != null) {
+            try { return v.as(expected); } catch (Exception ignored) {}
         }
         return proxy;
     }
