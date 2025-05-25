@@ -48,6 +48,7 @@ public class Script {
             if (guest != null && guest.hasMember("stack")) {
                 console.add("[" + name + "] JS : " + guest.getMember("stack").asString());
             }
+            e.printStackTrace();
         } catch (Exception e) {
             console.add("[" + name + "] Unexpected error : " + e.getMessage());
         }

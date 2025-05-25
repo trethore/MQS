@@ -71,9 +71,6 @@ public class ScriptUtils {
     }
     public static Object unwrapReceiver(Object o) {
         if (o instanceof JsObjectWrapper w)            return w.getJavaInstance();
-        if (o instanceof JsExtendedObjectWrapper w)    return w.getJavaInstance();
-        if (o instanceof MultiExtendedObjectWrapper w) return w.getJavaInstance();
-        if (o instanceof SuperAccessWrapper   w)       return unwrapReceiver(w.getMember("_self"));
         return o;   // déjà un host object ou un simple adapter
     }
 
@@ -90,7 +87,6 @@ public class ScriptUtils {
     private static Object extractProxy(Value v, Class<?> expected) {
         ProxyObject proxy = v.asProxyObject();
         if (proxy instanceof JsObjectWrapper) return ((JsObjectWrapper) proxy).getJavaInstance();
-        if (proxy instanceof JsExtendedObjectWrapper) return ((JsExtendedObjectWrapper) proxy).getJavaInstance();
         if (expected != null) {
             try { return v.as(expected); } catch (Exception ignored) {}
         }

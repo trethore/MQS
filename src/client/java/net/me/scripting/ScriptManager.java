@@ -7,8 +7,6 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyInstantiable;
-import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -59,7 +57,6 @@ public class ScriptManager {
         registerPackages(contextToConfigure);
         bindJavaTypes(contextToConfigure);
         bindImportClass(contextToConfigure);
-        bindExtendsFrom(contextToConfigure);
     }
 
     private void loadMappings() {
@@ -134,79 +131,6 @@ public class ScriptManager {
         });
     }
 
-    private void bindExtendsFrom(Context contextToConfigure) {
-        contextToConfigure.getBindings("js").putMember("extendsFrom", (ProxyExecutable) args -> {
-            if (args.length == 0) {
-                throw new RuntimeException("extendsFrom requires at least one base class or interface.");
-            }
-
-            // Le dernier argument est l'objet des surcharges (overrides)
-            // Tous les arguments précédents sont les classes/interfaces à étendre/implémenter.
-            Value overrides = null;
-            int baseTypesEndIndex = args.length;
-
-            if (args[args.length - 1].hasMembers() && !isPotentialJavaType(args[args.length - 1])) {
-                overrides = args[args.length - 1];
-                baseTypesEndIndex = args.length - 1;
-            } else {
-                // Pas d'objet d'overrides explicite, ou le dernier est un type
-                try {
-                    overrides = contextToConfigure.eval("js", "({})"); // Objet vide pour les surcharges
-                } catch (PolyglotException e) { // Should not happen for "({})"
-                    throw new RuntimeException("Failed to create empty overrides object", e);
-                }
-            }
-
-            if (baseTypesEndIndex == 0) {
-                throw new RuntimeException("extendsFrom requires at least one base class or interface before the overrides object.");
-            }
-
-            Value[] baseTypesValues = new Value[baseTypesEndIndex];
-            for (int i = 0; i < baseTypesEndIndex; i++) {
-                Value baseArg = args[i];
-                Object javaType;
-                if (baseArg.isHostObject() && baseArg.asHostObject() instanceof Class) {
-                    javaType = baseArg.asHostObject();
-                } else if (baseArg.isProxyObject()) {
-                    ProxyObject po = baseArg.asProxyObject();
-                    if (po instanceof LazyJsClassHolder lj) javaType = lj.getWrapper().getMember("_class");
-                    else if (po instanceof JsClassWrapper cw) javaType = cw.getMember("_class");
-                    else throw new RuntimeException("Unsupported proxy as base for extendsFrom(): " + po.getClass().getSimpleName());
-                } else {
-                    throw new RuntimeException("Invalid base type for extendsFrom(): " + baseArg + ". Expected host class or JS class wrapper.");
-                }
-                if (!(javaType instanceof Class)) {
-                    throw new RuntimeException("Base for extendsFrom is not a class: " + javaType);
-                }
-                baseTypesValues[i] = Value.asValue(javaType); // Value.asValue pour passer des objets host comme arguments
-            }
-
-            Main.LOGGER.debug("ExtendsFrom: Attempting to extend {} with JS overrides.", (Object)baseTypesValues);
-
-            Value javaExtendFunc = contextToConfigure.getBindings("js").getMember("Java").getMember("extend");
-            if (javaExtendFunc == null || !javaExtendFunc.canExecute()) {
-                throw new RuntimeException("Java.extend is not available in the JS context. Is HostClassLookup allowed and working?");
-            }
-
-            // Préparer les arguments pour Java.extend(Type... types, Object implementations)
-            Value[] extendArgs = new Value[baseTypesValues.length + 1];
-            System.arraycopy(baseTypesValues, 0, extendArgs, 0, baseTypesValues.length);
-            extendArgs[baseTypesValues.length] = overrides;
-
-            // Java.extend retourne un constructeur pour la nouvelle classe proxy.
-            // Ce constructeur est déjà ProxyInstantiable par nature.
-            return javaExtendFunc.execute(extendArgs);
-        });
-    }
-
-    private boolean isPotentialJavaType(Value val) {
-        if (val.isHostObject() && val.asHostObject() instanceof Class) return true;
-        if (val.isProxyObject()) {
-            ProxyObject po = val.asProxyObject();
-            return (po instanceof LazyJsClassHolder || po instanceof JsClassWrapper);
-        }
-        return false;
-    }
 
     private JsClassWrapper createWrapper(String runtime) {
         return wrapperCache.computeIfAbsent(runtime, r -> {
