@@ -154,5 +154,8 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         }
     }
 
+    public Class<?> getTargetClass() {
+        return targetClass;
+    }
 
 }

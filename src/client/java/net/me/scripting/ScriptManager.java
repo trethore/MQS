@@ -57,6 +57,86 @@ public class ScriptManager {
         registerPackages(contextToConfigure);
         bindJavaTypes(contextToConfigure);
         bindImportClass(contextToConfigure);
+        bindExtendsOf(contextToConfigure);
+    }
+
+
+
+    private void bindExtendsOf(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("extendsOf", (ProxyExecutable) args -> {
+            List<Object> javaExtendArgs = new ArrayList<>();
+            Value implementation = null;
+            int lastArgIndex = args.length - 1;
+            if (args.length > 0) {
+                Value potentialImpl = args[lastArgIndex];
+                if (potentialImpl.hasMembers() && !potentialImpl.isHostObject() && !potentialImpl.isProxyObject()) {
+                    implementation = potentialImpl;
+                } else if (potentialImpl.canExecute() && potentialImpl.getMetaObject().canExecute()) {
+                    implementation = potentialImpl;
+                } else if (potentialImpl.isHostObject() && !(potentialImpl.asHostObject() instanceof Class)) {
+                    implementation = potentialImpl;
+                }
+            }
+
+            int numTypeArgs = (implementation != null) ? args.length - 1 : args.length;
+
+            for (int i = 0; i < numTypeArgs; i++) {
+                Value arg = args[i];
+                Class<?> javaClass = null;
+
+                if (arg.isString()) {
+                    String yarnFqn = arg.asString();
+                    String runtimeFqn = classMap.get(yarnFqn);
+                    if (runtimeFqn == null) {
+                        runtimeFqn = yarnFqn;
+                    }
+
+                    if (!isClassAllowed(runtimeFqn) && !isClassInMc(runtimeFqn)) {
+                        throw new RuntimeException("Class '" + yarnFqn + "' (runtime: " + runtimeFqn + ") is not allowed for extension or implementation.");
+                    }
+                    try {
+                        javaClass = Class.forName(runtimeFqn, false, getClass().getClassLoader());
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException("Failed to find class '" + yarnFqn + "' (runtime: " + runtimeFqn + ")", e);
+                    }
+                } else if (arg.isProxyObject()) {
+                    Object proxy = arg.asProxyObject();
+                    if (proxy instanceof LazyJsClassHolder holder) {
+                        javaClass = holder.getTargetClass();
+                    } else if (proxy instanceof JsClassWrapper wrapper) {
+                        javaClass = wrapper.getTargetClass();
+                    } else {
+                        throw new IllegalArgumentException("Unsupported proxy object as class type: " + proxy.getClass().getName());
+                    }
+                } else if (arg.isHostObject()) {
+                    Object hostObj = arg.asHostObject();
+                    if (hostObj instanceof Class<?> cls) {
+                        javaClass = cls;
+                    } else {
+                        throw new IllegalArgumentException("Unsupported host object as class type: " + hostObj.getClass().getName());
+                    }
+                } else {
+                    throw new IllegalArgumentException("Unsupported argument type for extendsOf. Expected string FQN, JsClassWrapper, LazyJsClassHolder, or raw Class<?>. Got: " + arg.getMetaObject().getMetaQualifiedName());
+                }
+
+                if (javaClass != null) {
+                    javaExtendArgs.add(javaClass);
+                }
+            }
+
+            if (javaExtendArgs.isEmpty() && implementation == null) {
+                throw new IllegalArgumentException("extendsOf requires at least one class/interface or an implementation object.");
+            }
+
+            if (implementation != null) {
+                javaExtendArgs.add(implementation);
+            }
+
+            Value javaExtendFunction = contextToConfigure.getBindings("js").getMember("Java").getMember("extend");
+            Value[] finalArgs = javaExtendArgs.stream().map(Value::asValue).toArray(Value[]::new);
+
+            return javaExtendFunction.execute(finalArgs);
+        });
     }
 
     private void loadMappings() {
@@ -130,6 +210,7 @@ public class ScriptManager {
             throw new RuntimeException("Unknown class: " + name);
         });
     }
+
 
 
     private JsClassWrapper createWrapper(String runtime) {

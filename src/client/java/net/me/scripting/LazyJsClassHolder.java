@@ -55,4 +55,8 @@ public class LazyJsClassHolder implements ProxyObject, ProxyInstantiable {
     public void putMember(String key, Value value) {
         getWrapper().putMember(key, value);
     }
+
+    public Class<?> getTargetClass() {
+        return getWrapper().getTargetClass();
+    }
 }

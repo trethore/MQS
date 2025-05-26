@@ -52,7 +52,6 @@ public class ScriptUtils {
 
     private static Object convertValue(Value v, Class<?> expected) {
         if (v == null || v.isNull()) return null;
-        System.out.println(v.getMetaObject());
         if (expected != null) {
             try {
                 return v.as(expected);
@@ -71,7 +70,7 @@ public class ScriptUtils {
     }
     public static Object unwrapReceiver(Object o) {
         if (o instanceof JsObjectWrapper w)            return w.getJavaInstance();
-        return o;   // déjà un host object ou un simple adapter
+        return o;
     }
 
     private static Object convertNumber(Value v, Class<?> expected) {
