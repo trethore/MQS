@@ -8,10 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -82,15 +79,16 @@ public class MappingsManager {
             mappingsTree = new MemoryMappingTree();
         }
         String fileName = "mappings.tiny";
-        try {
-            Path mqs = Path.of(ClassLoader.getSystemResource("assets/" + Main.MOD_ID + "/" + fileName).toURI());
-            InputStream in = Files.newInputStream(mqs);
+        try (InputStream in = MappingsManager.class.getClassLoader()
+                .getResourceAsStream("assets/" + Main.MOD_ID + "/" + fileName)) {
+            if (in == null) {
+                LOGGER.warn("Mappings file {} not found in resources", fileName);
+                return;
+            }
             InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8);
             Tiny1FileReader.read(reader, mappingsTree);
         } catch (IOException e) {
             LOGGER.error("Error parsing mappings file {}: {}", fileName, e.getMessage(), e);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
         }
     }
 
