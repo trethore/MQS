@@ -7,6 +7,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -57,6 +58,7 @@ public class ScriptManager {
         registerPackages(contextToConfigure);
         bindJavaTypes(contextToConfigure);
         bindImportClass(contextToConfigure);
+        bindExtendMapped(contextToConfigure);
     }
 
     private void loadMappings() {
@@ -128,6 +130,47 @@ public class ScriptManager {
                 }
             }
             throw new RuntimeException("Unknown class: " + name);
+        });
+    }
+
+    private void bindExtendMapped(Context contextToConfigure) {
+        Value javaObj = contextToConfigure.eval("js", "Java");
+        javaObj.putMember("extendMapped", (ProxyExecutable) args -> {
+            if (args.length < 2) {
+                throw new RuntimeException("extendMapped requires a class wrapper and overrides object");
+            }
+            Value wrapperVal = args[0];
+            JsClassWrapper wrapper = null;
+            if (wrapperVal.isHostObject()) {
+                Object host = wrapperVal.asHostObject();
+                if (host instanceof LazyJsClassHolder holder) {
+                    wrapper = holder.getWrapper();
+                } else if (host instanceof JsClassWrapper w) {
+                    wrapper = w;
+                }
+            }
+            if (wrapper == null) {
+                throw new RuntimeException("First argument must be a JsClassWrapper");
+            }
+
+            Value overrides = args[1];
+            if (!overrides.hasMembers()) {
+                throw new RuntimeException("Second argument must be an overrides object");
+            }
+            Map<String, Object> mapped = new HashMap<>();
+            for (String key : overrides.getMemberKeys().as(String[].class)) {
+                Value func = overrides.getMember(key);
+                List<String> runtimes = wrapper.getMethodMappings().get(key);
+                if (runtimes != null) {
+                    for (String rn : runtimes) {
+                        mapped.put(rn, func);
+                    }
+                } else {
+                    mapped.put(key, func);
+                }
+            }
+            Value extend = javaObj.getMember("extend");
+            return extend.execute(wrapper.getTargetClass(), ProxyObject.fromMap(mapped));
         });
     }
 
