@@ -158,7 +158,7 @@ public class ScriptManager {
                 throw new RuntimeException("Second argument must be an overrides object");
             }
             Map<String, Object> mapped = new HashMap<>();
-            for (String key : overrides.getMemberKeys().as(String[].class)) {
+            for (String key : overrides.getMemberKeys()) {
                 Value func = overrides.getMember(key);
                 List<String> runtimes = wrapper.getMethodMappings().get(key);
                 if (runtimes != null) {
