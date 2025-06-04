@@ -35,6 +35,8 @@ public class ScriptManager {
     public void init() {
         ensureScriptDirectory();
         loadMappings();
+
+        classMap.forEach((k, v) -> Main.LOGGER.info("Loaded: {} -> {}", k, v));
     }
 
     public Context createDefaultScriptContext() {
@@ -138,6 +140,7 @@ public class ScriptManager {
             return javaExtendFunction.execute(finalArgs);
         });
     }
+
 
     private void loadMappings() {
         MappingsManager.getInstance().init();
