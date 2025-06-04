@@ -5,7 +5,6 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.ScriptManager;
-import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
