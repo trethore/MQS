@@ -59,6 +59,50 @@ public class ScriptManager {
         bindJavaTypes(contextToConfigure);
         bindImportClass(contextToConfigure);
         bindExtendMapped(contextToConfigure);
+        bindThisOf(contextToConfigure);
+        bindSuperOf(contextToConfigure);
+    }
+
+    private void bindSuperOf(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("superOf", (ProxyExecutable) args -> {
+            if (args.length != 1) {
+                throw new RuntimeException("superOf() requires exactly one argument: the instance.");
+            }
+
+            Object javaInstance = ScriptUtils.unwrapReceiver(args[0]);
+
+            if (javaInstance == null) {
+                throw new RuntimeException("The instance passed to superOf() was null or could not be unwrapped.");
+            }
+
+            Class<?> superClass = javaInstance.getClass().getSuperclass();
+            if (superClass == null) {
+                throw new RuntimeException("Instance " + javaInstance + " does not have a superclass.");
+            }
+
+            var cm = ScriptUtils.combineMappings(superClass, runtimeToYarn, methodMap, fieldMap);
+
+            return new JsSuperObjectWrapper(javaInstance, cm.methods(), contextToConfigure);
+        });
+    }
+
+    private void bindThisOf(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("thisOf", (ProxyExecutable) args -> {
+            if (args.length != 1) {
+                throw new RuntimeException("thisOf() requires exactly one argument: the instance.");
+            }
+
+            Object javaInstance = ScriptUtils.unwrapReceiver(args[0]);
+
+            if (javaInstance == null) {
+                throw new RuntimeException("The instance passed to thisOf() was null or could not be unwrapped.");
+            }
+
+            Class<?> instanceClass = javaInstance.getClass();
+            var cm = ScriptUtils.combineMappings(instanceClass, runtimeToYarn, methodMap, fieldMap);
+
+            return new JsObjectWrapper(javaInstance, instanceClass, cm.methods(), cm.fields());
+        });
     }
 
     private void loadMappings() {
@@ -92,8 +136,11 @@ public class ScriptManager {
     }
 
     protected boolean isClassAllowed(String name) {
-        return isClassIncluded(name) &&
-                (name.startsWith("java.") || name.startsWith("net.me"));
+        return isClassIncluded(name)
+                && (name.startsWith("java.")
+                || name.startsWith("net.minecraft.")
+                || name.startsWith("com.mojang.")
+                || name.startsWith("net.me"));
     }
     private boolean isClassIncluded(String name) {
         return !EXCLUDED.contains(name);
@@ -136,41 +183,30 @@ public class ScriptManager {
     private void bindExtendMapped(Context contextToConfigure) {
         Value javaObj = contextToConfigure.eval("js", "Java");
         javaObj.putMember("extendMapped", (ProxyExecutable) args -> {
-            if (args.length < 2) {
-                throw new RuntimeException("extendMapped requires a class wrapper and overrides object");
+            if (args.length != 1) {
+                throw new RuntimeException("extendMapped needs exactly one argument: the JsClassWrapper");
             }
             Value wrapperVal = args[0];
-            JsClassWrapper wrapper = null;
-            if (wrapperVal.isHostObject()) {
-                Object host = wrapperVal.asHostObject();
-                if (host instanceof LazyJsClassHolder holder) {
-                    wrapper = holder.getWrapper();
-                } else if (host instanceof JsClassWrapper w) {
-                    wrapper = w;
-                }
+            JsClassWrapper wrapper;
+            Object obj = wrapperVal.asProxyObject();
+            if (obj instanceof LazyJsClassHolder holder) {
+                wrapper = holder.getWrapper();
+            } else if (obj instanceof JsClassWrapper w) {
+                wrapper = w;
+            } else {
+                wrapper = null;
             }
+
             if (wrapper == null) {
                 throw new RuntimeException("First argument must be a JsClassWrapper");
             }
+            Class<?> rawClass = wrapper.getTargetClass();
+            Value hostClassValue = contextToConfigure.asValue(rawClass);
 
-            Value overrides = args[1];
-            if (!overrides.hasMembers()) {
-                throw new RuntimeException("Second argument must be an overrides object");
-            }
-            Map<String, Object> mapped = new HashMap<>();
-            for (String key : overrides.getMemberKeys()) {
-                Value func = overrides.getMember(key);
-                List<String> runtimes = wrapper.getMethodMappings().get(key);
-                if (runtimes != null) {
-                    for (String rn : runtimes) {
-                        mapped.put(rn, func);
-                    }
-                } else {
-                    mapped.put(key, func);
-                }
-            }
-            Value extend = javaObj.getMember("extend");
-            return extend.execute(wrapper.getTargetClass(), ProxyObject.fromMap(mapped));
+            Value extendFn = javaObj.getMember("extend");
+            Value baseAdapterConstructor = extendFn.execute(hostClassValue);
+
+            return new MappedClassExtender(baseAdapterConstructor, wrapper);
         });
     }
 

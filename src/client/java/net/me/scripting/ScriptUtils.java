@@ -69,7 +69,21 @@ public class ScriptUtils {
         return v;
     }
     public static Object unwrapReceiver(Object o) {
-        if (o instanceof JsObjectWrapper w)            return w.getJavaInstance();
+        if (o instanceof JsObjectWrapper w) {
+            return w.getJavaInstance();
+        }
+        if (o instanceof Value v) {
+            if (v.isHostObject()) {
+                return v.asHostObject();
+            }
+            if (v.isProxyObject()) {
+                Object proxy = v.asProxyObject();
+                if (proxy instanceof JsObjectWrapper w) {
+                    return w.getJavaInstance();
+                }
+                return proxy;
+            }
+        }
         return o;
     }
 
