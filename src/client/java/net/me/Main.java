@@ -22,6 +22,5 @@ public class Main implements ClientModInitializer {
         ScriptManager.getInstance().init();
         CommandManager.getInstance().init();
         LOGGER.info("Hello from MyQOLScripts!");
-
     }
 }

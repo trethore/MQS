@@ -7,7 +7,6 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.io.IOException;
 import java.nio.file.Files;

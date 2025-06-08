@@ -27,8 +27,8 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         Value lastArg = args[args.length - 1];
         if (!lastArg.isProxyObject() && !lastArg.hasMembers()) { 
             
-            if (args.length > 0 && !lastArg.hasMembers()) { 
-                return baseAdapterConstructor.newInstance(args);
+            if (!lastArg.hasMembers()) {
+                return baseAdapterConstructor.newInstance((Object[]) args);
             }
             throw new RuntimeException("The last argument to the adapter constructor must be an overrides object (e.g., {}).");
         }
@@ -58,15 +58,11 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         Object[] ctorArgs;
         if (lastArg.hasMembers()) { 
             ctorArgs = new Object[args.length];
-            for (int i = 0; i < args.length - 1; i++) {
-                ctorArgs[i] = args[i];
-            }
+            System.arraycopy(args, 0, ctorArgs, 0, args.length - 1);
             ctorArgs[args.length - 1] = overridesProxy;
         } else {
             ctorArgs = new Object[args.length + 1];
-            for (int i = 0; i < args.length; i++) {
-                ctorArgs[i] = args[i];
-            }
+            System.arraycopy(args, 0, ctorArgs, 0, args.length);
             ctorArgs[args.length] = overridesProxy;
         }
 
