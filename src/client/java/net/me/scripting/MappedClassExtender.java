@@ -52,7 +52,6 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
             }
         }
 
-
         ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
 
         Object[] ctorArgs;
@@ -65,7 +64,6 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
             System.arraycopy(args, 0, ctorArgs, 0, args.length);
             ctorArgs[args.length] = overridesProxy;
         }
-
 
         return baseAdapterConstructor.newInstance(ctorArgs);
     }
