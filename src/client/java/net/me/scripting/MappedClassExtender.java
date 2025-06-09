@@ -1,5 +1,6 @@
 package net.me.scripting;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -9,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
-    private final Value baseAdapterConstructor; 
-    private final JsClassWrapper wrapper;       
+    private final Value baseAdapterConstructor;
+    private final JsClassWrapper wrapper;
 
     public MappedClassExtender(Value baseAdapterConstructor, JsClassWrapper wrapper) {
         this.baseAdapterConstructor = baseAdapterConstructor;
@@ -19,53 +20,134 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
     @Override
     public Object newInstance(Value... args) {
-        if (args.length == 0) { 
+        validateArguments(args);
+
+        ArgumentParser parser = parseArguments(args);
+        Map<String, Object> runtimeOverrides = buildRuntimeOverrides(parser.overridesArg);
+
+        if (parser.customArg == null) {
+            return createSimpleInstance(parser.constructorArgs, runtimeOverrides);
+        }
+
+        return createWrappedInstance(parser.constructorArgs, runtimeOverrides, parser.customArg);
+    }
+
+    private void validateArguments(Value[] args) {
+        if (args.length == 0) {
             throw new RuntimeException("Cannot extend with mapped names without an overrides object. " +
                     "If no constructor arguments, pass at least an empty overrides object {}.");
         }
+    }
+
+    private ArgumentParser parseArguments(Value[] args) {
+        if (args.length == 1) {
+            return new ArgumentParser(args[0], null, new Object[0]);
+        }
 
         Value lastArg = args[args.length - 1];
-        if (!lastArg.isProxyObject() && !lastArg.hasMembers()) { 
-            
-            if (!lastArg.hasMembers()) {
-                return baseAdapterConstructor.newInstance((Object[]) args);
-            }
-            throw new RuntimeException("The last argument to the adapter constructor must be an overrides object (e.g., {}).");
+        Value secondLastArg = args[args.length - 2];
+
+        if (isObjectLike(secondLastArg) && isObjectLike(lastArg)) {
+            Object[] constructorArgs = new Object[args.length - 2];
+            System.arraycopy(args, 0, constructorArgs, 0, args.length - 2);
+            return new ArgumentParser(secondLastArg, lastArg, constructorArgs);
         }
 
+        if (isObjectLike(lastArg)) {
+            Object[] constructorArgs = new Object[args.length - 1];
+            System.arraycopy(args, 0, constructorArgs, 0, args.length - 1);
+            return new ArgumentParser(lastArg, null, constructorArgs);
+        }
+
+        throw new RuntimeException(
+                "The last argument(s) must be objects for overrides and optionally custom properties.");
+    }
+
+    private boolean isObjectLike(Value value) {
+        return value != null && (value.hasMembers() || value.isProxyObject());
+    }
+
+    private Map<String, Object> buildRuntimeOverrides(Value overridesArg) {
         Map<String, Object> runtimeOverrides = new HashMap<>();
-        
-        if (lastArg.hasMembers()) {
-            for (String yarnKey : lastArg.getMemberKeys()) {
-                Object jsFunc = lastArg.getMember(yarnKey);
-                
-                List<String> mappedRuntimeNames = wrapper.getMethodMappings().get(yarnKey);
 
-                if (mappedRuntimeNames != null && !mappedRuntimeNames.isEmpty()) {
-                    for (String runtimeName : mappedRuntimeNames) {
-                        runtimeOverrides.put(runtimeName, jsFunc);
-                    }
-                } else {
-                    
-                    runtimeOverrides.put(yarnKey, jsFunc);
-                }
+        if (overridesArg == null || !overridesArg.hasMembers()) {
+            return runtimeOverrides;
+        }
+
+        for (String jsMethodName : overridesArg.getMemberKeys()) {
+            Object jsFunction = overridesArg.getMember(jsMethodName);
+            addMethodOverrides(runtimeOverrides, jsMethodName, jsFunction);
+        }
+
+        return runtimeOverrides;
+    }
+
+    private void addMethodOverrides(Map<String, Object> overrides, String jsMethodName, Object jsFunction) {
+        List<String> mappedNames = wrapper.getMethodMappings().get(jsMethodName);
+
+        if (mappedNames != null && !mappedNames.isEmpty()) {
+            for (String runtimeName : mappedNames) {
+                overrides.put(runtimeName, jsFunction);
+            }
+        } else {
+            overrides.put(jsMethodName, jsFunction);
+        }
+    }
+
+    private Object createSimpleInstance(Object[] constructorArgs, Map<String, Object> runtimeOverrides) {
+        ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
+        Object[] ctorArgs = appendToArray(constructorArgs, overridesProxy);
+        return baseAdapterConstructor.newInstance(ctorArgs);
+    }
+
+    private Object createWrappedInstance(Object[] constructorArgs, Map<String, Object> runtimeOverrides, Value customArg) {
+        ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
+        Object[] ctorArgs = appendToArray(constructorArgs, overridesProxy);
+        Object baseInstance = baseAdapterConstructor.newInstance(ctorArgs);
+
+        Map<String, Object> wrapperProperties = buildWrapperProperties(customArg, baseInstance);
+        ProxyObject wrapper = new CustomProxyWrapper(wrapperProperties);
+
+        bindFunctionsToWrapper(wrapperProperties, wrapper);
+
+        return wrapper;
+    }
+
+    private Map<String, Object> buildWrapperProperties(Value customArg, Object baseInstance) {
+        Map<String, Object> wrapperProperties = new HashMap<>();
+        wrapperProperties.put("instance", baseInstance);
+
+        if (customArg.hasMembers()) {
+            for (String customKey : customArg.getMemberKeys()) {
+                wrapperProperties.put(customKey, customArg.getMember(customKey));
             }
         }
 
-        ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
+        return wrapperProperties;
+    }
 
-        Object[] ctorArgs;
-        if (lastArg.hasMembers()) { 
-            ctorArgs = new Object[args.length];
-            System.arraycopy(args, 0, ctorArgs, 0, args.length - 1);
-            ctorArgs[args.length - 1] = overridesProxy;
-        } else {
-            ctorArgs = new Object[args.length + 1];
-            System.arraycopy(args, 0, ctorArgs, 0, args.length);
-            ctorArgs[args.length] = overridesProxy;
+    private void bindFunctionsToWrapper(Map<String, Object> wrapperProperties, ProxyObject wrapper) {
+        Context ctx = Context.getCurrent();
+        Value wrapperVal = ctx.asValue(wrapper);
+
+        for (Map.Entry<String, Object> entry : wrapperProperties.entrySet()) {
+            Object value = entry.getValue();
+            if (isExecutableValue(value)) {
+                Value bound = ((Value) value).invokeMember("bind", wrapperVal);
+                entry.setValue(bound);
+            }
         }
+    }
 
-        return baseAdapterConstructor.newInstance(ctorArgs);
+    private boolean isExecutableValue(Object value) {
+        return value instanceof Value && ((Value) value).canExecute();
+    }
+
+    private Object[] appendToArray(Object[] original, Object newElement) {
+        Object[] result = new Object[original.length + 1];
+        System.arraycopy(original, 0, result, 0, original.length);
+        result[original.length] = newElement;
+        return result;
     }
 
     @Override
@@ -88,6 +170,31 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
     @Override
     public void putMember(String key, Value value) {
-        throw new UnsupportedOperationException("Cannot set members on MappedClassExtender function object.");
+        throw new UnsupportedOperationException(
+                "Cannot set members on MappedClassExtender function object.");
     }
+
+    private record ArgumentParser(Value overridesArg, Value customArg, Object[] constructorArgs) {}
+
+    private record CustomProxyWrapper(Map<String, Object> properties) implements ProxyObject {
+        @Override
+            public Object getMember(String key) {
+                return properties.get(key);
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return properties.keySet().toArray(new String[0]);
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return properties.containsKey(key);
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                properties.put(key, value);
+            }
+        }
 }
