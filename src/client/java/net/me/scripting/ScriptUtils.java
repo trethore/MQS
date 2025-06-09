@@ -91,6 +91,10 @@ public class ScriptUtils {
                 if (proxy instanceof JsObjectWrapper w) {
                     return w.getJavaInstance();
                 }
+                if (proxy instanceof MappedClassExtender.CustomProxyWrapper(Map<String, Object> properties)) {
+                    Object instanceProperty = properties.get("instance");
+                    return unwrapReceiver(instanceProperty);
+                }
                 return proxy;
             }
         }

@@ -23,44 +23,42 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         validateArguments(args);
 
         ArgumentParser parser = parseArguments(args);
-        Map<String, Object> runtimeOverrides = buildRuntimeOverrides(parser.overridesArg);
+        Map<String, Object> runtimeOverrides = buildRuntimeOverrides(parser.overridesValue);
 
-        if (parser.customArg == null) {
+        if (parser.addonsValue == null) {
             return createSimpleInstance(parser.constructorArgs, runtimeOverrides);
         }
 
-        return createWrappedInstance(parser.constructorArgs, runtimeOverrides, parser.customArg);
+        return createWrappedInstance(parser.constructorArgs, runtimeOverrides, parser.addonsValue);
     }
 
     private void validateArguments(Value[] args) {
         if (args.length == 0) {
-            throw new RuntimeException("Cannot extend with mapped names without an overrides object. " +
-                    "If no constructor arguments, pass at least an empty overrides object {}.");
+            throw new RuntimeException("Cannot extend with mapped names without configuration object. " +
+                    "Pass at least { overrides: {} } or { overrides: {}, addons: {} }.");
         }
     }
 
     private ArgumentParser parseArguments(Value[] args) {
-        if (args.length == 1) {
-            return new ArgumentParser(args[0], null, new Object[0]);
-        }
-
         Value lastArg = args[args.length - 1];
-        Value secondLastArg = args[args.length - 2];
 
-        if (isObjectLike(secondLastArg) && isObjectLike(lastArg)) {
-            Object[] constructorArgs = new Object[args.length - 2];
-            System.arraycopy(args, 0, constructorArgs, 0, args.length - 2);
-            return new ArgumentParser(secondLastArg, lastArg, constructorArgs);
+        if (!isObjectLike(lastArg)) {
+            throw new RuntimeException(
+                    "The last argument must be a configuration object with 'overrides' and optionally 'addons' keys.");
         }
 
-        if (isObjectLike(lastArg)) {
-            Object[] constructorArgs = new Object[args.length - 1];
-            System.arraycopy(args, 0, constructorArgs, 0, args.length - 1);
-            return new ArgumentParser(lastArg, null, constructorArgs);
+        Object[] constructorArgs = new Object[args.length - 1];
+        System.arraycopy(args, 0, constructorArgs, 0, args.length - 1);
+
+        Value overridesValue = lastArg.hasMember("overrides") ? lastArg.getMember("overrides") : null;
+        Value addonsValue = lastArg.hasMember("addons") ? lastArg.getMember("addons") : null;
+
+        if (overridesValue == null) {
+            throw new RuntimeException(
+                    "Configuration object must contain an 'overrides' key, even if empty: { overrides: {} }");
         }
 
-        throw new RuntimeException(
-                "The last argument(s) must be objects for overrides and optionally custom properties.");
+        return new ArgumentParser(overridesValue, addonsValue, constructorArgs);
     }
 
     private boolean isObjectLike(Value value) {
@@ -100,12 +98,12 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         return baseAdapterConstructor.newInstance(ctorArgs);
     }
 
-    private Object createWrappedInstance(Object[] constructorArgs, Map<String, Object> runtimeOverrides, Value customArg) {
+    private Object createWrappedInstance(Object[] constructorArgs, Map<String, Object> runtimeOverrides, Value addonsArg) {
         ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
         Object[] ctorArgs = appendToArray(constructorArgs, overridesProxy);
         Object baseInstance = baseAdapterConstructor.newInstance(ctorArgs);
 
-        Map<String, Object> wrapperProperties = buildWrapperProperties(customArg, baseInstance);
+        Map<String, Object> wrapperProperties = buildWrapperProperties(addonsArg, baseInstance);
         ProxyObject wrapper = new CustomProxyWrapper(wrapperProperties);
 
         bindFunctionsToWrapper(wrapperProperties, wrapper);
@@ -113,13 +111,13 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         return wrapper;
     }
 
-    private Map<String, Object> buildWrapperProperties(Value customArg, Object baseInstance) {
+    private Map<String, Object> buildWrapperProperties(Value addonsArg, Object baseInstance) {
         Map<String, Object> wrapperProperties = new HashMap<>();
         wrapperProperties.put("instance", baseInstance);
 
-        if (customArg.hasMembers()) {
-            for (String customKey : customArg.getMemberKeys()) {
-                wrapperProperties.put(customKey, customArg.getMember(customKey));
+        if (addonsArg != null && addonsArg.hasMembers()) {
+            for (String addonKey : addonsArg.getMemberKeys()) {
+                wrapperProperties.put(addonKey, addonsArg.getMember(addonKey));
             }
         }
 
@@ -174,27 +172,27 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
                 "Cannot set members on MappedClassExtender function object.");
     }
 
-    private record ArgumentParser(Value overridesArg, Value customArg, Object[] constructorArgs) {}
+    private record ArgumentParser(Value overridesValue, Value addonsValue, Object[] constructorArgs) {}
 
-    private record CustomProxyWrapper(Map<String, Object> properties) implements ProxyObject {
+    public record CustomProxyWrapper(Map<String, Object> properties) implements ProxyObject {
         @Override
-            public Object getMember(String key) {
-                return properties.get(key);
-            }
-
-            @Override
-            public Object getMemberKeys() {
-                return properties.keySet().toArray(new String[0]);
-            }
-
-            @Override
-            public boolean hasMember(String key) {
-                return properties.containsKey(key);
-            }
-
-            @Override
-            public void putMember(String key, Value value) {
-                properties.put(key, value);
-            }
+        public Object getMember(String key) {
+            return properties.get(key);
         }
+
+        @Override
+        public Object getMemberKeys() {
+            return properties.keySet().toArray(new String[0]);
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            return properties.containsKey(key);
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            properties.put(key, value);
+        }
+    }
 }
