@@ -52,7 +52,14 @@ public class ScriptUtils {
 
     private static Object convertValue(Value v, Class<?> expected) {
         if (v == null || v.isNull()) return null;
-        System.out.println(v.getMetaObject());
+
+        if (v.isProxyObject()) {
+            Object proxy = v.asProxyObject();
+            if (proxy instanceof JsObjectWrapper wrapper) {
+                return wrapper.getJavaInstance();
+            }
+        }
+
         if (expected != null) {
             try {
                 return v.as(expected);
@@ -62,7 +69,9 @@ public class ScriptUtils {
         if (v.isNumber()) return convertNumber(v, expected);
         if (v.isString()) return v.asString();
         if (v.isHostObject()) return v.asHostObject();
+
         if (v.isProxyObject()) return extractProxy(v, expected);
+
         if (v.canExecute() && expected != null && expected.isAnnotationPresent(FunctionalInterface.class)) {
             try { return v.as(expected); }
             catch (Exception e) { /* fallback */ }
@@ -70,11 +79,26 @@ public class ScriptUtils {
         return v;
     }
     public static Object unwrapReceiver(Object o) {
-        if (o instanceof JsObjectWrapper w)            return w.getJavaInstance();
-        if (o instanceof JsExtendedObjectWrapper w)    return w.getJavaInstance();
-        if (o instanceof MultiExtendedObjectWrapper w) return w.getJavaInstance();
-        if (o instanceof SuperAccessWrapper   w)       return unwrapReceiver(w.getMember("_self"));
-        return o;   // déjà un host object ou un simple adapter
+        if (o instanceof JsObjectWrapper w) {
+            return w.getJavaInstance();
+        }
+        if (o instanceof Value v) {
+            if (v.isHostObject()) {
+                return v.asHostObject();
+            }
+            if (v.isProxyObject()) {
+                Object proxy = v.asProxyObject();
+                if (proxy instanceof JsObjectWrapper w) {
+                    return w.getJavaInstance();
+                }
+                if (proxy instanceof MappedClassExtender.CustomProxyWrapper(Map<String, Object> properties)) {
+                    Object instanceProperty = properties.get("instance");
+                    return unwrapReceiver(instanceProperty);
+                }
+                return proxy;
+            }
+        }
+        return o;
     }
 
     private static Object convertNumber(Value v, Class<?> expected) {
@@ -89,8 +113,9 @@ public class ScriptUtils {
 
     private static Object extractProxy(Value v, Class<?> expected) {
         ProxyObject proxy = v.asProxyObject();
-        if (proxy instanceof JsObjectWrapper) return ((JsObjectWrapper) proxy).getJavaInstance();
-        if (proxy instanceof JsExtendedObjectWrapper) return ((JsExtendedObjectWrapper) proxy).getJavaInstance();
+        if (proxy instanceof JsObjectWrapper wrapper) {
+            return wrapper.getJavaInstance();
+        }
         if (expected != null) {
             try { return v.as(expected); } catch (Exception ignored) {}
         }

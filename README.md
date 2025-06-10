@@ -15,5 +15,33 @@ Its like JsMacros but way more powerful and flexible.
 
 ## Usage and Examples
 
-Todo: add examples and usage
+### Using mappings in scripts
+
+Classes from Minecraft can be imported with Yarn names using `importClass`:
+
+```javascript
+const Screen = importClass('net.minecraft.client.gui.screen.Screen');
+```
+
+Methods and fields are accessed with the same Yarn names. To subclass a
+Minecraft class and override its methods so that the script works in both
+development and production environments, use `Java.extendMapped`:
+
+```javascript
+const MyScreen = Java.extendMapped(Screen, {
+  init: function () {
+    Java.super(this).init();
+    // your code here
+  },
+  customMethod: function () {
+    // additional methods can be defined normally
+  }
+});
+
+mc.send(() => mc.setScreen(new MyScreen()));
+```
+
+`Java.extendMapped` automatically translates Yarn method names to their
+runtime equivalents, so the same script works whether the game is obfuscated
+or not.
 

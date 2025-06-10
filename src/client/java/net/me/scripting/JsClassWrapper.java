@@ -154,5 +154,16 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         }
     }
 
+    public Class<?> getTargetClass() {
+        return targetClass;
+    }
+
+    public Map<String, List<String>> getMethodMappings() {
+        return yarnToRuntimeMethods;
+    }
+
+    public Map<String, String> getFieldMappings() {
+        return yarnToRuntimeFields;
+    }
 
 }
