@@ -38,6 +38,14 @@ public class JsObjectWrapper implements ProxyObject {
         if ("_self".equals(key)) {
             return this.getJavaInstance();
         }
+
+        // Convention : si le nom se termine par '$', on force l'accès au champ
+        if (key.endsWith("$")) {
+            String fieldName = key.substring(0, key.length() - 1);
+            return handleField(fieldName);
+        }
+
+        // Priorité normale : méthodes d'abord, puis champs
         Object mapped = handleMappedMethod(key);
         if (mapped != null) return mapped;
         Object direct = handleDirectMethod(key);
@@ -50,9 +58,16 @@ public class JsObjectWrapper implements ProxyObject {
         if ("_self".equals(key)) {
             return true;
         }
+
+        // Gestion de la convention '$' pour forcer l'accès aux champs
+        if (key.endsWith("$")) {
+            String fieldName = key.substring(0, key.length() - 1);
+            return fields.hasField(instanceClass, fieldName);
+        }
+
         return methods.hasMapped(key)
                 || MethodLookup.hasDirect(instanceClass, key)
-                || fields.hasField(key);
+                || fields.hasField(instanceClass,key);
     }
 
     @Override
@@ -65,7 +80,7 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public void putMember(String key, Value value) {
-        if (fields.hasField(key)) {
+        if (fields.hasField(instanceClass,key)) {
             writeField(key, value);
             return;
         }
@@ -89,12 +104,12 @@ public class JsObjectWrapper implements ProxyObject {
     }
 
     private Object handleField(String key) {
-        String runtime = fields.getRuntime(key);
-        if (runtime == null) return null;
         try {
-            Field f = fields.accessField(instanceClass, runtime);
+            Field f = fields.accessField(instanceClass, key);
             if (Modifier.isStatic(f.getModifiers())) return null;
             return ScriptUtils.wrapReturn(f.get(javaInstance));
+        } catch (NoSuchFieldException e) {
+            return null;
         } catch (Exception e) {
             throw new RuntimeException("Field access failed: " + key, e);
         }
@@ -129,9 +144,8 @@ public class JsObjectWrapper implements ProxyObject {
     }
 
     private void writeField(String key, Value value) {
-        String runtime = fields.getRuntime(key);
         try {
-            Field f = fields.accessField(instanceClass, runtime);
+            Field f = fields.accessField(instanceClass, key);
             if (Modifier.isStatic(f.getModifiers()) || Modifier.isFinal(f.getModifiers()))
                 throw new UnsupportedOperationException("Cannot modify field: " + key);
             Object javaVal = ScriptUtils.unwrapArgs(new Value[]{value}, new Class[]{f.getType()})[0];
@@ -165,17 +179,39 @@ public class JsObjectWrapper implements ProxyObject {
         public FieldLookup(Map<String, String> map) {
             this.map = map != null ? map : Collections.emptyMap();
         }
-        public boolean hasField(String key) { return map.containsKey(key); }
+
+        public boolean hasField(Class<?> cls,String key) {
+            if (map.containsKey(key)) {
+                return true;
+            }
+            try {
+                ScriptUtils.findField(cls, key);
+                return true;
+            } catch (NoSuchFieldException e) {
+                return false;
+            }
+        }
+
         public Set<String> fieldKeys() { return map.keySet(); }
-        public String getRuntime(String key) { return map.get(key); }
-        public Field accessField(Class<?> cls, String runtime) throws NoSuchFieldException {
-            Field f = ScriptUtils.findField(cls, runtime);
+
+        public Field accessField(Class<?> cls, String key) throws NoSuchFieldException {
+            String runtimeName = map.get(key);
+            if (runtimeName != null) {
+                try {
+                    Field f = ScriptUtils.findField(cls, runtimeName);
+                    f.setAccessible(true);
+                    return f;
+                } catch (NoSuchFieldException ignored) {
+                }
+            }
+
+            Field f = ScriptUtils.findField(cls, key);
             f.setAccessible(true);
             return f;
         }
     }
+
     public Object getJavaInstance() {
         return this.javaInstance;
     }
-
 }

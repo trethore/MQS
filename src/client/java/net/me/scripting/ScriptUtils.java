@@ -104,42 +104,41 @@ public class ScriptUtils {
     }
 
     public static Object unwrapReceiver(Object o) {
-        if (o instanceof JsObjectWrapper w) {
-            return w.getJavaInstance();
+        if (o == null) {
+            return null;
         }
-        if (o instanceof Value v) {
-            if (v.isHostObject()) {
-                return v.asHostObject();
+
+        Object current = o;
+        if (current instanceof Value val) {
+            if (val.isHostObject()) {
+                return val.asHostObject();
             }
-            if (v.isProxyObject()) {
-                Object proxy = v.asProxyObject();
-                if (proxy instanceof JsObjectWrapper w) {
-                    return w.getJavaInstance();
-                }
-                // FIXED: Handle CustomProxyWrapper properly
-                if (proxy.getClass().getName().contains("CustomProxyWrapper")) {
-                    try {
-                        // Use reflection to get the instance field/method
-                        Method getInstanceMethod = proxy.getClass().getMethod("getInstance");
-                        Object instanceProperty = getInstanceMethod.invoke(proxy);
-                        return unwrapReceiver(instanceProperty);
-                    } catch (Exception e) {
-                        // Fallback: try to access instance field directly
-                        try {
-                            Field instanceField = proxy.getClass().getDeclaredField("instance");
-                            instanceField.setAccessible(true);
-                            Object instanceProperty = instanceField.get(proxy);
-                            return unwrapReceiver(instanceProperty);
-                        } catch (Exception ex) {
-                            // If all else fails, return the proxy itself
-                            return proxy;
-                        }
-                    }
-                }
-                return proxy;
+            if (val.isProxyObject()) {
+                current = val.asProxyObject();
+            } else {
+                return o;
             }
         }
-        return o;
+
+        if (current instanceof FlexibleMappedClassExtender.CustomProxyWrapper flexiWrapper) {
+            try {
+                Field baseInstanceField = FlexibleMappedClassExtender.CustomProxyWrapper.class.getDeclaredField("baseInstance");
+                baseInstanceField.setAccessible(true);
+                return unwrapReceiver(baseInstanceField.get(flexiWrapper));
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new RuntimeException("Failed to unwrap FlexibleMappedClassExtender.CustomProxyWrapper", e);
+            }
+        }
+
+        if (current instanceof FlexibleMappedClassExtender.ExtendedInstanceWrapper extendedWrapper) {
+            return extendedWrapper.getInstance();
+        }
+
+        if (current instanceof JsObjectWrapper jsWrapper) {
+            return jsWrapper.getJavaInstance();
+        }
+
+        return current;
     }
 
     private static Object convertNumber(Value v, Class<?> expected) {

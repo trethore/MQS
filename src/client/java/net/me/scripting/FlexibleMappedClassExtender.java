@@ -3,14 +3,18 @@ package net.me.scripting;
 import net.me.scripting.mappings.MappingsManager;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiable {
     private final ScriptManager.ExtensionConfig config;
@@ -27,19 +31,15 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
         Value javaObj = context.eval("js", "Java");
         Value extendFn = javaObj.getMember("extend");
 
-        // Get the main class to extend
         Class<?> extendsClass = config.extendsClass().getTargetClass();
         Value hostClassValue = context.asValue(extendsClass);
 
-        // If there are interfaces to implement, we need to handle them
         if (!config.implementsClasses().isEmpty()) {
-            // Convert interface wrappers to actual classes
             List<Class<?>> interfaceClasses = new ArrayList<>();
             for (JsClassWrapper wrapper : config.implementsClasses()) {
                 interfaceClasses.add(wrapper.getTargetClass());
             }
 
-            // Create array of classes for Java.extend(Class, Interface1, Interface2, ...)
             Value[] extendArgs = new Value[1 + interfaceClasses.size()];
             extendArgs[0] = hostClassValue;
 
@@ -49,7 +49,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
 
             return extendFn.execute(extendArgs);
         } else {
-            // Simple case: just extend the main class
             return extendFn.execute(hostClassValue);
         }
     }
@@ -117,7 +116,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
     }
 
     private void addMethodOverrides(Map<String, Object> overrides, String jsMethodName, Object jsFunction) {
-        // Check extends class mappings first
         List<String> mappedNames = config.extendsClass().getMethodMappings().get(jsMethodName);
 
         if (mappedNames != null && !mappedNames.isEmpty()) {
@@ -125,7 +123,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
                 overrides.put(runtimeName, jsFunction);
             }
         } else {
-            // Check interface mappings
             boolean foundInInterface = false;
             for (JsClassWrapper interfaceWrapper : config.implementsClasses()) {
                 List<String> interfaceMappings = interfaceWrapper.getMethodMappings().get(jsMethodName);
@@ -139,7 +136,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
             }
 
             if (!foundInInterface) {
-                // Fallback to original name
                 overrides.put(jsMethodName, jsFunction);
             }
         }
@@ -151,21 +147,13 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
         return baseAdapterConstructor.newInstance(ctorArgs);
     }
 
-    private Object createWrappedInstance(Object[] constructorArgs, Map<String, Object> runtimeOverrides, Value addonsArg) {
+    private Object createWrappedInstance(Object[] constructorArgs,
+                                         Map<String, Object> runtimeOverrides,
+                                         Value addonsArg) {
         ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
         Object[] ctorArgs = appendToArray(constructorArgs, overridesProxy);
         Object baseInstance = baseAdapterConstructor.newInstance(ctorArgs);
 
-        Map<String, Object> wrapperProperties = buildWrapperProperties(addonsArg, baseInstance);
-        wrapperProperties.putAll(runtimeOverrides);
-        ProxyObject wrapper = new CustomProxyWrapper(wrapperProperties, config, context);
-
-        bindFunctionsToWrapper(wrapperProperties, wrapper);
-
-        return wrapper;
-    }
-
-    private Map<String, Object> buildWrapperProperties(Value addonsArg, Object baseInstance) {
         Map<String, Object> wrapperProperties = new HashMap<>();
         wrapperProperties.put("instance", baseInstance);
 
@@ -175,7 +163,9 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
             }
         }
 
-        return wrapperProperties;
+        ProxyObject wrapper = new CustomProxyWrapper(wrapperProperties, config, context, baseInstance);
+        bindFunctionsToWrapper(wrapperProperties, wrapper);
+        return wrapper;
     }
 
     private void bindFunctionsToWrapper(Map<String, Object> wrapperProperties, ProxyObject wrapper) {
@@ -227,60 +217,79 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
 
     private record ArgumentParser(Value overridesValue, Value addonsValue, Object[] constructorArgs) {}
 
-    /**
-     * The custom proxy that wraps the extended Java instance and adds JS 'addon' properties.
-     */
     public static class CustomProxyWrapper implements ProxyObject {
         private final Map<String, Object> properties;
-        private final Value instanceValue;
-        private final JsObjectWrapper instanceWrapper;
+        private final Context context;
+        private final Object baseInstance;
 
-        public CustomProxyWrapper(Map<String, Object> properties, ScriptManager.ExtensionConfig config, Context context) {
+        public CustomProxyWrapper(Map<String, Object> properties, ScriptManager.ExtensionConfig config, Context context, Object baseInstance) {
             this.properties = properties;
-            Object instance = properties.get("instance");
-            this.instanceValue = context.asValue(instance);
-
-            // Create a full JsObjectWrapper for the instance to handle mapped method/field access
-            var cm = ScriptUtils.combineMappings(
-                    instance.getClass(),
-                    MappingsManager.getInstance().getRuntimeToYarnClassMap(),
-                    MappingsManager.getInstance().getMethodMap(),
-                    MappingsManager.getInstance().getFieldMap()
-            );
-            this.instanceWrapper = new JsObjectWrapper(instance, instance.getClass(), cm.methods(), cm.fields());
-        }
-
-        public Object getInstance() {
-            return properties.get("instance");
+            this.context = context;
+            this.baseInstance = baseInstance;
         }
 
         @Override
         public Object getMember(String key) {
-            System.out.println("getMember: " + key);
-
-            // 1. Check for addon properties first.
             if (properties.containsKey(key)) {
+                if ("instance".equals(key)) {
+                    return new ExtendedInstanceWrapper(baseInstance, context);
+                }
                 return properties.get(key);
             }
+            return null;
+        }
 
-            // 2. Delegate to the instance wrapper to handle mapped methods/fields.
-            if (instanceWrapper.hasMember(key)) {
-                Object member = instanceWrapper.getMember(key);
-                // If it's a method, wrap it in a ProxyExecutable to make it callable
-                if (member instanceof Value && ((Value) member).canExecute()) {
+        @Override
+        public Object getMemberKeys() {
+            List<String> keys = new ArrayList<>(properties.keySet());
+            return keys.toArray(new String[0]);
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            return properties.containsKey(key);
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            if (properties.containsKey(key)) {
+                properties.put(key, value);
+            } else {
+                throw new UnsupportedOperationException("Cannot add new properties to wrapper");
+            }
+        }
+    }
+
+    public static class ExtendedInstanceWrapper implements ProxyObject {
+        private final Object extendedInstance;
+        private final Value extendedInstanceValue;
+        private final JsObjectWrapper originalWrapper;
+
+        public ExtendedInstanceWrapper(Object extendedInstance, Context context) {
+            this.extendedInstance = extendedInstance;
+            this.extendedInstanceValue = context.asValue(extendedInstance);
+
+            var cm = ScriptUtils.combineMappings(
+                    extendedInstance.getClass().getSuperclass(),
+                    MappingsManager.getInstance().getRuntimeToYarnClassMap(),
+                    MappingsManager.getInstance().getMethodMap(),
+                    MappingsManager.getInstance().getFieldMap()
+            );
+            this.originalWrapper = new JsObjectWrapper(extendedInstance, extendedInstance.getClass(), cm.methods(), cm.fields());
+        }
+
+        @Override
+        public Object getMember(String key) {
+            if (extendedInstanceValue.hasMember(key)) {
+                Object member = extendedInstanceValue.getMember(key);
+                if (member instanceof Value v && v.canExecute()) {
                     return createExecutableProxy(key, member);
                 }
                 return member;
             }
 
-            // 3. Fallback to direct access on the Value
-            if (instanceValue.hasMember(key)) {
-                Object member = instanceValue.getMember(key);
-                // If it's a method, wrap it in a ProxyExecutable to make it callable
-                if (member instanceof Value && ((Value) member).canExecute()) {
-                    return createExecutableProxy(key, member);
-                }
-                return member;
+            if (originalWrapper.hasMember(key)) {
+                return originalWrapper.getMember(key);
             }
 
             return null;
@@ -288,9 +297,9 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
 
         private ProxyExecutable createExecutableProxy(String methodName, Object member) {
             return (Value... args) -> {
-                System.out.println("Executing method: " + methodName);
                 if (member instanceof Value && ((Value) member).canExecute()) {
-                    return ((Value) member).execute((Object[]) args);
+                    Object[] javaArgs = ScriptUtils.unwrapArgs(args, null);
+                    return ((Value) member).execute(javaArgs);
                 }
                 throw new RuntimeException("Method " + methodName + " is not executable");
             };
@@ -298,32 +307,28 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
 
         @Override
         public Object getMemberKeys() {
-            // Combine keys from addons and the underlying instance.
-            List<String> keys = new ArrayList<>(properties.keySet());
-            Object[] instanceKeys = (Object[]) instanceWrapper.getMemberKeys();
-            for (Object key : instanceKeys) {
-                if (!keys.contains(key)) {
-                    keys.add((String) key);
-                }
-            }
-            System.out.println("getMemberKeys: " + keys);
-            return keys.toArray(new String[0]);
+
+            return extendedInstanceValue.getMemberKeys().toArray();
         }
 
         @Override
         public boolean hasMember(String key) {
-            System.out.println("hasMember: " + key);
-            return properties.containsKey(key) || instanceWrapper.hasMember(key) || instanceValue.hasMember(key);
+            return extendedInstanceValue.hasMember(key) || originalWrapper.hasMember(key);
         }
 
         @Override
         public void putMember(String key, Value value) {
-            // Allow setting addon properties, otherwise delegate to the instance wrapper.
-            if (properties.containsKey(key)) {
-                properties.put(key, value);
+            if (originalWrapper.hasMember(key)) {
+                originalWrapper.putMember(key, value);
+            } else if (extendedInstanceValue.hasMember(key)) {
+                extendedInstanceValue.putMember(key, value);
             } else {
-                instanceWrapper.putMember(key, value);
+                throw new UnsupportedOperationException("No writable member: " + key);
             }
+        }
+
+        public Object getInstance() {
+            return extendedInstance;
         }
     }
 }
