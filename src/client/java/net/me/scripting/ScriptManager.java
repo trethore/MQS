@@ -182,19 +182,49 @@ public class ScriptManager {
 
     private void bindExtendMapped(Context contextToConfigure) {
         Value javaObj = contextToConfigure.eval("js", "Java");
+        Value extendFn = javaObj.getMember("extend");
+
         javaObj.putMember("extendMapped", (ProxyExecutable) args -> {
-            JsClassWrapper wrapper = getJsClassWrapper(args);
-
-            if (wrapper == null) {
-                throw new RuntimeException("First argument must be a JsClassWrapper");
+            if (args.length != 1 || !args[0].hasMembers()) {
+                throw new RuntimeException("extendMapped expects a single configuration object");
             }
-            Class<?> rawClass = wrapper.getTargetClass();
-            Value hostClassValue = contextToConfigure.asValue(rawClass);
 
-            Value extendFn = javaObj.getMember("extend");
-            Value baseAdapterConstructor = extendFn.execute(hostClassValue);
+            Value config = args[0];
 
-            return new MappedClassExtender(baseAdapterConstructor, wrapper);
+            if (!config.hasMember("extends")) {
+                throw new RuntimeException("Configuration object must contain an 'extends' key");
+            }
+
+            ResolvedClass base = resolveToClass(config.getMember("extends"));
+
+            List<ResolvedClass> interfaces = new ArrayList<>();
+            if (config.hasMember("implements")) {
+                Value implVal = config.getMember("implements");
+                if (implVal.hasArrayElements()) {
+                    long len = implVal.getArraySize();
+                    for (long i = 0; i < len; i++) {
+                        interfaces.add(resolveToClass(implVal.getArrayElement(i)));
+                    }
+                } else {
+                    interfaces.add(resolveToClass(implVal));
+                }
+            }
+
+            List<Value> extendArgs = new ArrayList<>();
+            extendArgs.add(contextToConfigure.asValue(base.cls));
+            for (ResolvedClass r : interfaces) {
+                extendArgs.add(contextToConfigure.asValue(r.cls));
+            }
+
+            Value baseAdapterConstructor = extendFn.execute(extendArgs.toArray(new Value[0]));
+
+            List<JsClassWrapper> wrappers = new ArrayList<>();
+            wrappers.add(base.wrapper);
+            for (ResolvedClass r : interfaces) wrappers.add(r.wrapper);
+
+            JsClassWrapper merged = mergeWrappers(base.cls, wrappers);
+
+            return new MappedClassExtender(baseAdapterConstructor, merged);
         });
     }
 
@@ -213,6 +243,41 @@ public class ScriptManager {
             wrapper = null;
         }
         return wrapper;
+    }
+
+    private record ResolvedClass(Class<?> cls, JsClassWrapper wrapper) {}
+
+    private ResolvedClass resolveToClass(Value value) {
+        if (value.isHostObject()) {
+            Class<?> cls = value.asHostObject();
+            JsClassWrapper w = createWrapper(cls.getName());
+            return new ResolvedClass(cls, w);
+        }
+        if (value.isProxyObject()) {
+            Object obj = value.asProxyObject();
+            if (obj instanceof LazyJsClassHolder holder) {
+                JsClassWrapper w = holder.getWrapper();
+                return new ResolvedClass(w.getTargetClass(), w);
+            }
+            if (obj instanceof JsClassWrapper w) {
+                return new ResolvedClass(w.getTargetClass(), w);
+            }
+        }
+        throw new RuntimeException("Unsupported value for class resolution: " + value);
+    }
+
+    private JsClassWrapper mergeWrappers(Class<?> target, List<JsClassWrapper> wrappers) {
+        Map<String, List<String>> methods = new LinkedHashMap<>();
+        Map<String, String> fields = new LinkedHashMap<>();
+        for (JsClassWrapper w : wrappers) {
+            methods.putAll(w.getMethodMappings());
+            fields.putAll(w.getFieldMappings());
+        }
+        try {
+            return new JsClassWrapper(target.getName(), methods, fields);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 

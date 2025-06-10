@@ -45,3 +45,15 @@ mc.send(() => mc.setScreen(new MyScreen()));
 runtime equivalents, so the same script works whether the game is obfuscated
 or not.
 
+### Extending with additional interfaces
+
+```javascript
+const Screen = net.minecraft.client.gui.screen.Screen;
+const Runnable = importClass('java.lang.Runnable');
+
+const ScreenRunnableAdapter = Java.extendMapped({
+  extends: Screen,
+  implements: [Runnable]
+});
+```
+
