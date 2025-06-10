@@ -39,13 +39,11 @@ public class JsObjectWrapper implements ProxyObject {
             return this.getJavaInstance();
         }
 
-        // Convention : si le nom se termine par '$', on force l'accès au champ
         if (key.endsWith("$")) {
             String fieldName = key.substring(0, key.length() - 1);
             return handleField(fieldName);
         }
 
-        // Priorité normale : méthodes d'abord, puis champs
         Object mapped = handleMappedMethod(key);
         if (mapped != null) return mapped;
         Object direct = handleDirectMethod(key);
@@ -59,7 +57,6 @@ public class JsObjectWrapper implements ProxyObject {
             return true;
         }
 
-        // Gestion de la convention '$' pour forcer l'accès aux champs
         if (key.endsWith("$")) {
             String fieldName = key.substring(0, key.length() - 1);
             return fields.hasField(instanceClass, fieldName);
@@ -80,8 +77,23 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public void putMember(String key, Value value) {
-        if (fields.hasField(instanceClass,key)) {
-            writeField(key, value);
+        String fieldName = key;
+        boolean isExplicitFieldAccess = false;
+
+        if (key.endsWith("$")) {
+            fieldName = key.substring(0, key.length() - 1);
+            isExplicitFieldAccess = true;
+        }
+        if (fields.hasField(instanceClass, fieldName)) {
+            boolean methodConflict = methods.hasMapped(fieldName) || MethodLookup.hasDirect(instanceClass, fieldName);
+
+            if (methodConflict && !isExplicitFieldAccess) {
+                throw new UnsupportedOperationException(
+                        "Ambiguous write to '" + fieldName + "'. A method with this name exists. " +
+                                "Use the '$' suffix to write to the field directly: " + fieldName + "$"
+                );
+            }
+            writeField(fieldName, value);
             return;
         }
         throw new UnsupportedOperationException("No writable member: " + key);
@@ -134,7 +146,6 @@ public class JsObjectWrapper implements ProxyObject {
                             Main.LOGGER.error("  -> Arg {}: {} (Type: {})", i, javaArgs[i], javaArgs[i] != null ? javaArgs[i].getClass().getName() : "null");
                         }
                     }
-                    // Log the full stack trace of the actual exception 'e'
                     Main.LOGGER.error("Original Exception:", e);
                     throw new RuntimeException("Method invocation failed: " + m.getName(), e);
                 }
