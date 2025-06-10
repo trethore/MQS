@@ -210,13 +210,13 @@ public class ScriptManager {
                 }
             }
 
-            List<Value> extendArgs = new ArrayList<>();
-            extendArgs.add(contextToConfigure.asValue(base.cls));
+            List<Object> extendArgs = new ArrayList<>();
+            extendArgs.add(base.cls);
             for (ResolvedClass r : interfaces) {
-                extendArgs.add(contextToConfigure.asValue(r.cls));
+                extendArgs.add(r.cls);
             }
 
-            Value baseAdapterConstructor = extendFn.execute(extendArgs);
+            Value baseAdapterConstructor = extendFn.execute(extendArgs.toArray());
 
             List<JsClassWrapper> wrappers = new ArrayList<>();
             wrappers.add(base.wrapper);
