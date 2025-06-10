@@ -216,7 +216,7 @@ public class ScriptManager {
                 extendArgs.add(contextToConfigure.asValue(r.cls));
             }
 
-            Value baseAdapterConstructor = extendFn.execute(extendArgs.toArray(new Value[0]));
+            Value baseAdapterConstructor = extendFn.execute(extendArgs);
 
             List<JsClassWrapper> wrappers = new ArrayList<>();
             wrappers.add(base.wrapper);
