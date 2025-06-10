@@ -191,16 +191,13 @@ public class ScriptManager {
                 throw new RuntimeException("Configuration argument must be an object with 'extends' property");
             }
 
-            // Parse configuration
             ExtensionConfig config = parseExtensionConfig(configArg, contextToConfigure);
 
-            // Create the extended class adapter
             return new FlexibleMappedClassExtender(config, contextToConfigure);
         });
     }
 
     private ExtensionConfig parseExtensionConfig(Value configArg, Context context) {
-        // Parse extends (required)
         if (!configArg.hasMember("extends")) {
             throw new RuntimeException("Configuration object must have an 'extends' property");
         }
@@ -211,7 +208,6 @@ public class ScriptManager {
             throw new RuntimeException("'extends' must be a valid class wrapper");
         }
 
-        // Parse implements (optional)
         List<JsClassWrapper> implementsWrappers = new ArrayList<>();
         if (configArg.hasMember("implements")) {
             Value implementsValue = configArg.getMember("implements");
@@ -283,7 +279,6 @@ public class ScriptManager {
         return scripts.values();
     }
 
-    // Configuration record pour l'extension
     public record ExtensionConfig(
             JsClassWrapper extendsClass,
             List<JsClassWrapper> implementsClasses,
