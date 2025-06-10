@@ -183,38 +183,65 @@ public class ScriptManager {
     private void bindExtendMapped(Context contextToConfigure) {
         Value javaObj = contextToConfigure.eval("js", "Java");
         javaObj.putMember("extendMapped", (ProxyExecutable) args -> {
-            JsClassWrapper wrapper = getJsClassWrapper(args);
-
-            if (wrapper == null) {
-                throw new RuntimeException("First argument must be a JsClassWrapper");
+            if (args.length != 1) {
+                throw new RuntimeException("Java.extendMapped() requires exactly one configuration object");
             }
-            Class<?> rawClass = wrapper.getTargetClass();
-            Value hostClassValue = contextToConfigure.asValue(rawClass);
 
-            Value extendFn = javaObj.getMember("extend");
-            Value baseAdapterConstructor = extendFn.execute(hostClassValue);
+            Value configArg = args[0];
+            if (!configArg.hasMembers()) {
+                throw new RuntimeException("Configuration argument must be an object with 'extends' property");
+            }
 
-            return new MappedClassExtender(baseAdapterConstructor, wrapper);
+            // Parse configuration
+            ExtensionConfig config = parseExtensionConfig(configArg, contextToConfigure);
+
+            // Create the extended class adapter
+            return new FlexibleMappedClassExtender(config, contextToConfigure);
         });
     }
 
-    private static @Nullable JsClassWrapper getJsClassWrapper(Value[] args) {
-        if (args.length != 1) {
-            throw new RuntimeException("extendMapped needs exactly one argument: the JsClassWrapper");
+    private ExtensionConfig parseExtensionConfig(Value configArg, Context context) {
+        // Parse extends (required)
+        if (!configArg.hasMember("extends")) {
+            throw new RuntimeException("Configuration object must have an 'extends' property");
         }
-        Value wrapperVal = args[0];
-        JsClassWrapper wrapper;
-        Object obj = wrapperVal.asProxyObject();
-        if (obj instanceof LazyJsClassHolder holder) {
-            wrapper = holder.getWrapper();
-        } else if (obj instanceof JsClassWrapper w) {
-            wrapper = w;
-        } else {
-            wrapper = null;
+
+        Value extendsValue = configArg.getMember("extends");
+        JsClassWrapper extendsWrapper = extractClassWrapper(extendsValue);
+        if (extendsWrapper == null) {
+            throw new RuntimeException("'extends' must be a valid class wrapper");
         }
-        return wrapper;
+
+        // Parse implements (optional)
+        List<JsClassWrapper> implementsWrappers = new ArrayList<>();
+        if (configArg.hasMember("implements")) {
+            Value implementsValue = configArg.getMember("implements");
+            if (implementsValue.hasArrayElements()) {
+                long arraySize = implementsValue.getArraySize();
+                for (long i = 0; i < arraySize; i++) {
+                    Value interfaceValue = implementsValue.getArrayElement(i);
+                    JsClassWrapper interfaceWrapper = extractClassWrapper(interfaceValue);
+                    if (interfaceWrapper != null) {
+                        implementsWrappers.add(interfaceWrapper);
+                    }
+                }
+            }
+        }
+
+        return new ExtensionConfig(extendsWrapper, implementsWrappers, context);
     }
 
+    private JsClassWrapper extractClassWrapper(Value value) {
+        if (value.isProxyObject()) {
+            Object proxy = value.asProxyObject();
+            if (proxy instanceof LazyJsClassHolder holder) {
+                return holder.getWrapper();
+            } else if (proxy instanceof JsClassWrapper wrapper) {
+                return wrapper;
+            }
+        }
+        return null;
+    }
 
     private JsClassWrapper createWrapper(String runtime) {
         return wrapperCache.computeIfAbsent(runtime, r -> {
@@ -256,4 +283,11 @@ public class ScriptManager {
     public Collection<Script> getAllScripts() {
         return scripts.values();
     }
+
+    // Configuration record pour l'extension
+    public record ExtensionConfig(
+            JsClassWrapper extendsClass,
+            List<JsClassWrapper> implementsClasses,
+            Context context
+    ) {}
 }

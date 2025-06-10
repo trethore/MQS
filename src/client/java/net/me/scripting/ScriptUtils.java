@@ -30,16 +30,40 @@ public class ScriptUtils {
 
     public static List<Method> findMethods(Class<?> cls, List<String> names, boolean isStatic) {
         List<Method> list = new ArrayList<>();
-        for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
-            for (Method m : c.getDeclaredMethods()) {
+        Set<String> foundSignatures = new HashSet<>();
+        Queue<Class<?>> toSearch = new LinkedList<>();
+        Set<Class<?>> visited = new HashSet<>();
+
+        if (cls != null) {
+            toSearch.add(cls);
+        }
+
+        while (!toSearch.isEmpty()) {
+            Class<?> current = toSearch.poll();
+            if (current == null || !visited.add(current)) {
+                continue;
+            }
+
+            for (Method m : current.getDeclaredMethods()) {
                 if (names.contains(m.getName()) && Modifier.isStatic(m.getModifiers()) == isStatic) {
-                    m.setAccessible(true);
-                    list.add(m);
+                    // Create a unique signature to avoid adding overridden methods multiple times
+                    String signature = m.getName() + Arrays.toString(m.getParameterTypes());
+                    if (foundSignatures.add(signature)) {
+                        m.setAccessible(true);
+                        list.add(m);
+                    }
                 }
             }
+
+            // Add superclass and all interfaces to the search queue
+            if (current.getSuperclass() != null) {
+                toSearch.add(current.getSuperclass());
+            }
+            toSearch.addAll(Arrays.asList(current.getInterfaces()));
         }
         return list;
     }
+
 
     public static Object[] unwrapArgs(Value[] args, Class<?>[] types) {
         if (args == null) return new Object[0];
@@ -78,6 +102,7 @@ public class ScriptUtils {
         }
         return v;
     }
+
     public static Object unwrapReceiver(Object o) {
         if (o instanceof JsObjectWrapper w) {
             return w.getJavaInstance();
@@ -91,9 +116,25 @@ public class ScriptUtils {
                 if (proxy instanceof JsObjectWrapper w) {
                     return w.getJavaInstance();
                 }
-                if (proxy instanceof MappedClassExtender.CustomProxyWrapper(Map<String, Object> properties)) {
-                    Object instanceProperty = properties.get("instance");
-                    return unwrapReceiver(instanceProperty);
+                // FIXED: Handle CustomProxyWrapper properly
+                if (proxy.getClass().getName().contains("CustomProxyWrapper")) {
+                    try {
+                        // Use reflection to get the instance field/method
+                        Method getInstanceMethod = proxy.getClass().getMethod("getInstance");
+                        Object instanceProperty = getInstanceMethod.invoke(proxy);
+                        return unwrapReceiver(instanceProperty);
+                    } catch (Exception e) {
+                        // Fallback: try to access instance field directly
+                        try {
+                            Field instanceField = proxy.getClass().getDeclaredField("instance");
+                            instanceField.setAccessible(true);
+                            Object instanceProperty = instanceField.get(proxy);
+                            return unwrapReceiver(instanceProperty);
+                        } catch (Exception ex) {
+                            // If all else fails, return the proxy itself
+                            return proxy;
+                        }
+                    }
                 }
                 return proxy;
             }
@@ -165,6 +206,7 @@ public class ScriptUtils {
         for (Class<?> iface : cls.getInterfaces()) combineRecursive(iface, r2y, mMap, fMap, accMethods, accFields, seen);
         combineRecursive(cls.getSuperclass(), r2y, mMap, fMap, accMethods, accFields, seen);
     }
+
     public static void insertIntoPackageHierarchy(JsPackage root,
                                                   String fullYarnName,
                                                   LazyJsClassHolder holder) {
