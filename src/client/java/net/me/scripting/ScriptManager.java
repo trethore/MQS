@@ -7,6 +7,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -182,19 +183,7 @@ public class ScriptManager {
     private void bindExtendMapped(Context contextToConfigure) {
         Value javaObj = contextToConfigure.eval("js", "Java");
         javaObj.putMember("extendMapped", (ProxyExecutable) args -> {
-            if (args.length != 1) {
-                throw new RuntimeException("extendMapped needs exactly one argument: the JsClassWrapper");
-            }
-            Value wrapperVal = args[0];
-            JsClassWrapper wrapper;
-            Object obj = wrapperVal.asProxyObject();
-            if (obj instanceof LazyJsClassHolder holder) {
-                wrapper = holder.getWrapper();
-            } else if (obj instanceof JsClassWrapper w) {
-                wrapper = w;
-            } else {
-                wrapper = null;
-            }
+            JsClassWrapper wrapper = getJsClassWrapper(args);
 
             if (wrapper == null) {
                 throw new RuntimeException("First argument must be a JsClassWrapper");
@@ -209,6 +198,22 @@ public class ScriptManager {
         });
     }
 
+    private static @Nullable JsClassWrapper getJsClassWrapper(Value[] args) {
+        if (args.length != 1) {
+            throw new RuntimeException("extendMapped needs exactly one argument: the JsClassWrapper");
+        }
+        Value wrapperVal = args[0];
+        JsClassWrapper wrapper;
+        Object obj = wrapperVal.asProxyObject();
+        if (obj instanceof LazyJsClassHolder holder) {
+            wrapper = holder.getWrapper();
+        } else if (obj instanceof JsClassWrapper w) {
+            wrapper = w;
+        } else {
+            wrapper = null;
+        }
+        return wrapper;
+    }
 
 
     private JsClassWrapper createWrapper(String runtime) {
