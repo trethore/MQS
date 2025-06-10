@@ -4,12 +4,13 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
+public class MappedClassExtender implements ProxyObject, ProxyInstantiable, ProxyExecutable {
     private final Value baseAdapterConstructor;
     private final JsClassWrapper wrapper;
 
@@ -30,6 +31,11 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         }
 
         return createWrappedInstance(parser.constructorArgs, runtimeOverrides, parser.addonsValue);
+    }
+
+    @Override
+    public Object execute(Value... args) {
+        return newInstance(args);
     }
 
     private void validateArguments(Value[] args) {
