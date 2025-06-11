@@ -43,20 +43,32 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         if ("_class".equals(key)) {
             return targetClass;
         }
+
+        if (key.endsWith("$")) {
+            String fieldName = key.substring(0, key.length() - 1);
+            if (yarnToRuntimeFields.containsKey(fieldName)) {
+                return readStaticField(fieldName);
+            }
+            return null;
+        }
+
         if (yarnToRuntimeMethods.containsKey(key)) {
             return createStaticMethodProxy(key);
         }
         if (yarnToRuntimeFields.containsKey(key)) {
             return readStaticField(key);
         }
+
         return null;
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "_class".equals(key)
-                || yarnToRuntimeMethods.containsKey(key)
-                || yarnToRuntimeFields.containsKey(key);
+        if ("_class".equals(key)) return true;
+        if (key.endsWith("$")) {
+            return yarnToRuntimeFields.containsKey(key.substring(0, key.length() - 1));
+        }
+        return yarnToRuntimeMethods.containsKey(key) || yarnToRuntimeFields.containsKey(key);
     }
 
     @Override
@@ -65,16 +77,22 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         keys.add("_class");
         keys.addAll(yarnToRuntimeMethods.keySet());
         keys.addAll(yarnToRuntimeFields.keySet());
+        yarnToRuntimeFields.keySet().forEach(field -> keys.add(field + "$"));
         return keys.toArray(new String[0]);
     }
 
     @Override
     public void putMember(String key, Value value) {
-        if (yarnToRuntimeFields.containsKey(key)) {
-            writeStaticField(key, value);
+        String fieldName = key;
+        if (key.endsWith("$")) {
+            fieldName = key.substring(0, key.length() - 1);
+        }
+
+        if (yarnToRuntimeFields.containsKey(fieldName)) {
+            writeStaticField(fieldName, value);
             return;
         }
-        throw new UnsupportedOperationException("No writable member " + key);
+        throw new UnsupportedOperationException("No writable static member: " + key);
     }
 
     private Object invokeConstructor(Value[] polyglotArgs) {

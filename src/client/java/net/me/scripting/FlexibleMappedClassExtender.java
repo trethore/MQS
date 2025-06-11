@@ -97,38 +97,94 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
         }
 
         for (String jsMethodName : overridesArg.getMemberKeys()) {
-            Object jsFunction = overridesArg.getMember(jsMethodName);
-            addMethodOverrides(runtimeOverrides, jsMethodName, jsFunction);
-        }
+            Value jsValue = overridesArg.getMember(jsMethodName);
 
+            if (jsValue.canExecute()) {
+                handleSimpleOverride(jsMethodName, jsValue, runtimeOverrides);
+            } else if (jsValue.hasMembers()) {
+                handleConflictOverride(jsMethodName, jsValue, runtimeOverrides);
+            }
+        }
         return runtimeOverrides;
     }
 
-    private void addMethodOverrides(Map<String, Object> overrides, String jsMethodName, Object jsFunction) {
-        List<String> mappedNames = config.extendsClass().methodMappings().get(jsMethodName);
-        if (mappedNames != null && !mappedNames.isEmpty()) {
-            for (String runtimeName : mappedNames) {
-                overrides.put(runtimeName, jsFunction);
-            }
-            return;
+    private void handleSimpleOverride(String jsMethodName, Value jsFunction, Map<String, Object> runtimeOverrides) {
+        List<ScriptManager.MappedClassInfo> targets = findTargetsForMethod(jsMethodName);
+
+        if (targets.size() > 1) {
+            List<String> targetNames = targets.stream().map(ScriptManager.MappedClassInfo::yarnName).toList();
+            throw new RuntimeException(
+                    "Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " +
+                            targetNames + ". Please specify the target using the object syntax: { '" +
+                            targetNames.getFirst() + "': fn, ... }"
+            );
         }
 
-        for (ScriptManager.MappedClassInfo interfaceInfo : config.implementsClasses()) {
-            List<String> interfaceMappings = interfaceInfo.methodMappings().get(jsMethodName);
-            if (interfaceMappings != null && !interfaceMappings.isEmpty()) {
-                for (String runtimeName : interfaceMappings) {
-                    overrides.put(runtimeName, jsFunction);
+        if (targets.isEmpty()) {
+            runtimeOverrides.put(jsMethodName, jsFunction);
+        } else {
+            ScriptManager.MappedClassInfo target = targets.getFirst();
+            List<String> mappedNames = target.methodMappings().get(jsMethodName);
+            if (mappedNames != null && !mappedNames.isEmpty()) {
+                for (String runtimeName : mappedNames) {
+                    runtimeOverrides.put(runtimeName, jsFunction);
                 }
-                return;
+            } else {
+                runtimeOverrides.put(jsMethodName, jsFunction);
             }
         }
+    }
 
-        overrides.put(jsMethodName, jsFunction);
+    private void handleConflictOverride(String jsMethodName, Value fqcnToObject, Map<String, Object> runtimeOverrides) {
+        for (String fqcn : fqcnToObject.getMemberKeys()) {
+            Value jsFunction = fqcnToObject.getMember(fqcn);
+            if (!jsFunction.canExecute()) {
+                throw new RuntimeException("Value for FQCN '" + fqcn + "' in override for '" + jsMethodName + "' must be a function.");
+            }
+
+            ScriptManager.MappedClassInfo target = findTargetByYarnName(fqcn);
+            if (target == null) {
+                System.err.println("Warning: Override for '" + jsMethodName + "' specified target '" + fqcn +
+                        "' which was not found in the list of extended/implemented types.");
+                continue;
+            }
+
+            List<String> mappedNames = target.methodMappings().get(jsMethodName);
+            if (mappedNames != null && !mappedNames.isEmpty()) {
+                for (String runtimeName : mappedNames) {
+                    runtimeOverrides.put(runtimeName, jsFunction);
+                }
+            } else {
+                runtimeOverrides.put(jsMethodName, jsFunction);
+            }
+        }
+    }
+
+    private List<ScriptManager.MappedClassInfo> findTargetsForMethod(String jsMethodName) {
+        List<ScriptManager.MappedClassInfo> found = new ArrayList<>();
+        if (config.extendsClass().methodMappings().containsKey(jsMethodName)) {
+            found.add(config.extendsClass());
+        }
+        for (ScriptManager.MappedClassInfo interfaceInfo : config.implementsClasses()) {
+            if (interfaceInfo.methodMappings().containsKey(jsMethodName)) {
+                found.add(interfaceInfo);
+            }
+        }
+        return found;
+    }
+
+    private ScriptManager.MappedClassInfo findTargetByYarnName(String yarnName) {
+        if (config.extendsClass().yarnName().equals(yarnName)) {
+            return config.extendsClass();
+        }
+        return config.implementsClasses().stream()
+                .filter(info -> info.yarnName().equals(yarnName))
+                .findFirst()
+                .orElse(null);
     }
 
     private Object createSimpleInstance(Value[] constructorArgs, Map<String, Object> runtimeOverrides) {
         try {
-            // Convert Value[] to Object[] properly
             Object[] javaCtorArgs = new Object[constructorArgs.length];
             for (int i = 0; i < constructorArgs.length; i++) {
                 javaCtorArgs[i] = convertValueToJavaObject(constructorArgs[i]);
@@ -147,7 +203,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
                                          Map<String, Object> runtimeOverrides,
                                          Value addonsArg) {
         try {
-            // Convert Value[] to Object[] properly
             Object[] javaCtorArgs = new Object[constructorArgs.length];
             for (int i = 0; i < constructorArgs.length; i++) {
                 javaCtorArgs[i] = convertValueToJavaObject(constructorArgs[i]);
@@ -159,11 +214,7 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
             Object baseInstance = baseAdapterConstructor.newInstance(finalCtorArgs);
 
             Map<String, Object> wrapperProperties = new HashMap<>();
-
-            // SOLUTION 2: instance = wrapper avec toutes les méthodes héritées mappées
             wrapperProperties.put("instance", new ExtendedInstanceWrapper(baseInstance, context));
-
-            // SOLUTION 2: _self = objet Java direct pour setScreen()
             wrapperProperties.put("_self", baseInstance);
 
             if (addonsArg != null && addonsArg.hasMembers()) {
@@ -181,35 +232,24 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
     }
 
     private Object convertValueToJavaObject(Value value) {
-        if (value == null) {
+        if (value == null || value.isNull()) {
             return null;
         }
-
-        // If the value is already a Java object, return as-is
         if (value.isHostObject()) {
             return value.asHostObject();
         }
-
-        // Handle primitive types
         if (value.isString()) {
             return value.asString();
         }
         if (value.isNumber()) {
-            if (value.fitsInInt()) {
-                return value.asInt();
-            } else if (value.fitsInLong()) {
-                return value.asLong();
-            } else if (value.fitsInFloat()) {
-                return value.asFloat();
-            } else {
-                return value.asDouble();
-            }
+            if (value.fitsInInt()) return value.asInt();
+            if (value.fitsInLong()) return value.asLong();
+            if (value.fitsInFloat()) return value.asFloat();
+            return value.asDouble();
         }
         if (value.isBoolean()) {
             return value.asBoolean();
         }
-
-        // For complex objects, return the Value itself
         return value;
     }
 
@@ -223,7 +263,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
                     Value bound = ((Value) value).invokeMember("bind", wrapperVal);
                     entry.setValue(bound);
                 } catch (Exception e) {
-                    // If binding fails, keep the original function
                     System.err.println("Warning: Could not bind function " + entry.getKey() + ": " + e.getMessage());
                 }
             }
@@ -234,7 +273,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
         if (!(value instanceof Value val)) {
             return false;
         }
-        // Check if it's executable and has the bind method (JavaScript function)
         return val.canExecute() && val.hasMember("bind");
     }
 
@@ -281,12 +319,7 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
         @Override
         public Object getMember(String key) {
             if (properties.containsKey(key)) {
-                if ("instance".equals(key)) {
-                    // Retourne le wrapper avec toutes les méthodes héritées mappées
-                    return properties.get(key);
-                }
                 if ("_self".equals(key)) {
-                    // Retourne l'objet Java direct pour setScreen()
                     return baseInstance;
                 }
                 return properties.get(key);
@@ -308,7 +341,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
         @Override
         public void putMember(String key, Value value) {
             if (properties.containsKey(key) && !"_self".equals(key)) {
-                // On ne peut pas modifier _self car c'est l'instance Java directe
                 properties.put(key, value);
             } else if ("_self".equals(key)) {
                 throw new UnsupportedOperationException("Cannot modify _self reference");

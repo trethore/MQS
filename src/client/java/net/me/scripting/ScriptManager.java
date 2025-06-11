@@ -232,14 +232,24 @@ public class ScriptManager {
         if (value.isProxyObject()) {
             Object proxy = value.asProxyObject();
             JsClassWrapper wrapper = null;
+            String yarnName = null;
             if (proxy instanceof LazyJsClassHolder holder) {
                 wrapper = holder.getWrapper();
+                try {
+                    java.lang.reflect.Field yarnNameField = LazyJsClassHolder.class.getDeclaredField("yarnName");
+                    yarnNameField.setAccessible(true);
+                    yarnName = (String) yarnNameField.get(holder);
+                } catch (Exception ignored) {}
+
             } else if (proxy instanceof JsClassWrapper w) {
                 wrapper = w;
             }
 
             if (wrapper != null) {
-                return new MappedClassInfo(wrapper.getTargetClass(), wrapper.getMethodMappings(), wrapper.getFieldMappings());
+                if (yarnName == null) {
+                    yarnName = runtimeToYarn.getOrDefault(wrapper.getTargetClass().getName(), wrapper.getTargetClass().getName());
+                }
+                return new MappedClassInfo(yarnName, wrapper.getTargetClass(), wrapper.getMethodMappings(), wrapper.getFieldMappings());
             }
         } else if (value.isHostObject() && value.asHostObject() instanceof Class) {
             Class<?> clazz = value.as(Class.class);
@@ -247,9 +257,9 @@ public class ScriptManager {
             String yarnName = runtimeToYarn.get(clazz.getName());
             if (yarnName != null) {
                 var cm = ScriptUtils.combineMappings(clazz, runtimeToYarn, methodMap, fieldMap);
-                return new MappedClassInfo(clazz, cm.methods(), cm.fields());
+                return new MappedClassInfo(yarnName, clazz, cm.methods(), cm.fields());
             } else {
-                return new MappedClassInfo(clazz);
+                return new MappedClassInfo(clazz.getName(), clazz, Collections.emptyMap(), Collections.emptyMap());
             }
         }
 
@@ -298,14 +308,11 @@ public class ScriptManager {
     }
 
     public record MappedClassInfo(
+            String yarnName,
             Class<?> targetClass,
             Map<String, List<String>> methodMappings,
             Map<String, String> fieldMappings
-    ) {
-        public MappedClassInfo(Class<?> targetClass) {
-            this(targetClass, Collections.emptyMap(), Collections.emptyMap());
-        }
-    }
+    ){}
 
     public record ExtensionConfig(
             MappedClassInfo extendsClass,
