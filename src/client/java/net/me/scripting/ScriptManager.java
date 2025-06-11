@@ -203,38 +203,56 @@ public class ScriptManager {
         }
 
         Value extendsValue = configArg.getMember("extends");
-        JsClassWrapper extendsWrapper = extractClassWrapper(extendsValue);
-        if (extendsWrapper == null) {
-            throw new RuntimeException("'extends' must be a valid class wrapper");
+        MappedClassInfo extendsInfo = extractInfoFromValue(extendsValue);
+        if (extendsInfo == null) {
+            throw new RuntimeException("'extends' must be a valid class wrapper or Java class type");
         }
 
-        List<JsClassWrapper> implementsWrappers = new ArrayList<>();
+        List<MappedClassInfo> implementsInfos = new ArrayList<>();
         if (configArg.hasMember("implements")) {
             Value implementsValue = configArg.getMember("implements");
             if (implementsValue.hasArrayElements()) {
                 long arraySize = implementsValue.getArraySize();
                 for (long i = 0; i < arraySize; i++) {
                     Value interfaceValue = implementsValue.getArrayElement(i);
-                    JsClassWrapper interfaceWrapper = extractClassWrapper(interfaceValue);
-                    if (interfaceWrapper != null) {
-                        implementsWrappers.add(interfaceWrapper);
+                    MappedClassInfo interfaceInfo = extractInfoFromValue(interfaceValue);
+                    if (interfaceInfo != null) {
+                        implementsInfos.add(interfaceInfo);
+                    } else {
+                        Main.LOGGER.warn("Could not resolve an interface from the 'implements' array.");
                     }
                 }
             }
         }
 
-        return new ExtensionConfig(extendsWrapper, implementsWrappers, context);
+        return new ExtensionConfig(extendsInfo, implementsInfos, context);
     }
 
-    private JsClassWrapper extractClassWrapper(Value value) {
+    private MappedClassInfo extractInfoFromValue(Value value) {
         if (value.isProxyObject()) {
             Object proxy = value.asProxyObject();
+            JsClassWrapper wrapper = null;
             if (proxy instanceof LazyJsClassHolder holder) {
-                return holder.getWrapper();
-            } else if (proxy instanceof JsClassWrapper wrapper) {
-                return wrapper;
+                wrapper = holder.getWrapper();
+            } else if (proxy instanceof JsClassWrapper w) {
+                wrapper = w;
+            }
+
+            if (wrapper != null) {
+                return new MappedClassInfo(wrapper.getTargetClass(), wrapper.getMethodMappings(), wrapper.getFieldMappings());
+            }
+        } else if (value.isHostObject() && value.asHostObject() instanceof Class) {
+            Class<?> clazz = value.as(Class.class);
+
+            String yarnName = runtimeToYarn.get(clazz.getName());
+            if (yarnName != null) {
+                var cm = ScriptUtils.combineMappings(clazz, runtimeToYarn, methodMap, fieldMap);
+                return new MappedClassInfo(clazz, cm.methods(), cm.fields());
+            } else {
+                return new MappedClassInfo(clazz);
             }
         }
+
         return null;
     }
 
@@ -279,9 +297,19 @@ public class ScriptManager {
         return scripts.values();
     }
 
+    public record MappedClassInfo(
+            Class<?> targetClass,
+            Map<String, List<String>> methodMappings,
+            Map<String, String> fieldMappings
+    ) {
+        public MappedClassInfo(Class<?> targetClass) {
+            this(targetClass, Collections.emptyMap(), Collections.emptyMap());
+        }
+    }
+
     public record ExtensionConfig(
-            JsClassWrapper extendsClass,
-            List<JsClassWrapper> implementsClasses,
+            MappedClassInfo extendsClass,
+            List<MappedClassInfo> implementsClasses,
             Context context
     ) {}
 }

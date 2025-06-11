@@ -3,18 +3,14 @@ package net.me.scripting;
 import net.me.scripting.mappings.MappingsManager;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiable {
     private final ScriptManager.ExtensionConfig config;
@@ -28,29 +24,20 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
     }
 
     private Value createBaseAdapter() {
-        Value javaObj = context.eval("js", "Java");
-        Value extendFn = javaObj.getMember("extend");
+        Value extendFn = context.eval("js", "Java.extend");
+        Value typeFn = context.eval("js", "Java.type");
 
-        Class<?> extendsClass = config.extendsClass().getTargetClass();
-        Value hostClassValue = context.asValue(extendsClass);
+        List<Value> extendArgs = new ArrayList<>();
 
-        if (!config.implementsClasses().isEmpty()) {
-            List<Class<?>> interfaceClasses = new ArrayList<>();
-            for (JsClassWrapper wrapper : config.implementsClasses()) {
-                interfaceClasses.add(wrapper.getTargetClass());
-            }
+        Class<?> extendsClass = config.extendsClass().targetClass();
+        extendArgs.add(typeFn.execute(extendsClass.getName()));
 
-            Value[] extendArgs = new Value[1 + interfaceClasses.size()];
-            extendArgs[0] = hostClassValue;
-
-            for (int i = 0; i < interfaceClasses.size(); i++) {
-                extendArgs[i + 1] = context.asValue(interfaceClasses.get(i));
-            }
-
-            return extendFn.execute(extendArgs);
-        } else {
-            return extendFn.execute(hostClassValue);
+        for (ScriptManager.MappedClassInfo interfaceInfo : config.implementsClasses()) {
+            Class<?> interfaceClass = interfaceInfo.targetClass();
+            extendArgs.add(typeFn.execute(interfaceClass.getName()));
         }
+
+        return extendFn.execute((Object[]) extendArgs.toArray(new Value[0]));
     }
 
     @Override
@@ -74,6 +61,8 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
         }
     }
 
+    private record ArgumentParser(Value overridesValue, Value addonsValue, Value[] constructorArgs) {}
+
     private ArgumentParser parseArguments(Value[] args) {
         Value lastArg = args[args.length - 1];
 
@@ -82,7 +71,7 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
                     "The last argument must be a configuration object with 'overrides' and optionally 'addons' keys.");
         }
 
-        Object[] constructorArgs = new Object[args.length - 1];
+        Value[] constructorArgs = new Value[args.length - 1];
         System.arraycopy(args, 0, constructorArgs, 0, args.length - 1);
 
         Value overridesValue = lastArg.hasMember("overrides") ? lastArg.getMember("overrides") : null;
@@ -116,56 +105,112 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
     }
 
     private void addMethodOverrides(Map<String, Object> overrides, String jsMethodName, Object jsFunction) {
-        List<String> mappedNames = config.extendsClass().getMethodMappings().get(jsMethodName);
-
+        List<String> mappedNames = config.extendsClass().methodMappings().get(jsMethodName);
         if (mappedNames != null && !mappedNames.isEmpty()) {
             for (String runtimeName : mappedNames) {
                 overrides.put(runtimeName, jsFunction);
             }
-        } else {
-            boolean foundInInterface = false;
-            for (JsClassWrapper interfaceWrapper : config.implementsClasses()) {
-                List<String> interfaceMappings = interfaceWrapper.getMethodMappings().get(jsMethodName);
-                if (interfaceMappings != null && !interfaceMappings.isEmpty()) {
-                    for (String runtimeName : interfaceMappings) {
-                        overrides.put(runtimeName, jsFunction);
-                    }
-                    foundInInterface = true;
-                    break;
+            return;
+        }
+
+        for (ScriptManager.MappedClassInfo interfaceInfo : config.implementsClasses()) {
+            List<String> interfaceMappings = interfaceInfo.methodMappings().get(jsMethodName);
+            if (interfaceMappings != null && !interfaceMappings.isEmpty()) {
+                for (String runtimeName : interfaceMappings) {
+                    overrides.put(runtimeName, jsFunction);
+                }
+                return;
+            }
+        }
+
+        overrides.put(jsMethodName, jsFunction);
+    }
+
+    private Object createSimpleInstance(Value[] constructorArgs, Map<String, Object> runtimeOverrides) {
+        try {
+            // Convert Value[] to Object[] properly
+            Object[] javaCtorArgs = new Object[constructorArgs.length];
+            for (int i = 0; i < constructorArgs.length; i++) {
+                javaCtorArgs[i] = convertValueToJavaObject(constructorArgs[i]);
+            }
+
+            ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
+            Object[] finalCtorArgs = appendToArray(javaCtorArgs, overridesProxy);
+
+            return baseAdapterConstructor.newInstance(finalCtorArgs);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create instance: " + e.getMessage(), e);
+        }
+    }
+
+    private Object createWrappedInstance(Value[] constructorArgs,
+                                         Map<String, Object> runtimeOverrides,
+                                         Value addonsArg) {
+        try {
+            // Convert Value[] to Object[] properly
+            Object[] javaCtorArgs = new Object[constructorArgs.length];
+            for (int i = 0; i < constructorArgs.length; i++) {
+                javaCtorArgs[i] = convertValueToJavaObject(constructorArgs[i]);
+            }
+
+            ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
+            Object[] finalCtorArgs = appendToArray(javaCtorArgs, overridesProxy);
+
+            Object baseInstance = baseAdapterConstructor.newInstance(finalCtorArgs);
+
+            Map<String, Object> wrapperProperties = new HashMap<>();
+
+            // SOLUTION 2: instance = wrapper avec toutes les méthodes héritées mappées
+            wrapperProperties.put("instance", new ExtendedInstanceWrapper(baseInstance, context));
+
+            // SOLUTION 2: _self = objet Java direct pour setScreen()
+            wrapperProperties.put("_self", baseInstance);
+
+            if (addonsArg != null && addonsArg.hasMembers()) {
+                for (String addonKey : addonsArg.getMemberKeys()) {
+                    wrapperProperties.put(addonKey, addonsArg.getMember(addonKey));
                 }
             }
 
-            if (!foundInInterface) {
-                overrides.put(jsMethodName, jsFunction);
-            }
+            ProxyObject wrapper = new CustomProxyWrapper(wrapperProperties, baseInstance);
+            bindFunctionsToWrapper(wrapperProperties, wrapper);
+            return wrapper;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create wrapped instance: " + e.getMessage(), e);
         }
     }
 
-    private Object createSimpleInstance(Object[] constructorArgs, Map<String, Object> runtimeOverrides) {
-        ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
-        Object[] ctorArgs = appendToArray(constructorArgs, overridesProxy);
-        return baseAdapterConstructor.newInstance(ctorArgs);
-    }
-
-    private Object createWrappedInstance(Object[] constructorArgs,
-                                         Map<String, Object> runtimeOverrides,
-                                         Value addonsArg) {
-        ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
-        Object[] ctorArgs = appendToArray(constructorArgs, overridesProxy);
-        Object baseInstance = baseAdapterConstructor.newInstance(ctorArgs);
-
-        Map<String, Object> wrapperProperties = new HashMap<>();
-        wrapperProperties.put("instance", baseInstance);
-
-        if (addonsArg != null && addonsArg.hasMembers()) {
-            for (String addonKey : addonsArg.getMemberKeys()) {
-                wrapperProperties.put(addonKey, addonsArg.getMember(addonKey));
-            }
+    private Object convertValueToJavaObject(Value value) {
+        if (value == null) {
+            return null;
         }
 
-        ProxyObject wrapper = new CustomProxyWrapper(wrapperProperties, config, context, baseInstance);
-        bindFunctionsToWrapper(wrapperProperties, wrapper);
-        return wrapper;
+        // If the value is already a Java object, return as-is
+        if (value.isHostObject()) {
+            return value.asHostObject();
+        }
+
+        // Handle primitive types
+        if (value.isString()) {
+            return value.asString();
+        }
+        if (value.isNumber()) {
+            if (value.fitsInInt()) {
+                return value.asInt();
+            } else if (value.fitsInLong()) {
+                return value.asLong();
+            } else if (value.fitsInFloat()) {
+                return value.asFloat();
+            } else {
+                return value.asDouble();
+            }
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+
+        // For complex objects, return the Value itself
+        return value;
     }
 
     private void bindFunctionsToWrapper(Map<String, Object> wrapperProperties, ProxyObject wrapper) {
@@ -173,15 +218,24 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
 
         for (Map.Entry<String, Object> entry : wrapperProperties.entrySet()) {
             Object value = entry.getValue();
-            if (isExecutableValue(value)) {
-                Value bound = ((Value) value).invokeMember("bind", wrapperVal);
-                entry.setValue(bound);
+            if (isJavaScriptFunction(value)) {
+                try {
+                    Value bound = ((Value) value).invokeMember("bind", wrapperVal);
+                    entry.setValue(bound);
+                } catch (Exception e) {
+                    // If binding fails, keep the original function
+                    System.err.println("Warning: Could not bind function " + entry.getKey() + ": " + e.getMessage());
+                }
             }
         }
     }
 
-    private boolean isExecutableValue(Object value) {
-        return value instanceof Value && ((Value) value).canExecute();
+    private boolean isJavaScriptFunction(Object value) {
+        if (!(value instanceof Value val)) {
+            return false;
+        }
+        // Check if it's executable and has the bind method (JavaScript function)
+        return val.canExecute() && val.hasMember("bind");
     }
 
     private Object[] appendToArray(Object[] original, Object newElement) {
@@ -215,16 +269,12 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
                 "Cannot set members on FlexibleMappedClassExtender function object.");
     }
 
-    private record ArgumentParser(Value overridesValue, Value addonsValue, Object[] constructorArgs) {}
-
     public static class CustomProxyWrapper implements ProxyObject {
         private final Map<String, Object> properties;
-        private final Context context;
         private final Object baseInstance;
 
-        public CustomProxyWrapper(Map<String, Object> properties, ScriptManager.ExtensionConfig config, Context context, Object baseInstance) {
+        public CustomProxyWrapper(Map<String, Object> properties, Object baseInstance) {
             this.properties = properties;
-            this.context = context;
             this.baseInstance = baseInstance;
         }
 
@@ -232,7 +282,12 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
         public Object getMember(String key) {
             if (properties.containsKey(key)) {
                 if ("instance".equals(key)) {
-                    return new ExtendedInstanceWrapper(baseInstance, context);
+                    // Retourne le wrapper avec toutes les méthodes héritées mappées
+                    return properties.get(key);
+                }
+                if ("_self".equals(key)) {
+                    // Retourne l'objet Java direct pour setScreen()
+                    return baseInstance;
                 }
                 return properties.get(key);
             }
@@ -252,8 +307,11 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
 
         @Override
         public void putMember(String key, Value value) {
-            if (properties.containsKey(key)) {
+            if (properties.containsKey(key) && !"_self".equals(key)) {
+                // On ne peut pas modifier _self car c'est l'instance Java directe
                 properties.put(key, value);
+            } else if ("_self".equals(key)) {
+                throw new UnsupportedOperationException("Cannot modify _self reference");
             } else {
                 throw new UnsupportedOperationException("Cannot add new properties to wrapper");
             }
@@ -307,7 +365,6 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
 
         @Override
         public Object getMemberKeys() {
-
             return extendedInstanceValue.getMemberKeys().toArray();
         }
 
