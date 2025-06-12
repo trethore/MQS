@@ -180,8 +180,7 @@ public class ScriptManager {
     }
 
     private void bindExtendMapped(Context contextToConfigure) {
-        Value javaObj = contextToConfigure.eval("js", "Java");
-        javaObj.putMember("extendMapped", (ProxyExecutable) args -> {
+        contextToConfigure.getBindings("js").putMember("extendMapped", (ProxyExecutable) args -> {
             if (args.length != 1) {
                 throw new RuntimeException("Java.extendMapped() requires exactly one configuration object");
             }
@@ -202,29 +201,21 @@ public class ScriptManager {
             throw new RuntimeException("Configuration object must have an 'extends' property");
         }
 
-        Value extendsValue = configArg.getMember("extends");
-        MappedClassInfo extendsInfo = extractInfoFromValue(extendsValue);
-        if (extendsInfo == null) {
-            throw new RuntimeException("'extends' must be a valid class wrapper or Java class type");
-        }
-
+        MappedClassInfo extendsInfo = extractInfoFromValue(configArg.getMember("extends"));
         List<MappedClassInfo> implementsInfos = new ArrayList<>();
+
         if (configArg.hasMember("implements")) {
-            Value implementsValue = configArg.getMember("implements");
-            if (implementsValue.hasArrayElements()) {
-                long arraySize = implementsValue.getArraySize();
-                for (long i = 0; i < arraySize; i++) {
-                    Value interfaceValue = implementsValue.getArrayElement(i);
-                    MappedClassInfo interfaceInfo = extractInfoFromValue(interfaceValue);
-                    if (interfaceInfo != null) {
-                        implementsInfos.add(interfaceInfo);
-                    } else {
-                        Main.LOGGER.warn("Could not resolve an interface from the 'implements' array.");
-                    }
+            Value impl = configArg.getMember("implements");
+            if (impl.hasArrayElements()) {
+                for (long i = 0; i < impl.getArraySize(); i++) {
+                    MappedClassInfo m = extractInfoFromValue(impl.getArrayElement(i));
+                    if (m != null) implementsInfos.add(m);
                 }
+            } else {
+                MappedClassInfo m = extractInfoFromValue(impl);
+                if (m != null) implementsInfos.add(m);
             }
         }
-
         return new ExtensionConfig(extendsInfo, implementsInfos, context);
     }
 
