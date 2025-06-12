@@ -55,7 +55,7 @@ public class ScriptManager {
 
     private void configureContext(Context contextToConfigure) {
         registerPackages(contextToConfigure);
-        bindJavaTypes(contextToConfigure);
+        bindJavaFunctions(contextToConfigure);
         bindImportClass(contextToConfigure);
         bindExtendMapped(contextToConfigure);
         bindThisOf(contextToConfigure);
@@ -145,16 +145,20 @@ public class ScriptManager {
         return !EXCLUDED.contains(name);
     }
 
-    private void bindJavaTypes(Context contextToConfigure) {
-        try {
-            Value sys = contextToConfigure.eval("js", "Java.type('java.lang.System')");
-            Value thr = contextToConfigure.eval("js", "Java.type('java.lang.Thread')");
-            var b = contextToConfigure.getBindings("js");
-            b.putMember("java.lang.System", sys);
-            b.putMember("java.lang.Thread", thr);
-        } catch (PolyglotException e) {
-            Main.LOGGER.error("Failed exposing standard Java types", e);
-        }
+    private void bindJavaFunctions(Context contextToConfigure) {
+        var bindings = contextToConfigure.getBindings("js");
+        bindings.putMember("println", (ProxyExecutable) args -> {
+            for (Value arg : args) {
+                System.out.println(arg);
+            }
+            return null;
+        });
+        bindings.putMember("print", (ProxyExecutable) args -> {
+            for (Value arg : args) {
+                System.out.print(arg);
+            }
+            return null;
+        });
     }
 
     private void bindImportClass(Context contextToConfigure) {
