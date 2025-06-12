@@ -3,7 +3,6 @@ package net.me.scripting;
 import net.me.scripting.mappings.MappingsManager;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
@@ -211,7 +210,8 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
             ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
             Object[] finalCtorArgs = appendToArray(javaCtorArgs, overridesProxy);
 
-            Object baseInstance = baseAdapterConstructor.newInstance(finalCtorArgs);
+            Value baseInstanceAsValue = baseAdapterConstructor.newInstance(finalCtorArgs);
+            Object baseInstance = baseInstanceAsValue.asHostObject(); // Unwrapped instance
 
             Map<String, Object> wrapperProperties = new HashMap<>();
             wrapperProperties.put("instance", new ExtendedInstanceWrapper(baseInstance, context));
@@ -360,59 +360,45 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
             this.extendedInstanceValue = context.asValue(extendedInstance);
 
             var cm = ScriptUtils.combineMappings(
-                    extendedInstance.getClass().getSuperclass(),
+                    extendedInstance.getClass(),
                     MappingsManager.getInstance().getRuntimeToYarnClassMap(),
                     MappingsManager.getInstance().getMethodMap(),
                     MappingsManager.getInstance().getFieldMap()
             );
+            System.out.println("Class " + extendedInstance.getClass());
+            System.out.println("Methods " + cm.fields());
+            System.out.println("Fields "  +cm.methods());
             this.originalWrapper = new JsObjectWrapper(extendedInstance, extendedInstance.getClass(), cm.methods(), cm.fields());
         }
 
         @Override
         public Object getMember(String key) {
-            if (extendedInstanceValue.hasMember(key)) {
-                Object member = extendedInstanceValue.getMember(key);
-                if (member instanceof Value v && v.canExecute()) {
-                    return createExecutableProxy(key, member);
-                }
-                return member;
+            if ("_self".equals(key)) {
+                return extendedInstance;
             }
-
             if (originalWrapper.hasMember(key)) {
                 return originalWrapper.getMember(key);
             }
-
             return null;
-        }
-
-        private ProxyExecutable createExecutableProxy(String methodName, Object member) {
-            return (Value... args) -> {
-                if (member instanceof Value && ((Value) member).canExecute()) {
-                    Object[] javaArgs = ScriptUtils.unwrapArgs(args, null);
-                    return ((Value) member).execute(javaArgs);
-                }
-                throw new RuntimeException("Method " + methodName + " is not executable");
-            };
         }
 
         @Override
         public Object getMemberKeys() {
-            return extendedInstanceValue.getMemberKeys().toArray();
+
+            return originalWrapper.getMemberKeys();
         }
 
         @Override
         public boolean hasMember(String key) {
-            return extendedInstanceValue.hasMember(key) || originalWrapper.hasMember(key);
+            return "_self".equals(key) || originalWrapper.hasMember(key);
         }
 
         @Override
         public void putMember(String key, Value value) {
             if (originalWrapper.hasMember(key)) {
                 originalWrapper.putMember(key, value);
-            } else if (extendedInstanceValue.hasMember(key)) {
-                extendedInstanceValue.putMember(key, value);
             } else {
-                throw new UnsupportedOperationException("No writable member: " + key);
+                throw new UnsupportedOperationException("Cannot add or modify member: " + key);
             }
         }
 
