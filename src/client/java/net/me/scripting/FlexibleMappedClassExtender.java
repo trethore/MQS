@@ -211,10 +211,10 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
             Object[] finalCtorArgs = appendToArray(javaCtorArgs, overridesProxy);
 
             Value baseInstanceAsValue = baseAdapterConstructor.newInstance(finalCtorArgs);
-            Object baseInstance = baseInstanceAsValue.asHostObject(); // Unwrapped instance
+            Object baseInstance = baseInstanceAsValue.asHostObject();
 
             Map<String, Object> wrapperProperties = new HashMap<>();
-            wrapperProperties.put("instance", new ExtendedInstanceWrapper(baseInstance, context));
+            wrapperProperties.put("instance", new ExtendedInstanceWrapper(baseInstance));
             wrapperProperties.put("_self", baseInstance);
 
             if (addonsArg != null && addonsArg.hasMembers()) {
@@ -352,12 +352,10 @@ public class FlexibleMappedClassExtender implements ProxyObject, ProxyInstantiab
 
     public static class ExtendedInstanceWrapper implements ProxyObject {
         private final Object extendedInstance;
-        private final Value extendedInstanceValue;
         private final JsObjectWrapper originalWrapper;
 
-        public ExtendedInstanceWrapper(Object extendedInstance, Context context) {
+        public ExtendedInstanceWrapper(Object extendedInstance) {
             this.extendedInstance = extendedInstance;
-            this.extendedInstanceValue = context.asValue(extendedInstance);
 
             var cm = ScriptUtils.combineMappings(
                     extendedInstance.getClass(),
