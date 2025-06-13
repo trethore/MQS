@@ -1,5 +1,6 @@
 package net.me.scripting;
 
+import net.me.scripting.wrappers.JsClassWrapper;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 

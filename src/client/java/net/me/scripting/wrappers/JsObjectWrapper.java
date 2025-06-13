@@ -1,6 +1,9 @@
-package net.me.scripting;
+package net.me.scripting.wrappers;
 
 import net.me.Main;
+import net.me.scripting.utils.ScriptUtils;
+import net.me.scripting.wrappers.support.FieldLookup;
+import net.me.scripting.wrappers.support.MethodLookup;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -8,7 +11,6 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,15 +37,8 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        if ("_self".equals(key)) {
-            return this.getJavaInstance();
-        }
-
-        if (key.endsWith("$")) {
-            String fieldName = key.substring(0, key.length() - 1);
-            return handleField(fieldName);
-        }
-
+        if ("_self".equals(key)) return this.getJavaInstance();
+        if (key.endsWith("$")) return handleField(key.substring(0, key.length() - 1));
         Object mapped = handleMappedMethod(key);
         if (mapped != null) return mapped;
         Object direct = handleDirectMethod(key);
@@ -53,24 +48,21 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public boolean hasMember(String key) {
-        if ("_self".equals(key)) {
-            return true;
-        }
-
-        if (key.endsWith("$")) {
-            String fieldName = key.substring(0, key.length() - 1);
-            return fields.hasField(instanceClass, fieldName);
-        }
-
-        return methods.hasMapped(key)
-                || MethodLookup.hasDirect(instanceClass, key)
-                || fields.hasField(instanceClass,key);
+        if ("_self".equals(key)) return true;
+        if (key.endsWith("$")) return fields.hasField(instanceClass, key.substring(0, key.length() - 1));
+        return methods.hasMapped(key) || MethodLookup.hasDirect(instanceClass, key) || fields.hasField(instanceClass, key);
     }
 
     @Override
     public Object getMemberKeys() {
         Set<String> keys = new HashSet<>(methods.methodKeys());
         keys.addAll(fields.fieldKeys());
+        for (Method method : instanceClass.getMethods()) {
+            if (!Modifier.isStatic(method.getModifiers())) keys.add(method.getName());
+        }
+        for (Field field : instanceClass.getFields()) {
+            if (!Modifier.isStatic(field.getModifiers())) keys.add(field.getName());
+        }
         keys.add("_self");
         return keys.toArray(new String[0]);
     }
@@ -79,14 +71,12 @@ public class JsObjectWrapper implements ProxyObject {
     public void putMember(String key, Value value) {
         String fieldName = key;
         boolean isExplicitFieldAccess = false;
-
         if (key.endsWith("$")) {
             fieldName = key.substring(0, key.length() - 1);
             isExplicitFieldAccess = true;
         }
         if (fields.hasField(instanceClass, fieldName)) {
             boolean methodConflict = methods.hasMapped(fieldName) || MethodLookup.hasDirect(instanceClass, fieldName);
-
             if (methodConflict && !isExplicitFieldAccess) {
                 throw new UnsupportedOperationException(
                         "Ambiguous write to '" + fieldName + "'. A method with this name exists. " +
@@ -101,17 +91,13 @@ public class JsObjectWrapper implements ProxyObject {
 
     private Object handleMappedMethod(String key) {
         List<Method> candidates = methods.findMethods(instanceClass, key);
-        if (!candidates.isEmpty()) {
-            return (ProxyExecutable) args -> invokeMethods(candidates, args);
-        }
+        if (!candidates.isEmpty()) return (ProxyExecutable) args -> invokeMethods(candidates, args);
         return null;
     }
 
     private Object handleDirectMethod(String key) {
         List<Method> direct = MethodLookup.findDirect(instanceClass, key);
-        if (!direct.isEmpty()) {
-            return (ProxyExecutable) args -> invokeMethods(direct, args);
-        }
+        if (!direct.isEmpty()) return (ProxyExecutable) args -> invokeMethods(direct, args);
         return null;
     }
 
@@ -128,30 +114,20 @@ public class JsObjectWrapper implements ProxyObject {
     }
 
     private Object invokeMethods(List<Method> methods, Value[] args) {
-        int count = args.length;
         for (Method m : methods) {
-            if (m.getParameterCount() == count) {
-                Object target = null;
-                Object[] javaArgs = null;
+            if (m.getParameterCount() == args.length) {
                 try {
-                    target = ScriptUtils.unwrapReceiver(javaInstance);
-                    javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
+                    Object target = ScriptUtils.unwrapReceiver(javaInstance);
+                    Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
                     Object res = m.invoke(target, javaArgs);
                     return ScriptUtils.wrapReturn(res);
                 } catch (Exception e) {
-                    Main.LOGGER.error("Error invoking method {}.{} with {} args (actual exception below):", instanceClass.getName(), m.getName(), count);
-                    Main.LOGGER.error("  -> Target: {}", target != null ? target.getClass().getName() : "null");
-                    if (javaArgs != null) {
-                        for (int i = 0; i < javaArgs.length; i++) {
-                            Main.LOGGER.error("  -> Arg {}: {} (Type: {})", i, javaArgs[i], javaArgs[i] != null ? javaArgs[i].getClass().getName() : "null");
-                        }
-                    }
-                    Main.LOGGER.error("Original Exception:", e);
+                    Main.LOGGER.error("Method invocation failed: {}", m.getName(), e);
                     throw new RuntimeException("Method invocation failed: " + m.getName(), e);
                 }
             }
         }
-        throw new RuntimeException("No overload for method with " + count + " args");
+        throw new RuntimeException("No overload for method with " + args.length + " args");
     }
 
     private void writeField(String key, Value value) {
@@ -163,62 +139,6 @@ public class JsObjectWrapper implements ProxyObject {
             f.set(javaInstance, javaVal);
         } catch (Exception e) {
             throw new RuntimeException("Field write failed: " + key, e);
-        }
-    }
-
-    public static class MethodLookup {
-        private final Map<String, List<String>> map;
-        public MethodLookup(Map<String, List<String>> map) {
-            this.map = map != null ? map : Collections.emptyMap();
-        }
-        public boolean hasMapped(String key) { return map.containsKey(key); }
-        public Set<String> methodKeys() { return map.keySet(); }
-        public List<Method> findMethods(Class<?> cls, String key) {
-            List<String> names = map.getOrDefault(key, List.of());
-            return ScriptUtils.findMethods(cls, names, false);
-        }
-        public static List<Method> findDirect(Class<?> cls, String key) {
-            return ScriptUtils.findMethods(cls, List.of(key), false);
-        }
-        public static boolean hasDirect(Class<?> cls, String key) {
-            return !findDirect(cls, key).isEmpty();
-        }
-    }
-
-    public static class FieldLookup {
-        private final Map<String, String> map;
-        public FieldLookup(Map<String, String> map) {
-            this.map = map != null ? map : Collections.emptyMap();
-        }
-
-        public boolean hasField(Class<?> cls,String key) {
-            if (map.containsKey(key)) {
-                return true;
-            }
-            try {
-                ScriptUtils.findField(cls, key);
-                return true;
-            } catch (NoSuchFieldException e) {
-                return false;
-            }
-        }
-
-        public Set<String> fieldKeys() { return map.keySet(); }
-
-        public Field accessField(Class<?> cls, String key) throws NoSuchFieldException {
-            String runtimeName = map.get(key);
-            if (runtimeName != null) {
-                try {
-                    Field f = ScriptUtils.findField(cls, runtimeName);
-                    f.setAccessible(true);
-                    return f;
-                } catch (NoSuchFieldException ignored) {
-                }
-            }
-
-            Field f = ScriptUtils.findField(cls, key);
-            f.setAccessible(true);
-            return f;
         }
     }
 

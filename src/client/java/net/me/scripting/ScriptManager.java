@@ -1,7 +1,15 @@
 package net.me.scripting;
 
 import net.me.Main;
+import net.me.scripting.config.ExtensionConfig;
+import net.me.scripting.config.MappedClassInfo;
+import net.me.scripting.extenders.MappedClassExtender;
 import net.me.scripting.mappings.MappingsManager;
+import net.me.scripting.utils.MappingUtils;
+import net.me.scripting.utils.ScriptUtils;
+import net.me.scripting.wrappers.JsClassWrapper;
+import net.me.scripting.wrappers.JsObjectWrapper;
+import net.me.scripting.wrappers.JsSuperObjectWrapper;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -66,20 +74,15 @@ public class ScriptManager {
             if (args.length != 1) {
                 throw new RuntimeException("superOf() requires exactly one argument: the instance.");
             }
-
             Object javaInstance = ScriptUtils.unwrapReceiver(args[0]);
-
             if (javaInstance == null) {
                 throw new RuntimeException("The instance passed to superOf() was null or could not be unwrapped.");
             }
-
             Class<?> superClass = javaInstance.getClass().getSuperclass();
             if (superClass == null) {
                 throw new RuntimeException("Instance " + javaInstance + " does not have a superclass.");
             }
-
-            var cm = ScriptUtils.combineMappings(superClass, runtimeToYarn, methodMap, fieldMap);
-
+            var cm = MappingUtils.combineMappings(superClass, runtimeToYarn, methodMap, fieldMap);
             return new JsSuperObjectWrapper(javaInstance, cm.methods(), contextToConfigure);
         });
     }
@@ -89,16 +92,12 @@ public class ScriptManager {
             if (args.length != 1) {
                 throw new RuntimeException("thisOf() requires exactly one argument: the instance.");
             }
-
             Object javaInstance = ScriptUtils.unwrapReceiver(args[0]);
-
             if (javaInstance == null) {
                 throw new RuntimeException("The instance passed to thisOf() was null or could not be unwrapped.");
             }
-
             Class<?> instanceClass = javaInstance.getClass();
-            var cm = ScriptUtils.combineMappings(instanceClass, runtimeToYarn, methodMap, fieldMap);
-
+            var cm = MappingUtils.combineMappings(instanceClass, runtimeToYarn, methodMap, fieldMap);
             return new JsObjectWrapper(javaInstance, instanceClass, cm.methods(), cm.fields());
         });
     }
@@ -121,9 +120,7 @@ public class ScriptManager {
                     var holder = new LazyJsClassHolder(e.getKey(), e.getValue(), this);
                     ScriptUtils.insertIntoPackageHierarchy(root, e.getKey(), holder);
                 });
-
         var bindings = contextToConfigure.getBindings("js");
-
         Arrays.stream((String[]) root.getMemberKeys())
                 .forEach(key -> bindings.putMember(key, root.getMember(key)));
     }
@@ -147,15 +144,11 @@ public class ScriptManager {
     private void bindJavaFunctions(Context contextToConfigure) {
         var bindings = contextToConfigure.getBindings("js");
         bindings.putMember("println", (ProxyExecutable) args -> {
-            for (Value arg : args) {
-                System.out.println(arg);
-            }
+            for (Value arg : args) System.out.println(arg);
             return null;
         });
         bindings.putMember("print", (ProxyExecutable) args -> {
-            for (Value arg : args) {
-                System.out.print(arg);
-            }
+            for (Value arg : args) System.out.print(arg);
             return null;
         });
     }
@@ -165,12 +158,9 @@ public class ScriptManager {
             if (args.length == 0 || !args[0].isString())
                 throw new RuntimeException("importClass requires Yarn FQCN string");
             var name = args[0].asString();
-            if (EXCLUDED.contains(name))
-                throw new RuntimeException("Class excluded: " + name);
+            if (EXCLUDED.contains(name)) throw new RuntimeException("Class excluded: " + name);
             String runtime = classMap.get(name);
-            if (runtime != null) {
-                return createWrapper(runtime);
-            }
+            if (runtime != null) return createWrapper(runtime);
             if (isClassAllowed(name)) {
                 try {
                     return contextToConfigure.eval("js", "Java.type('" + name + "')");
@@ -187,15 +177,12 @@ public class ScriptManager {
             if (args.length != 1) {
                 throw new RuntimeException("Java.extendMapped() requires exactly one configuration object");
             }
-
             Value configArg = args[0];
             if (!configArg.hasMembers()) {
                 throw new RuntimeException("Configuration argument must be an object with 'extends' property");
             }
-
             ExtensionConfig config = parseExtensionConfig(configArg, contextToConfigure);
-
-            return new FlexibleMappedClassExtender(config, contextToConfigure);
+            return new MappedClassExtender(config, contextToConfigure);
         });
     }
 
@@ -203,23 +190,19 @@ public class ScriptManager {
         if (!configArg.hasMember("extends")) {
             throw new RuntimeException("Configuration object must have an 'extends' property");
         }
-
         MappedClassInfo extendsInfo = extractInfoFromValue(configArg.getMember("extends"));
         List<MappedClassInfo> implementsInfos = new ArrayList<>();
-
         if (configArg.hasMember("implements")) {
             Value impl = configArg.getMember("implements");
             if (impl.hasArrayElements()) {
                 for (long i = 0; i < impl.getArraySize(); i++) {
-                    MappedClassInfo m = extractInfoFromValue(impl.getArrayElement(i));
-                    if (m != null) implementsInfos.add(m);
+                    implementsInfos.add(extractInfoFromValue(impl.getArrayElement(i)));
                 }
             } else {
-                MappedClassInfo m = extractInfoFromValue(impl);
-                if (m != null) implementsInfos.add(m);
+                implementsInfos.add(extractInfoFromValue(impl));
             }
         }
-        return new ExtensionConfig(extendsInfo, implementsInfos, context);
+        return new ExtensionConfig(extendsInfo, implementsInfos.stream().filter(Objects::nonNull).toList(), context);
     }
 
     private MappedClassInfo extractInfoFromValue(Value value) {
@@ -234,11 +217,9 @@ public class ScriptManager {
                     yarnNameField.setAccessible(true);
                     yarnName = (String) yarnNameField.get(holder);
                 } catch (Exception ignored) {}
-
             } else if (proxy instanceof JsClassWrapper w) {
                 wrapper = w;
             }
-
             if (wrapper != null) {
                 if (yarnName == null) {
                     yarnName = runtimeToYarn.getOrDefault(wrapper.getTargetClass().getName(), wrapper.getTargetClass().getName());
@@ -247,16 +228,14 @@ public class ScriptManager {
             }
         } else if (value.isHostObject() && value.asHostObject() instanceof Class) {
             Class<?> clazz = value.as(Class.class);
-
             String yarnName = runtimeToYarn.get(clazz.getName());
             if (yarnName != null) {
-                var cm = ScriptUtils.combineMappings(clazz, runtimeToYarn, methodMap, fieldMap);
+                var cm = MappingUtils.combineMappings(clazz, runtimeToYarn, methodMap, fieldMap);
                 return new MappedClassInfo(yarnName, clazz, cm.methods(), cm.fields());
             } else {
                 return new MappedClassInfo(clazz.getName(), clazz, Collections.emptyMap(), Collections.emptyMap());
             }
         }
-
         return null;
     }
 
@@ -272,7 +251,7 @@ public class ScriptManager {
 
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
-        var cm = ScriptUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
+        var cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
         return new JsClassWrapper(runtime, cm.methods(), cm.fields());
     }
 
@@ -285,32 +264,8 @@ public class ScriptManager {
         }
     }
 
-    public void addScript(Script script) {
-        scripts.put(script.getName(), script);
-    }
-
-    public Script getScript(String name) {
-        return scripts.get(name);
-    }
-
-    public void removeScript(String name) {
-        scripts.remove(name);
-    }
-
-    public Collection<Script> getAllScripts() {
-        return scripts.values();
-    }
-
-    public record MappedClassInfo(
-            String yarnName,
-            Class<?> targetClass,
-            Map<String, List<String>> methodMappings,
-            Map<String, String> fieldMappings
-    ){}
-
-    public record ExtensionConfig(
-            MappedClassInfo extendsClass,
-            List<MappedClassInfo> implementsClasses,
-            Context context
-    ) {}
+    public void addScript(Script script) { scripts.put(script.getName(), script); }
+    public Script getScript(String name) { return scripts.get(name); }
+    public void removeScript(String name) { scripts.remove(name); }
+    public Collection<Script> getAllScripts() { return scripts.values(); }
 }

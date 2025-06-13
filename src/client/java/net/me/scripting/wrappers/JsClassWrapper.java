@@ -1,6 +1,8 @@
-package net.me.scripting;
+package net.me.scripting.wrappers;
 
 import net.me.Main;
+import net.me.scripting.utils.ReflectionUtils;
+import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
@@ -120,7 +122,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
 
     private ProxyExecutable createStaticMethodProxy(String yarnKey) {
         List<String> runtimeNames = yarnToRuntimeMethods.get(yarnKey);
-        List<Method> methods = ScriptUtils.findMethods(targetClass, runtimeNames, true);
+        List<Method> methods = ReflectionUtils.findMethods(targetClass, runtimeNames, true);
         return polyglotArgs -> {
             int argCount = polyglotArgs.length;
             for (Method m : methods) {
@@ -143,7 +145,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     private Object readStaticField(String yarnKey) {
         String runtimeName = yarnToRuntimeFields.get(yarnKey);
         try {
-            Field f = ScriptUtils.findField(targetClass, runtimeName);
+            Field f = ReflectionUtils.findField(targetClass, runtimeName);
             if (!Modifier.isStatic(f.getModifiers())) {
                 throw new RuntimeException(yarnKey + " is not static");
             }
@@ -157,7 +159,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     private void writeStaticField(String yarnKey, Value value) {
         String runtimeName = yarnToRuntimeFields.get(yarnKey);
         try {
-            Field f = ScriptUtils.findField(targetClass, runtimeName);
+            Field f = ReflectionUtils.findField(targetClass, runtimeName);
             if (!Modifier.isStatic(f.getModifiers())) {
                 throw new UnsupportedOperationException(yarnKey + " is not static");
             }

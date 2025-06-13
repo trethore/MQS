@@ -1,6 +1,7 @@
-package net.me.scripting;
+package net.me.scripting.wrappers;
 
 import net.me.Main;
+import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
