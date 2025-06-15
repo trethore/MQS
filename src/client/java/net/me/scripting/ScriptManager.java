@@ -4,6 +4,7 @@ import net.me.Main;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
 import net.me.scripting.extenders.MappedClassExtender;
+import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.utils.ScriptUtils;
@@ -24,26 +25,20 @@ public class ScriptManager {
     private static ScriptManager instance;
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
     private final Map<String, Script> scripts = new HashMap<>();
-
     private Map<String, String> classMap;
     private Map<String, Map<String, List<String>>> methodMap;
     private Map<String, Map<String, String>> fieldMap;
     private Map<String, String> runtimeToYarn;
-
     private static final Set<String> EXCLUDED = Set.of();
-
     private ScriptManager() {}
-
     public static ScriptManager getInstance() {
         if (instance == null) instance = new ScriptManager();
         return instance;
     }
-
     public void init() {
         ensureScriptDirectory();
         loadMappings();
     }
-
     public Context createDefaultScriptContext() {
         Main.LOGGER.info("Creating new default script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
@@ -52,14 +47,11 @@ public class ScriptManager {
                 .allowHostClassLookup(this::isClassAllowed)
                 .option("js.ecmascript-version", "2024")
                 .build();
-
         configureContext(newContext);
-
         long endTime = System.currentTimeMillis();
         Main.LOGGER.info("New default script context (ECMAScript 2024) created in {}ms.", (endTime - startTime));
         return newContext;
     }
-
     private void configureContext(Context contextToConfigure) {
         registerPackages(contextToConfigure);
         bindJavaFunctions(contextToConfigure);
@@ -68,7 +60,6 @@ public class ScriptManager {
         bindThisOf(contextToConfigure);
         bindSuperOf(contextToConfigure);
     }
-
     private void bindSuperOf(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("superOf", (ProxyExecutable) args -> {
             if (args.length != 1) {
@@ -86,7 +77,6 @@ public class ScriptManager {
             return new JsSuperObjectWrapper(javaInstance, cm.methods(), contextToConfigure);
         });
     }
-
     private void bindThisOf(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("thisOf", (ProxyExecutable) args -> {
             if (args.length != 1) {
@@ -101,7 +91,6 @@ public class ScriptManager {
             return new JsObjectWrapper(javaInstance, instanceClass, cm.methods(), cm.fields());
         });
     }
-
     private void loadMappings() {
         MappingsManager.getInstance().init();
         var mm = MappingsManager.getInstance();
@@ -110,7 +99,6 @@ public class ScriptManager {
         fieldMap = mm.getFieldMap();
         runtimeToYarn = mm.getRuntimeToYarnClassMap();
     }
-
     private void registerPackages(Context contextToConfigure) {
         JsPackage root = new JsPackage();
         classMap.entrySet().stream()
@@ -124,23 +112,21 @@ public class ScriptManager {
         Arrays.stream((String[]) root.getMemberKeys())
                 .forEach(key -> bindings.putMember(key, root.getMember(key)));
     }
-
     protected boolean isClassInMc(String name) {
         return isClassIncluded(name) &&
                 (name.startsWith("net.minecraft.") || name.startsWith("com.mojang."));
     }
-
     protected boolean isClassAllowed(String name) {
         return isClassIncluded(name)
                 && (name.startsWith("java.")
                 || name.startsWith("net.minecraft.")
                 || name.startsWith("com.mojang.")
-                || name.startsWith("net.me"));
+                || name.startsWith("net.me")
+                || name.startsWith("com.oracle.truffle.host.adapters."));
     }
     private boolean isClassIncluded(String name) {
         return !EXCLUDED.contains(name);
     }
-
     private void bindJavaFunctions(Context contextToConfigure) {
         var bindings = contextToConfigure.getBindings("js");
         bindings.putMember("println", (ProxyExecutable) args -> {
@@ -152,7 +138,6 @@ public class ScriptManager {
             return null;
         });
     }
-
     private void bindImportClass(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
             if (args.length == 0 || !args[0].isString())
@@ -175,22 +160,40 @@ public class ScriptManager {
     private void bindExtendMapped(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("extendMapped", (ProxyExecutable) args -> {
             if (args.length != 1) {
-                throw new RuntimeException("Java.extendMapped() requires exactly one configuration object");
+                throw new RuntimeException("extendMapped() requires exactly one configuration object");
             }
             Value configArg = args[0];
-            if (!configArg.hasMembers()) {
+            if (!configArg.hasMembers() || !configArg.hasMember("extends")) {
                 throw new RuntimeException("Configuration argument must be an object with 'extends' property");
             }
-            ExtensionConfig config = parseExtensionConfig(configArg, contextToConfigure);
-            return new MappedClassExtender(config, contextToConfigure);
+
+            Value extendsValue = configArg.getMember("extends");
+            Value parentOverrides = null;
+            Value parentAddons = null;
+            ExtensionConfig config;
+
+            if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
+
+                parentOverrides = parentProxy.getOriginalOverrides();
+                parentAddons = parentProxy.getOriginalAddons();
+
+                config = parentProxy.getOriginalConfig();
+
+            } else {
+                config = parseExtensionConfig(configArg, contextToConfigure, extendsValue);
+            }
+
+            return new MappedClassExtender(config, contextToConfigure, parentOverrides, parentAddons);
         });
     }
 
-    private ExtensionConfig parseExtensionConfig(Value configArg, Context context) {
-        if (!configArg.hasMember("extends")) {
+    private ExtensionConfig parseExtensionConfig(Value configArg, Context context, Value extendsValueOverride) {
+        Value extendsValue = (extendsValueOverride != null) ? extendsValueOverride : configArg.getMember("extends");
+
+        if (extendsValue == null) {
             throw new RuntimeException("Configuration object must have an 'extends' property");
         }
-        MappedClassInfo extendsInfo = extractInfoFromValue(configArg.getMember("extends"));
+        MappedClassInfo extendsInfo = extractInfoFromValue(extendsValue);
         List<MappedClassInfo> implementsInfos = new ArrayList<>();
         if (configArg.hasMember("implements")) {
             Value impl = configArg.getMember("implements");
@@ -203,6 +206,9 @@ public class ScriptManager {
             }
         }
         return new ExtensionConfig(extendsInfo, implementsInfos.stream().filter(Objects::nonNull).toList(), context);
+    }
+    private ExtensionConfig parseExtensionConfig(Value configArg, Context context) {
+        return parseExtensionConfig(configArg, context, null);
     }
 
     private MappedClassInfo extractInfoFromValue(Value value) {
@@ -238,7 +244,6 @@ public class ScriptManager {
         }
         return null;
     }
-
     private JsClassWrapper createWrapper(String runtime) {
         return wrapperCache.computeIfAbsent(runtime, r -> {
             try {
@@ -248,13 +253,11 @@ public class ScriptManager {
             }
         });
     }
-
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
         var cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
         return new JsClassWrapper(runtime, cm.methods(), cm.fields());
     }
-
     private void ensureScriptDirectory() {
         Path p = Main.MOD_DIR.resolve("scripts");
         try {
@@ -263,7 +266,6 @@ public class ScriptManager {
             Main.LOGGER.error("Failed create scripts dir: {}", p, e);
         }
     }
-
     public void addScript(Script script) { scripts.put(script.getName(), script); }
     public Script getScript(String name) { return scripts.get(name); }
     public void removeScript(String name) { scripts.remove(name); }
