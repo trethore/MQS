@@ -5,6 +5,7 @@ import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
 import net.me.scripting.extenders.MappedClassExtender;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
+import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.utils.ScriptUtils;
@@ -62,18 +63,29 @@ public class ScriptManager {
         bindJavaFunctions(contextToConfigure);
         bindImportClass(contextToConfigure);
         bindExtendMapped(contextToConfigure);
-        bindThisOf(contextToConfigure);
+        bindWrap(contextToConfigure);
     }
 
-    private void bindThisOf(Context contextToConfigure) {
-        contextToConfigure.getBindings("js").putMember("thisOf", (ProxyExecutable) args -> {
+    private void bindWrap(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("wrap", (ProxyExecutable) args -> {
             if (args.length != 1) {
-                throw new RuntimeException("thisOf() requires exactly one argument: the instance.");
+                throw new RuntimeException("wrap() requires exactly one argument: the instance.");
             }
-            Object javaInstance = ScriptUtils.unwrapReceiver(args[0]);
+
+            Value v = args[0];
+
+            if (v.isProxyObject()) {
+                Object proxy = v.asProxyObject();
+                if (proxy instanceof ExtendedInstanceProxy || proxy instanceof JsObjectWrapper || proxy instanceof MappedInstanceProxy) {
+                    return v;
+                }
+            }
+
+            Object javaInstance = ScriptUtils.unwrapReceiver(v);
             if (javaInstance == null) {
-                throw new RuntimeException("The instance passed to thisOf() was null or could not be unwrapped.");
+                throw new RuntimeException("The instance passed to wrap() was null or could not be unwrapped.");
             }
+
             Class<?> instanceClass = javaInstance.getClass();
             var cm = MappingUtils.combineMappings(instanceClass, runtimeToYarn, methodMap, fieldMap);
             return new JsObjectWrapper(javaInstance, instanceClass, cm.methods(), cm.fields());

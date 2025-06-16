@@ -5,6 +5,8 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class SuperProxy implements ProxyObject {
     private final Value parentOverrides;
@@ -60,7 +62,17 @@ public class SuperProxy implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return parentOverrides.getMemberKeys();
+        Set<String> combinedKeys = new HashSet<>();
+
+        if (this.parentOverrides != null && this.parentOverrides.hasMembers()) {
+            combinedKeys.addAll(this.parentOverrides.getMemberKeys());
+        }
+
+        if (this.grandParentSuper != null && this.grandParentSuper.hasMembers()) {
+            combinedKeys.addAll(this.grandParentSuper.getMemberKeys());
+        }
+
+        return combinedKeys.toArray(new String[0]);
     }
 
     @Override
