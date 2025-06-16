@@ -10,7 +10,6 @@ import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.JsObjectWrapper;
-import net.me.scripting.wrappers.JsSuperObjectWrapper;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -58,25 +57,8 @@ public class ScriptManager {
         bindImportClass(contextToConfigure);
         bindExtendMapped(contextToConfigure);
         bindThisOf(contextToConfigure);
-        bindSuperOf(contextToConfigure);
     }
-    private void bindSuperOf(Context contextToConfigure) {
-        contextToConfigure.getBindings("js").putMember("superOf", (ProxyExecutable) args -> {
-            if (args.length != 1) {
-                throw new RuntimeException("superOf() requires exactly one argument: the instance.");
-            }
-            Object javaInstance = ScriptUtils.unwrapReceiver(args[0]);
-            if (javaInstance == null) {
-                throw new RuntimeException("The instance passed to superOf() was null or could not be unwrapped.");
-            }
-            Class<?> superClass = javaInstance.getClass().getSuperclass();
-            if (superClass == null) {
-                throw new RuntimeException("Instance " + javaInstance + " does not have a superclass.");
-            }
-            var cm = MappingUtils.combineMappings(superClass, runtimeToYarn, methodMap, fieldMap);
-            return new JsSuperObjectWrapper(javaInstance, cm.methods(), contextToConfigure);
-        });
-    }
+
     private void bindThisOf(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("thisOf", (ProxyExecutable) args -> {
             if (args.length != 1) {
@@ -170,44 +152,32 @@ public class ScriptManager {
             Value extendsValue = configArg.getMember("extends");
             Value parentOverrides = null;
             Value parentAddons = null;
+            Value parentSuper = null; // This is new
             ExtensionConfig config;
 
             if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
-
+                // This is a chained extension (e.g., extends: customScreen)
                 parentOverrides = parentProxy.getOriginalOverrides();
                 parentAddons = parentProxy.getOriginalAddons();
+                // Get the parent's '_super' property to pass down the chain.
+                parentSuper = extendsValue.getMember("_super");
 
-                // ========================= START OF FIX =========================
-
+                // --- This logic for creating the config is from our very first fix and is correct ---
                 ExtensionConfig originalConfig = parentProxy.getOriginalConfig();
                 Object parentBaseInstance = parentProxy.getBaseInstance();
                 Class<?> parentActualClass = parentBaseInstance.getClass();
-
-                // The yarn name of the original base class (e.g., "net.minecraft.client.gui.screen.Screen")
-                // is conceptually still the "type" we are working with.
                 String yarnName = originalConfig.extendsClass().yarnName();
-
-                // We must re-combine all mappings for the new parent class (the dynamic one) to ensure
-                // the next child in the chain has access to all inherited mapped members.
                 var combinedMappings = MappingUtils.combineMappings(parentActualClass, runtimeToYarn, methodMap, fieldMap);
-
-                MappedClassInfo newExtendsInfo = new MappedClassInfo(
-                        yarnName,
-                        parentActualClass, // <-- This is the crucial part: we extend the actual dynamic class
-                        combinedMappings.methods(),
-                        combinedMappings.fields()
-                );
-
-                // Create a new configuration, carrying over the implemented interfaces from the original.
+                MappedClassInfo newExtendsInfo = new MappedClassInfo(yarnName, parentActualClass, combinedMappings.methods(), combinedMappings.fields());
                 config = new ExtensionConfig(newExtendsInfo, originalConfig.implementsClasses(), contextToConfigure);
 
-                // ========================== END OF FIX ==========================
-
             } else {
+                // This is a first-level extension (e.g., extends: Screen)
                 config = parseExtensionConfig(configArg, contextToConfigure, extendsValue);
             }
 
-            return new MappedClassExtender(config, contextToConfigure, parentOverrides, parentAddons);
+            // Pass all the parent info, including its super, to the extender.
+            return new MappedClassExtender(config, contextToConfigure, parentOverrides, parentAddons, parentSuper);
         });
     }
 
