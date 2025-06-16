@@ -99,12 +99,22 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
         if (this.parentAddons != null) {
             for (String key : this.parentAddons.getMemberKeys()) {
-                wrapperProperties.put(key, this.parentAddons.getMember(key).invokeMember("bind", wrapperVal));
+                Value member = this.parentAddons.getMember(key);
+                if (member.canExecute()) {
+                    wrapperProperties.put(key, member.invokeMember("bind", wrapperVal));
+                } else {
+                    wrapperProperties.put(key, member);
+                }
             }
         }
         if (childAddons != null) {
             for (String key : childAddons.getMemberKeys()) {
-                wrapperProperties.put(key, childAddons.getMember(key).invokeMember("bind", wrapperVal));
+                Value member = childAddons.getMember(key);
+                if (member.canExecute()) {
+                    wrapperProperties.put(key, member.invokeMember("bind", wrapperVal));
+                } else {
+                    wrapperProperties.put(key, member);
+                }
             }
         }
     }

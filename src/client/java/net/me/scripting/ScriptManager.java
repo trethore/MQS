@@ -177,7 +177,7 @@ public class ScriptManager {
             Value extendsValue = configArg.getMember("extends");
             Value parentOverrides = null;
             Value parentAddons = null;
-            Value parentSuper = null; // This is new
+            Value parentSuper = null;
             ExtensionConfig config;
 
             if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
