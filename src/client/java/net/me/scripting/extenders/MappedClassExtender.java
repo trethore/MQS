@@ -92,8 +92,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         wrapperProperties.put("_self", baseInstance);
 
         if (this.parentOverrides != null) {
-            Map<String, List<String>> parentMethodMappings = this.config.extendsClass().methodMappings();
-            wrapperProperties.put("_super", new SuperProxy(this.parentOverrides, this.parentSuper, wrapperVal, parentMethodMappings));
+            wrapperProperties.put("_super", new SuperProxy(this.parentOverrides, this.parentSuper, wrapperVal));
         } else {
             wrapperProperties.put("_super", context.eval("js", "Java.super").execute(baseInstance));
         }

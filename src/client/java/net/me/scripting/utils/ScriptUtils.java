@@ -9,7 +9,6 @@ import net.me.scripting.wrappers.JsObjectWrapper;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 
 
@@ -28,13 +27,16 @@ public final class ScriptUtils {
     }
 
     private static Object convertValue(Value v, Class<?> expected) {
-        if (v == null || v.isNull()) return null;
+        if (v == null || v.isNull()) {
+            return null;
+        }
 
-        if (v.isProxyObject()) {
-            Object proxy = v.asProxyObject();
-            if (proxy instanceof JsObjectWrapper wrapper) {
-                return wrapper.getJavaInstance();
+        Object potentialUnwrapped = unwrapReceiver(v);
+        if (potentialUnwrapped != v && !(potentialUnwrapped instanceof ProxyObject) && !(potentialUnwrapped instanceof Value)) {
+            if (expected != null && expected.isPrimitive() && potentialUnwrapped instanceof Number) {
+                return convertNumber(v, expected);
             }
+            return potentialUnwrapped;
         }
 
         if (expected != null) {
@@ -47,7 +49,9 @@ public final class ScriptUtils {
         if (v.isString()) return v.asString();
         if (v.isHostObject()) return v.asHostObject();
         if (v.isNumber()) return convertNumber(v, expected);
-        if (v.isProxyObject()) return extractProxy(v, expected);
+
+        if (v.isProxyObject()) return v.asProxyObject();
+
         if (v.canExecute() && expected != null && expected.isAnnotationPresent(FunctionalInterface.class)) {
             try {
                 return v.as(expected);
@@ -67,17 +71,21 @@ public final class ScriptUtils {
             else return o;
         }
 
-        if (current instanceof ExtendedInstanceProxy proxy) {
-            try {
-                Field baseInstanceField = ExtendedInstanceProxy.class.getDeclaredField("baseInstance");
-                baseInstanceField.setAccessible(true);
-                return unwrapReceiver(baseInstanceField.get(proxy));
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                throw new RuntimeException("Failed to unwrap ExtendedInstanceProxy", e);
+        while (true) {
+            if (current instanceof ExtendedInstanceProxy proxy) {
+                current = proxy.getBaseInstance();
+                continue;
             }
+            if (current instanceof MappedInstanceProxy proxy) {
+                current = proxy.getInstance();
+                continue;
+            }
+            if (current instanceof JsObjectWrapper wrapper) {
+                current = wrapper.getJavaInstance();
+                continue;
+            }
+            break;
         }
-        if (current instanceof MappedInstanceProxy proxy) return proxy.getInstance();
-        if (current instanceof JsObjectWrapper wrapper) return wrapper.getJavaInstance();
 
         return current;
     }
@@ -87,20 +95,6 @@ public final class ScriptUtils {
         if (expected == long.class || expected == Long.class) return v.asLong();
         if (expected == float.class || expected == Float.class) return v.asFloat();
         return v.asDouble();
-    }
-
-    private static Object extractProxy(Value v, Class<?> expected) {
-        ProxyObject proxy = v.asProxyObject();
-        if (proxy instanceof JsObjectWrapper wrapper) {
-            return wrapper.getJavaInstance();
-        }
-        if (expected != null) {
-            try {
-                return v.as(expected);
-            } catch (Exception ignored) {
-            }
-        }
-        return proxy;
     }
 
     public static Object wrapReturn(Object o) {

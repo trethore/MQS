@@ -9,12 +9,11 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class JsObjectWrapper implements ProxyObject {
     private final Object javaInstance;
@@ -91,13 +90,13 @@ public class JsObjectWrapper implements ProxyObject {
 
     private Object handleMappedMethod(String key) {
         List<Method> candidates = methods.findMethods(instanceClass, key);
-        if (!candidates.isEmpty()) return (ProxyExecutable) args -> invokeMethods(candidates, args);
+        if (!candidates.isEmpty()) return (ProxyExecutable) args -> invokeMethods(candidates, args,key);
         return null;
     }
 
     private Object handleDirectMethod(String key) {
         List<Method> direct = MethodLookup.findDirect(instanceClass, key);
-        if (!direct.isEmpty()) return (ProxyExecutable) args -> invokeMethods(direct, args);
+        if (!direct.isEmpty()) return (ProxyExecutable) args -> invokeMethods(direct, args,key);
         return null;
     }
 
@@ -113,21 +112,62 @@ public class JsObjectWrapper implements ProxyObject {
         }
     }
 
-    private Object invokeMethods(List<Method> methods, Value[] args) {
+    private Object invokeMethods(List<Method> methods, Value[] args, String yarnName) {
         for (Method m : methods) {
             if (m.getParameterCount() == args.length) {
+                Object[] javaArgs = null;
                 try {
+                    // --- DEBUG: Log the attempt ---
+                    Main.LOGGER.info("[SCRIPT DEBUG] Attempting to call: {}", m.toGenericString());
+
                     Object target = ScriptUtils.unwrapReceiver(javaInstance);
-                    Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
+                    javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
+
+                    // --- DEBUG: Log unwrapped arguments ---
+                    String argTypes = Arrays.stream(javaArgs)
+                            .map(arg -> arg == null ? "null" : arg.getClass().getName())
+                            .collect(Collectors.joining(", "));
+                    Main.LOGGER.info("[SCRIPT DEBUG] On instance: {}", target.getClass().getName());
+                    Main.LOGGER.info("[SCRIPT DEBUG] With unwrapped args: [{}]", argTypes);
+
                     Object res = m.invoke(target, javaArgs);
+
+                    // --- DEBUG: Log success ---
+                    Main.LOGGER.info("[SCRIPT DEBUG] Call successful. Result: {}", res);
+
                     return ScriptUtils.wrapReturn(res);
                 } catch (Exception e) {
-                    Main.LOGGER.error("Method invocation failed: {}", m.getName(), e);
-                    throw new RuntimeException("Method invocation failed: " + m.getName(), e);
+                    // --- DEBUG: Log the entire failure context ---
+                    StringBuilder error = new StringBuilder();
+                    error.append("\n\n--- SCRIPT METHOD INVOCATION FAILED ---\n");
+                    error.append("Yarn Name: ").append(yarnName).append("\n");
+                    error.append("Target Method: ").append(m.toGenericString()).append("\n");
+                    error.append("On Instance of: ").append(javaInstance.getClass().getName()).append("\n");
+                    error.append("JS Arguments (raw): [");
+                    error.append(Arrays.stream(args).map(Value::toString).collect(Collectors.joining(", ")));
+                    error.append("]\n");
+                    error.append("JS Arguments (types): [");
+                    error.append(Arrays.stream(args).map(v -> v.getMetaObject().toString()).collect(Collectors.joining(", ")));
+                    error.append("]\n");
+                    if (javaArgs != null) {
+                        error.append("Unwrapped Java Arguments: [");
+                        error.append(Arrays.stream(javaArgs).map(arg -> arg == null ? "null" : arg.getClass().getName()).collect(Collectors.joining(", ")));
+                        error.append("]\n");
+                    } else {
+                        error.append("Unwrapped Java Arguments: FAILED TO UNWRAP\n");
+                    }
+                    error.append("------------------------------------------\n");
+                    Main.LOGGER.error(error.toString(), e);
+
+                    // If the exception is an InvocationTargetException, the *real* cause is inside.
+                    if (e instanceof InvocationTargetException ite && ite.getCause() != null) {
+                        throw new RuntimeException("Method '" + yarnName + "' threw an exception: " + ite.getCause().getMessage(), ite.getCause());
+                    }
+                    throw new RuntimeException("Method invocation failed for '" + yarnName + "'. See logs for details.", e);
                 }
             }
         }
-        throw new RuntimeException("No overload for method with " + args.length + " args");
+        throw new RuntimeException("No overload for method '" + yarnName + "' with " + args.length + " args");
     }
 
     private void writeField(String key, Value value) {
