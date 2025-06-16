@@ -177,7 +177,31 @@ public class ScriptManager {
                 parentOverrides = parentProxy.getOriginalOverrides();
                 parentAddons = parentProxy.getOriginalAddons();
 
-                config = parentProxy.getOriginalConfig();
+                // ========================= START OF FIX =========================
+
+                ExtensionConfig originalConfig = parentProxy.getOriginalConfig();
+                Object parentBaseInstance = parentProxy.getBaseInstance();
+                Class<?> parentActualClass = parentBaseInstance.getClass();
+
+                // The yarn name of the original base class (e.g., "net.minecraft.client.gui.screen.Screen")
+                // is conceptually still the "type" we are working with.
+                String yarnName = originalConfig.extendsClass().yarnName();
+
+                // We must re-combine all mappings for the new parent class (the dynamic one) to ensure
+                // the next child in the chain has access to all inherited mapped members.
+                var combinedMappings = MappingUtils.combineMappings(parentActualClass, runtimeToYarn, methodMap, fieldMap);
+
+                MappedClassInfo newExtendsInfo = new MappedClassInfo(
+                        yarnName,
+                        parentActualClass, // <-- This is the crucial part: we extend the actual dynamic class
+                        combinedMappings.methods(),
+                        combinedMappings.fields()
+                );
+
+                // Create a new configuration, carrying over the implemented interfaces from the original.
+                config = new ExtensionConfig(newExtendsInfo, originalConfig.implementsClasses(), contextToConfigure);
+
+                // ========================== END OF FIX ==========================
 
             } else {
                 config = parseExtensionConfig(configArg, contextToConfigure, extendsValue);

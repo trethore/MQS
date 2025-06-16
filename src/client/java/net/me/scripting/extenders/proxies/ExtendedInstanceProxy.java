@@ -65,4 +65,8 @@ public class ExtendedInstanceProxy implements ProxyObject {
     public ExtensionConfig getOriginalConfig() {
         return originalConfig;
     }
+
+    public Map<String, Object> getPropertiesForModification() {
+        return this.properties;
+    }
 }
