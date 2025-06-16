@@ -26,7 +26,7 @@ public class RuntimeBinderProxy implements ProxyObject {
                 if (bindingTarget == null) {
                     throw new IllegalStateException("Binding target not set on RuntimeBinderProxy before method invocation.");
                 }
-                return func.invokeMember("apply", bindingTarget, (Object) proxyArgs);
+                return func.invokeMember("apply", bindingTarget, proxyArgs);
             };
         }
         return member;

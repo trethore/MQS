@@ -3,6 +3,7 @@ package net.me.scripting.extenders.proxies;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
+
 import java.util.Collections;
 
 public class SuperProxy implements ProxyObject {
@@ -36,9 +37,21 @@ public class SuperProxy implements ProxyObject {
                     }
                     return childInstance.getMember(memberKey);
                 }
-                @Override public boolean hasMember(String memberKey) { return "_super".equals(memberKey) || childInstance.hasMember(memberKey); }
-                @Override public void putMember(String memberKey, Value value) { childInstance.putMember(memberKey, value); }
-                @Override public Object getMemberKeys() { return childInstance.getMemberKeys(); }
+
+                @Override
+                public boolean hasMember(String memberKey) {
+                    return "_super".equals(memberKey) || childInstance.hasMember(memberKey);
+                }
+
+                @Override
+                public void putMember(String memberKey, Value value) {
+                    childInstance.putMember(memberKey, value);
+                }
+
+                @Override
+                public Object getMemberKeys() {
+                    return childInstance.getMemberKeys();
+                }
             };
 
             return parentFunction.invokeMember("apply", temporaryThis, args);

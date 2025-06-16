@@ -15,8 +15,13 @@ public class MethodLookup {
         this.map = map != null ? map : Collections.emptyMap();
     }
 
-    public boolean hasMapped(String key) { return map.containsKey(key); }
-    public Set<String> methodKeys() { return map.keySet(); }
+    public boolean hasMapped(String key) {
+        return map.containsKey(key);
+    }
+
+    public Set<String> methodKeys() {
+        return map.keySet();
+    }
 
     public List<Method> findMethods(Class<?> cls, String key) {
         List<String> names = map.getOrDefault(key, List.of());

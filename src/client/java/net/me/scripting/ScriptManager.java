@@ -29,15 +29,20 @@ public class ScriptManager {
     private Map<String, Map<String, String>> fieldMap;
     private Map<String, String> runtimeToYarn;
     private static final Set<String> EXCLUDED = Set.of();
-    private ScriptManager() {}
+
+    private ScriptManager() {
+    }
+
     public static ScriptManager getInstance() {
         if (instance == null) instance = new ScriptManager();
         return instance;
     }
+
     public void init() {
         ensureScriptDirectory();
         loadMappings();
     }
+
     public Context createDefaultScriptContext() {
         Main.LOGGER.info("Creating new default script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
@@ -51,6 +56,7 @@ public class ScriptManager {
         Main.LOGGER.info("New default script context (ECMAScript 2024) created in {}ms.", (endTime - startTime));
         return newContext;
     }
+
     private void configureContext(Context contextToConfigure) {
         registerPackages(contextToConfigure);
         bindJavaFunctions(contextToConfigure);
@@ -73,6 +79,7 @@ public class ScriptManager {
             return new JsObjectWrapper(javaInstance, instanceClass, cm.methods(), cm.fields());
         });
     }
+
     private void loadMappings() {
         MappingsManager.getInstance().init();
         var mm = MappingsManager.getInstance();
@@ -81,6 +88,7 @@ public class ScriptManager {
         fieldMap = mm.getFieldMap();
         runtimeToYarn = mm.getRuntimeToYarnClassMap();
     }
+
     private void registerPackages(Context contextToConfigure) {
         JsPackage root = new JsPackage();
         classMap.entrySet().stream()
@@ -94,10 +102,12 @@ public class ScriptManager {
         Arrays.stream((String[]) root.getMemberKeys())
                 .forEach(key -> bindings.putMember(key, root.getMember(key)));
     }
+
     protected boolean isClassInMc(String name) {
         return isClassIncluded(name) &&
                 (name.startsWith("net.minecraft.") || name.startsWith("com.mojang."));
     }
+
     protected boolean isClassAllowed(String name) {
         return isClassIncluded(name)
                 && (name.startsWith("java.")
@@ -106,9 +116,11 @@ public class ScriptManager {
                 || name.startsWith("net.me")
                 || name.startsWith("com.oracle.truffle.host.adapters."));
     }
+
     private boolean isClassIncluded(String name) {
         return !EXCLUDED.contains(name);
     }
+
     private void bindJavaFunctions(Context contextToConfigure) {
         var bindings = contextToConfigure.getBindings("js");
         bindings.putMember("println", (ProxyExecutable) args -> {
@@ -120,6 +132,7 @@ public class ScriptManager {
             return null;
         });
     }
+
     private void bindImportClass(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("importClass", (ProxyExecutable) args -> {
             if (args.length == 0 || !args[0].isString())
@@ -156,13 +169,10 @@ public class ScriptManager {
             ExtensionConfig config;
 
             if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
-                // This is a chained extension (e.g., extends: customScreen)
                 parentOverrides = parentProxy.getOriginalOverrides();
                 parentAddons = parentProxy.getOriginalAddons();
-                // Get the parent's '_super' property to pass down the chain.
                 parentSuper = extendsValue.getMember("_super");
 
-                // --- This logic for creating the config is from our very first fix and is correct ---
                 ExtensionConfig originalConfig = parentProxy.getOriginalConfig();
                 Object parentBaseInstance = parentProxy.getBaseInstance();
                 Class<?> parentActualClass = parentBaseInstance.getClass();
@@ -172,11 +182,9 @@ public class ScriptManager {
                 config = new ExtensionConfig(newExtendsInfo, originalConfig.implementsClasses(), contextToConfigure);
 
             } else {
-                // This is a first-level extension (e.g., extends: Screen)
                 config = parseExtensionConfig(configArg, contextToConfigure, extendsValue);
             }
 
-            // Pass all the parent info, including its super, to the extender.
             return new MappedClassExtender(config, contextToConfigure, parentOverrides, parentAddons, parentSuper);
         });
     }
@@ -201,9 +209,6 @@ public class ScriptManager {
         }
         return new ExtensionConfig(extendsInfo, implementsInfos.stream().filter(Objects::nonNull).toList(), context);
     }
-    private ExtensionConfig parseExtensionConfig(Value configArg, Context context) {
-        return parseExtensionConfig(configArg, context, null);
-    }
 
     private MappedClassInfo extractInfoFromValue(Value value) {
         if (value.isProxyObject()) {
@@ -216,7 +221,8 @@ public class ScriptManager {
                     java.lang.reflect.Field yarnNameField = LazyJsClassHolder.class.getDeclaredField("yarnName");
                     yarnNameField.setAccessible(true);
                     yarnName = (String) yarnNameField.get(holder);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             } else if (proxy instanceof JsClassWrapper w) {
                 wrapper = w;
             }
@@ -238,6 +244,7 @@ public class ScriptManager {
         }
         return null;
     }
+
     private JsClassWrapper createWrapper(String runtime) {
         return wrapperCache.computeIfAbsent(runtime, r -> {
             try {
@@ -247,11 +254,13 @@ public class ScriptManager {
             }
         });
     }
+
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
         var cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
         return new JsClassWrapper(runtime, cm.methods(), cm.fields());
     }
+
     private void ensureScriptDirectory() {
         Path p = Main.MOD_DIR.resolve("scripts");
         try {
@@ -260,8 +269,20 @@ public class ScriptManager {
             Main.LOGGER.error("Failed create scripts dir: {}", p, e);
         }
     }
-    public void addScript(Script script) { scripts.put(script.getName(), script); }
-    public Script getScript(String name) { return scripts.get(name); }
-    public void removeScript(String name) { scripts.remove(name); }
-    public Collection<Script> getAllScripts() { return scripts.values(); }
+
+    public void addScript(Script script) {
+        scripts.put(script.getName(), script);
+    }
+
+    public Script getScript(String name) {
+        return scripts.get(name);
+    }
+
+    public void removeScript(String name) {
+        scripts.remove(name);
+    }
+
+    public Collection<Script> getAllScripts() {
+        return scripts.values();
+    }
 }

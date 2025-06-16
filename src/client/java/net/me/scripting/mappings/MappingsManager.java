@@ -1,6 +1,8 @@
 package net.me.scripting.mappings;
 
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.impl.lib.mappingio.format.tiny.Tiny1FileReader;
+import net.fabricmc.loader.impl.lib.mappingio.tree.MemoryMappingTree;
 import net.me.Main;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,9 +20,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-
-import net.fabricmc.loader.impl.lib.mappingio.format.tiny.Tiny1FileReader;
-import net.fabricmc.loader.impl.lib.mappingio.tree.MemoryMappingTree;
 
 
 public class MappingsManager {
@@ -41,7 +40,8 @@ public class MappingsManager {
 
     private static final MappingsManager INSTANCE = new MappingsManager();
 
-    private MappingsManager() {}
+    private MappingsManager() {
+    }
 
     public static MappingsManager getInstance() {
         return INSTANCE;

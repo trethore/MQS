@@ -8,9 +8,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(MinecraftClient.class)
 public class ExampleClientMixin {
-	@Inject(at = @At("HEAD"), method = "run")
-	private void init(CallbackInfo info) {
-		// This code is injected into the start of MinecraftClient.run()V
-		// System.out.println("Client has started!");
-	}
+    @Inject(at = @At("HEAD"), method = "run")
+    private void init(CallbackInfo info) {
+        // This code is injected into the start of MinecraftClient.run()V
+        // System.out.println("Client has started!");
+    }
 }

@@ -13,7 +13,7 @@ public class ExtendedInstanceProxy implements ProxyObject {
     private final Value originalAddons;
     private final ExtensionConfig originalConfig;
 
-    public ExtendedInstanceProxy(Map<String, Object> properties, Object baseInstance,ExtensionConfig originalConfig, Value originalOverrides, Value originalAddons) {
+    public ExtendedInstanceProxy(Map<String, Object> properties, Object baseInstance, ExtensionConfig originalConfig, Value originalOverrides, Value originalAddons) {
         this.properties = properties;
         this.baseInstance = baseInstance;
         this.originalConfig = originalConfig;
@@ -62,6 +62,7 @@ public class ExtendedInstanceProxy implements ProxyObject {
         }
         properties.put(key, value);
     }
+
     public ExtensionConfig getOriginalConfig() {
         return originalConfig;
     }

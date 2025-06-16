@@ -14,7 +14,7 @@ public class FieldLookup {
         this.map = map != null ? map : Collections.emptyMap();
     }
 
-    public boolean hasField(Class<?> cls,String key) {
+    public boolean hasField(Class<?> cls, String key) {
         if (map.containsKey(key)) {
             return true;
         }
@@ -26,7 +26,9 @@ public class FieldLookup {
         }
     }
 
-    public Set<String> fieldKeys() { return map.keySet(); }
+    public Set<String> fieldKeys() {
+        return map.keySet();
+    }
 
     public Field accessField(Class<?> cls, String key) throws NoSuchFieldException {
         String runtimeName = map.get(key);

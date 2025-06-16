@@ -1,19 +1,17 @@
 package net.me.scripting.utils;
 
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public final class MappingUtils {
 
-    private MappingUtils() {}
+    private MappingUtils() {
+    }
 
     public record ClassMappings(
             Map<String, List<String>> methods,
             Map<String, String> fields
-    ) {}
+    ) {
+    }
 
     public static ClassMappings combineMappings(Class<?> cls,
                                                 Map<String, String> runtimeToYarn,

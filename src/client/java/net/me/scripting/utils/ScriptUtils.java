@@ -15,7 +15,8 @@ import java.util.Map;
 
 public final class ScriptUtils {
 
-    private ScriptUtils() {}
+    private ScriptUtils() {
+    }
 
     public static Object[] unwrapArgs(Value[] args, Class<?>[] types) {
         if (args == null) return new Object[0];
@@ -37,7 +38,10 @@ public final class ScriptUtils {
         }
 
         if (expected != null) {
-            try { return v.as(expected); } catch (Exception ignored) {}
+            try {
+                return v.as(expected);
+            } catch (Exception ignored) {
+            }
         }
         if (v.isBoolean()) return v.asBoolean();
         if (v.isString()) return v.asString();
@@ -45,7 +49,10 @@ public final class ScriptUtils {
         if (v.isNumber()) return convertNumber(v, expected);
         if (v.isProxyObject()) return extractProxy(v, expected);
         if (v.canExecute() && expected != null && expected.isAnnotationPresent(FunctionalInterface.class)) {
-            try { return v.as(expected); } catch (Exception ignored) {}
+            try {
+                return v.as(expected);
+            } catch (Exception ignored) {
+            }
         }
         return v;
     }
@@ -88,7 +95,10 @@ public final class ScriptUtils {
             return wrapper.getJavaInstance();
         }
         if (expected != null) {
-            try { return v.as(expected); } catch (Exception ignored) {}
+            try {
+                return v.as(expected);
+            } catch (Exception ignored) {
+            }
         }
         return proxy;
     }

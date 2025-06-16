@@ -3,8 +3,8 @@ package net.me;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
-import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.mappings.MappingsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

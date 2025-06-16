@@ -14,7 +14,8 @@ public class CommandManager {
     private final static CommandManager INSTANCE = new CommandManager();
     private final ArrayList<Command> commands = new ArrayList<>();
 
-    private CommandManager() {}
+    private CommandManager() {
+    }
 
     public static CommandManager getInstance() {
         return INSTANCE;
@@ -27,10 +28,12 @@ public class CommandManager {
     private void registerCommands() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> registerClientCommands(dispatcher));
     }
+
     private void registerClientCommands(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         commands.add(new OpenMenuCommand());
         registerCommandsInDispatcher(dispatcher);
     }
+
     private void registerCommandsInDispatcher(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         commands.forEach(command -> command.register(dispatcher));
     }
