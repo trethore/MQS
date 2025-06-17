@@ -8,7 +8,6 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
@@ -113,16 +112,14 @@ public class JsObjectWrapper implements ProxyObject {
     private Object invokeMethods(List<Method> methods, Value[] args, String yarnName) {
         for (Method m : methods) {
             if (m.getParameterCount() == args.length) {
-                Object[] javaArgs;
                 try {
-                    Object target = ScriptUtils.unwrapReceiver(javaInstance);
-                    javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
-                    Object res = m.invoke(target, javaArgs);
+                    Value targetValue = Value.asValue(this.javaInstance);
+                    Object result = targetValue.invokeMember(m.getName(), (Object[]) args);
 
-                    return ScriptUtils.wrapReturn(res);
+                    return ScriptUtils.wrapReturn(result);
                 } catch (Exception e) {
-                    if (e instanceof InvocationTargetException ite && ite.getCause() != null) {
-                        throw new RuntimeException("Method '" + yarnName + "' threw an exception: " + ite.getCause().getMessage(), ite.getCause());
+                    if (e.getCause() != null) {
+                        throw new RuntimeException("Method '" + yarnName + "' threw an exception: " + e.getCause().getMessage(), e.getCause());
                     }
                     throw new RuntimeException("Method invocation failed for '" + yarnName + "'. See logs for details.", e);
                 }

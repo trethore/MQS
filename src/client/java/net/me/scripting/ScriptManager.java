@@ -1,3 +1,5 @@
+// File: java/scripting/ScriptManager.java
+
 package net.me.scripting;
 
 import net.me.Main;
@@ -228,7 +230,20 @@ public class ScriptManager {
                 String yarnName = originalConfig.extendsClass().yarnName();
                 var combinedMappings = MappingUtils.combineMappings(parentActualClass, runtimeToYarn, methodMap, fieldMap);
                 MappedClassInfo newExtendsInfo = new MappedClassInfo(yarnName, parentActualClass, combinedMappings.methods(), combinedMappings.fields());
-                config = new ExtensionConfig(newExtendsInfo, originalConfig.implementsClasses(), contextToConfigure);
+
+                List<MappedClassInfo> allImplements = new ArrayList<>(originalConfig.implementsClasses());
+                if (configArg.hasMember("implements")) {
+                    Value impl = configArg.getMember("implements");
+                    if (impl.hasArrayElements()) {
+                        for (long i = 0; i < impl.getArraySize(); i++) {
+                            allImplements.add(extractInfoFromValue(impl.getArrayElement(i)));
+                        }
+                    } else {
+                        allImplements.add(extractInfoFromValue(impl));
+                    }
+                }
+                List<MappedClassInfo> finalImplements = new ArrayList<>(new LinkedHashSet<>(allImplements));
+                config = new ExtensionConfig(newExtendsInfo, finalImplements.stream().filter(Objects::nonNull).toList(), contextToConfigure);
 
             } else {
                 config = parseExtensionConfig(configArg, contextToConfigure, extendsValue);
