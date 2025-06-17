@@ -91,20 +91,9 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         wrapperProperties.put("instance", new MappedInstanceProxy(baseInstance));
         wrapperProperties.put("_self", baseInstance);
 
-        // --- START OF FIX ---
-        // Determine the correct "super" object to delegate to.
-        // If we're extending another JS-extended class, parentSuper is its _super object.
-        // If we're extending a raw Java class, we create a new Java.super object.
         Value actualGrandParentSuper = (this.parentSuper != null) ? this.parentSuper : context.eval("js", "Java.super").execute(baseInstance);
-
-        // Get the method mappings for the class we are currently extending.
         Map<String, List<String>> currentMethodMappings = this.config.extendsClass().methodMappings();
-
-        // Always wrap the super object in our SuperProxy.
-        // For first-level extensions, parentOverrides is null, and the proxy will just handle yarn->runtime name mapping.
-        // For chained extensions, parentOverrides is the parent's JS overrides, and the proxy handles calling them first.
         wrapperProperties.put("_super", new SuperProxy(this.parentOverrides, actualGrandParentSuper, wrapperVal, currentMethodMappings));
-        // --- END OF FIX ---
 
         if (this.parentAddons != null) {
             for (String key : this.parentAddons.getMemberKeys()) {
@@ -116,6 +105,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
                 }
             }
         }
+
         if (childAddons != null) {
             for (String key : childAddons.getMemberKeys()) {
                 Value member = childAddons.getMember(key);
@@ -130,7 +120,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
     private void validateArguments(Value[] args) {
         if (args.length == 0) {
-            throw new RuntimeException("Cannot extend with mapped names without a configuration object. Pass at least { overrides: {} } or { overrides: {}, addons: {} }.");
+            throw new RuntimeException("Cannot extend with mapped names without a configuration object. Pass at least an object with 'overrides' and/or 'addons'.");
         }
     }
 
@@ -140,15 +130,18 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     private ArgumentParser parseArguments(Value[] args) {
         Value lastArg = args[args.length - 1];
         if (!isObjectLike(lastArg)) {
-            throw new RuntimeException("The last argument must be a configuration object with 'overrides' and optionally 'addons' keys.");
+            throw new RuntimeException("The last argument must be a configuration object with 'overrides' and/or 'addons' keys.");
         }
         Value[] constructorArgs = new Value[args.length - 1];
         System.arraycopy(args, 0, constructorArgs, 0, args.length - 1);
+
         Value overridesValue = lastArg.getMember("overrides");
         Value addonsValue = lastArg.getMember("addons");
-        if (overridesValue == null || overridesValue.isNull()) {
-            throw new RuntimeException("Configuration object must contain an 'overrides' key, even if empty: { overrides: {} }");
+
+        if ((overridesValue == null || overridesValue.isNull()) && (addonsValue == null || addonsValue.isNull())) {
+            throw new RuntimeException("Configuration object must contain either an 'overrides' or 'addons' key.");
         }
+
         return new ArgumentParser(overridesValue, addonsValue, constructorArgs);
     }
 

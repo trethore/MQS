@@ -1,7 +1,5 @@
 package net.me.scripting.utils;
 
-import net.me.scripting.JsPackage;
-import net.me.scripting.LazyJsClassHolder;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
@@ -108,27 +106,5 @@ public final class ScriptUtils {
             return new JsObjectWrapper(o, c, cm.methods(), cm.fields());
         }
         return Value.asValue(o);
-    }
-
-    public static void insertIntoPackageHierarchy(JsPackage root,
-                                                  String fullYarnName,
-                                                  LazyJsClassHolder holder) {
-        String[] parts = fullYarnName.split("\\.");
-        JsPackage current = root;
-        for (int i = 0; i < parts.length - 1; i++) {
-            String pkg = parts[i];
-            Object existing = current.getMember(pkg);
-            if (existing instanceof JsPackage p) {
-                current = p;
-            } else if (existing == null) {
-                JsPackage next = new JsPackage();
-                current.put(pkg, next);
-                current = next;
-            } else {
-                return;
-            }
-        }
-        String className = parts[parts.length - 1];
-        current.put(className, holder);
     }
 }

@@ -1,6 +1,5 @@
 package net.me.scripting.wrappers;
 
-import net.me.Main;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.support.FieldLookup;
 import net.me.scripting.wrappers.support.MethodLookup;
@@ -13,7 +12,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class JsObjectWrapper implements ProxyObject {
     private final Object javaInstance;
@@ -115,51 +113,14 @@ public class JsObjectWrapper implements ProxyObject {
     private Object invokeMethods(List<Method> methods, Value[] args, String yarnName) {
         for (Method m : methods) {
             if (m.getParameterCount() == args.length) {
-                Object[] javaArgs = null;
+                Object[] javaArgs;
                 try {
-                    // --- DEBUG: Log the attempt ---
-                    Main.LOGGER.info("[SCRIPT DEBUG] Attempting to call: {}", m.toGenericString());
-
                     Object target = ScriptUtils.unwrapReceiver(javaInstance);
                     javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
-
-                    // --- DEBUG: Log unwrapped arguments ---
-                    String argTypes = Arrays.stream(javaArgs)
-                            .map(arg -> arg == null ? "null" : arg.getClass().getName())
-                            .collect(Collectors.joining(", "));
-                    Main.LOGGER.info("[SCRIPT DEBUG] On instance: {}", target.getClass().getName());
-                    Main.LOGGER.info("[SCRIPT DEBUG] With unwrapped args: [{}]", argTypes);
-
                     Object res = m.invoke(target, javaArgs);
-
-                    // --- DEBUG: Log success ---
-                    Main.LOGGER.info("[SCRIPT DEBUG] Call successful. Result: {}", res);
 
                     return ScriptUtils.wrapReturn(res);
                 } catch (Exception e) {
-                    // --- DEBUG: Log the entire failure context ---
-                    StringBuilder error = new StringBuilder();
-                    error.append("\n\n--- SCRIPT METHOD INVOCATION FAILED ---\n");
-                    error.append("Yarn Name: ").append(yarnName).append("\n");
-                    error.append("Target Method: ").append(m.toGenericString()).append("\n");
-                    error.append("On Instance of: ").append(javaInstance.getClass().getName()).append("\n");
-                    error.append("JS Arguments (raw): [");
-                    error.append(Arrays.stream(args).map(Value::toString).collect(Collectors.joining(", ")));
-                    error.append("]\n");
-                    error.append("JS Arguments (types): [");
-                    error.append(Arrays.stream(args).map(v -> v.getMetaObject().toString()).collect(Collectors.joining(", ")));
-                    error.append("]\n");
-                    if (javaArgs != null) {
-                        error.append("Unwrapped Java Arguments: [");
-                        error.append(Arrays.stream(javaArgs).map(arg -> arg == null ? "null" : arg.getClass().getName()).collect(Collectors.joining(", ")));
-                        error.append("]\n");
-                    } else {
-                        error.append("Unwrapped Java Arguments: FAILED TO UNWRAP\n");
-                    }
-                    error.append("------------------------------------------\n");
-                    Main.LOGGER.error(error.toString(), e);
-
-                    // If the exception is an InvocationTargetException, the *real* cause is inside.
                     if (e instanceof InvocationTargetException ite && ite.getCause() != null) {
                         throw new RuntimeException("Method '" + yarnName + "' threw an exception: " + ite.getCause().getMessage(), ite.getCause());
                     }

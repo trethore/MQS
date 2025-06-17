@@ -11,6 +11,8 @@ import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.JsObjectWrapper;
+import net.me.scripting.wrappers.LazyJsClassHolder;
+import net.me.scripting.wrappers.LazyPackageProxy;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -30,6 +32,7 @@ public class ScriptManager {
     private Map<String, Map<String, String>> fieldMap;
     private Map<String, String> runtimeToYarn;
     private static final Set<String> EXCLUDED = Set.of();
+    private Set<String> knownPackagePrefixes;
 
     private ScriptManager() {
     }
@@ -99,20 +102,54 @@ public class ScriptManager {
         methodMap = mm.getMethodMap();
         fieldMap = mm.getFieldMap();
         runtimeToYarn = mm.getRuntimeToYarnClassMap();
+        precomputePackagePrefixes();
+    }
+
+    private void precomputePackagePrefixes() {
+        knownPackagePrefixes = new HashSet<>();
+        if (classMap == null) return;
+
+        for (String fqcn : classMap.keySet()) {
+            String[] parts = fqcn.split("\\.");
+            StringBuilder currentPath = new StringBuilder();
+            for (int i = 0; i < parts.length - 1; i++) {
+                if (i > 0) {
+                    currentPath.append('.');
+                }
+                currentPath.append(parts[i]);
+                knownPackagePrefixes.add(currentPath.toString());
+            }
+        }
+    }
+
+    public boolean isFullClassPath(String path) {
+        return classMap.containsKey(path);
+    }
+
+    public boolean isPackage(String path) {
+        return knownPackagePrefixes.contains(path);
+    }
+
+    public String getRuntimeName(String yarnName) {
+        return classMap.get(yarnName);
     }
 
     private void registerPackages(Context contextToConfigure) {
-        JsPackage root = new JsPackage();
-        classMap.entrySet().stream()
-                .filter(e -> !EXCLUDED.contains(e.getKey()))
-                .filter(e -> isClassInMc(e.getKey()))
-                .forEach(e -> {
-                    var holder = new LazyJsClassHolder(e.getKey(), e.getValue(), this);
-                    ScriptUtils.insertIntoPackageHierarchy(root, e.getKey(), holder);
-                });
+        Set<String> topLevelPackages = new HashSet<>();
+        if (knownPackagePrefixes != null) {
+            for (String prefix : knownPackagePrefixes) {
+                if (isClassInMc(prefix)) {
+                    topLevelPackages.add(prefix.split("\\.")[0]);
+                }
+            }
+        }
+
         var bindings = contextToConfigure.getBindings("js");
-        Arrays.stream((String[]) root.getMemberKeys())
-                .forEach(key -> bindings.putMember(key, root.getMember(key)));
+        for (String pkg : topLevelPackages) {
+            if (!bindings.hasMember(pkg)) {
+                bindings.putMember(pkg, new LazyPackageProxy(pkg, this));
+            }
+        }
     }
 
     protected boolean isClassInMc(String name) {
