@@ -91,11 +91,20 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         wrapperProperties.put("instance", new MappedInstanceProxy(baseInstance));
         wrapperProperties.put("_self", baseInstance);
 
-        if (this.parentOverrides != null) {
-            wrapperProperties.put("_super", new SuperProxy(this.parentOverrides, this.parentSuper, wrapperVal));
-        } else {
-            wrapperProperties.put("_super", context.eval("js", "Java.super").execute(baseInstance));
-        }
+        // --- START OF FIX ---
+        // Determine the correct "super" object to delegate to.
+        // If we're extending another JS-extended class, parentSuper is its _super object.
+        // If we're extending a raw Java class, we create a new Java.super object.
+        Value actualGrandParentSuper = (this.parentSuper != null) ? this.parentSuper : context.eval("js", "Java.super").execute(baseInstance);
+
+        // Get the method mappings for the class we are currently extending.
+        Map<String, List<String>> currentMethodMappings = this.config.extendsClass().methodMappings();
+
+        // Always wrap the super object in our SuperProxy.
+        // For first-level extensions, parentOverrides is null, and the proxy will just handle yarn->runtime name mapping.
+        // For chained extensions, parentOverrides is the parent's JS overrides, and the proxy handles calling them first.
+        wrapperProperties.put("_super", new SuperProxy(this.parentOverrides, actualGrandParentSuper, wrapperVal, currentMethodMappings));
+        // --- END OF FIX ---
 
         if (this.parentAddons != null) {
             for (String key : this.parentAddons.getMemberKeys()) {
