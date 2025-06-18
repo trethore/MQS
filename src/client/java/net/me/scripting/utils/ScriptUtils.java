@@ -5,8 +5,6 @@ import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyObject;
-
 import java.util.Map;
 
 
@@ -30,10 +28,9 @@ public final class ScriptUtils {
         }
 
         Object potentialUnwrapped = unwrapReceiver(v);
-        if (potentialUnwrapped != v && !(potentialUnwrapped instanceof ProxyObject) && !(potentialUnwrapped instanceof Value)) {
-            if (expected != null && expected.isPrimitive() && potentialUnwrapped instanceof Number) {
-                return convertNumber(v, expected);
-            }
+
+        if (potentialUnwrapped != v && !(potentialUnwrapped instanceof Value)) {
+            System.out.println("[ScriptUtils] Unwrapped " + v + " to Java object: " + potentialUnwrapped.getClass().getName());
             return potentialUnwrapped;
         }
 
@@ -43,19 +40,13 @@ public final class ScriptUtils {
             } catch (Exception ignored) {
             }
         }
+
         if (v.isBoolean()) return v.asBoolean();
         if (v.isString()) return v.asString();
-        if (v.isHostObject()) return v.asHostObject();
         if (v.isNumber()) return convertNumber(v, expected);
-
+        if (v.isHostObject()) return v.asHostObject();
         if (v.isProxyObject()) return v.asProxyObject();
 
-        if (v.canExecute() && expected != null && expected.isAnnotationPresent(FunctionalInterface.class)) {
-            try {
-                return v.as(expected);
-            } catch (Exception ignored) {
-            }
-        }
         return v;
     }
 

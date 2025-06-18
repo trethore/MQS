@@ -113,9 +113,9 @@ public class JsObjectWrapper implements ProxyObject {
         for (Method m : methods) {
             if (m.getParameterCount() == args.length) {
                 try {
-                    Value targetValue = Value.asValue(this.javaInstance);
-                    Object result = targetValue.invokeMember(m.getName(), (Object[]) args);
+                    Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes()); // works
 
+                    Object result = m.invoke(this.javaInstance, javaArgs);
                     return ScriptUtils.wrapReturn(result);
                 } catch (Exception e) {
                     if (e.getCause() != null) {
