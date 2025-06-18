@@ -19,31 +19,48 @@ public final class MappingUtils {
                                                 Map<String, Map<String, String>> fieldsMap) {
         Map<String, List<String>> methods = new LinkedHashMap<>();
         Map<String, String> fields = new LinkedHashMap<>();
-        combineRecursive(cls, runtimeToYarn, methodsMap, fieldsMap, methods, fields, new HashSet<>());
+        combineMappingsIterative(cls, runtimeToYarn, methodsMap, fieldsMap, methods, fields);
         return new ClassMappings(methods, fields);
     }
 
-    private static void combineRecursive(Class<?> cls,
-                                         Map<String, String> r2y,
-                                         Map<String, Map<String, List<String>>> mMap,
-                                         Map<String, Map<String, String>> fMap,
-                                         Map<String, List<String>> accMethods,
-                                         Map<String, String> accFields,
-                                         Set<Class<?>> seen) {
-        if (cls == null || !seen.add(cls)) return;
-
-        String yarn = r2y.get(cls.getName());
-        if (yarn != null) {
-            Map<String, List<String>> mm = mMap.get(yarn);
-            if (mm != null) mm.forEach(accMethods::putIfAbsent);
-
-            Map<String, String> fm = fMap.get(yarn);
-            if (fm != null) fm.forEach(accFields::putIfAbsent);
+    private static void combineMappingsIterative(Class<?> startCls,
+                                                 Map<String, String> r2y,
+                                                 Map<String, Map<String, List<String>>> mMap,
+                                                 Map<String, Map<String, String>> fMap,
+                                                 Map<String, List<String>> accMethods,
+                                                 Map<String, String> accFields) {
+        if (startCls == null) {
+            return;
         }
 
-        for (Class<?> iface : cls.getInterfaces()) {
-            combineRecursive(iface, r2y, mMap, fMap, accMethods, accFields, seen);
+        Queue<Class<?>> toSearch = new LinkedList<>();
+        Set<Class<?>> seen = new HashSet<>();
+        toSearch.add(startCls);
+
+        while (!toSearch.isEmpty()) {
+            Class<?> current = toSearch.poll();
+
+            if (current == null || !seen.add(current)) {
+                continue;
+            }
+
+            String yarn = r2y.get(current.getName());
+            if (yarn != null) {
+                Map<String, List<String>> mm = mMap.get(yarn);
+                if (mm != null) {
+                    mm.forEach(accMethods::putIfAbsent);
+                }
+
+                Map<String, String> fm = fMap.get(yarn);
+                if (fm != null) {
+                    fm.forEach(accFields::putIfAbsent);
+                }
+            }
+
+            if (current.getSuperclass() != null) {
+                toSearch.add(current.getSuperclass());
+            }
+            toSearch.addAll(Arrays.asList(current.getInterfaces()));
         }
-        combineRecursive(cls.getSuperclass(), r2y, mMap, fMap, accMethods, accFields, seen);
     }
 }

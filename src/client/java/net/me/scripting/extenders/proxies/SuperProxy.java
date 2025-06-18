@@ -31,12 +31,21 @@ public class SuperProxy implements ProxyObject {
                     public Object getMember(String memberKey) {
                         return "_super".equals(memberKey) ? grandParentSuper : childInstance.getMember(memberKey);
                     }
+
                     @Override
-                    public boolean hasMember(String memberKey) { return "_super".equals(memberKey) || childInstance.hasMember(memberKey); }
+                    public boolean hasMember(String memberKey) {
+                        return "_super".equals(memberKey) || childInstance.hasMember(memberKey);
+                    }
+
                     @Override
-                    public void putMember(String memberKey, Value value) { childInstance.putMember(memberKey, value); }
+                    public void putMember(String memberKey, Value value) {
+                        childInstance.putMember(memberKey, value);
+                    }
+
                     @Override
-                    public Object getMemberKeys() { return childInstance.getMemberKeys(); }
+                    public Object getMemberKeys() {
+                        return childInstance.getMemberKeys();
+                    }
                 };
                 return parentFunction.invokeMember("apply", temporaryThis, args);
             };

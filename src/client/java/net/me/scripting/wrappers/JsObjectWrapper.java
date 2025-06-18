@@ -10,13 +10,17 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class JsObjectWrapper implements ProxyObject {
     private final Object javaInstance;
     private final Class<?> instanceClass;
     private final MethodLookup methods;
     private final FieldLookup fields;
+    private final String[] memberKeys;
 
     public JsObjectWrapper(Object instance,
                            Class<?> cls,
@@ -29,6 +33,22 @@ public class JsObjectWrapper implements ProxyObject {
         this.instanceClass = (cls != null) ? cls : instance.getClass();
         this.methods = new MethodLookup(methodMap);
         this.fields = new FieldLookup(fieldMap);
+
+        Set<String> keys = new HashSet<>(methods.methodKeys());
+        keys.addAll(fields.fieldKeys());
+
+        for (Method method : instanceClass.getMethods()) {
+            if (!Modifier.isStatic(method.getModifiers())) {
+                keys.add(method.getName());
+            }
+        }
+        for (Field field : instanceClass.getFields()) {
+            if (!Modifier.isStatic(field.getModifiers())) {
+                keys.add(field.getName());
+            }
+        }
+        keys.add("_self");
+        this.memberKeys = keys.toArray(new String[0]);
     }
 
     @Override
@@ -51,16 +71,7 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        Set<String> keys = new HashSet<>(methods.methodKeys());
-        keys.addAll(fields.fieldKeys());
-        for (Method method : instanceClass.getMethods()) {
-            if (!Modifier.isStatic(method.getModifiers())) keys.add(method.getName());
-        }
-        for (Field field : instanceClass.getFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) keys.add(field.getName());
-        }
-        keys.add("_self");
-        return keys.toArray(new String[0]);
+        return this.memberKeys;
     }
 
     @Override
@@ -87,13 +98,13 @@ public class JsObjectWrapper implements ProxyObject {
 
     private Object handleMappedMethod(String key) {
         List<Method> candidates = methods.findMethods(instanceClass, key);
-        if (!candidates.isEmpty()) return (ProxyExecutable) args -> invokeMethods(candidates, args,key);
+        if (!candidates.isEmpty()) return (ProxyExecutable) args -> invokeMethods(candidates, args, key);
         return null;
     }
 
     private Object handleDirectMethod(String key) {
         List<Method> direct = MethodLookup.findDirect(instanceClass, key);
-        if (!direct.isEmpty()) return (ProxyExecutable) args -> invokeMethods(direct, args,key);
+        if (!direct.isEmpty()) return (ProxyExecutable) args -> invokeMethods(direct, args, key);
         return null;
     }
 
@@ -113,7 +124,7 @@ public class JsObjectWrapper implements ProxyObject {
         for (Method m : methods) {
             if (m.getParameterCount() == args.length) {
                 try {
-                    Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes()); // works
+                    Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
 
                     Object result = m.invoke(this.javaInstance, javaArgs);
                     return ScriptUtils.wrapReturn(result);

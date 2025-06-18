@@ -5,6 +5,7 @@ import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import org.graalvm.polyglot.Value;
+
 import java.util.Map;
 
 
@@ -30,7 +31,6 @@ public final class ScriptUtils {
         Object potentialUnwrapped = unwrapReceiver(v);
 
         if (potentialUnwrapped != v && !(potentialUnwrapped instanceof Value)) {
-            System.out.println("[ScriptUtils] Unwrapped " + v + " to Java object: " + potentialUnwrapped.getClass().getName());
             return potentialUnwrapped;
         }
 

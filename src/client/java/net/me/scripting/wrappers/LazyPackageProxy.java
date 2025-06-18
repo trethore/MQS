@@ -3,6 +3,7 @@ package net.me.scripting.wrappers;
 import net.me.scripting.ScriptManager;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
+
 import java.util.HashMap;
 import java.util.Map;
 
