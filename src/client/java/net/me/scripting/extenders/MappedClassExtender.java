@@ -4,84 +4,143 @@ import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
+import net.me.scripting.extenders.proxies.RuntimeBinderProxy;
+import net.me.scripting.extenders.proxies.SuperProxy;
+import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     private final ExtensionConfig config;
     private final Context context;
     private final Value baseAdapterConstructor;
+    private final Value parentOverrides;
+    private final Value parentAddons;
+    private final Value parentSuper;
 
-    public MappedClassExtender(ExtensionConfig config, Context context) {
+    public MappedClassExtender(ExtensionConfig config, Context context, Value parentOverrides, Value parentAddons, Value parentSuper) {
         this.config = config;
         this.context = context;
+        this.parentOverrides = parentOverrides;
+        this.parentAddons = parentAddons;
+        this.parentSuper = parentSuper;
         this.baseAdapterConstructor = createBaseAdapter();
     }
 
     private Value createBaseAdapter() {
         Value extendFn = context.eval("js", "Java.extend");
+        List<Object> extendArgs = new ArrayList<>();
+        extendArgs.add(config.extendsClass().targetClass());
         Value typeFn = context.eval("js", "Java.type");
-
-        List<Value> extendArgs = new ArrayList<>();
-
-        Class<?> extendsClass = config.extendsClass().targetClass();
-        extendArgs.add(typeFn.execute(extendsClass.getName()));
-
         for (MappedClassInfo interfaceInfo : config.implementsClasses()) {
-            Class<?> interfaceClass = interfaceInfo.targetClass();
-            extendArgs.add(typeFn.execute(interfaceClass.getName()));
+            extendArgs.add(typeFn.execute(interfaceInfo.targetClass().getName()));
         }
-
-        return extendFn.execute((Object[]) extendArgs.toArray(new Value[0]));
+        return extendFn.execute(extendArgs.toArray());
     }
 
     @Override
     public Object newInstance(Value... args) {
         validateArguments(args);
-
         ArgumentParser parser = parseArguments(args);
-        Map<String, Object> runtimeOverrides = buildRuntimeOverrides(parser.overridesValue);
 
-        if (parser.addonsValue == null) {
-            return createSimpleInstance(parser.constructorArgs, runtimeOverrides);
+        Map<String, Object> childRuntimeOverrides = buildRuntimeOverrides(parser.overridesValue);
+
+        Map<String, Object> parentRuntimeOverrides = new HashMap<>();
+        if (this.parentOverrides != null && this.parentOverrides.hasMembers()) {
+            parentRuntimeOverrides.putAll(buildRuntimeOverrides(this.parentOverrides));
         }
 
-        return createWrappedInstance(parser.constructorArgs, runtimeOverrides, parser.addonsValue);
+        Map<String, Object> mergedRuntimeOverrides = new HashMap<>(parentRuntimeOverrides);
+        mergedRuntimeOverrides.putAll(childRuntimeOverrides);
+
+        RuntimeBinderProxy mergedBinder = new RuntimeBinderProxy(mergedRuntimeOverrides);
+
+        Object baseInstance = createBaseJavaInstanceWithBinder(parser.constructorArgs, mergedBinder);
+
+        Map<String, Object> wrapperProperties = new HashMap<>();
+        Value finalMergedOverrides = mergeJSObjects(this.parentOverrides, parser.overridesValue);
+        Value finalMergedAddons = mergeJSObjects(this.parentAddons, parser.addonsValue);
+        ExtendedInstanceProxy wrapper = new ExtendedInstanceProxy(wrapperProperties, baseInstance, this.config, finalMergedOverrides, finalMergedAddons);
+
+        mergedBinder.setBindingTarget(wrapper);
+        populateWrapper(wrapper, baseInstance, parser.addonsValue);
+        return wrapper;
+    }
+
+    private Object createBaseJavaInstanceWithBinder(Value[] constructorArgs, RuntimeBinderProxy binder) {
+        Object[] javaCtorArgs = ScriptUtils.unwrapArgs(constructorArgs, null);
+
+        Object[] finalCtorArgs = appendToArray(javaCtorArgs, binder);
+
+        try {
+            return baseAdapterConstructor.newInstance(finalCtorArgs).asHostObject();
+        } catch (Exception e) {
+            String ctorSignature = Arrays.stream(finalCtorArgs).map(a -> a == null ? "null" : a.getClass().getName()).collect(Collectors.joining(", "));
+            throw new RuntimeException("Failed to instantiate adapter. Constructor call with signature (" + ctorSignature + ") failed.", e);
+        }
+    }
+
+    private void populateWrapper(ExtendedInstanceProxy wrapper, Object baseInstance, Value childAddons) {
+        Map<String, Object> wrapperProperties = wrapper.getPropertiesForModification();
+        Value wrapperVal = context.asValue(wrapper);
+
+        wrapperProperties.put("instance", new MappedInstanceProxy(baseInstance));
+        wrapperProperties.put("_self", baseInstance);
+
+        Value actualGrandParentSuper = (this.parentSuper != null) ? this.parentSuper : context.eval("js", "Java.super").execute(baseInstance);
+        Map<String, List<String>> currentMethodMappings = this.config.extendsClass().methodMappings();
+        wrapperProperties.put("_super", new SuperProxy(this.parentOverrides, actualGrandParentSuper, wrapperVal, currentMethodMappings));
+
+        if (this.parentAddons != null) {
+            for (String key : this.parentAddons.getMemberKeys()) {
+                Value member = this.parentAddons.getMember(key);
+                if (member.canExecute()) {
+                    wrapperProperties.put(key, member.invokeMember("bind", wrapperVal));
+                } else {
+                    wrapperProperties.put(key, member);
+                }
+            }
+        }
+
+        if (childAddons != null) {
+            for (String key : childAddons.getMemberKeys()) {
+                Value member = childAddons.getMember(key);
+                if (member.canExecute()) {
+                    wrapperProperties.put(key, member.invokeMember("bind", wrapperVal));
+                } else {
+                    wrapperProperties.put(key, member);
+                }
+            }
+        }
     }
 
     private void validateArguments(Value[] args) {
         if (args.length == 0) {
-            throw new RuntimeException("Cannot extend with mapped names without a configuration object. " +
-                    "Pass at least { overrides: {} } or { overrides: {}, addons: {} }.");
+            throw new RuntimeException("Cannot extend with mapped names without a configuration object. Pass at least an object with 'overrides' and/or 'addons'.");
         }
     }
 
-    private record ArgumentParser(Value overridesValue, Value addonsValue, Value[] constructorArgs) {}
+    private record ArgumentParser(Value overridesValue, Value addonsValue, Value[] constructorArgs) {
+    }
 
     private ArgumentParser parseArguments(Value[] args) {
         Value lastArg = args[args.length - 1];
-
         if (!isObjectLike(lastArg)) {
-            throw new RuntimeException(
-                    "The last argument must be a configuration object with 'overrides' and optionally 'addons' keys.");
+            throw new RuntimeException("The last argument must be a configuration object with 'overrides' and/or 'addons' keys.");
         }
-
         Value[] constructorArgs = new Value[args.length - 1];
         System.arraycopy(args, 0, constructorArgs, 0, args.length - 1);
 
         Value overridesValue = lastArg.getMember("overrides");
         Value addonsValue = lastArg.getMember("addons");
 
-        if (overridesValue == null || overridesValue.isNull()) {
-            throw new RuntimeException(
-                    "Configuration object must contain an 'overrides' key, even if empty: { overrides: {} }");
+        if ((overridesValue == null || overridesValue.isNull()) && (addonsValue == null || addonsValue.isNull())) {
+            throw new RuntimeException("Configuration object must contain either an 'overrides' or 'addons' key.");
         }
 
         return new ArgumentParser(overridesValue, addonsValue, constructorArgs);
@@ -92,18 +151,17 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     }
 
     private Map<String, Object> buildRuntimeOverrides(Value overridesArg) {
-        Map<String, Object> runtimeOverrides = new HashMap<>();
-        if (overridesArg == null || !overridesArg.hasMembers()) return runtimeOverrides;
-
+        Map<String, Object> finalRuntimeOverrides = new HashMap<>();
+        if (overridesArg == null || !overridesArg.hasMembers()) return finalRuntimeOverrides;
         for (String jsMethodName : overridesArg.getMemberKeys()) {
             Value jsValue = overridesArg.getMember(jsMethodName);
             if (jsValue.canExecute()) {
-                handleSimpleOverride(jsMethodName, jsValue, runtimeOverrides);
+                handleSimpleOverride(jsMethodName, jsValue, finalRuntimeOverrides);
             } else if (jsValue.hasMembers()) {
-                handleConflictOverride(jsMethodName, jsValue, runtimeOverrides);
+                handleConflictOverride(jsMethodName, jsValue, finalRuntimeOverrides);
             }
         }
-        return runtimeOverrides;
+        return finalRuntimeOverrides;
     }
 
     private void addOverride(Map<String, Object> runtimeOverrides, String jsMethodName, Value jsFunction, MappedClassInfo target) {
@@ -121,10 +179,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         List<MappedClassInfo> targets = findTargetsForMethod(jsMethodName);
         if (targets.size() > 1) {
             List<String> targetNames = targets.stream().map(MappedClassInfo::yarnName).toList();
-            throw new RuntimeException(
-                    "Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " +
-                            targetNames + ". Please specify the target: { '" + targetNames.getFirst() + "': fn, ... }"
-            );
+            throw new RuntimeException("Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " + targetNames + ". Please specify the target: { '" + targetNames.getFirst() + "': fn, ... }");
         }
         if (targets.isEmpty()) {
             runtimeOverrides.put(jsMethodName, jsFunction);
@@ -141,8 +196,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
             }
             MappedClassInfo target = findTargetByYarnName(fqcn);
             if (target == null) {
-                System.err.println("Warning: Override for '" + jsMethodName + "' specified target '" + fqcn +
-                        "' which was not found in the list of extended/implemented types.");
+                System.err.println("Warning: Override for '" + jsMethodName + "' specified target '" + fqcn + "' which was not found in the list of extended/implemented types.");
                 continue;
             }
             addOverride(runtimeOverrides, jsMethodName, jsFunction, target);
@@ -166,85 +220,24 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         if (config.extendsClass().yarnName().equals(yarnName)) {
             return config.extendsClass();
         }
-        return config.implementsClasses().stream()
-                .filter(info -> info.yarnName().equals(yarnName))
-                .findFirst()
-                .orElse(null);
+        return config.implementsClasses().stream().filter(info -> info.yarnName().equals(yarnName)).findFirst().orElse(null);
     }
 
-    private Object createSimpleInstance(Value[] constructorArgs, Map<String, Object> runtimeOverrides) {
-        try {
-            Object[] javaCtorArgs = convertAllValuesToJava(constructorArgs);
-            ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
-            Object[] finalCtorArgs = appendToArray(javaCtorArgs, overridesProxy);
-            return baseAdapterConstructor.newInstance(finalCtorArgs);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create simple instance: " + e.getMessage(), e);
+    private Value mergeJSObjects(Value parent, Value child) {
+        if (parent == null || parent.isNull()) {
+            return child;
         }
-    }
-
-    private Object createWrappedInstance(Value[] constructorArgs, Map<String, Object> runtimeOverrides, Value addonsArg) {
-        try {
-            Object[] javaCtorArgs = convertAllValuesToJava(constructorArgs);
-            ProxyObject overridesProxy = ProxyObject.fromMap(runtimeOverrides);
-            Object[] finalCtorArgs = appendToArray(javaCtorArgs, overridesProxy);
-            Value baseInstanceAsValue = baseAdapterConstructor.newInstance(finalCtorArgs);
-            Object baseInstance = baseInstanceAsValue.asHostObject();
-            Map<String, Object> wrapperProperties = new HashMap<>();
-            wrapperProperties.put("instance", new MappedInstanceProxy(baseInstance));
-            wrapperProperties.put("_self", baseInstance);
-            if (addonsArg != null && addonsArg.hasMembers()) {
-                for (String addonKey : addonsArg.getMemberKeys()) {
-                    wrapperProperties.put(addonKey, addonsArg.getMember(addonKey));
-                }
-            }
-            ProxyObject wrapper = new ExtendedInstanceProxy(wrapperProperties, baseInstance);
-            bindFunctionsToWrapper(wrapperProperties, wrapper);
-            return wrapper;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create wrapped instance: " + e.getMessage(), e);
+        if (child == null || child.isNull()) {
+            return parent;
         }
-    }
-
-    private Object[] convertAllValuesToJava(Value[] values) {
-        Object[] javaObjects = new Object[values.length];
-        for (int i = 0; i < values.length; i++) {
-            javaObjects[i] = convertValueToJavaObject(values[i]);
+        Value merged = context.eval("js", "({})");
+        for (String key : parent.getMemberKeys()) {
+            merged.putMember(key, parent.getMember(key));
         }
-        return javaObjects;
-    }
-
-    private Object convertValueToJavaObject(Value value) {
-        if (value == null || value.isNull()) return null;
-        if (value.isHostObject()) return value.asHostObject();
-        if (value.isProxyObject()) return value.asProxyObject();
-        if (value.isString()) return value.asString();
-        if (value.isBoolean()) return value.asBoolean();
-        if (value.isNumber()) {
-            if (value.fitsInInt()) return value.asInt();
-            if (value.fitsInLong()) return value.asLong();
-            if (value.fitsInFloat()) return value.asFloat();
-            return value.asDouble();
+        for (String key : child.getMemberKeys()) {
+            merged.putMember(key, child.getMember(key));
         }
-        return value;
-    }
-
-    private void bindFunctionsToWrapper(Map<String, Object> wrapperProperties, ProxyObject wrapper) {
-        Value wrapperVal = context.asValue(wrapper);
-        for (Map.Entry<String, Object> entry : wrapperProperties.entrySet()) {
-            if (isJavaScriptFunction(entry.getValue())) {
-                try {
-                    Value bound = ((Value) entry.getValue()).invokeMember("bind", wrapperVal);
-                    entry.setValue(bound);
-                } catch (Exception e) {
-                    System.err.println("Warning: Could not bind function " + entry.getKey() + ": " + e.getMessage());
-                }
-            }
-        }
-    }
-
-    private boolean isJavaScriptFunction(Object value) {
-        return (value instanceof Value val) && val.canExecute() && val.hasMember("bind");
+        return merged;
     }
 
     private Object[] appendToArray(Object[] original, Object newElement) {

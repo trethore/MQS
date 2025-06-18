@@ -4,12 +4,15 @@ import net.me.Main;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
 import net.me.scripting.extenders.MappedClassExtender;
+import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
+import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.JsObjectWrapper;
-import net.me.scripting.wrappers.JsSuperObjectWrapper;
+import net.me.scripting.wrappers.LazyJsClassHolder;
+import net.me.scripting.wrappers.LazyPackageProxy;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -24,15 +27,15 @@ public class ScriptManager {
     private static ScriptManager instance;
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
     private final Map<String, Script> scripts = new HashMap<>();
-
     private Map<String, String> classMap;
     private Map<String, Map<String, List<String>>> methodMap;
     private Map<String, Map<String, String>> fieldMap;
     private Map<String, String> runtimeToYarn;
-
     private static final Set<String> EXCLUDED = Set.of();
+    private Set<String> knownPackagePrefixes;
 
-    private ScriptManager() {}
+    private ScriptManager() {
+    }
 
     public static ScriptManager getInstance() {
         if (instance == null) instance = new ScriptManager();
@@ -52,9 +55,7 @@ public class ScriptManager {
                 .allowHostClassLookup(this::isClassAllowed)
                 .option("js.ecmascript-version", "2024")
                 .build();
-
         configureContext(newContext);
-
         long endTime = System.currentTimeMillis();
         Main.LOGGER.info("New default script context (ECMAScript 2024) created in {}ms.", (endTime - startTime));
         return newContext;
@@ -65,37 +66,29 @@ public class ScriptManager {
         bindJavaFunctions(contextToConfigure);
         bindImportClass(contextToConfigure);
         bindExtendMapped(contextToConfigure);
-        bindThisOf(contextToConfigure);
-        bindSuperOf(contextToConfigure);
+        bindWrap(contextToConfigure);
     }
 
-    private void bindSuperOf(Context contextToConfigure) {
-        contextToConfigure.getBindings("js").putMember("superOf", (ProxyExecutable) args -> {
+    private void bindWrap(Context contextToConfigure) {
+        contextToConfigure.getBindings("js").putMember("wrap", (ProxyExecutable) args -> {
             if (args.length != 1) {
-                throw new RuntimeException("superOf() requires exactly one argument: the instance.");
+                throw new RuntimeException("wrap() requires exactly one argument: the instance.");
             }
-            Object javaInstance = ScriptUtils.unwrapReceiver(args[0]);
-            if (javaInstance == null) {
-                throw new RuntimeException("The instance passed to superOf() was null or could not be unwrapped.");
-            }
-            Class<?> superClass = javaInstance.getClass().getSuperclass();
-            if (superClass == null) {
-                throw new RuntimeException("Instance " + javaInstance + " does not have a superclass.");
-            }
-            var cm = MappingUtils.combineMappings(superClass, runtimeToYarn, methodMap, fieldMap);
-            return new JsSuperObjectWrapper(javaInstance, cm.methods(), contextToConfigure);
-        });
-    }
 
-    private void bindThisOf(Context contextToConfigure) {
-        contextToConfigure.getBindings("js").putMember("thisOf", (ProxyExecutable) args -> {
-            if (args.length != 1) {
-                throw new RuntimeException("thisOf() requires exactly one argument: the instance.");
+            Value v = args[0];
+
+            if (v.isProxyObject()) {
+                Object proxy = v.asProxyObject();
+                if (proxy instanceof ExtendedInstanceProxy || proxy instanceof JsObjectWrapper || proxy instanceof MappedInstanceProxy) {
+                    return v;
+                }
             }
-            Object javaInstance = ScriptUtils.unwrapReceiver(args[0]);
+
+            Object javaInstance = ScriptUtils.unwrapReceiver(v);
             if (javaInstance == null) {
-                throw new RuntimeException("The instance passed to thisOf() was null or could not be unwrapped.");
+                throw new RuntimeException("The instance passed to wrap() was null or could not be unwrapped.");
             }
+
             Class<?> instanceClass = javaInstance.getClass();
             var cm = MappingUtils.combineMappings(instanceClass, runtimeToYarn, methodMap, fieldMap);
             return new JsObjectWrapper(javaInstance, instanceClass, cm.methods(), cm.fields());
@@ -109,20 +102,54 @@ public class ScriptManager {
         methodMap = mm.getMethodMap();
         fieldMap = mm.getFieldMap();
         runtimeToYarn = mm.getRuntimeToYarnClassMap();
+        precomputePackagePrefixes();
+    }
+
+    private void precomputePackagePrefixes() {
+        knownPackagePrefixes = new HashSet<>();
+        if (classMap == null) return;
+
+        for (String fqcn : classMap.keySet()) {
+            String[] parts = fqcn.split("\\.");
+            StringBuilder currentPath = new StringBuilder();
+            for (int i = 0; i < parts.length - 1; i++) {
+                if (i > 0) {
+                    currentPath.append('.');
+                }
+                currentPath.append(parts[i]);
+                knownPackagePrefixes.add(currentPath.toString());
+            }
+        }
+    }
+
+    public boolean isFullClassPath(String path) {
+        return classMap.containsKey(path);
+    }
+
+    public boolean isPackage(String path) {
+        return knownPackagePrefixes.contains(path);
+    }
+
+    public String getRuntimeName(String yarnName) {
+        return classMap.get(yarnName);
     }
 
     private void registerPackages(Context contextToConfigure) {
-        JsPackage root = new JsPackage();
-        classMap.entrySet().stream()
-                .filter(e -> !EXCLUDED.contains(e.getKey()))
-                .filter(e -> isClassInMc(e.getKey()))
-                .forEach(e -> {
-                    var holder = new LazyJsClassHolder(e.getKey(), e.getValue(), this);
-                    ScriptUtils.insertIntoPackageHierarchy(root, e.getKey(), holder);
-                });
+        Set<String> topLevelPackages = new HashSet<>();
+        if (knownPackagePrefixes != null) {
+            for (String prefix : knownPackagePrefixes) {
+                if (isClassInMc(prefix)) {
+                    topLevelPackages.add(prefix.split("\\.")[0]);
+                }
+            }
+        }
+
         var bindings = contextToConfigure.getBindings("js");
-        Arrays.stream((String[]) root.getMemberKeys())
-                .forEach(key -> bindings.putMember(key, root.getMember(key)));
+        for (String pkg : topLevelPackages) {
+            if (!bindings.hasMember(pkg)) {
+                bindings.putMember(pkg, new LazyPackageProxy(pkg, this));
+            }
+        }
     }
 
     protected boolean isClassInMc(String name) {
@@ -135,8 +162,10 @@ public class ScriptManager {
                 && (name.startsWith("java.")
                 || name.startsWith("net.minecraft.")
                 || name.startsWith("com.mojang.")
-                || name.startsWith("net.me"));
+                || name.startsWith("net.me")
+                || name.startsWith("com.oracle.truffle.host.adapters."));
     }
+
     private boolean isClassIncluded(String name) {
         return !EXCLUDED.contains(name);
     }
@@ -175,22 +204,56 @@ public class ScriptManager {
     private void bindExtendMapped(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("extendMapped", (ProxyExecutable) args -> {
             if (args.length != 1) {
-                throw new RuntimeException("Java.extendMapped() requires exactly one configuration object");
+                throw new RuntimeException("extendMapped() requires exactly one configuration object");
             }
             Value configArg = args[0];
-            if (!configArg.hasMembers()) {
+            if (!configArg.hasMembers() || !configArg.hasMember("extends")) {
                 throw new RuntimeException("Configuration argument must be an object with 'extends' property");
             }
-            ExtensionConfig config = parseExtensionConfig(configArg, contextToConfigure);
-            return new MappedClassExtender(config, contextToConfigure);
+
+            Value extendsValue = configArg.getMember("extends");
+            Value parentOverrides = null;
+            Value parentAddons = null;
+            Value parentSuper = null;
+            ExtensionConfig config;
+
+            if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
+                parentOverrides = parentProxy.getOriginalOverrides();
+                parentAddons = parentProxy.getOriginalAddons();
+                parentSuper = extendsValue.getMember("_super");
+
+                ExtensionConfig originalConfig = parentProxy.getOriginalConfig();
+                MappedClassInfo newExtendsInfo = originalConfig.extendsClass();
+
+                List<MappedClassInfo> allImplements = new ArrayList<>(originalConfig.implementsClasses());
+                if (configArg.hasMember("implements")) {
+                    Value impl = configArg.getMember("implements");
+                    if (impl.hasArrayElements()) {
+                        for (long i = 0; i < impl.getArraySize(); i++) {
+                            allImplements.add(extractInfoFromValue(impl.getArrayElement(i)));
+                        }
+                    } else {
+                        allImplements.add(extractInfoFromValue(impl));
+                    }
+                }
+                List<MappedClassInfo> finalImplements = new ArrayList<>(new LinkedHashSet<>(allImplements));
+                config = new ExtensionConfig(newExtendsInfo, finalImplements.stream().filter(Objects::nonNull).toList(), contextToConfigure);
+
+            } else {
+                config = parseExtensionConfig(configArg, contextToConfigure, extendsValue);
+            }
+
+            return new MappedClassExtender(config, contextToConfigure, parentOverrides, parentAddons, parentSuper);
         });
     }
 
-    private ExtensionConfig parseExtensionConfig(Value configArg, Context context) {
-        if (!configArg.hasMember("extends")) {
+    private ExtensionConfig parseExtensionConfig(Value configArg, Context context, Value extendsValueOverride) {
+        Value extendsValue = (extendsValueOverride != null) ? extendsValueOverride : configArg.getMember("extends");
+
+        if (extendsValue == null) {
             throw new RuntimeException("Configuration object must have an 'extends' property");
         }
-        MappedClassInfo extendsInfo = extractInfoFromValue(configArg.getMember("extends"));
+        MappedClassInfo extendsInfo = extractInfoFromValue(extendsValue);
         List<MappedClassInfo> implementsInfos = new ArrayList<>();
         if (configArg.hasMember("implements")) {
             Value impl = configArg.getMember("implements");
@@ -216,7 +279,8 @@ public class ScriptManager {
                     java.lang.reflect.Field yarnNameField = LazyJsClassHolder.class.getDeclaredField("yarnName");
                     yarnNameField.setAccessible(true);
                     yarnName = (String) yarnNameField.get(holder);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             } else if (proxy instanceof JsClassWrapper w) {
                 wrapper = w;
             }
@@ -264,8 +328,19 @@ public class ScriptManager {
         }
     }
 
-    public void addScript(Script script) { scripts.put(script.getName(), script); }
-    public Script getScript(String name) { return scripts.get(name); }
-    public void removeScript(String name) { scripts.remove(name); }
-    public Collection<Script> getAllScripts() { return scripts.values(); }
+    public void addScript(Script script) {
+        scripts.put(script.getName(), script);
+    }
+
+    public Script getScript(String name) {
+        return scripts.get(name);
+    }
+
+    public void removeScript(String name) {
+        scripts.remove(name);
+    }
+
+    public Collection<Script> getAllScripts() {
+        return scripts.values();
+    }
 }

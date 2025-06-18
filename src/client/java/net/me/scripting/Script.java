@@ -5,7 +5,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,7 +17,7 @@ public class Script {
     private Path scriptPath;
 
     public Script(String name) {
-       this(name, null);
+        this(name, null);
     }
 
     public Script(String name, Path scriptPath) {
@@ -57,6 +56,7 @@ public class Script {
     public String getName() {
         return name;
     }
+
     public void setName(String name) {
         this.name = name;
     }
@@ -64,6 +64,7 @@ public class Script {
     public Path getScriptPath() {
         return scriptPath;
     }
+
     public void setScriptPath(Path scriptPath) {
         this.scriptPath = scriptPath;
     }
@@ -71,6 +72,7 @@ public class Script {
     public List<String> getConsole() {
         return List.copyOf(console);
     }
+
     public void clearConsole() {
         console.clear();
     }

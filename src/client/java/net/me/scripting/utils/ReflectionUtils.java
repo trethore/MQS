@@ -3,17 +3,12 @@ package net.me.scripting.utils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 
 public final class ReflectionUtils {
 
-    private ReflectionUtils() {}
+    private ReflectionUtils() {
+    }
 
     public static Field findField(Class<?> cls, String name) throws NoSuchFieldException {
         for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
@@ -21,7 +16,8 @@ public final class ReflectionUtils {
                 Field f = c.getDeclaredField(name);
                 f.setAccessible(true);
                 return f;
-            } catch (NoSuchFieldException ignored) {}
+            } catch (NoSuchFieldException ignored) {
+            }
         }
         throw new NoSuchFieldException("Field '" + name + "' not found in class " + cls + " or its superclasses.");
     }

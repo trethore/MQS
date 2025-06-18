@@ -14,10 +14,22 @@ public class AllScriptsScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        ButtonWidget widget = ButtonWidget.builder(Text.literal("Test JS"), button -> {
-            Script jsScript = new Script("test", Main.MOD_DIR.resolve("scripts").resolve("test4.js"));
+        int x = this.width / 2 - 100;
+        ButtonWidget scriptButton1 = ButtonWidget.builder(Text.literal("Test1 JS"), button -> {
+            Script jsScript = new Script("test", Main.MOD_DIR.resolve("scripts").resolve("test.js"));
             jsScript.run();
-        }).dimensions(this.width / 2 - 100, this.height / 4, 200, 20).build();
-        this.addDrawableChild(widget);
+        }).dimensions(x, this.height / 4, 200, 20).build();
+        ButtonWidget scriptButton2 = ButtonWidget.builder(Text.literal("Test2 JS"), button -> {
+            Script jsScript = new Script("test", Main.MOD_DIR.resolve("scripts").resolve("test2.js"));
+            jsScript.run();
+        }).dimensions(x, this.height / 4 + 40, 200, 20).build();
+        ButtonWidget scriptButton3 = ButtonWidget.builder(Text.literal("Test3 JS"), button -> {
+            Script jsScript = new Script("test", Main.MOD_DIR.resolve("scripts").resolve("test3.js"));
+            jsScript.run();
+        }).dimensions(x, this.height / 4 + 2 * 40, 200, 20).build();
+
+        this.addDrawableChild(scriptButton3);
+        this.addDrawableChild(scriptButton2);
+        this.addDrawableChild(scriptButton1);
     }
 }

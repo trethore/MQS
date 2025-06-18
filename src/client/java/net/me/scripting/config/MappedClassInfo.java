@@ -8,4 +8,5 @@ public record MappedClassInfo(
         Class<?> targetClass,
         Map<String, List<String>> methodMappings,
         Map<String, String> fieldMappings
-) {}
+) {
+}

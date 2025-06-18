@@ -1,21 +1,18 @@
 package net.me.scripting.utils;
 
-import net.me.scripting.JsPackage;
-import net.me.scripting.LazyJsClassHolder;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 
 
 public final class ScriptUtils {
 
-    private ScriptUtils() {}
+    private ScriptUtils() {
+    }
 
     public static Object[] unwrapArgs(Value[] args, Class<?>[] types) {
         if (args == null) return new Object[0];
@@ -27,26 +24,29 @@ public final class ScriptUtils {
     }
 
     private static Object convertValue(Value v, Class<?> expected) {
-        if (v == null || v.isNull()) return null;
+        if (v == null || v.isNull()) {
+            return null;
+        }
 
-        if (v.isProxyObject()) {
-            Object proxy = v.asProxyObject();
-            if (proxy instanceof JsObjectWrapper wrapper) {
-                return wrapper.getJavaInstance();
-            }
+        Object potentialUnwrapped = unwrapReceiver(v);
+
+        if (potentialUnwrapped != v && !(potentialUnwrapped instanceof Value)) {
+            return potentialUnwrapped;
         }
 
         if (expected != null) {
-            try { return v.as(expected); } catch (Exception ignored) {}
+            try {
+                return v.as(expected);
+            } catch (Exception ignored) {
+            }
         }
+
         if (v.isBoolean()) return v.asBoolean();
         if (v.isString()) return v.asString();
-        if (v.isHostObject()) return v.asHostObject();
         if (v.isNumber()) return convertNumber(v, expected);
-        if (v.isProxyObject()) return extractProxy(v, expected);
-        if (v.canExecute() && expected != null && expected.isAnnotationPresent(FunctionalInterface.class)) {
-            try { return v.as(expected); } catch (Exception ignored) {}
-        }
+        if (v.isHostObject()) return v.asHostObject();
+        if (v.isProxyObject()) return v.asProxyObject();
+
         return v;
     }
 
@@ -60,17 +60,21 @@ public final class ScriptUtils {
             else return o;
         }
 
-        if (current instanceof ExtendedInstanceProxy proxy) {
-            try {
-                Field baseInstanceField = ExtendedInstanceProxy.class.getDeclaredField("baseInstance");
-                baseInstanceField.setAccessible(true);
-                return unwrapReceiver(baseInstanceField.get(proxy));
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                throw new RuntimeException("Failed to unwrap ExtendedInstanceProxy", e);
+        while (true) {
+            if (current instanceof ExtendedInstanceProxy proxy) {
+                current = proxy.getBaseInstance();
+                continue;
             }
+            if (current instanceof MappedInstanceProxy proxy) {
+                current = proxy.getInstance();
+                continue;
+            }
+            if (current instanceof JsObjectWrapper wrapper) {
+                current = wrapper.getJavaInstance();
+                continue;
+            }
+            break;
         }
-        if (current instanceof MappedInstanceProxy proxy) return proxy.getInstance();
-        if (current instanceof JsObjectWrapper wrapper) return wrapper.getJavaInstance();
 
         return current;
     }
@@ -80,17 +84,6 @@ public final class ScriptUtils {
         if (expected == long.class || expected == Long.class) return v.asLong();
         if (expected == float.class || expected == Float.class) return v.asFloat();
         return v.asDouble();
-    }
-
-    private static Object extractProxy(Value v, Class<?> expected) {
-        ProxyObject proxy = v.asProxyObject();
-        if (proxy instanceof JsObjectWrapper wrapper) {
-            return wrapper.getJavaInstance();
-        }
-        if (expected != null) {
-            try { return v.as(expected); } catch (Exception ignored) {}
-        }
-        return proxy;
     }
 
     public static Object wrapReturn(Object o) {
@@ -104,27 +97,5 @@ public final class ScriptUtils {
             return new JsObjectWrapper(o, c, cm.methods(), cm.fields());
         }
         return Value.asValue(o);
-    }
-
-    public static void insertIntoPackageHierarchy(JsPackage root,
-                                                  String fullYarnName,
-                                                  LazyJsClassHolder holder) {
-        String[] parts = fullYarnName.split("\\.");
-        JsPackage current = root;
-        for (int i = 0; i < parts.length - 1; i++) {
-            String pkg = parts[i];
-            Object existing = current.getMember(pkg);
-            if (existing instanceof JsPackage p) {
-                current = p;
-            } else if (existing == null) {
-                JsPackage next = new JsPackage();
-                current.put(pkg, next);
-                current = next;
-            } else {
-                return;
-            }
-        }
-        String className = parts[parts.length - 1];
-        current.put(className, holder);
     }
 }

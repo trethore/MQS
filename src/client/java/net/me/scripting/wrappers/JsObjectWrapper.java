@@ -1,6 +1,5 @@
 package net.me.scripting.wrappers;
 
-import net.me.Main;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.support.FieldLookup;
 import net.me.scripting.wrappers.support.MethodLookup;
@@ -21,6 +20,7 @@ public class JsObjectWrapper implements ProxyObject {
     private final Class<?> instanceClass;
     private final MethodLookup methods;
     private final FieldLookup fields;
+    private final String[] memberKeys;
 
     public JsObjectWrapper(Object instance,
                            Class<?> cls,
@@ -33,6 +33,22 @@ public class JsObjectWrapper implements ProxyObject {
         this.instanceClass = (cls != null) ? cls : instance.getClass();
         this.methods = new MethodLookup(methodMap);
         this.fields = new FieldLookup(fieldMap);
+
+        Set<String> keys = new HashSet<>(methods.methodKeys());
+        keys.addAll(fields.fieldKeys());
+
+        for (Method method : instanceClass.getMethods()) {
+            if (!Modifier.isStatic(method.getModifiers())) {
+                keys.add(method.getName());
+            }
+        }
+        for (Field field : instanceClass.getFields()) {
+            if (!Modifier.isStatic(field.getModifiers())) {
+                keys.add(field.getName());
+            }
+        }
+        keys.add("_self");
+        this.memberKeys = keys.toArray(new String[0]);
     }
 
     @Override
@@ -55,16 +71,7 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        Set<String> keys = new HashSet<>(methods.methodKeys());
-        keys.addAll(fields.fieldKeys());
-        for (Method method : instanceClass.getMethods()) {
-            if (!Modifier.isStatic(method.getModifiers())) keys.add(method.getName());
-        }
-        for (Field field : instanceClass.getFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) keys.add(field.getName());
-        }
-        keys.add("_self");
-        return keys.toArray(new String[0]);
+        return this.memberKeys;
     }
 
     @Override
@@ -91,13 +98,13 @@ public class JsObjectWrapper implements ProxyObject {
 
     private Object handleMappedMethod(String key) {
         List<Method> candidates = methods.findMethods(instanceClass, key);
-        if (!candidates.isEmpty()) return (ProxyExecutable) args -> invokeMethods(candidates, args);
+        if (!candidates.isEmpty()) return (ProxyExecutable) args -> invokeMethods(candidates, args, key);
         return null;
     }
 
     private Object handleDirectMethod(String key) {
         List<Method> direct = MethodLookup.findDirect(instanceClass, key);
-        if (!direct.isEmpty()) return (ProxyExecutable) args -> invokeMethods(direct, args);
+        if (!direct.isEmpty()) return (ProxyExecutable) args -> invokeMethods(direct, args, key);
         return null;
     }
 
@@ -113,21 +120,23 @@ public class JsObjectWrapper implements ProxyObject {
         }
     }
 
-    private Object invokeMethods(List<Method> methods, Value[] args) {
+    private Object invokeMethods(List<Method> methods, Value[] args, String yarnName) {
         for (Method m : methods) {
             if (m.getParameterCount() == args.length) {
                 try {
-                    Object target = ScriptUtils.unwrapReceiver(javaInstance);
                     Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
-                    Object res = m.invoke(target, javaArgs);
-                    return ScriptUtils.wrapReturn(res);
+
+                    Object result = m.invoke(this.javaInstance, javaArgs);
+                    return ScriptUtils.wrapReturn(result);
                 } catch (Exception e) {
-                    Main.LOGGER.error("Method invocation failed: {}", m.getName(), e);
-                    throw new RuntimeException("Method invocation failed: " + m.getName(), e);
+                    if (e.getCause() != null) {
+                        throw new RuntimeException("Method '" + yarnName + "' threw an exception: " + e.getCause().getMessage(), e.getCause());
+                    }
+                    throw new RuntimeException("Method invocation failed for '" + yarnName + "'. See logs for details.", e);
                 }
             }
         }
-        throw new RuntimeException("No overload for method with " + args.length + " args");
+        throw new RuntimeException("No overload for method '" + yarnName + "' with " + args.length + " args");
     }
 
     private void writeField(String key, Value value) {
