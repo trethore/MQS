@@ -1,5 +1,3 @@
-// File: java/scripting/ScriptManager.java
-
 package net.me.scripting;
 
 import net.me.Main;
@@ -225,11 +223,7 @@ public class ScriptManager {
                 parentSuper = extendsValue.getMember("_super");
 
                 ExtensionConfig originalConfig = parentProxy.getOriginalConfig();
-                Object parentBaseInstance = parentProxy.getBaseInstance();
-                Class<?> parentActualClass = parentBaseInstance.getClass();
-                String yarnName = originalConfig.extendsClass().yarnName();
-                var combinedMappings = MappingUtils.combineMappings(parentActualClass, runtimeToYarn, methodMap, fieldMap);
-                MappedClassInfo newExtendsInfo = new MappedClassInfo(yarnName, parentActualClass, combinedMappings.methods(), combinedMappings.fields());
+                MappedClassInfo newExtendsInfo = originalConfig.extendsClass();
 
                 List<MappedClassInfo> allImplements = new ArrayList<>(originalConfig.implementsClasses());
                 if (configArg.hasMember("implements")) {

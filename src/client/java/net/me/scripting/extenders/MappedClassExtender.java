@@ -6,6 +6,7 @@ import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.extenders.proxies.RuntimeBinderProxy;
 import net.me.scripting.extenders.proxies.SuperProxy;
+import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
@@ -48,33 +49,33 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         ArgumentParser parser = parseArguments(args);
 
         Map<String, Object> childRuntimeOverrides = buildRuntimeOverrides(parser.overridesValue);
-        RuntimeBinderProxy binder = new RuntimeBinderProxy(childRuntimeOverrides);
-        Object baseInstance = createBaseJavaInstanceWithBinder(parser.constructorArgs, binder);
+
+        Map<String, Object> parentRuntimeOverrides = new HashMap<>();
+        if (this.parentOverrides != null && this.parentOverrides.hasMembers()) {
+            parentRuntimeOverrides.putAll(buildRuntimeOverrides(this.parentOverrides));
+        }
+
+        Map<String, Object> mergedRuntimeOverrides = new HashMap<>(parentRuntimeOverrides);
+        mergedRuntimeOverrides.putAll(childRuntimeOverrides);
+
+        RuntimeBinderProxy mergedBinder = new RuntimeBinderProxy(mergedRuntimeOverrides);
+
+        Object baseInstance = createBaseJavaInstanceWithBinder(parser.constructorArgs, mergedBinder);
 
         Map<String, Object> wrapperProperties = new HashMap<>();
         Value finalMergedOverrides = mergeJSObjects(this.parentOverrides, parser.overridesValue);
         Value finalMergedAddons = mergeJSObjects(this.parentAddons, parser.addonsValue);
         ExtendedInstanceProxy wrapper = new ExtendedInstanceProxy(wrapperProperties, baseInstance, this.config, finalMergedOverrides, finalMergedAddons);
 
-        binder.setBindingTarget(wrapper);
+        mergedBinder.setBindingTarget(wrapper);
         populateWrapper(wrapper, baseInstance, parser.addonsValue);
         return wrapper;
     }
 
-    private Object createBaseJavaInstanceWithBinder(Value[] constructorArgs, RuntimeBinderProxy childBinder) {
-        Object[] javaCtorArgs = convertAllValuesToJava(constructorArgs);
-        Object[] finalCtorArgs;
+    private Object createBaseJavaInstanceWithBinder(Value[] constructorArgs, RuntimeBinderProxy binder) {
+        Object[] javaCtorArgs = ScriptUtils.unwrapArgs(constructorArgs, null);
 
-        if (this.parentOverrides != null && this.parentOverrides.hasMembers()) {
-            Map<String, Object> parentRuntimeOverrides = buildRuntimeOverrides(this.parentOverrides);
-            ProxyObject parentOverridesProxy = ProxyObject.fromMap(parentRuntimeOverrides);
-            finalCtorArgs = new Object[javaCtorArgs.length + 2];
-            System.arraycopy(javaCtorArgs, 0, finalCtorArgs, 0, javaCtorArgs.length);
-            finalCtorArgs[javaCtorArgs.length] = parentOverridesProxy;
-            finalCtorArgs[javaCtorArgs.length + 1] = childBinder;
-        } else {
-            finalCtorArgs = appendToArray(javaCtorArgs, childBinder);
-        }
+        Object[] finalCtorArgs = appendToArray(javaCtorArgs, binder);
 
         try {
             return baseAdapterConstructor.newInstance(finalCtorArgs).asHostObject();
@@ -220,29 +221,6 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
             return config.extendsClass();
         }
         return config.implementsClasses().stream().filter(info -> info.yarnName().equals(yarnName)).findFirst().orElse(null);
-    }
-
-    private Object[] convertAllValuesToJava(Value[] values) {
-        Object[] javaObjects = new Object[values.length];
-        for (int i = 0; i < values.length; i++) {
-            javaObjects[i] = convertValueToJavaObject(values[i]);
-        }
-        return javaObjects;
-    }
-
-    private Object convertValueToJavaObject(Value value) {
-        if (value == null || value.isNull()) return null;
-        if (value.isHostObject()) return value.asHostObject();
-        if (value.isProxyObject()) return value.asProxyObject();
-        if (value.isString()) return value.asString();
-        if (value.isBoolean()) return value.asBoolean();
-        if (value.isNumber()) {
-            if (value.fitsInInt()) return value.asInt();
-            if (value.fitsInLong()) return value.asLong();
-            if (value.fitsInFloat()) return value.asFloat();
-            return value.asDouble();
-        }
-        return value;
     }
 
     private Value mergeJSObjects(Value parent, Value child) {

@@ -15,7 +15,7 @@ public class AllScriptsScreen extends Screen {
     protected void init() {
         super.init();
         ButtonWidget widget = ButtonWidget.builder(Text.literal("Test JS"), button -> {
-            Script jsScript = new Script("test", Main.MOD_DIR.resolve("scripts").resolve("test4.js"));
+            Script jsScript = new Script("test", Main.MOD_DIR.resolve("scripts").resolve("test.js"));
             jsScript.run();
         }).dimensions(this.width / 2 - 100, this.height / 4, 200, 20).build();
         this.addDrawableChild(widget);
