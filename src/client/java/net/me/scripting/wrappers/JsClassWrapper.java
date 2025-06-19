@@ -89,11 +89,20 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     @Override
     public void putMember(String key, Value value) {
         String fieldName = key;
+        boolean isExplicitFieldAccess = false;
         if (key.endsWith("$")) {
             fieldName = key.substring(0, key.length() - 1);
+            isExplicitFieldAccess = true;
         }
 
         if (yarnToRuntimeFields.containsKey(fieldName)) {
+            boolean methodConflict = yarnToRuntimeMethods.containsKey(fieldName);
+            if (methodConflict && !isExplicitFieldAccess) {
+                throw new UnsupportedOperationException(
+                        "Ambiguous write to static member '" + fieldName + "'. A static method with this name exists. " +
+                                "Use the '$' suffix to write to the field directly: " + fieldName + "$"
+                );
+            }
             writeStaticField(fieldName, value);
             return;
         }
@@ -136,7 +145,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                         return ScriptUtils.wrapReturn(result);
                     } catch (Exception e) {
                         throw new RuntimeException(
-                                String.format("Error calling %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
+                                String.format("Failed to instantiate %s: %s", targetClassName, e.getMessage()), e);
                     }
                 }
             }
@@ -150,12 +159,12 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         try {
             Field f = ReflectionUtils.findField(targetClass, runtimeName);
             if (!Modifier.isStatic(f.getModifiers())) {
-                throw new RuntimeException(yarnKey + " is not static");
+                throw new RuntimeException(yarnKey + " is not a static field.");
             }
             return ScriptUtils.wrapReturn(f.get(null));
         } catch (Exception e) {
             throw new RuntimeException(
-                    String.format("Error accessing %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
+                    String.format("Error accessing static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
         }
     }
 
@@ -164,16 +173,16 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         try {
             Field f = ReflectionUtils.findField(targetClass, runtimeName);
             if (!Modifier.isStatic(f.getModifiers())) {
-                throw new UnsupportedOperationException(yarnKey + " is not static");
+                throw new UnsupportedOperationException("Cannot write to non-static field '" + yarnKey + "' via class proxy.");
             }
             if (Modifier.isFinal(f.getModifiers())) {
-                throw new UnsupportedOperationException("Cannot modify final field " + yarnKey);
+                throw new UnsupportedOperationException("Cannot modify final static field '" + yarnKey + "'.");
             }
             Object javaVal = ScriptUtils.unwrapArgs(new Value[]{value}, new Class[]{f.getType()})[0];
             f.set(null, javaVal);
         } catch (Exception e) {
             throw new RuntimeException(
-                    String.format("Error setting %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
+                    String.format("Error setting static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
         }
     }
 
