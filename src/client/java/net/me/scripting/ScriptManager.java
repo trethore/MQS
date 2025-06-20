@@ -1,3 +1,5 @@
+// path: java/net/me/scripting/ScriptManager.java
+
 package net.me.scripting;
 
 import net.me.Main;
@@ -7,6 +9,8 @@ import net.me.scripting.extenders.MappedClassExtender;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
+import net.me.scripting.module.RunningScript;
+import net.me.scripting.module.ScriptDescriptor;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
@@ -15,6 +19,7 @@ import net.me.scripting.wrappers.LazyJsClassHolder;
 import net.me.scripting.wrappers.LazyPackageProxy;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
@@ -22,11 +27,18 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Stream;
 
 public class ScriptManager {
     private static ScriptManager instance;
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
-    private final Map<String, Script> scripts = new HashMap<>();
+    private final Map<String, ScriptDescriptor> availableScripts = new HashMap<>();
+    private final Map<String, RunningScript> runningScripts = new HashMap<>();
+    private Context scriptContext;
+
+    // A ThreadLocal to hold modules exported during a single file's evaluation
+    private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
+
     private Map<String, String> classMap;
     private Map<String, Map<String, List<String>>> methodMap;
     private Map<String, Map<String, String>> fieldMap;
@@ -45,6 +57,15 @@ public class ScriptManager {
     public void init() {
         ensureScriptDirectory();
         loadMappings();
+        this.scriptContext = createDefaultScriptContext();
+        discoverScripts();
+    }
+
+    public void enableAllScripts() {
+        Main.LOGGER.info("Enabling all discovered scripts...");
+        for(String scriptId : availableScripts.keySet()){
+            enableScript(scriptId);
+        }
     }
 
     public Context createDefaultScriptContext() {
@@ -54,6 +75,7 @@ public class ScriptManager {
                 .allowHostAccess(HostAccess.ALL)
                 .allowHostClassLookup(this::isClassAllowed)
                 .option("js.ecmascript-version", "2024")
+                .option("js.esm-eval-returns-exports", "true")
                 .build();
         configureContext(newContext);
         long endTime = System.currentTimeMillis();
@@ -67,8 +89,47 @@ public class ScriptManager {
         bindImportClass(contextToConfigure);
         bindExtendMapped(contextToConfigure);
         bindWrap(contextToConfigure);
+        bindExportModule(contextToConfigure);
     }
 
+    private void bindExportModule(Context contextToConfigure) {
+        ProxyExecutable exportFunction = args -> {
+            Map<String, Value> exportsMap = perFileExports.get();
+            if (exportsMap == null) {
+                Main.LOGGER.warn("exportModule called outside of a script discovery or enablement context. Ignoring.");
+                return null;
+            }
+
+            for (Value arg : args) {
+                if (arg != null && arg.hasArrayElements()) {
+                    for (long i = 0; i < arg.getArraySize(); i++) {
+                        addModule(exportsMap, arg.getArrayElement(i));
+                    }
+                } else {
+                    addModule(exportsMap, arg);
+                }
+            }
+            return null;
+        };
+
+        contextToConfigure.getBindings("js").putMember("exportModule", exportFunction);
+    }
+
+    private void addModule(Map<String, Value> exportsMap, Value moduleValue) {
+        if (moduleValue != null && moduleValue.canInstantiate()) {
+            Value nameValue = moduleValue.getMember("name");
+            if (nameValue != null && nameValue.isString()) {
+                String moduleName = nameValue.asString();
+                if (moduleName != null && !moduleName.isEmpty()) {
+                    exportsMap.put(moduleName, moduleValue);
+                    return;
+                }
+            }
+        }
+        Main.LOGGER.warn("An argument to exportModule was not a valid, named, instantiable class. Ignoring: {}", moduleValue);
+    }
+
+    // --- Unchanged methods from original file ---
     private void bindWrap(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("wrap", (ProxyExecutable) args -> {
             if (args.length != 1) {
@@ -201,6 +262,7 @@ public class ScriptManager {
         });
     }
 
+
     private void bindExtendMapped(Context contextToConfigure) {
         contextToConfigure.getBindings("js").putMember("extendMapped", (ProxyExecutable) args -> {
             if (args.length != 1) {
@@ -217,7 +279,10 @@ public class ScriptManager {
             Value parentSuper = null;
             ExtensionConfig config;
 
-            if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
+            if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof MappedClassExtender) {
+                config = parseExtensionConfig(configArg, contextToConfigure, extendsValue);
+
+            } else if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
                 parentOverrides = parentProxy.getOriginalOverrides();
                 parentAddons = parentProxy.getOriginalAddons();
                 parentSuper = extendsValue.getMember("_super");
@@ -271,6 +336,18 @@ public class ScriptManager {
     private MappedClassInfo extractInfoFromValue(Value value) {
         if (value.isProxyObject()) {
             Object proxy = value.asProxyObject();
+            if (proxy instanceof MappedClassExtender extender) {
+                // This allows extending a script class definition.
+                try {
+                    java.lang.reflect.Field configField = MappedClassExtender.class.getDeclaredField("config");
+                    configField.setAccessible(true);
+                    ExtensionConfig parentConfig = (ExtensionConfig) configField.get(extender);
+                    return parentConfig.extendsClass();
+                } catch (Exception e) {
+                    throw new RuntimeException("Could not extract config from parent MappedClassExtender", e);
+                }
+            }
+
             JsClassWrapper wrapper = null;
             String yarnName = null;
             if (proxy instanceof LazyJsClassHolder holder) {
@@ -279,11 +356,11 @@ public class ScriptManager {
                     java.lang.reflect.Field yarnNameField = LazyJsClassHolder.class.getDeclaredField("yarnName");
                     yarnNameField.setAccessible(true);
                     yarnName = (String) yarnNameField.get(holder);
-                } catch (Exception ignored) {
-                }
+                } catch (Exception ignored) {}
             } else if (proxy instanceof JsClassWrapper w) {
                 wrapper = w;
             }
+
             if (wrapper != null) {
                 if (yarnName == null) {
                     yarnName = runtimeToYarn.getOrDefault(wrapper.getTargetClass().getName(), wrapper.getTargetClass().getName());
@@ -327,20 +404,93 @@ public class ScriptManager {
             Main.LOGGER.error("Failed create scripts dir: {}", p, e);
         }
     }
+    // --- End of unchanged methods ---
 
-    public void addScript(Script script) {
-        scripts.put(script.getName(), script);
+    private void discoverScripts() {
+        availableScripts.clear();
+        Path scriptsDir = Main.MOD_DIR.resolve("scripts");
+        try (Stream<Path> paths = Files.walk(scriptsDir)) {
+            paths.filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".js"))
+                    .forEach(this::discoverModulesInFile);
+        } catch (IOException e) {
+            Main.LOGGER.error("Error discovering scripts in {}", scriptsDir, e);
+        }
+        Main.LOGGER.info("Discovered {} available script modules.", availableScripts.size());
     }
 
-    public Script getScript(String name) {
-        return scripts.get(name);
+    private void discoverModulesInFile(Path path) {
+        perFileExports.set(new HashMap<>());
+        try {
+            Source source = Source.newBuilder("js", path.toFile()).mimeType("application/javascript+module").build();
+            this.scriptContext.eval(source);
+
+            Map<String, Value> discoveredModules = perFileExports.get();
+            for (String moduleName : discoveredModules.keySet()) {
+                ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName);
+                availableScripts.put(descriptor.getId(), descriptor);
+            }
+        } catch (Exception e) {
+            Main.LOGGER.error("Failed to parse script file for modules: {}", path, e);
+        } finally {
+            perFileExports.remove();
+        }
     }
 
-    public void removeScript(String name) {
-        scripts.remove(name);
+    public void enableScript(String scriptId) {
+        if (runningScripts.containsKey(scriptId)) {
+            Main.LOGGER.warn("Script '{}' is already running.", scriptId);
+            return;
+        }
+        ScriptDescriptor descriptor = availableScripts.get(scriptId);
+        if (descriptor == null) {
+            Main.LOGGER.error("Cannot enable unknown script '{}'", scriptId);
+            return;
+        }
+
+        perFileExports.set(new HashMap<>());
+        try {
+            Source source = Source.newBuilder("js", descriptor.path().toFile())
+                    .mimeType("application/javascript+module")
+                    .build();
+
+            this.scriptContext.eval(source);
+            Map<String, Value> fileExports = perFileExports.get();
+            Value scriptClass = fileExports.get(descriptor.moduleName());
+
+            if (scriptClass == null || !scriptClass.canInstantiate()) {
+                throw new IllegalStateException("Module '" + descriptor.moduleName() + "' was not found or is not an instantiable class. Did you use exportModule()?");
+            }
+            Value jsInstance = scriptClass.newInstance();
+            RunningScript runningScript = new RunningScript(descriptor, jsInstance);
+
+            runningScripts.put(scriptId, runningScript);
+            runningScript.onEnable();
+            Main.LOGGER.info("Enabled script: {}", runningScript.getName());
+        } catch (Exception e) {
+            Main.LOGGER.error("Failed to enable script '{}'", scriptId, e);
+        } finally {
+            perFileExports.remove();
+        }
     }
 
-    public Collection<Script> getAllScripts() {
-        return scripts.values();
+    public void disableScript(String scriptId) {
+        RunningScript script = runningScripts.remove(scriptId);
+        if (script != null) {
+            script.onDisable();
+            Main.LOGGER.info("Disabled script: {}", script.getName());
+        }
+    }
+
+    public boolean isRunning(String scriptId) {
+        return runningScripts.containsKey(scriptId);
+    }
+
+    public Collection<ScriptDescriptor> getAvailableScripts() {
+        return Collections.unmodifiableCollection(availableScripts.values());
+    }
+
+    public Collection<RunningScript> getRunningScripts() {
+        return Collections.unmodifiableCollection(runningScripts.values());
     }
 }

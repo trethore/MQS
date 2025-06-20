@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version '1.10-SNAPSHOT'
+	id 'fabric-loom' version "${loom_version}"
 	id 'com.github.johnrengelman.shadow' version '8.1.1'
 	id 'maven-publish'
 }
@@ -13,7 +13,7 @@ base {
 
 repositories {
 	mavenCentral()
-	maven { url "https://packages.graalvm.org/maven" }
+	maven { url = uri("https://packages.graalvm.org/maven") }
 }
 
 loom {
