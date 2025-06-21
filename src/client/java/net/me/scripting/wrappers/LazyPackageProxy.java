@@ -1,6 +1,6 @@
 package net.me.scripting.wrappers;
 
-import net.me.scripting.ScriptManager;
+import net.me.scripting.engine.ScriptingClassResolver;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
@@ -9,12 +9,12 @@ import java.util.Map;
 
 public class LazyPackageProxy implements ProxyObject {
     private final String currentPath;
-    private final ScriptManager scriptManager;
+    private final ScriptingClassResolver classResolver;
     private final Map<String, Object> cache = new HashMap<>();
 
-    public LazyPackageProxy(String currentPath, ScriptManager scriptManager) {
+    public LazyPackageProxy(String currentPath, ScriptingClassResolver classResolver) {
         this.currentPath = currentPath;
-        this.scriptManager = scriptManager;
+        this.classResolver = classResolver;
     }
 
     @Override
@@ -32,15 +32,15 @@ public class LazyPackageProxy implements ProxyObject {
     }
 
     private Object resolvePath(String path) {
-        if (scriptManager.isFullClassPath(path)) {
-            String runtimeName = scriptManager.getRuntimeName(path);
+        if (classResolver.isFullClassPath(path)) {
+            String runtimeName = classResolver.getRuntimeName(path);
             if (runtimeName != null) {
-                return new LazyJsClassHolder(path, runtimeName, scriptManager);
+                return new LazyJsClassHolder(path, runtimeName, classResolver);
             }
         }
 
-        if (scriptManager.isPackage(path)) {
-            return new LazyPackageProxy(path, scriptManager);
+        if (classResolver.isPackage(path)) {
+            return new LazyPackageProxy(path, classResolver);
         }
 
         return null;
@@ -57,7 +57,7 @@ public class LazyPackageProxy implements ProxyObject {
             return true;
         }
         String nextPath = currentPath.isEmpty() ? key : currentPath + "." + key;
-        return scriptManager.isFullClassPath(nextPath) || scriptManager.isPackage(nextPath);
+        return classResolver.isFullClassPath(nextPath) || classResolver.isPackage(nextPath);
     }
 
     @Override

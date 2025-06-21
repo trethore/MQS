@@ -1,16 +1,15 @@
 package net.me.screen.screens;
 
 import net.me.screen.MQSScreen;
+import net.me.screen.component.components.DarkButtonWidget;
+import net.me.screen.component.components.ScriptDescriptorToggleWidget;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextWidget;
-import net.minecraft.screen.ScreenTexts;
-import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
-import java.awt.Color;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,96 +18,94 @@ public class AllScriptsScreen extends MQSScreen {
     private final List<ScriptDescriptor> allScripts;
     private int currentPage = 0;
     private int totalPages = 0;
-    private static final int ITEMS_PER_PAGE = 6;
-
+    private static final int ITEMS_PER_PAGE = 4;
 
     public AllScriptsScreen() {
-        super("My QOL Scripts List");
+        super("My QOL Scripts", 300, 280);
         this.allScripts = new ArrayList<>(ScriptManager.getInstance().getAvailableScripts());
     }
 
     @Override
-    public void initBody() {
+    public void init() {
+        this.clearChildren();
+        super.init();
         this.totalPages = (int) Math.ceil((double) this.allScripts.size() / ITEMS_PER_PAGE);
         if (this.totalPages == 0) {
             this.totalPages = 1;
         }
 
-        int listStartX = this.width / 2 - 155;
-        int listStartY = this.height / 4;
-        int scriptEntryWidth = 300;
-        int rowHeight = 25;
+        int listStartX = this.getMiddlePoint().getX() - 100;
+        int listStartY = this.getMiddlePoint().getY() - 70;
+        int rowHeight = 35;
 
         int startIndex = this.currentPage * ITEMS_PER_PAGE;
         int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, this.allScripts.size());
 
         for (int i = startIndex; i < endIndex; i++) {
             ScriptDescriptor descriptor = this.allScripts.get(i);
-            boolean isRunning = ScriptManager.getInstance().isRunning(descriptor.getId());
 
             int itemIndexOnPage = i - startIndex;
             int currentY = listStartY + (itemIndexOnPage * rowHeight);
 
-            Text scriptInfoText = Text.literal(descriptor.moduleName() + " (from " + descriptor.path().getFileName() + ")");
-            this.addDrawableChild(new TextWidget(listStartX, currentY, scriptEntryWidth, 20, scriptInfoText, this.textRenderer));
-
-            String status = (isRunning ? Formatting.GREEN + "" + Formatting.BOLD + "ON" : Formatting.RED + "" + Formatting.BOLD + "OFF") + Formatting.RESET;
-            Text buttonText = Text.literal(status);
-            ButtonWidget actionButton = ButtonWidget.builder(buttonText, button -> {
-                if (isRunning) {
-                    ScriptManager.getInstance().disableScript(descriptor.getId());
-                } else {
-                    ScriptManager.getInstance().enableScript(descriptor.getId());
-                }
-                if (this.client != null) {
-                    this.client.setScreen(new AllScriptsScreen());
-                }
-            }).dimensions(listStartX + scriptEntryWidth + 5, currentY, 60, 20).build();
-            this.addDrawableChild(actionButton);
+            ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(descriptor)
+                    .position(listStartX, currentY)
+                    .build();
+            this.addDrawableChild(toggleWidget);
         }
 
-        int navY = listStartY + (ITEMS_PER_PAGE * rowHeight) + 10;
-        int navCenterX = this.width / 2;
+        int navY = this.getMiddlePoint().getY() + 75;
 
-        ButtonWidget prevButton = ButtonWidget.builder(Text.literal("<-"), button -> {
+        DarkButtonWidget prevButton = DarkButtonWidget.builder("Previous Page", button -> {
             this.currentPage--;
             this.init();
-        }).dimensions(navCenterX - 55, navY, 20, 20).build();
+        }).dimensions(this.getMiddlePoint().getX() - 100, navY, 80, 20).build();
         prevButton.active = this.currentPage > 0;
-        this.addDrawableChild(prevButton);
 
-        ButtonWidget nextButton = ButtonWidget.builder(Text.literal("->"), button -> {
+        DarkButtonWidget nextButton = DarkButtonWidget.builder("Next Page", button -> {
             this.currentPage++;
             this.init();
-        }).dimensions(navCenterX + 35, navY, 20, 20).build();
+        }).dimensions(this.getMiddlePoint().getX() + 20, navY, 80, 20).build();
         nextButton.active = this.currentPage < this.totalPages - 1;
+
+        DarkButtonWidget refreshButton = DarkButtonWidget.builder("Refresh", button -> {
+            ScriptManager.getInstance().refreshAndReenable();
+            this.currentPage = 0;
+            this.init();
+        }).dimensions(this.getMiddlePoint().getX() - 100, navY + 25, 60, 20).build();
+
+        DarkButtonWidget consoleButton = DarkButtonWidget.builder("See Console", button -> {
+            // future implementation for console
+        }).dimensions(this.getMiddlePoint().getX() - 35, navY + 25, 70, 20).build();
+
+        DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off" + Formatting.RESET, button -> {
+            ScriptManager sm = ScriptManager.getInstance();
+            List<String> runningScriptIds = sm.getRunningScripts().stream()
+                    .map(RunningScript::getId)
+                    .toList();
+
+            runningScriptIds.forEach(sm::disableScript);
+
+            this.init();
+        }).dimensions(this.getMiddlePoint().getX() + 40, navY + 25, 60, 20).build();
+
         this.addDrawableChild(nextButton);
+        this.addDrawableChild(prevButton);
+        this.addDrawableChild(refreshButton);
+        this.addDrawableChild(consoleButton);
+        this.addDrawableChild(offButton);
     }
 
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
-        drawTitle(context);
         drawPageNumber(context);
     }
 
-    private void drawTitle(DrawContext context) {
-        float hue = (System.currentTimeMillis()) % 5000;
-        int color = Color.HSBtoRGB(hue / 5000, 0.9f, 1f);
-        context.getMatrices().push();
-        context.getMatrices().scale(1.5F, 1.5F, 1.5F);
-        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("QOL Scripts List"), Math.round((float) this.width / 2 / 1.5F) , Math.round((float)(this.height * 0.05 / 1.5f)), color);
-        context.getMatrices().pop();
-    }
-
     private void drawPageNumber(DrawContext context) {
-        int listStartY = this.height / 4;
-        int rowHeight = 25;
-        int navY = listStartY + (ITEMS_PER_PAGE * rowHeight) + 10;
-        int navCenterX = this.width / 2;
-
-        String pageText = "Page " + (currentPage + 1) + " / " + totalPages;
+        int navY = this.getMiddlePoint().getY() + 75;
+        int navCenterX = this.getMiddlePoint().getX();
+        String pageText = (currentPage + 1) + " / " + totalPages;
         context.drawCenteredTextWithShadow(this.textRenderer, pageText, navCenterX, navY + 6, Color.WHITE.getRGB());
     }
 

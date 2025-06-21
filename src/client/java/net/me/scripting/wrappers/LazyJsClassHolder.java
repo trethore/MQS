@@ -1,7 +1,7 @@
 package net.me.scripting.wrappers;
 
 import net.me.Main;
-import net.me.scripting.ScriptManager;
+import net.me.scripting.engine.ScriptingClassResolver;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -9,21 +9,21 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 public class LazyJsClassHolder implements ProxyObject, ProxyInstantiable {
     private final String yarnName;
     private final String runtimeName;
-    private final ScriptManager scriptManager;
+    private final ScriptingClassResolver classResolver;
 
     private JsClassWrapper resolvedWrapper;
 
-    public LazyJsClassHolder(String yarnName, String runtimeName, ScriptManager scriptManager) {
+    public LazyJsClassHolder(String yarnName, String runtimeName, ScriptingClassResolver classResolver) {
         this.yarnName = yarnName;
         this.runtimeName = runtimeName;
-        this.scriptManager = scriptManager;
+        this.classResolver = classResolver;
     }
 
     public JsClassWrapper getWrapper() {
         if (resolvedWrapper == null) {
             Main.LOGGER.debug("Lazy loading JsClassWrapper for {} -> {}", yarnName, runtimeName);
             try {
-                resolvedWrapper = scriptManager.createActualJsClassWrapper(runtimeName);
+                resolvedWrapper = classResolver.createActualJsClassWrapper(runtimeName);
             } catch (Exception e) {
                 Main.LOGGER.error("Failed to lazy-load {}: {}", runtimeName, e.getMessage(), e);
                 throw new RuntimeException("Cannot load class " + yarnName, e);

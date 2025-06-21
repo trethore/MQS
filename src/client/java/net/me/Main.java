@@ -18,7 +18,6 @@ public class Main implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        ScriptManager.getInstance().enableAllScripts();
         MappingsManager.getInstance().init();
         ScriptManager.getInstance().init();
         CommandManager.getInstance().init();
