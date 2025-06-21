@@ -6,17 +6,24 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+import org.jetbrains.annotations.Nullable;
 
 public abstract class MQSScreen extends Screen {
     private final String title;
     private int windowWidth;
     private int windowHeight;
+    private MQSScreen parent;
 
     protected MQSScreen(String title, int windowWidth, int windowHeight) {
+        this(title, windowWidth, windowHeight, null);
+    }
+
+    protected MQSScreen(String title, int windowWidth, int windowHeight, @Nullable MQSScreen parent) {
         super(Text.literal("MQS: " + title));
         this.title = title;
         this.windowWidth = windowWidth;
         this.windowHeight = windowHeight;
+        this.parent = parent;
     }
 
     @Override
@@ -36,6 +43,17 @@ public abstract class MQSScreen extends Screen {
         drawTitle(context);
     }
 
+    @Override
+    public void close() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (this.parent != null) {
+            mc.setScreen(this.parent);
+        } else {
+            super.close();
+        }
+    }
+
+
     private void drawTitle(DrawContext context) {
         int x = getMiddlePoint().getX();
         int y = getMiddlePoint().getY() - 115;
@@ -46,6 +64,9 @@ public abstract class MQSScreen extends Screen {
     public void open() {
         MinecraftClient mc = MinecraftClient.getInstance();
         mc.send(() -> mc.setScreen(this));
+        if (MinecraftClient.getInstance().currentScreen instanceof MQSScreen) {
+            this.parent = (MQSScreen) MinecraftClient.getInstance().currentScreen;
+        }
     }
 
     protected IntPair getMiddlePoint() {
@@ -70,4 +91,6 @@ public abstract class MQSScreen extends Screen {
     public String getStringTitle() {
         return this.title;
     }
+
+
 }

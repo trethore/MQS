@@ -1,7 +1,13 @@
 package net.me.console;
 
-import net.me.console.commands.*;
+import net.me.console.commands.AllowSysinCommand;
+import net.me.console.commands.ClearCommand;
+import net.me.console.commands.HelpCommand;
+import net.me.console.commands.ScriptCommands;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -12,7 +18,12 @@ public class ConsoleManager {
     private final List<String> commandHistory = new ArrayList<>();
     private static final int MAX_HISTORY_SIZE = 100;
 
-    private ConsoleManager() {}
+    private final PrintStream originalOut = System.out;
+    private final PrintStream originalErr = System.err;
+    private boolean redirectSystemStreams = false;
+
+    private ConsoleManager() {
+    }
 
     public static ConsoleManager getInstance() {
         return INSTANCE;
@@ -31,6 +42,7 @@ public class ConsoleManager {
         addCommand(new ScriptCommands.DisableScriptCommand());
         addCommand(new ScriptCommands.RefreshScriptsCommand());
         addCommand(new ScriptCommands.DisableAllCommand());
+        addCommand(new AllowSysinCommand());
     }
 
     private void addCommand(ConsoleCommand command) {
@@ -101,5 +113,51 @@ public class ConsoleManager {
 
     public List<String> getCommandHistory() {
         return Collections.unmodifiableList(commandHistory);
+    }
+
+    public void setRedirectSystemStreams(boolean enable) {
+        if (enable == this.redirectSystemStreams) {
+            logInfo("System stream redirection is already " + (enable ? "enabled." : "disabled."));
+            return;
+        }
+
+        this.redirectSystemStreams = enable;
+
+        if (enable) {
+            System.setOut(new PrintStream(new ConsoleOutputStream(ConsoleMessage.MessageType.INFO), true));
+            System.setErr(new PrintStream(new ConsoleOutputStream(ConsoleMessage.MessageType.ERROR), true));
+        } else {
+            System.setOut(originalOut);
+            System.setErr(originalErr);
+        }
+    }
+
+    private static class ConsoleOutputStream extends ByteArrayOutputStream {
+        private final ConsoleManager consoleManager = ConsoleManager.getInstance();
+        private final ConsoleMessage.MessageType messageType;
+        private final String lineSeparator = System.lineSeparator();
+
+        public ConsoleOutputStream(ConsoleMessage.MessageType messageType) {
+            this.messageType = messageType;
+        }
+
+        @Override
+        public void flush() throws IOException {
+            synchronized (this) {
+                super.flush();
+                String record = this.toString();
+                super.reset();
+
+                if (record.isEmpty() || record.equals(lineSeparator)) {
+                    return;
+                }
+
+                if (record.endsWith(lineSeparator)) {
+                    record = record.substring(0, record.length() - lineSeparator.length());
+                }
+
+                consoleManager.log(record, messageType);
+            }
+        }
     }
 }

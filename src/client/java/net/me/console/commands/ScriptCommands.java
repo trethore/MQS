@@ -26,9 +26,21 @@ public class ScriptCommands {
                 cm.logInfo(String.format(" - %s %s", descriptor.getId(), status));
             }
         }
-        @Override public String getName() { return "list"; }
-        @Override public String getDescription() { return "Lists all available scripts and their status."; }
-        @Override public String getUsage() { return "list"; }
+
+        @Override
+        public String getName() {
+            return "list";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Lists all available scripts and their status.";
+        }
+
+        @Override
+        public String getUsage() {
+            return "list";
+        }
     }
 
     public static class EnableScriptCommand implements ConsoleCommand {
@@ -42,9 +54,21 @@ public class ScriptCommands {
             ScriptManager.getInstance().enableScript(scriptId);
             // The script manager already logs success/failure, so we don't need another message here.
         }
-        @Override public String getName() { return "enable"; }
-        @Override public String getDescription() { return "Enables a script by its ID."; }
-        @Override public String getUsage() { return "enable <script_id>"; }
+
+        @Override
+        public String getName() {
+            return "enable";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Enables a script by its ID.";
+        }
+
+        @Override
+        public String getUsage() {
+            return "enable <script_id>";
+        }
     }
 
     public static class DisableScriptCommand implements ConsoleCommand {
@@ -57,9 +81,21 @@ public class ScriptCommands {
             String scriptId = String.join(" ", args);
             ScriptManager.getInstance().disableScript(scriptId);
         }
-        @Override public String getName() { return "disable"; }
-        @Override public String getDescription() { return "Disables a running script by its ID."; }
-        @Override public String getUsage() { return "disable <script_id>"; }
+
+        @Override
+        public String getName() {
+            return "disable";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Disables a running script by its ID.";
+        }
+
+        @Override
+        public String getUsage() {
+            return "disable <script_id>";
+        }
     }
 
     public static class RefreshScriptsCommand implements ConsoleCommand {
@@ -69,9 +105,21 @@ public class ScriptCommands {
             ScriptManager.getInstance().refreshAndReenable();
             ConsoleManager.getInstance().logSuccess("Scripts refreshed and previously running scripts re-enabled.");
         }
-        @Override public String getName() { return "refresh"; }
-        @Override public String getDescription() { return "Refreshes and reloads all scripts from disk."; }
-        @Override public String getUsage() { return "refresh"; }
+
+        @Override
+        public String getName() {
+            return "refresh";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Refreshes and reloads all scripts from disk.";
+        }
+
+        @Override
+        public String getUsage() {
+            return "refresh";
+        }
     }
 
     public static class DisableAllCommand implements ConsoleCommand {
@@ -90,8 +138,20 @@ public class ScriptCommands {
             runningScriptIds.forEach(sm::disableScript);
             ConsoleManager.getInstance().logSuccess("Disabled all " + runningScriptIds.size() + " running scripts.");
         }
-        @Override public String getName() { return "disable-all"; }
-        @Override public String getDescription() { return "Disables all currently running scripts."; }
-        @Override public String getUsage() { return "disable-all"; }
+
+        @Override
+        public String getName() {
+            return "disable-all";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Disables all currently running scripts.";
+        }
+
+        @Override
+        public String getUsage() {
+            return "disable-all";
+        }
     }
 }

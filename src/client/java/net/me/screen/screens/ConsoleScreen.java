@@ -14,7 +14,8 @@ import java.util.List;
 
 public class ConsoleScreen extends MQSScreen {
 
-    private record DisplayLine(OrderedText text, int color) {}
+    private record DisplayLine(OrderedText text, int color) {
+    }
 
     private DarkTextFieldWidget inputField;
     private double scrollY = 0;
@@ -29,8 +30,8 @@ public class ConsoleScreen extends MQSScreen {
     private final int HEADER_MARGIN = 55;
     private final int FOOTER_MARGIN = 15;
 
-    public ConsoleScreen() {
-        super("The QOL Console", 400, 300);
+    public ConsoleScreen(AllScriptsScreen parent) {
+        super("The QOL Console", 400, 300, parent);
     }
 
     @Override
@@ -192,8 +193,5 @@ public class ConsoleScreen extends MQSScreen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    @Override
-    public void close() {
-        new AllScriptsScreen().open();
-    }
+
 }

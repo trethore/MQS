@@ -18,7 +18,13 @@ public record ConsoleMessage(String text, MessageType type, String timestamp) {
         SUCCESS(0xFFA6E3A1);
 
         private final int color;
-        MessageType(int color) { this.color = color; }
-        public int getColor() { return this.color; }
+
+        MessageType(int color) {
+            this.color = color;
+        }
+
+        public int getColor() {
+            return this.color;
+        }
     }
 }

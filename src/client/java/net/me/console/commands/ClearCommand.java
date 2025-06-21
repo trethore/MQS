@@ -9,7 +9,19 @@ public class ClearCommand implements ConsoleCommand {
         ConsoleManager.getInstance().clear();
         ConsoleManager.getInstance().logSuccess("Console cleared.");
     }
-    @Override public String getName() { return "clear"; }
-    @Override public String getDescription() { return "Clears the console screen."; }
-    @Override public String getUsage() { return "clear"; }
+
+    @Override
+    public String getName() {
+        return "clear";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Clears the console screen.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "clear";
+    }
 }

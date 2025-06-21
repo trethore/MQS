@@ -144,7 +144,7 @@ public class AllScriptsScreen extends MQSScreen {
         DarkButtonWidget refreshButton = DarkButtonWidget.builder("Refresh", button -> refreshScripts())
                 .dimensions(navX - PADDING, actionY, 60, BUTTON_HEIGHT).build();
 
-        DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> new ConsoleScreen().open()).dimensions(navX - 35, actionY, 70, BUTTON_HEIGHT).build();
+        DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> new ConsoleScreen(this).open()).dimensions(navX - 35, actionY, 70, BUTTON_HEIGHT).build();
 
         DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
                 .dimensions(navX + 40, actionY, 60, BUTTON_HEIGHT).build();
@@ -155,8 +155,8 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void updateNavigationButtons() {
-        if(this.prevButton != null) this.prevButton.active = this.currentPage > 0;
-        if(this.nextButton != null) this.nextButton.active = this.currentPage < this.totalPages - 1;
+        if (this.prevButton != null) this.prevButton.active = this.currentPage > 0;
+        if (this.nextButton != null) this.nextButton.active = this.currentPage < this.totalPages - 1;
     }
 
     private void refreshScripts() {

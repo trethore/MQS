@@ -16,7 +16,19 @@ public class HelpCommand implements ConsoleCommand {
                         cm.logInfo(String.format("%-15s - %s (Usage: %s)", cmd.getName(), cmd.getDescription(), cmd.getUsage()))
                 );
     }
-    @Override public String getName() { return "help"; }
-    @Override public String getDescription() { return "Shows this help message."; }
-    @Override public String getUsage() { return "help"; }
+
+    @Override
+    public String getName() {
+        return "help";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Shows this help message.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "help";
+    }
 }

@@ -11,8 +11,7 @@ import net.me.screen.screens.AllScriptsScreen;
 public class OpenMenuCommand extends Command {
     @Override
     protected LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-        return ClientCommandManager.literal("mqs")
-                .executes(this::openMenu);
+        return ClientCommandManager.literal("mqs").executes(this::openMenu);
     }
 
     private int openMenu(CommandContext<FabricClientCommandSource> fabricClientCommandSourceCommandContext) {

@@ -24,15 +24,15 @@ public class DarkTextFieldWidget extends TextFieldWidget {
     public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
         renderBackground(context);
         this.setDrawsBackground(false);
-        context.getMatrices().translate(5,6,0);
+        context.getMatrices().translate(5, 6, 0);
         super.renderWidget(context, mouseX, mouseY, delta);
-        context.getMatrices().translate(-5,-6,0);
+        context.getMatrices().translate(-5, -6, 0);
     }
 
     private void renderBackground(DrawContext context) {
         int color = this.isHovered() ? GUIColors.DARK_L3.getRGBA() : GUIColors.DARK_L2.getRGBA();
         color = this.isFocused() ? GUIColors.DARK_L4.getRGBA() : color;
-        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(),3,10, color);
+        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, color);
     }
 
     public void clearText() {
@@ -61,13 +61,14 @@ public class DarkTextFieldWidget extends TextFieldWidget {
             return this;
         }
 
-        public Builder dimensions(int x, int y,int width, int height) {
+        public Builder dimensions(int x, int y, int width, int height) {
             this.x = x;
             this.y = y;
             this.width = width;
             this.height = height;
             return this;
         }
+
         public Builder placeholder(String placeholder) {
             this.placeholder = placeholder;
             return this;

@@ -3,13 +3,12 @@ package net.me.command.commands;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.me.command.Command;
 import net.me.command.CommandManager;
+import net.me.command.MQSCommand;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
@@ -18,7 +17,7 @@ import net.minecraft.text.Text;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-public class ScriptCommand extends Command {
+public class ScriptCommand extends MQSCommand {
 
     @Override
     protected LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
@@ -50,21 +49,21 @@ public class ScriptCommand extends Command {
         return CommandManager.COMMAND_SUCCESS;
     }
 
-    private int enableScript(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
+    private int enableScript(CommandContext<FabricClientCommandSource> context) {
         String scriptId = StringArgumentType.getString(context, "script_id");
         ScriptManager.getInstance().enableScript(scriptId);
         context.getSource().sendFeedback(Text.literal("Attempting to enable script: " + scriptId));
         return CommandManager.COMMAND_SUCCESS;
     }
 
-    private int disableScript(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
+    private int disableScript(CommandContext<FabricClientCommandSource> context) {
         String scriptId = StringArgumentType.getString(context, "script_id");
         ScriptManager.getInstance().disableScript(scriptId);
         context.getSource().sendFeedback(Text.literal("Disabled script: " + scriptId));
         return CommandManager.COMMAND_SUCCESS;
     }
 
-    private int reloadScript(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
+    private int reloadScript(CommandContext<FabricClientCommandSource> context) {
         String scriptId = StringArgumentType.getString(context, "script_id");
         ScriptManager sm = ScriptManager.getInstance();
         sm.disableScript(scriptId);
