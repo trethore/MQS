@@ -8,21 +8,34 @@ import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.util.Formatting;
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class AllScriptsScreen extends MQSScreen {
+
+    private static final int ITEMS_PER_PAGE = 4;
+    private static final int SCRIPT_ROW_HEIGHT = 35;
+    private static final int PADDING = 100;
+    private static final int SEARCH_BAR_WIDTH = 170;
+    private static final int SEARCH_BAR_HEIGHT = 20;
+    private static final int BUTTON_HEIGHT = 20;
 
     private final List<ScriptDescriptor> allScripts;
     private List<ScriptDescriptor> filteredScripts;
     private int currentPage = 0;
-    private int totalPages = 0;
-    private static final int ITEMS_PER_PAGE = 4;
+    private int totalPages = 1;
+
     private DarkTextFieldWidget searchTextField;
+    private DarkButtonWidget prevButton;
+    private DarkButtonWidget nextButton;
+
+    private final List<ClickableWidget> scriptEntryWidgets = new ArrayList<>();
 
     public AllScriptsScreen() {
         super("My QOL Scripts", 300, 280);
@@ -33,104 +46,141 @@ public class AllScriptsScreen extends MQSScreen {
 
     @Override
     public void init() {
-        this.clearChildren();
         super.init();
+
         addSearch();
-        addScriptsList();
-        int navY = this.getMiddlePoint().getY() + 75;
-        addPagesButtons(navY);
-        addOthersButtons(navY);
+        addNavigationAndActionButtons();
+
+        updateScriptList();
     }
 
     private void addSearch() {
         if (this.searchTextField == null) {
-            this.searchTextField = DarkTextFieldWidget.builder(this.textRenderer).dimensions( this.getMiddlePoint().getX() - 100, this.getMiddlePoint().getY() - 100, 170, 20).placeholder("Search scripts...").build();
-            this.searchTextField.setChangedListener(text -> {
-                this.filteredScripts = new ArrayList<>(this.allScripts);
-                filteredScripts.removeIf(script -> !script.moduleName().toLowerCase().contains(text.toLowerCase()));
-                if (!text.isEmpty()) {
-                    currentPage = 0;
-                }
-                this.init();
-            });
+            int searchX = this.getMiddlePoint().getX() - PADDING;
+            int searchY = this.getMiddlePoint().getY() - PADDING;
+
+            this.searchTextField = DarkTextFieldWidget.builder(this.textRenderer)
+                    .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, SEARCH_BAR_HEIGHT)
+                    .placeholder("Search scripts...")
+                    .build();
+
+            this.searchTextField.setChangedListener(this::onSearchTextChanged);
+
+            DarkButtonWidget clearTextFieldButton = DarkButtonWidget.builder("❌", button -> this.searchTextField.clearText())
+                    .dimensions(searchX + SEARCH_BAR_WIDTH + 10, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
+                    .build();
+
+            this.addSelectableChild(this.searchTextField);
+            this.addDrawableChild(clearTextFieldButton);
         }
-
-        this.addSelectableChild(this.searchTextField);
-
-        DarkButtonWidget clearTextFieldButton = DarkButtonWidget.builder("❌", button -> this.searchTextField.clearText()).dimensions(this.getMiddlePoint().getX() + 80, this.getMiddlePoint().getY() - 100, 20, 20).build();
-        this.addDrawableChild(clearTextFieldButton);
-
     }
 
-    private void addScriptsList() {
+    private void onSearchTextChanged(String text) {
+        String searchText = text.toLowerCase();
+        this.filteredScripts = this.allScripts.stream()
+                .filter(script -> script.moduleName().toLowerCase().contains(searchText))
+                .collect(Collectors.toList());
+
+        this.currentPage = 0;
+
+        updateScriptList();
+    }
+
+    private void updateScriptList() {
+        this.scriptEntryWidgets.forEach(this::remove);
+        this.scriptEntryWidgets.clear();
+
         this.totalPages = (int) Math.ceil((double) this.filteredScripts.size() / ITEMS_PER_PAGE);
         if (this.totalPages == 0) {
             this.totalPages = 1;
         }
+        this.currentPage = Math.max(0, Math.min(this.currentPage, this.totalPages - 1));
 
-        int listStartX = this.getMiddlePoint().getX() - 100;
+        int listStartX = this.getMiddlePoint().getX() - PADDING;
         int listStartY = this.getMiddlePoint().getY() - 70;
-        int rowHeight = 35;
 
         int startIndex = this.currentPage * ITEMS_PER_PAGE;
         int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, this.filteredScripts.size());
 
         for (int i = startIndex; i < endIndex; i++) {
             ScriptDescriptor descriptor = this.filteredScripts.get(i);
-
             int itemIndexOnPage = i - startIndex;
-            int currentY = listStartY + (itemIndexOnPage * rowHeight);
+            int currentY = listStartY + (itemIndexOnPage * SCRIPT_ROW_HEIGHT);
 
             ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(descriptor)
                     .position(listStartX, currentY)
                     .build();
+
             this.addDrawableChild(toggleWidget);
+            this.scriptEntryWidgets.add(toggleWidget);
         }
+
+        updateNavigationButtons();
     }
 
-    private void addPagesButtons(int navY) {
-        DarkButtonWidget prevButton = DarkButtonWidget.builder("Previous Page", button -> {
-            this.currentPage--;
-            this.init();
-        }).dimensions(this.getMiddlePoint().getX() - 100, navY, 80, 20).build();
-        prevButton.active = this.currentPage > 0;
+    private void addNavigationAndActionButtons() {
+        int navY = this.getMiddlePoint().getY() + 75;
+        int navX = this.getMiddlePoint().getX();
 
-        DarkButtonWidget nextButton = DarkButtonWidget.builder("Next Page", button -> {
-            this.currentPage++;
-            this.init();
-        }).dimensions(this.getMiddlePoint().getX() + 20, navY, 80, 20).build();
-        nextButton.active = this.currentPage < this.totalPages - 1;
-        this.addDrawableChild(nextButton);
-        this.addDrawableChild(prevButton);
-    }
+        this.prevButton = DarkButtonWidget.builder("Previous", button -> {
+            if (this.currentPage > 0) {
+                this.currentPage--;
+                updateScriptList();
+            }
+        }).dimensions(navX - PADDING, navY, 80, BUTTON_HEIGHT).build();
 
-    private void addOthersButtons(int navY) {
-        DarkButtonWidget refreshButton = DarkButtonWidget.builder("Refresh", button -> {
-            ScriptManager.getInstance().refreshAndReenable();
-            this.currentPage = 0;
-            this.init();
-        }).dimensions(this.getMiddlePoint().getX() - 100, navY + 25, 60, 20).build();
+        this.nextButton = DarkButtonWidget.builder("Next", button -> {
+            if (this.currentPage < this.totalPages - 1) {
+                this.currentPage++;
+                updateScriptList();
+            }
+        }).dimensions(navX + 20, navY, 80, BUTTON_HEIGHT).build();
+
+        this.addDrawableChild(this.prevButton);
+        this.addDrawableChild(this.nextButton);
+
+        int actionY = navY + 25;
+
+        DarkButtonWidget refreshButton = DarkButtonWidget.builder("Refresh", button -> refreshScripts())
+                .dimensions(navX - PADDING, actionY, 60, BUTTON_HEIGHT).build();
 
         DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> {
             // future implementation for console
-        }).dimensions(this.getMiddlePoint().getX() - 35, navY + 25, 70, 20).build();
+        }).dimensions(navX - 35, actionY, 70, BUTTON_HEIGHT).build();
 
-        DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off" + Formatting.RESET, button -> {
-            ScriptManager sm = ScriptManager.getInstance();
-            List<String> runningScriptIds = sm.getRunningScripts().stream()
-                    .map(RunningScript::getId)
-                    .toList();
-
-            runningScriptIds.forEach(sm::disableScript);
-
-            this.init();
-        }).dimensions(this.getMiddlePoint().getX() + 40, navY + 25, 60, 20).build();
+        DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
+                .dimensions(navX + 40, actionY, 60, BUTTON_HEIGHT).build();
 
         this.addDrawableChild(refreshButton);
         this.addDrawableChild(consoleButton);
         this.addDrawableChild(offButton);
     }
 
+    private void updateNavigationButtons() {
+        if(this.prevButton != null) this.prevButton.active = this.currentPage > 0;
+        if(this.nextButton != null) this.nextButton.active = this.currentPage < this.totalPages - 1;
+    }
+
+    private void refreshScripts() {
+        ScriptManager.getInstance().refreshAndReenable();
+        this.allScripts.clear();
+        this.allScripts.addAll(ScriptManager.getInstance().getAvailableScripts());
+        this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
+
+        onSearchTextChanged(this.searchTextField.getText());
+    }
+
+    private void disableAllScripts() {
+        ScriptManager sm = ScriptManager.getInstance();
+
+        List<String> runningScriptIds = sm.getRunningScripts().stream()
+                .map(RunningScript::getId)
+                .toList();
+
+        runningScriptIds.forEach(sm::disableScript);
+
+        updateScriptList();
+    }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
@@ -145,6 +195,4 @@ public class AllScriptsScreen extends MQSScreen {
         String pageText = (currentPage + 1) + " / " + totalPages;
         context.drawCenteredTextWithShadow(this.textRenderer, pageText, navCenterX, navY + 6, Color.WHITE.getRGB());
     }
-
-
 }
