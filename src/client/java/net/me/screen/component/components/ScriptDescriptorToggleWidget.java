@@ -13,7 +13,7 @@ import net.minecraft.text.Text;
 public class ScriptDescriptorToggleWidget extends PressableWidget {
     private final ScriptDescriptor descriptor;
 
-    public ScriptDescriptorToggleWidget(int x, int y, int width, int height, ScriptDescriptor descriptor) {
+    protected ScriptDescriptorToggleWidget(int x, int y, int width, int height, ScriptDescriptor descriptor) {
         super(x, y, width, height, Text.literal(""));
         this.descriptor = descriptor;
     }

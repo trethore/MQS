@@ -10,7 +10,7 @@ import net.minecraft.text.Text;
 
 public class DarkButtonWidget extends ButtonWidget {
 
-    public DarkButtonWidget(int x, int y, int width, int height, String message, PressAction onPress) {
+    protected DarkButtonWidget(int x, int y, int width, int height, String message, PressAction onPress) {
         super(x, y, width, height, Text.literal(message), onPress, DEFAULT_NARRATION_SUPPLIER);
     }
 

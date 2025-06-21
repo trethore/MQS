@@ -1,5 +1,3 @@
-// path: java/net/me/scripting/ScriptManager.java
-
 package net.me.scripting;
 
 import net.me.Main;
