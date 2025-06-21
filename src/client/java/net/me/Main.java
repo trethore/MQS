@@ -3,6 +3,7 @@ package net.me;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
+import net.me.console.ConsoleManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.mappings.MappingsManager;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ public class Main implements ClientModInitializer {
         MappingsManager.getInstance().init();
         ScriptManager.getInstance().init();
         CommandManager.getInstance().init();
+        ConsoleManager.getInstance().init();
         LOGGER.info("Hello from MyQOLScripts!");
     }
 }

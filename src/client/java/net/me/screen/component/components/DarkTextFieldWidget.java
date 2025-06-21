@@ -10,7 +10,10 @@ import net.minecraft.text.Text;
 public class DarkTextFieldWidget extends TextFieldWidget {
 
     protected DarkTextFieldWidget(TextRenderer textRenderer, int x, int y, int width, int height, String placeholder) {
-        super(textRenderer, x, y, width, height, Text.literal(placeholder));
+        super(textRenderer, x, y, width, height, Text.empty());
+        if (placeholder != null) {
+            this.setPlaceholder(Text.literal(placeholder));
+        }
     }
 
     public static Builder builder(TextRenderer textRenderer) {
@@ -36,8 +39,12 @@ public class DarkTextFieldWidget extends TextFieldWidget {
         this.setText("");
     }
 
+    public void setCursorToEnd() {
+        this.setCursor(this.getText().length(), false);
+    }
+
     public static class Builder {
-        private TextRenderer textRenderer;
+        private final TextRenderer textRenderer;
         private int x;
         private int y;
         private int width = 200;
