@@ -40,14 +40,9 @@ public class ScriptingClassResolver {
         if (classMap == null) return;
 
         for (String fqcn : classMap.keySet()) {
-            String[] parts = fqcn.split("\\.");
-            StringBuilder currentPath = new StringBuilder();
-            for (int i = 0; i < parts.length - 1; i++) {
-                if (i > 0) {
-                    currentPath.append('.');
-                }
-                currentPath.append(parts[i]);
-                knownPackagePrefixes.add(currentPath.toString());
+            int lastDotIndex = -1;
+            while ((lastDotIndex = fqcn.indexOf('.', lastDotIndex + 1)) != -1) {
+                knownPackagePrefixes.add(fqcn.substring(0, lastDotIndex));
             }
         }
     }
