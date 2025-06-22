@@ -7,7 +7,6 @@ public class RunningScript {
     private final ScriptDescriptor descriptor;
     private final Value jsInstance;
     private final String name;
-    private final String version;
 
     public RunningScript(ScriptDescriptor descriptor, Value jsInstance) {
         this.descriptor = descriptor;
@@ -15,8 +14,6 @@ public class RunningScript {
 
         Value nameValue = jsInstance.getMember("name");
         this.name = (nameValue != null && nameValue.isString()) ? nameValue.asString() : descriptor.moduleName();
-        Value versionValue = jsInstance.getMember("version");
-        this.version = (versionValue != null && versionValue.isString()) ? versionValue.asString() : "N/A";
     }
 
     public void onEnable() {
@@ -52,9 +49,8 @@ public class RunningScript {
     }
 
     public String getVersion() {
-        return version;
+        return descriptor.version();
     }
-
     public ScriptDescriptor getDescriptor() {
         return descriptor;
     }

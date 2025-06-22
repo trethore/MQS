@@ -99,7 +99,15 @@ public class ScriptManager {
     private void discoverModulesInFile(Path path) {
         Map<String, Value> discoveredModules = scriptLoader.loadModules(path, this.scriptContext, perFileExports);
         for (Map.Entry<String, Value> entry : discoveredModules.entrySet()) {
-            ScriptDescriptor descriptor = new ScriptDescriptor(path, entry.getKey());
+            Value moduleClass = entry.getValue();
+            String version = "N/A";
+            if (moduleClass != null && moduleClass.hasMember("version")) {
+                Value versionValue = moduleClass.getMember("version");
+                if (versionValue.isString()) {
+                    version = versionValue.asString();
+                }
+            }
+            ScriptDescriptor descriptor = new ScriptDescriptor(path, entry.getKey(), version);
             availableScripts.put(descriptor.getId(), descriptor);
         }
     }

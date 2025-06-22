@@ -5,7 +5,8 @@ import java.util.Objects;
 
 public record ScriptDescriptor(
         Path path,
-        String moduleName
+        String moduleName,
+        String version
 ) {
 
     public String getId() {
@@ -17,11 +18,11 @@ public record ScriptDescriptor(
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ScriptDescriptor that = (ScriptDescriptor) o;
-        return Objects.equals(path, that.path) && Objects.equals(moduleName, that.moduleName);
+        return Objects.equals(path, that.path) && Objects.equals(moduleName, that.moduleName) && Objects.equals(version, that.version);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(path, moduleName);
+        return Objects.hash(path, moduleName, version);
     }
 }
