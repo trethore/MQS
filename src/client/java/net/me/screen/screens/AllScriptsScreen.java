@@ -7,6 +7,7 @@ import net.me.screen.component.components.ScriptDescriptorToggleWidget;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.utils.GUIColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.util.Formatting;
@@ -34,6 +35,8 @@ public class AllScriptsScreen extends MQSScreen {
     private DarkTextFieldWidget searchTextField;
     private DarkButtonWidget prevButton;
     private DarkButtonWidget nextButton;
+    private DarkButtonWidget refreshButton;
+    private long refreshTime = -1;
 
     private final List<ClickableWidget> scriptEntryWidgets = new ArrayList<>();
 
@@ -140,7 +143,7 @@ public class AllScriptsScreen extends MQSScreen {
 
         int actionY = navY + 25;
 
-        DarkButtonWidget refreshButton = DarkButtonWidget.builder("Refresh", button -> refreshScripts())
+        this.refreshButton = DarkButtonWidget.builder("Refresh", button -> refreshScripts())
                 .dimensions(navX - PADDING, actionY, 60, BUTTON_HEIGHT).build();
 
         DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> new ConsoleScreen(this).open()).dimensions(navX - 35, actionY, 70, BUTTON_HEIGHT).build();
@@ -148,7 +151,7 @@ public class AllScriptsScreen extends MQSScreen {
         DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
                 .dimensions(navX + 40, actionY, 60, BUTTON_HEIGHT).build();
 
-        this.addDrawableChild(refreshButton);
+        this.addDrawableChild(this.refreshButton);
         this.addDrawableChild(consoleButton);
         this.addDrawableChild(offButton);
     }
@@ -165,6 +168,10 @@ public class AllScriptsScreen extends MQSScreen {
         this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
 
         onSearchTextChanged(this.searchTextField.getText());
+        if (this.refreshButton != null) {
+            this.refreshButton.setColors(GUIColors.SUCCESS.getRGBA(), GUIColors.SUCCESS.lighter(10).getRGB());
+            this.refreshTime = System.currentTimeMillis();
+        }
     }
 
     private void disableAllScripts() {
@@ -184,6 +191,12 @@ public class AllScriptsScreen extends MQSScreen {
         super.render(context, mouseX, mouseY, delta);
         this.searchTextField.render(context, mouseX, mouseY, delta);
         drawPageNumber(context);
+        if (this.refreshTime != -1 && System.currentTimeMillis() - this.refreshTime > 750) {
+            if (this.refreshButton != null) {
+                this.refreshButton.setColors(GUIColors.TEXT_GREY_DISABLED.getRGBA(), GUIColors.WHITE.getRGBA());
+            }
+            this.refreshTime = -1;
+        }
     }
 
     private void drawPageNumber(DrawContext context) {

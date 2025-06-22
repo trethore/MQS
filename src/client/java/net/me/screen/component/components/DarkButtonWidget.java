@@ -9,9 +9,27 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 public class DarkButtonWidget extends ButtonWidget {
+    private int unactiveTextColor = GUIColors.TEXT_GREY_DISABLED.getRGBA();
+    private int activeTextColor = GUIColors.WHITE.getRGBA();
 
-    protected DarkButtonWidget(int x, int y, int width, int height, String message, PressAction onPress) {
+
+
+    protected DarkButtonWidget(int x, int y, int width, int height, String message, PressAction onPress, int unactiveTextColor, int activeTextColor) {
         super(x, y, width, height, Text.literal(message), onPress, DEFAULT_NARRATION_SUPPLIER);
+        this.unactiveTextColor = unactiveTextColor;
+        this.activeTextColor = activeTextColor;
+    }
+
+    public void setColors(int unactiveTextColor, int activeTextColor) {
+        this.unactiveTextColor = unactiveTextColor;
+        this.activeTextColor = activeTextColor;
+    }
+
+    public void dimensions(int x, int y, int width, int height) {
+        this.setX(x);
+        this.setY(y);
+        this.setWidth(width);
+        this.setHeight(height);
     }
 
     public static Builder builder(String message, PressAction onPress) {
@@ -27,7 +45,7 @@ public class DarkButtonWidget extends ButtonWidget {
         int color = isHovered ? GUIColors.DARK_L3.getRGBA() : GUIColors.DARK_L2.getRGBA();
         Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.width, this.height, 3, 5, color);
 
-        int textColor = this.active ? GUIColors.WHITE.getRGBA() : GUIColors.TEXT_GREY_DISABLED.getRGBA();
+        int textColor = this.active ? activeTextColor  : unactiveTextColor;
         context.drawCenteredTextWithShadow(
                 textRenderer,
                 this.getMessage(),
@@ -44,11 +62,19 @@ public class DarkButtonWidget extends ButtonWidget {
         private int y;
         private int width = 200;
         private int height = 20;
+        private int unactiveTextColor = GUIColors.TEXT_GREY_DISABLED.getRGBA();
+        private int activeTextColor = GUIColors.WHITE.getRGBA();
 
         public Builder(String message, PressAction onPress) {
             super(Text.literal(message), onPress);
             this.message = message;
             this.onPress = onPress;
+        }
+
+        public Builder colors(int unactiveColor, int activeTextColor) {
+            this.unactiveTextColor = unactiveColor;
+            this.activeTextColor = activeTextColor;
+            return this;
         }
 
         public Builder dimensions(int x, int y, int width, int height) {
@@ -60,7 +86,8 @@ public class DarkButtonWidget extends ButtonWidget {
         }
 
         public DarkButtonWidget build() {
-            return new DarkButtonWidget(this.x, this.y, this.width, this.height, this.message, this.onPress);
+            return new DarkButtonWidget(this.x, this.y, this.width, this.height, this.message, this.onPress,
+                    this.unactiveTextColor, this.activeTextColor);
         }
     }
 }
