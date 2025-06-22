@@ -4,6 +4,7 @@ import net.me.console.ConsoleManager;
 import net.me.console.ConsoleMessage;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.components.DarkTextFieldWidget;
+import net.me.utils.Render2DUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
@@ -14,7 +15,7 @@ import java.util.List;
 
 public class ConsoleScreen extends MQSScreen {
 
-    private record DisplayLine(OrderedText text, int color) {
+    private record DisplayLine(String text, int color) {
     }
 
     private DarkTextFieldWidget inputField;
@@ -87,7 +88,14 @@ public class ConsoleScreen extends MQSScreen {
             List<OrderedText> wrapped = this.textRenderer.wrapLines(Text.literal(textToWrap), renderAreaWidth);
 
             for (OrderedText line : wrapped) {
-                lines.add(new DisplayLine(line, msg.type().getColor()));
+                final StringBuilder sb = new StringBuilder();
+
+                line.accept((index, style, codePoint) -> {
+                    sb.appendCodePoint(codePoint);
+                    return true;
+                });
+                String lineAsString = sb.toString();
+                lines.add(new DisplayLine(lineAsString, msg.type().getColor()));
             }
         }
         return lines;
@@ -117,8 +125,8 @@ public class ConsoleScreen extends MQSScreen {
             DisplayLine line = displayLines.get(currentLineIndex);
 
             int yPos = renderAreaY + (i * fontHeight);
-
             context.drawTextWithShadow(this.textRenderer, line.text(), renderAreaX, yPos, line.color());
+            Render2DUtils.drawText(context, line.text(), renderAreaX, yPos, line.color(),true,1f); // this needs a string
         }
 
         context.disableScissor();

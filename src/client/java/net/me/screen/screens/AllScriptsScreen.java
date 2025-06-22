@@ -55,24 +55,23 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void addSearch() {
-        if (this.searchTextField == null) {
-            int searchX = this.getMiddlePoint().getX() - PADDING;
-            int searchY = this.getMiddlePoint().getY() - PADDING;
+        int searchX = this.getMiddlePoint().getX() - PADDING;
+        int searchY = this.getMiddlePoint().getY() - PADDING;
 
+        if (this.searchTextField == null) {
             this.searchTextField = DarkTextFieldWidget.builder(this.textRenderer)
                     .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, SEARCH_BAR_HEIGHT)
                     .placeholder("Search...")
                     .build();
 
             this.searchTextField.setChangedListener(this::onSearchTextChanged);
-
-            DarkButtonWidget clearTextFieldButton = DarkButtonWidget.builder("❌", button -> this.searchTextField.clearText())
-                    .dimensions(searchX + SEARCH_BAR_WIDTH + 10, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
-                    .build();
-
-            this.addSelectableChild(this.searchTextField);
-            this.addDrawableChild(clearTextFieldButton);
         }
+        this.addSelectableChild(this.searchTextField);
+        DarkButtonWidget clearTextFieldButton = DarkButtonWidget.builder("❌", button -> this.searchTextField.clearText())
+                .dimensions(searchX + SEARCH_BAR_WIDTH + 10, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
+                .build();
+        this.addDrawableChild(clearTextFieldButton);
+
     }
 
     private void onSearchTextChanged(String text) {
