@@ -1,6 +1,7 @@
 package net.me.scripting;
 
 import net.me.Main;
+import net.me.event.EventManager;
 import net.me.scripting.engine.ScriptContextFactory;
 import net.me.scripting.engine.ScriptLoader;
 import net.me.scripting.engine.ScriptingClassResolver;
@@ -25,6 +26,7 @@ public class ScriptManager {
     private Context scriptContext;
 
     private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
+    private final ThreadLocal<RunningScript> currentScriptContext = new ThreadLocal<>();
 
     private ScriptManager() {
     }
@@ -124,17 +126,30 @@ public class ScriptManager {
             RunningScript runningScript = new RunningScript(descriptor, jsInstance);
 
             runningScripts.put(scriptId, runningScript);
-            runningScript.onEnable();
+
+            currentScriptContext.set(runningScript);
+            try {
+                runningScript.onEnable();
+            } finally {
+                currentScriptContext.remove();
+            }
+
             Main.LOGGER.info("Enabled script: {}", runningScript.getName());
         } catch (Exception e) {
-            Main.LOGGER.error("Failed to enable script '{}'", scriptId, e);
+            Main.LOGGER.error("Failed to enable script '{}'. It may be in a broken state. Please disable it to ensure cleanup.", scriptId, e);
         }
     }
 
     public void disableScript(String scriptId) {
         RunningScript script = runningScripts.remove(scriptId);
         if (script != null) {
-            script.onDisable();
+            currentScriptContext.set(script);
+            try {
+                script.onDisable();
+            } finally {
+                EventManager.getInstance().unregister(script);
+                currentScriptContext.remove();
+            }
             Main.LOGGER.info("Disabled script: {}", script.getName());
         }
     }
@@ -149,5 +164,9 @@ public class ScriptManager {
 
     public Collection<RunningScript> getRunningScripts() {
         return Collections.unmodifiableCollection(runningScripts.values());
+    }
+
+    public RunningScript getCurrentScript() {
+        return currentScriptContext.get();
     }
 }
