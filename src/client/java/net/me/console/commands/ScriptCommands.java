@@ -2,26 +2,25 @@ package net.me.console.commands;
 
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
-import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
-
-import java.util.List;
 
 public class ScriptCommands {
 
     public static class ListScriptsCommand implements ConsoleCommand {
+        private final ScriptingService scriptingService = new ScriptingService();
+
         @Override
         public void execute(String[] args) {
-            ScriptManager sm = ScriptManager.getInstance();
             ConsoleManager cm = ConsoleManager.getInstance();
             cm.logInfo("--- Available Scripts ---");
-            if (sm.getAvailableScripts().isEmpty()) {
+
+            if (scriptingService.listAvailable().isEmpty()) {
                 cm.logInfo("No scripts found. Add .js files to the 'my-qol-scripts/scripts' folder.");
                 return;
             }
-            for (ScriptDescriptor descriptor : sm.getAvailableScripts()) {
-                boolean isRunning = sm.isRunning(descriptor.getId());
+            for (ScriptDescriptor descriptor : scriptingService.listAvailable()) {
+                boolean isRunning = scriptingService.isRunning(descriptor.getId());
                 String status = isRunning ? "§a[ENABLED]§r" : "§c[DISABLED]§r";
                 cm.logInfo(String.format(" - %s %s", descriptor.getId(), status));
             }
@@ -44,6 +43,8 @@ public class ScriptCommands {
     }
 
     public static class EnableScriptCommand implements ConsoleCommand {
+        private final ScriptingService scriptingService = new ScriptingService();
+
         @Override
         public void execute(String[] args) {
             if (args.length == 0) {
@@ -51,8 +52,7 @@ public class ScriptCommands {
                 return;
             }
             String scriptId = String.join(" ", args);
-            ScriptManager.getInstance().enableScript(scriptId);
-            // The script manager already logs success/failure, so we don't need another message here.
+            scriptingService.enable(scriptId);
         }
 
         @Override
@@ -72,6 +72,8 @@ public class ScriptCommands {
     }
 
     public static class DisableScriptCommand implements ConsoleCommand {
+        private final ScriptingService scriptingService = new ScriptingService();
+
         @Override
         public void execute(String[] args) {
             if (args.length == 0) {
@@ -79,7 +81,7 @@ public class ScriptCommands {
                 return;
             }
             String scriptId = String.join(" ", args);
-            ScriptManager.getInstance().disableScript(scriptId);
+            scriptingService.disable(scriptId);
         }
 
         @Override
@@ -99,10 +101,12 @@ public class ScriptCommands {
     }
 
     public static class RefreshScriptsCommand implements ConsoleCommand {
+        private final ScriptingService scriptingService = new ScriptingService();
+
         @Override
         public void execute(String[] args) {
             ConsoleManager.getInstance().logInfo("Refreshing scripts...");
-            ScriptManager.getInstance().refreshAndReenable();
+            scriptingService.refresh();
             ConsoleManager.getInstance().logSuccess("Scripts refreshed and previously running scripts re-enabled.");
         }
 
@@ -123,20 +127,17 @@ public class ScriptCommands {
     }
 
     public static class DisableAllCommand implements ConsoleCommand {
+        private final ScriptingService scriptingService = new ScriptingService();
+
         @Override
         public void execute(String[] args) {
-            ScriptManager sm = ScriptManager.getInstance();
-            List<String> runningScriptIds = sm.getRunningScripts().stream()
-                    .map(RunningScript::getId)
-                    .toList();
+            int disabledCount = scriptingService.disableAll();
 
-            if (runningScriptIds.isEmpty()) {
+            if (disabledCount == 0) {
                 ConsoleManager.getInstance().logInfo("No scripts are currently running.");
-                return;
+            } else {
+                ConsoleManager.getInstance().logSuccess("Disabled all " + disabledCount + " running scripts.");
             }
-
-            runningScriptIds.forEach(sm::disableScript);
-            ConsoleManager.getInstance().logSuccess("Disabled all " + runningScriptIds.size() + " running scripts.");
         }
 
         @Override

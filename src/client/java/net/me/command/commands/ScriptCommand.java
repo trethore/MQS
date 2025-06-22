@@ -9,7 +9,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.command.CommandManager;
 import net.me.command.MQSCommand;
-import net.me.scripting.ScriptManager;
+import net.me.scripting.ScriptingService;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
 import net.minecraft.text.Text;
@@ -19,8 +19,10 @@ import java.util.stream.Collectors;
 
 public class ScriptCommand extends MQSCommand {
 
+    private final ScriptingService scriptingService = new ScriptingService();
+
     @Override
-    protected LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
         return ClientCommandManager.literal("script")
                 .then(ClientCommandManager.literal("list")
                         .executes(this::listScripts))
@@ -39,10 +41,9 @@ public class ScriptCommand extends MQSCommand {
     }
 
     private int listScripts(CommandContext<FabricClientCommandSource> context) {
-        ScriptManager sm = ScriptManager.getInstance();
         context.getSource().sendFeedback(Text.literal("§a--- Available Scripts ---"));
-        for (ScriptDescriptor descriptor : sm.getAvailableScripts()) {
-            boolean isRunning = sm.isRunning(descriptor.getId());
+        for (ScriptDescriptor descriptor : scriptingService.listAvailable()) {
+            boolean isRunning = scriptingService.isRunning(descriptor.getId());
             Text status = isRunning ? Text.literal("§a[ENABLED]") : Text.literal("§c[DISABLED]");
             context.getSource().sendFeedback(Text.literal(" - " + descriptor.moduleName() + " (" + descriptor.getId() + ") ").append(status));
         }
@@ -51,39 +52,38 @@ public class ScriptCommand extends MQSCommand {
 
     private int enableScript(CommandContext<FabricClientCommandSource> context) {
         String scriptId = StringArgumentType.getString(context, "script_id");
-        ScriptManager.getInstance().enableScript(scriptId);
+        scriptingService.enable(scriptId);
         context.getSource().sendFeedback(Text.literal("Attempting to enable script: " + scriptId));
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private int disableScript(CommandContext<FabricClientCommandSource> context) {
         String scriptId = StringArgumentType.getString(context, "script_id");
-        ScriptManager.getInstance().disableScript(scriptId);
+        scriptingService.disable(scriptId);
         context.getSource().sendFeedback(Text.literal("Disabled script: " + scriptId));
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private int reloadScript(CommandContext<FabricClientCommandSource> context) {
         String scriptId = StringArgumentType.getString(context, "script_id");
-        ScriptManager sm = ScriptManager.getInstance();
-        sm.disableScript(scriptId);
-        sm.enableScript(scriptId);
+        scriptingService.disable(scriptId);
+        scriptingService.enable(scriptId);
         context.getSource().sendFeedback(Text.literal("Reloaded script: " + scriptId));
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private CompletableFuture<Suggestions> suggestEnabledScripts(CommandContext<FabricClientCommandSource> context, SuggestionsBuilder builder) {
-        ScriptManager.getInstance().getRunningScripts().stream()
+        scriptingService.listRunning().stream()
                 .map(RunningScript::getId)
                 .forEach(builder::suggest);
         return builder.buildFuture();
     }
 
     private CompletableFuture<Suggestions> suggestDisabledScripts(CommandContext<FabricClientCommandSource> context, SuggestionsBuilder builder) {
-        var runningIds = ScriptManager.getInstance().getRunningScripts().stream()
+        var runningIds = scriptingService.listRunning().stream()
                 .map(RunningScript::getId)
                 .collect(Collectors.toSet());
-        ScriptManager.getInstance().getAvailableScripts().stream()
+        scriptingService.listAvailable().stream()
                 .map(ScriptDescriptor::getId)
                 .filter(id -> !runningIds.contains(id))
                 .forEach(builder::suggest);

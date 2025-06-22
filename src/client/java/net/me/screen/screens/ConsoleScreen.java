@@ -31,6 +31,9 @@ public class ConsoleScreen extends MQSScreen {
     private final int HEADER_MARGIN = 55;
     private final int FOOTER_MARGIN = 15;
 
+    private final List<DisplayLine> displayLines = new ArrayList<>();
+    private int lastMessageCount = 0;
+
     public ConsoleScreen(AllScriptsScreen parent) {
         super("The QOL Console", 400, 300, parent);
     }
@@ -55,6 +58,10 @@ public class ConsoleScreen extends MQSScreen {
 
         this.addSelectableChild(this.inputField);
         this.setFocused(this.inputField);
+
+        this.displayLines.clear();
+        this.lastMessageCount = 0;
+        updateDisplayLines();
     }
 
     private void onInputChanged(String text) {
@@ -68,40 +75,45 @@ public class ConsoleScreen extends MQSScreen {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
 
-        List<DisplayLine> displayLines = buildDisplayLines();
+        if (ConsoleManager.getInstance().getMessages().size() != lastMessageCount) {
+            updateDisplayLines();
+        }
 
-        renderMessages(context, displayLines);
+        renderMessages(context, this.displayLines);
 
         this.inputField.render(context, mouseX, mouseY, delta);
     }
-
-    private List<DisplayLine> buildDisplayLines() {
-        List<DisplayLine> lines = new ArrayList<>();
-        int renderAreaWidth = getWindowWidth() - (PADDING * 2);
-
-        if (renderAreaWidth <= 0) return lines;
-
+    private void updateDisplayLines() {
         List<ConsoleMessage> messages = ConsoleManager.getInstance().getMessages();
-        for (ConsoleMessage msg : messages) {
-            String textToWrap = String.format("[%s] %s", msg.timestamp(), msg.text());
+        int currentMessageCount = messages.size();
 
+        if (currentMessageCount < lastMessageCount) {
+            displayLines.clear();
+            lastMessageCount = 0;
+        }
+
+        int renderAreaWidth = getWindowWidth() - (PADDING * 2);
+        if (renderAreaWidth <= 0) return;
+
+        for (int i = lastMessageCount; i < currentMessageCount; i++) {
+            ConsoleMessage msg = messages.get(i);
+            String textToWrap = String.format("[%s] %s", msg.timestamp(), msg.text());
             List<OrderedText> wrapped = this.textRenderer.wrapLines(Text.literal(textToWrap), renderAreaWidth);
 
             for (OrderedText line : wrapped) {
                 final StringBuilder sb = new StringBuilder();
-
                 line.accept((index, style, codePoint) -> {
                     sb.appendCodePoint(codePoint);
                     return true;
                 });
-                String lineAsString = sb.toString();
-                lines.add(new DisplayLine(lineAsString, msg.type().getColor()));
+                this.displayLines.add(new DisplayLine(sb.toString(), msg.type().getColor()));
             }
         }
-        return lines;
+
+        this.lastMessageCount = currentMessageCount;
     }
 
-    private void renderMessages(DrawContext context, List<DisplayLine> displayLines) {
+    private void renderMessages(DrawContext context, List<DisplayLine> linesToRender) {
         int fontHeight = this.textRenderer.fontHeight;
 
         int windowStartX = getMiddlePoint().getX() - getWindowWidth() / 2;
@@ -113,20 +125,20 @@ public class ConsoleScreen extends MQSScreen {
         int maxLinesVisible = renderAreaHeight / fontHeight;
 
         if (autoScroll) {
-            scrollY = Math.max(0, displayLines.size() - maxLinesVisible);
+            scrollY = Math.max(0, linesToRender.size() - maxLinesVisible);
         }
 
         int firstLineIndex = (int) Math.max(0, scrollY);
 
         context.enableScissor(renderAreaX, renderAreaY, renderAreaX + getWindowWidth() - (PADDING * 2), renderAreaY + renderAreaHeight);
 
-        for (int i = 0; i < maxLinesVisible && (firstLineIndex + i) < displayLines.size(); i++) {
+        for (int i = 0; i < maxLinesVisible && (firstLineIndex + i) < linesToRender.size(); i++) {
             int currentLineIndex = firstLineIndex + i;
-            DisplayLine line = displayLines.get(currentLineIndex);
+            DisplayLine line = linesToRender.get(currentLineIndex);
 
             int yPos = renderAreaY + (i * fontHeight);
-            context.drawTextWithShadow(this.textRenderer, line.text(), renderAreaX, yPos, line.color());
-            Render2DUtils.drawText(context, line.text(), renderAreaX, yPos, line.color(),true,1f); // this needs a string
+
+            Render2DUtils.drawText(context, line.text(), renderAreaX, yPos, line.color(), true, 1f);
         }
 
         context.disableScissor();
@@ -134,13 +146,11 @@ public class ConsoleScreen extends MQSScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        List<DisplayLine> displayLines = buildDisplayLines();
-
         int fontHeight = this.textRenderer.fontHeight;
         int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - INPUT_HEIGHT - FOOTER_MARGIN;
         int maxLinesVisible = renderAreaHeight / fontHeight;
 
-        double maxScroll = Math.max(0, displayLines.size() - maxLinesVisible);
+        double maxScroll = Math.max(0, this.displayLines.size() - maxLinesVisible);
 
         double newScrollY = scrollY - verticalAmount;
         scrollY = Math.max(0, Math.min(newScrollY, maxScroll));

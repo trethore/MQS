@@ -4,8 +4,7 @@ import net.me.screen.MQSScreen;
 import net.me.screen.component.components.DarkButtonWidget;
 import net.me.screen.component.components.DarkTextFieldWidget;
 import net.me.screen.component.components.ScriptDescriptorToggleWidget;
-import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.me.utils.GUIColors;
 import net.minecraft.client.gui.DrawContext;
@@ -27,6 +26,9 @@ public class AllScriptsScreen extends MQSScreen {
     private static final int SEARCH_BAR_HEIGHT = 20;
     private static final int BUTTON_HEIGHT = 20;
 
+    // MODIFIED: Use the new service
+    private final ScriptingService scriptingService = new ScriptingService();
+
     private final List<ScriptDescriptor> allScripts;
     private List<ScriptDescriptor> filteredScripts;
     private int currentPage = 0;
@@ -42,7 +44,8 @@ public class AllScriptsScreen extends MQSScreen {
 
     public AllScriptsScreen() {
         super("My QOL Scripts", 300, 280);
-        this.allScripts = new ArrayList<>(ScriptManager.getInstance().getAvailableScripts());
+        // MODIFIED: Use service
+        this.allScripts = new ArrayList<>(scriptingService.listAvailable());
         this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
         this.filteredScripts = new ArrayList<>(this.allScripts);
     }
@@ -162,9 +165,11 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void refreshScripts() {
-        ScriptManager.getInstance().refreshAndReenable();
+        // MODIFIED: Use service
+        scriptingService.refresh();
         this.allScripts.clear();
-        this.allScripts.addAll(ScriptManager.getInstance().getAvailableScripts());
+        // MODIFIED: Use service
+        this.allScripts.addAll(scriptingService.listAvailable());
         this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
 
         onSearchTextChanged(this.searchTextField.getText());
@@ -175,14 +180,8 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void disableAllScripts() {
-        ScriptManager sm = ScriptManager.getInstance();
-
-        List<String> runningScriptIds = sm.getRunningScripts().stream()
-                .map(RunningScript::getId)
-                .toList();
-
-        runningScriptIds.forEach(sm::disableScript);
-
+        // MODIFIED: Logic is now in the service
+        scriptingService.disableAll();
         updateScriptList();
     }
 
