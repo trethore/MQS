@@ -41,7 +41,13 @@ public class ScriptCommand extends MQSCommand {
                 .then(ClientCommandManager.literal("refresh")
                         .executes(this::refreshScripts))
                 .then(ClientCommandManager.literal("refreshandreenable")
-                        .executes(this::refreshAndReenableScripts));
+                        .executes(this::refreshAndReenableScripts))
+                .then(ClientCommandManager.literal("save")
+                        .then(ClientCommandManager.argument("script_id", StringArgumentType.greedyString())
+                                .suggests(this::suggestEnabledScripts)
+                                .executes(this::saveScriptConfig)))
+                .then(ClientCommandManager.literal("saveall")
+                        .executes(this::saveAllScriptConfigs));
     }
 
     private int listScripts(CommandContext<FabricClientCommandSource> context) {
@@ -85,6 +91,27 @@ public class ScriptCommand extends MQSCommand {
     private int refreshAndReenableScripts(CommandContext<FabricClientCommandSource> context) {
         scriptingService.refreshAndReenable();
         context.getSource().sendFeedback(Text.literal("Scripts refreshed and previously running scripts were re-enabled."));
+        return CommandManager.COMMAND_SUCCESS;
+    }
+
+    private int saveScriptConfig(CommandContext<FabricClientCommandSource> context) {
+        String scriptId = StringArgumentType.getString(context, "script_id");
+        boolean success = scriptingService.save(scriptId);
+        if (success) {
+            context.getSource().sendFeedback(Text.literal("Saved config for script: " + scriptId));
+        } else {
+            context.getSource().sendError(Text.literal("Could not save config. Script not running or not found: " + scriptId));
+        }
+        return success ? CommandManager.COMMAND_SUCCESS : CommandManager.COMMAND_FAILURE;
+    }
+
+    private int saveAllScriptConfigs(CommandContext<FabricClientCommandSource> context) {
+        int count = scriptingService.saveAll();
+        if (count > 0) {
+            context.getSource().sendFeedback(Text.literal("Saved configs for all " + count + " running scripts."));
+        } else {
+            context.getSource().sendFeedback(Text.literal("No running scripts to save configs for."));
+        }
         return CommandManager.COMMAND_SUCCESS;
     }
 

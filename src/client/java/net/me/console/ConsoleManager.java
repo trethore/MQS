@@ -4,6 +4,8 @@ import net.me.console.commands.ClearCommand;
 import net.me.console.commands.CopyTailCommand;
 import net.me.console.commands.HelpCommand;
 import net.me.console.commands.LogRedirectCommand;
+import net.me.console.commands.SaveAllConfigsCommand;
+import net.me.console.commands.SaveConfigCommand;
 import net.me.console.commands.ScriptCommands;
 import net.me.console.log.ConsoleManagerAppender;
 import org.apache.logging.log4j.LogManager;
@@ -50,6 +52,8 @@ public class ConsoleManager {
         addCommand(new ScriptCommands.DisableAllCommand());
         addCommand(new LogRedirectCommand());
         addCommand(new CopyTailCommand());
+        addCommand(new SaveConfigCommand());
+        addCommand(new SaveAllConfigsCommand());
     }
 
     private void addCommand(ConsoleCommand command) {

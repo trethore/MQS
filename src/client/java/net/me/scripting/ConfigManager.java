@@ -8,6 +8,7 @@ import org.graalvm.polyglot.Value;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -70,7 +71,6 @@ public class ConfigManager {
         Path configFile = getConfigFile(script);
 
         try {
-            // Get the JSON string from the JS engine itself
             Value JSON = script.getJsInstance().getContext().getBindings("js").getMember("JSON");
             String jsonString = JSON.invokeMember("stringify", configValue, null, 2).asString();
 
@@ -87,10 +87,12 @@ public class ConfigManager {
         inMemoryConfigs.remove(script.getId());
     }
 
-    public void saveAllConfigs() {
+    public int saveAllConfigs() {
         ScriptManager scriptManager = ScriptManager.getInstance();
-        for (RunningScript script : scriptManager.getRunningScripts()) {
+        Collection<RunningScript> runningScripts = scriptManager.getRunningScripts();
+        for (RunningScript script : runningScripts) {
             this.saveConfig(script);
         }
+        return runningScripts.size();
     }
 }

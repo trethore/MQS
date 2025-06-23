@@ -50,4 +50,21 @@ public class ScriptingService {
     public void refresh() {
         sm.refresh();
     }
+
+    public boolean save(String scriptId) {
+        RunningScript scriptToSave = sm.getRunningScripts().stream()
+                .filter(script -> script.getId().equals(scriptId))
+                .findFirst()
+                .orElse(null);
+
+        if (scriptToSave != null) {
+            ConfigManager.getInstance().saveConfig(scriptToSave);
+            return true;
+        }
+        return false;
+    }
+
+    public int saveAll() {
+        return ConfigManager.getInstance().saveAllConfigs();
+    }
 }
