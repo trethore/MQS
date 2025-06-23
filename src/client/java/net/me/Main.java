@@ -5,6 +5,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
 import net.me.console.ConsoleManager;
 import net.me.event.EventManager;
+import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.mappings.MappingsManager;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ public class Main implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         MappingsManager.getInstance().init();
+        ConfigManager.getInstance().init();
         ScriptManager.getInstance().init();
         CommandManager.getInstance().init();
         ConsoleManager.getInstance().init();

@@ -3,7 +3,7 @@
 	"package": "net.me.mixin.client",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"ExampleClientMixin"
+		"mixins.MQSMinecraftClientMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

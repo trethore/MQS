@@ -3,6 +3,7 @@ package net.me.scripting.engine;
 import net.me.Main;
 import net.me.event.Event;
 import net.me.event.EventManager;
+import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.wrappers.JsClassWrapper;
@@ -52,6 +53,7 @@ public class ScriptContextFactory {
         bindings.putMember("wrap", ScriptingApi.createWrapProxy(classResolver));
         bindings.putMember("exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
         bindings.putMember("EventManager", createEventManagerProxy());
+        bindings.putMember("Config", createConfigProxy());
 
         bindings.putMember("println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);
@@ -157,6 +159,89 @@ public class ScriptContextFactory {
             @Override
             public void putMember(String key, Value value) {
                 throw new UnsupportedOperationException("Cannot modify the EventManager object.");
+            }
+        };
+    }
+
+    private ProxyObject createConfigProxy() {
+        final ConfigManager cm = ConfigManager.getInstance();
+
+        return new ProxyObject() {
+            private RunningScript getCurrentScript() {
+                RunningScript script = ScriptManager.getInstance().getCurrentScript();
+                if (script == null) {
+                    throw new IllegalStateException("Config API can only be used within a running script context (e.g., onEnable, onDisable, or an event).");
+                }
+                return script;
+            }
+
+            @Override
+            public Object getMember(String key) {
+                return (ProxyExecutable) args -> {
+                    RunningScript script = getCurrentScript();
+                    switch (key) {
+                        case "get": {
+                            if (args.length == 0)
+                                throw new IllegalArgumentException("Config.get requires at least one argument (key).");
+                            Value config = cm.getConfigForScript(script);
+                            String configKey = args[0].asString();
+                            Value result = config.getMember(configKey);
+                            if (result == null || result.isNull()) {
+                                return args.length > 1 ? args[1] : script.getJsInstance().getContext().eval("js", "null");
+                            }
+                            return result;
+                        }
+                        case "set": {
+                            Main.LOGGER.info("Config.set called");
+                            if (args.length != 2)
+                                throw new IllegalArgumentException("Config.set requires two arguments (key, value).");
+                            Value config = cm.getConfigForScript(script);
+                            config.putMember(args[0].asString(), args[1]);
+                            return null;
+                        }
+                        case "has": {
+                            if (args.length != 1)
+                                throw new IllegalArgumentException("Config.has requires one argument (key).");
+                            Value config = cm.getConfigForScript(script);
+                            return config.hasMember(args[0].asString());
+                        }
+                        case "save": {
+                            if (args.length != 0)
+                                throw new IllegalArgumentException("Config.save takes no arguments.");
+                            cm.saveConfig(script);
+                            return null;
+                        }
+                        case "load": {
+                            if (args.length != 0)
+                                throw new IllegalArgumentException("Config.load takes no arguments.");
+                            cm.unloadConfig(script);
+                            cm.getConfigForScript(script); // This will force a reload
+                            return null;
+                        }
+                        case "getAll": {
+                            if (args.length != 0)
+                                throw new IllegalArgumentException("Config.getAll takes no arguments.");
+                            return cm.getConfigForScript(script);
+                        }
+                        default:
+                            throw new UnsupportedOperationException("Unsupported Config operation: " + key);
+                    }
+                };
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return new String[]{"get", "set", "has", "save", "load", "getAll"};
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return "get".equals(key) || "set".equals(key) || "has".equals(key) || "save".equals(key) || "load".equals(key) || "getAll".equals(key);
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify the Config object itself.");
             }
         };
     }

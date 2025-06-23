@@ -162,6 +162,8 @@ public class ScriptManager {
                 script.onDisable();
             } finally {
                 EventManager.getInstance().unregister(script);
+                ConfigManager.getInstance().saveConfig(script);
+                ConfigManager.getInstance().unloadConfig(script);
                 currentScriptContext.remove();
             }
             Main.LOGGER.info("Disabled script: {}", script.getName());

@@ -1,6 +1,7 @@
 package net.me.console;
 
 import net.me.console.commands.ClearCommand;
+import net.me.console.commands.CopyTailCommand;
 import net.me.console.commands.HelpCommand;
 import net.me.console.commands.LogRedirectCommand;
 import net.me.console.commands.ScriptCommands;
@@ -48,6 +49,7 @@ public class ConsoleManager {
         addCommand(new ScriptCommands.RefreshAndReenableCommand());
         addCommand(new ScriptCommands.DisableAllCommand());
         addCommand(new LogRedirectCommand());
+        addCommand(new CopyTailCommand());
     }
 
     private void addCommand(ConsoleCommand command) {
