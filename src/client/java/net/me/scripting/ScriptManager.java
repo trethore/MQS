@@ -141,11 +141,11 @@ public class ScriptManager {
 
             runningScripts.put(scriptId, runningScript);
 
-            currentScriptContext.set(runningScript);
+            setCurrentScript(runningScript);
             try {
                 runningScript.onEnable();
             } finally {
-                currentScriptContext.remove();
+                clearCurrentScript();
             }
 
             Main.LOGGER.info("Enabled script: {}", runningScript.getName());
@@ -157,14 +157,14 @@ public class ScriptManager {
     public void disableScript(String scriptId) {
         RunningScript script = runningScripts.remove(scriptId);
         if (script != null) {
-            currentScriptContext.set(script);
+            setCurrentScript(script);
             try {
                 script.onDisable();
             } finally {
                 EventManager.getInstance().unregister(script);
                 ConfigManager.getInstance().saveConfig(script);
                 ConfigManager.getInstance().unloadConfig(script);
-                currentScriptContext.remove();
+                clearCurrentScript();
             }
             Main.LOGGER.info("Disabled script: {}", script.getName());
         }
@@ -184,5 +184,13 @@ public class ScriptManager {
 
     public RunningScript getCurrentScript() {
         return currentScriptContext.get();
+    }
+
+    public void setCurrentScript(RunningScript script) {
+        currentScriptContext.set(script);
+    }
+
+    public void clearCurrentScript() {
+        currentScriptContext.remove();
     }
 }

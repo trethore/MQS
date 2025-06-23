@@ -2,6 +2,7 @@ package net.me.event;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.event.events.TickEvent;
+import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
@@ -50,11 +51,15 @@ public class EventManager {
         List<Listener> eventListeners = listeners.get(event.getClass());
         if (eventListeners != null) {
             for (Listener listener : eventListeners) {
+                ScriptManager sm = ScriptManager.getInstance();
+                sm.setCurrentScript(listener.owner());
                 try {
                     listener.callback().execute(event);
                 } catch (Exception e) {
                     LOGGER.error("Error executing event listener for {} in script '{}'",
                             event.getClass().getSimpleName(), listener.owner().getName(), e);
+                } finally {
+                    sm.clearCurrentScript();
                 }
             }
         }
