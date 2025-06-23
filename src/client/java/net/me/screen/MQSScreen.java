@@ -1,6 +1,6 @@
 package net.me.screen;
 
-import net.me.utils.IntPair;
+import net.me.utils.Position;
 import net.me.utils.Render2DUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -28,8 +28,8 @@ public abstract class MQSScreen extends Screen {
 
     @Override
     public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
-        int startX = getMiddlePoint().getX() - windowWidth / 2;
-        int startY = getMiddlePoint().getY() - windowHeight / 2;
+        int startX = getMiddlePoint().x() - windowWidth / 2;
+        int startY = getMiddlePoint().y() - windowHeight / 2;
 
         Render2DUtils.drawRect(context, 0, 0, this.width, this.height, 0x11333333);
         this.applyBlur();
@@ -55,8 +55,8 @@ public abstract class MQSScreen extends Screen {
 
 
     private void drawTitle(DrawContext context) {
-        int x = getMiddlePoint().getX();
-        int y = getMiddlePoint().getY() - 115;
+        int x = getMiddlePoint().x();
+        int y = getMiddlePoint().y() - 115;
         int color = Render2DUtils.getRainbowColor(2000, 0.8f, 1.0f);
         Render2DUtils.drawCenteredText(context, this.getStringTitle(), x, y, color, true, 1.5f);
     }
@@ -69,10 +69,10 @@ public abstract class MQSScreen extends Screen {
         }
     }
 
-    protected IntPair getMiddlePoint() {
+    protected Position getMiddlePoint() {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
-        return new IntPair(centerX, centerY);
+        return new Position(centerX, centerY);
     }
 
     public void setWindowDimensions(int width, int height) {

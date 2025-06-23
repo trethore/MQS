@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 public class ScriptCommand extends MQSCommand {
 
-    private final ScriptingService scriptingService = new ScriptingService();
+    private final ScriptingService scriptingService = ScriptingService.getInstance();
 
     @Override
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {

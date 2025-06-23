@@ -8,7 +8,15 @@ import java.util.List;
 
 
 public class ScriptingService {
+    private static final ScriptingService INSTANCE = new ScriptingService();
     private final ScriptManager sm = ScriptManager.getInstance();
+
+    private ScriptingService() {
+    }
+
+    public static ScriptingService getInstance() {
+        return INSTANCE;
+    }
 
     public Collection<ScriptDescriptor> listAvailable() {
         return sm.getAvailableScripts();

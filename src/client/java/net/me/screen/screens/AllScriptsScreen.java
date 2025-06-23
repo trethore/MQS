@@ -26,7 +26,7 @@ public class AllScriptsScreen extends MQSScreen {
     private static final int SEARCH_BAR_HEIGHT = 20;
     private static final int BUTTON_HEIGHT = 20;
 
-    private final ScriptingService scriptingService = new ScriptingService();
+    private final ScriptingService scriptingService = ScriptingService.getInstance();
 
     private final List<ScriptDescriptor> allScripts;
     private List<ScriptDescriptor> filteredScripts;
@@ -59,8 +59,8 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void addSearch() {
-        int searchX = this.getMiddlePoint().getX() - PADDING;
-        int searchY = this.getMiddlePoint().getY() - PADDING;
+        int searchX = this.getMiddlePoint().x() - PADDING;
+        int searchY = this.getMiddlePoint().y() - PADDING;
 
         if (this.searchTextField == null) {
             this.searchTextField = DarkTextFieldWidget.builder(this.textRenderer)
@@ -99,8 +99,8 @@ public class AllScriptsScreen extends MQSScreen {
         }
         this.currentPage = Math.max(0, Math.min(this.currentPage, this.totalPages - 1));
 
-        int listStartX = this.getMiddlePoint().getX() - PADDING;
-        int listStartY = this.getMiddlePoint().getY() - 70;
+        int listStartX = this.getMiddlePoint().x() - PADDING;
+        int listStartY = this.getMiddlePoint().y() - 70;
 
         int startIndex = this.currentPage * ITEMS_PER_PAGE;
         int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, this.filteredScripts.size());
@@ -122,8 +122,8 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void addNavigationAndActionButtons() {
-        int navY = this.getMiddlePoint().getY() + 75;
-        int navX = this.getMiddlePoint().getX();
+        int navY = this.getMiddlePoint().y() + 75;
+        int navX = this.getMiddlePoint().x();
 
         this.prevButton = DarkButtonWidget.builder("Previous", button -> {
             if (this.currentPage > 0) {
@@ -203,8 +203,8 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void drawPageNumber(DrawContext context) {
-        int navY = this.getMiddlePoint().getY() + 75;
-        int navCenterX = this.getMiddlePoint().getX();
+        int navY = this.getMiddlePoint().y() + 75;
+        int navCenterX = this.getMiddlePoint().x();
         String pageText = (currentPage + 1) + " / " + totalPages;
         context.drawCenteredTextWithShadow(this.textRenderer, pageText, navCenterX, navY + 6, Color.WHITE.getRGB());
     }

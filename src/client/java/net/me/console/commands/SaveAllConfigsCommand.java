@@ -5,8 +5,7 @@ import net.me.console.ConsoleManager;
 import net.me.scripting.ScriptingService;
 
 public class SaveAllConfigsCommand implements ConsoleCommand {
-
-    private final ScriptingService scriptingService = new ScriptingService();
+    private final ScriptingService scriptingService = ScriptingService.getInstance();
 
     @Override
     public void execute(String[] args) {

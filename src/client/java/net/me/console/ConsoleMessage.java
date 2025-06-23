@@ -24,7 +24,7 @@ public record ConsoleMessage(String text, MessageType type, String timestamp) {
         }
 
         public int getColor() {
-            return this.color;
+            return color;
         }
     }
 }

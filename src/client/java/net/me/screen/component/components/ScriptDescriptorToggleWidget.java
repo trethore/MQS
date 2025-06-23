@@ -2,6 +2,7 @@ package net.me.screen.component.components;
 
 
 import net.me.scripting.ScriptManager;
+import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.me.utils.GUIColors;
 import net.me.utils.Render2DUtils;
@@ -24,11 +25,11 @@ public class ScriptDescriptorToggleWidget extends PressableWidget {
 
     @Override
     public void onPress() {
-        ScriptManager sm = ScriptManager.getInstance();
-        if (sm.isRunning(descriptor.getId())) {
-            sm.disableScript(descriptor.getId());
+        ScriptingService ss = ScriptingService.getInstance();
+        if (ss.isRunning(descriptor.getId())) {
+            ss.disable(descriptor.getId());
         } else {
-            sm.enableScript(descriptor.getId());
+            ss.enable(descriptor.getId());
         }
     }
 

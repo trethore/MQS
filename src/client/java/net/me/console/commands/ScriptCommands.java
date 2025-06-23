@@ -8,7 +8,7 @@ import net.me.scripting.module.ScriptDescriptor;
 public class ScriptCommands {
 
     public static class ListScriptsCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = new ScriptingService();
+        private final ScriptingService scriptingService = ScriptingService.getInstance();
 
         @Override
         public void execute(String[] args) {
@@ -43,7 +43,7 @@ public class ScriptCommands {
     }
 
     public static class EnableScriptCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = new ScriptingService();
+        private final ScriptingService scriptingService = ScriptingService.getInstance();
 
         @Override
         public void execute(String[] args) {
@@ -72,7 +72,7 @@ public class ScriptCommands {
     }
 
     public static class DisableScriptCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = new ScriptingService();
+        private final ScriptingService scriptingService = ScriptingService.getInstance();
 
         @Override
         public void execute(String[] args) {
@@ -101,7 +101,7 @@ public class ScriptCommands {
     }
 
     public static class RefreshScriptsCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = new ScriptingService();
+        private final ScriptingService scriptingService = ScriptingService.getInstance();
 
 
         @Override
@@ -129,7 +129,7 @@ public class ScriptCommands {
     }
 
     public static class RefreshAndReenableCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = new ScriptingService();
+        private final ScriptingService scriptingService = ScriptingService.getInstance();
 
         @Override
         public void execute(String[] args) {
@@ -155,7 +155,7 @@ public class ScriptCommands {
     }
 
     public static class DisableAllCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = new ScriptingService();
+        private final ScriptingService scriptingService = ScriptingService.getInstance();
 
         @Override
         public void execute(String[] args) {
