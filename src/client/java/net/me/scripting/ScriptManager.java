@@ -2,6 +2,7 @@ package net.me.scripting;
 
 import net.me.Main;
 import net.me.event.EventManager;
+import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.engine.ScriptContextFactory;
 import net.me.scripting.engine.ScriptLoader;
 import net.me.scripting.engine.ScriptingClassResolver;
@@ -162,6 +163,7 @@ public class ScriptManager {
                 script.onDisable();
             } finally {
                 EventManager.getInstance().unregister(script);
+                CommandAPIService.getInstance().unregisterAllFor(script);
                 ConfigManager.getInstance().saveConfig(script);
                 ConfigManager.getInstance().unloadConfig(script);
                 clearCurrentScript();

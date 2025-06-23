@@ -5,6 +5,7 @@ import net.me.event.Event;
 import net.me.event.EventManager;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.commands.CommandsAPI;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.LazyPackageProxy;
@@ -29,6 +30,7 @@ public class ScriptContextFactory {
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
         Main.LOGGER.info("Creating new script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
+
         Context newContext = Context.newBuilder("js")
                 .allowHostAccess(HostAccess.ALL)
                 .allowHostClassLookup(classResolver::isClassAllowed)
@@ -54,6 +56,8 @@ public class ScriptContextFactory {
         bindings.putMember("exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
         bindings.putMember("EventManager", createEventManagerProxy());
         bindings.putMember("Config", createConfigProxy());
+
+        bindings.putMember("Commands", new CommandsAPI());
 
         bindings.putMember("println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);

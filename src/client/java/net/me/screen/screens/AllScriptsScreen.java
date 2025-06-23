@@ -174,22 +174,22 @@ public class AllScriptsScreen extends MQSScreen {
             this.refreshButton.setMessage(Text.literal("Refreshing"));
         }
 
-        new Thread(() -> {
+        assert this.client != null;
+        this.client.send(() -> {
             scriptingService.refreshAndReenable();
 
-            assert client != null;
-            client.send(() -> {
-                this.allScripts.clear();
-                this.allScripts.addAll(scriptingService.listAvailable());
-                this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
+            this.allScripts.clear();
+            this.allScripts.addAll(scriptingService.listAvailable());
+            this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
 
-                onSearchTextChanged(this.searchTextField.getText());
+            onSearchTextChanged(this.searchTextField.getText());
 
-                isRefreshing = false;
+            isRefreshing = false;
+            if (this.refreshButton != null) {
                 this.refreshButton.active = true;
                 this.refreshButton.setMessage(Text.literal("Refresh"));
-            });
-        }, "Script-Refresher").start();
+            }
+        });
     }
 
     private void disableAllScripts() {
