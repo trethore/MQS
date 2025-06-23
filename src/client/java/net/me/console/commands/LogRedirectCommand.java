@@ -3,7 +3,7 @@ package net.me.console.commands;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 
-public class AllowSysinCommand implements ConsoleCommand {
+public class LogRedirectCommand implements ConsoleCommand {
     @Override
     public void execute(String[] args) {
         ConsoleManager cm = ConsoleManager.getInstance();
@@ -22,22 +22,22 @@ public class AllowSysinCommand implements ConsoleCommand {
             return;
         }
 
-        cm.setRedirectSystemStreams(enable);
-        cm.logSuccess("System stream redirection " + (enable ? "enabled" : "disabled") + ".");
+        cm.setLogRedirect(enable);
+        cm.logSuccess("Log redirection " + (enable ? "enabled" : "disabled") + ".");
     }
 
     @Override
     public String getName() {
-        return "allowsysin";
+        return "logredirect";
     }
 
     @Override
     public String getDescription() {
-        return "Redirects System.out and System.err to this console.";
+        return "Redirects System.out, System.err, and SLF4J logs to this console.";
     }
 
     @Override
     public String getUsage() {
-        return "allowsysin <true|false>";
+        return "logredirect <true|false>";
     }
 }

@@ -1,9 +1,12 @@
 package net.me.console;
 
-import net.me.console.commands.AllowSysinCommand;
 import net.me.console.commands.ClearCommand;
 import net.me.console.commands.HelpCommand;
+import net.me.console.commands.LogRedirectCommand;
 import net.me.console.commands.ScriptCommands;
+import net.me.console.log.ConsoleManagerAppender;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -20,7 +23,8 @@ public class ConsoleManager {
 
     private final PrintStream originalOut = System.out;
     private final PrintStream originalErr = System.err;
-    private boolean redirectSystemStreams = false;
+    private boolean logsRedirected = false;
+    private ConsoleManagerAppender slf4jAppender;
 
     private ConsoleManager() {
     }
@@ -42,7 +46,7 @@ public class ConsoleManager {
         addCommand(new ScriptCommands.DisableScriptCommand());
         addCommand(new ScriptCommands.RefreshScriptsCommand());
         addCommand(new ScriptCommands.DisableAllCommand());
-        addCommand(new AllowSysinCommand());
+        addCommand(new LogRedirectCommand());
     }
 
     private void addCommand(ConsoleCommand command) {
@@ -115,20 +119,33 @@ public class ConsoleManager {
         return Collections.unmodifiableList(commandHistory);
     }
 
-    public void setRedirectSystemStreams(boolean enable) {
-        if (enable == this.redirectSystemStreams) {
-            logInfo("System stream redirection is already " + (enable ? "enabled." : "disabled."));
+    public void setLogRedirect(boolean enable) {
+        if (enable == this.logsRedirected) {
+            logInfo("Log redirection is already " + (enable ? "enabled." : "disabled."));
             return;
         }
 
-        this.redirectSystemStreams = enable;
+        this.logsRedirected = enable;
+        Logger rootLogger = (Logger) LogManager.getRootLogger();
 
         if (enable) {
             System.setOut(new PrintStream(new ConsoleOutputStream(ConsoleMessage.MessageType.INFO), true));
             System.setErr(new PrintStream(new ConsoleOutputStream(ConsoleMessage.MessageType.ERROR), true));
+
+            if (this.slf4jAppender == null) {
+                this.slf4jAppender = ConsoleManagerAppender.createAppender();
+            }
+            this.slf4jAppender.start();
+            rootLogger.addAppender(this.slf4jAppender);
+
         } else {
             System.setOut(originalOut);
             System.setErr(originalErr);
+
+            if (this.slf4jAppender != null) {
+                rootLogger.removeAppender(this.slf4jAppender);
+                this.slf4jAppender.stop();
+            }
         }
     }
 

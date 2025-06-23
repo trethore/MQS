@@ -6,9 +6,9 @@ import net.me.screen.component.components.DarkTextFieldWidget;
 import net.me.screen.component.components.ScriptDescriptorToggleWidget;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
-import net.me.utils.GUIColors;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.awt.*;
@@ -26,7 +26,6 @@ public class AllScriptsScreen extends MQSScreen {
     private static final int SEARCH_BAR_HEIGHT = 20;
     private static final int BUTTON_HEIGHT = 20;
 
-    // MODIFIED: Use the new service
     private final ScriptingService scriptingService = new ScriptingService();
 
     private final List<ScriptDescriptor> allScripts;
@@ -38,13 +37,12 @@ public class AllScriptsScreen extends MQSScreen {
     private DarkButtonWidget prevButton;
     private DarkButtonWidget nextButton;
     private DarkButtonWidget refreshButton;
-    private long refreshTime = -1;
+    private boolean isRefreshing = false;
 
     private final List<ClickableWidget> scriptEntryWidgets = new ArrayList<>();
 
     public AllScriptsScreen() {
         super("My QOL Scripts", 300, 280);
-        // MODIFIED: Use service
         this.allScripts = new ArrayList<>(scriptingService.listAvailable());
         this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
         this.filteredScripts = new ArrayList<>(this.allScripts);
@@ -165,22 +163,35 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void refreshScripts() {
-        // MODIFIED: Use service
-        scriptingService.refresh();
-        this.allScripts.clear();
-        // MODIFIED: Use service
-        this.allScripts.addAll(scriptingService.listAvailable());
-        this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
-
-        onSearchTextChanged(this.searchTextField.getText());
-        if (this.refreshButton != null) {
-            this.refreshButton.setColors(GUIColors.SUCCESS.getRGBA(), GUIColors.SUCCESS.lighter(10).getRGB());
-            this.refreshTime = System.currentTimeMillis();
+        // Prevent multiple refresh actions from starting
+        if (isRefreshing) {
+            return;
         }
+        isRefreshing = true;
+        if (this.refreshButton != null) {
+            this.refreshButton.active = false;
+            this.refreshButton.setMessage(Text.literal("Refreshing"));
+        }
+
+        new Thread(() -> {
+            scriptingService.refresh();
+
+            assert client != null;
+            client.send(() -> {
+                this.allScripts.clear();
+                this.allScripts.addAll(scriptingService.listAvailable());
+                this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
+
+                onSearchTextChanged(this.searchTextField.getText());
+
+                isRefreshing = false;
+                this.refreshButton.active = true;
+                this.refreshButton.setMessage(Text.literal("Refresh"));
+            });
+        }, "Script-Refresher").start();
     }
 
     private void disableAllScripts() {
-        // MODIFIED: Logic is now in the service
         scriptingService.disableAll();
         updateScriptList();
     }
@@ -190,12 +201,6 @@ public class AllScriptsScreen extends MQSScreen {
         super.render(context, mouseX, mouseY, delta);
         this.searchTextField.render(context, mouseX, mouseY, delta);
         drawPageNumber(context);
-        if (this.refreshTime != -1 && System.currentTimeMillis() - this.refreshTime > 750) {
-            if (this.refreshButton != null) {
-                this.refreshButton.setColors(GUIColors.TEXT_GREY_DISABLED.getRGBA(), GUIColors.WHITE.getRGBA());
-            }
-            this.refreshTime = -1;
-        }
     }
 
     private void drawPageNumber(DrawContext context) {
