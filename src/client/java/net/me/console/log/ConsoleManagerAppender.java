@@ -1,12 +1,12 @@
 package net.me.console.log;
 
 import net.me.console.ConsoleManager;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.apache.logging.log4j.Level;
 
 @Plugin(name = "ConsoleManagerAppender", category = "Core", elementType = "appender", printObject = true)
 public class ConsoleManagerAppender extends AbstractAppender {

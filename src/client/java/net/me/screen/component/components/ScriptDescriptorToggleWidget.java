@@ -39,7 +39,7 @@ public class ScriptDescriptorToggleWidget extends PressableWidget {
         Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, color);
         String title = this.descriptor.moduleName() + " v" + this.descriptor.version();
         Render2DUtils.drawText(context, title, this.getX() + 5, this.getY() + 5, GUIColors.WHITE.getRGBA(), true, 1);
-        Render2DUtils.drawText(context,this.descriptor.path().getFileName().toString(), this.getX() + 5, this.getY() + 16, GUIColors.WHITE.darker(25).getRGB(), true, 0.8f);
+        Render2DUtils.drawText(context, this.descriptor.path().getFileName().toString(), this.getX() + 5, this.getY() + 16, GUIColors.WHITE.darker(25).getRGB(), true, 0.8f);
         renderToggleState(context, isHovered);
     }
 

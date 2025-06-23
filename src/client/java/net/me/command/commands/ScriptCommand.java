@@ -37,7 +37,11 @@ public class ScriptCommand extends MQSCommand {
                 .then(ClientCommandManager.literal("reload")
                         .then(ClientCommandManager.argument("script_id", StringArgumentType.greedyString())
                                 .suggests(this::suggestEnabledScripts)
-                                .executes(this::reloadScript)));
+                                .executes(this::reloadScript)))
+                .then(ClientCommandManager.literal("refresh")
+                        .executes(this::refreshScripts))
+                .then(ClientCommandManager.literal("refreshandreenable")
+                        .executes(this::refreshAndReenableScripts));
     }
 
     private int listScripts(CommandContext<FabricClientCommandSource> context) {
@@ -69,6 +73,18 @@ public class ScriptCommand extends MQSCommand {
         scriptingService.disable(scriptId);
         scriptingService.enable(scriptId);
         context.getSource().sendFeedback(Text.literal("Reloaded script: " + scriptId));
+        return CommandManager.COMMAND_SUCCESS;
+    }
+
+    private int refreshScripts(CommandContext<FabricClientCommandSource> context) {
+        scriptingService.refresh();
+        context.getSource().sendFeedback(Text.literal("Scripts refreshed. All running scripts have been disabled."));
+        return CommandManager.COMMAND_SUCCESS;
+    }
+
+    private int refreshAndReenableScripts(CommandContext<FabricClientCommandSource> context) {
+        scriptingService.refreshAndReenable();
+        context.getSource().sendFeedback(Text.literal("Scripts refreshed and previously running scripts were re-enabled."));
         return CommandManager.COMMAND_SUCCESS;
     }
 

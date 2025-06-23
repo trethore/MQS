@@ -74,6 +74,12 @@ public class ScriptManager {
         });
     }
 
+    public void refresh() {
+        refreshScriptContext();
+        new ArrayList<>(runningScripts.keySet()).forEach(this::disableScript);
+        discoverScripts();
+    }
+
     private void ensureScriptDirectory() {
         Path p = Main.MOD_DIR.resolve("scripts");
         try {

@@ -163,7 +163,6 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void refreshScripts() {
-        // Prevent multiple refresh actions from starting
         if (isRefreshing) {
             return;
         }
@@ -174,7 +173,7 @@ public class AllScriptsScreen extends MQSScreen {
         }
 
         new Thread(() -> {
-            scriptingService.refresh();
+            scriptingService.refreshAndReenable();
 
             assert client != null;
             client.send(() -> {

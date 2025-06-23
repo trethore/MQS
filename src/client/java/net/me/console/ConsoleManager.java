@@ -45,6 +45,7 @@ public class ConsoleManager {
         addCommand(new ScriptCommands.EnableScriptCommand());
         addCommand(new ScriptCommands.DisableScriptCommand());
         addCommand(new ScriptCommands.RefreshScriptsCommand());
+        addCommand(new ScriptCommands.RefreshAndReenableCommand());
         addCommand(new ScriptCommands.DisableAllCommand());
         addCommand(new LogRedirectCommand());
     }

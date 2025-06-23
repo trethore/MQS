@@ -51,6 +51,7 @@ public class RunningScript {
     public String getVersion() {
         return descriptor.version();
     }
+
     public ScriptDescriptor getDescriptor() {
         return descriptor;
     }

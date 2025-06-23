@@ -83,6 +83,7 @@ public class ConsoleScreen extends MQSScreen {
 
         this.inputField.render(context, mouseX, mouseY, delta);
     }
+
     private void updateDisplayLines() {
         List<ConsoleMessage> messages = ConsoleManager.getInstance().getMessages();
         int currentMessageCount = messages.size();

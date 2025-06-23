@@ -103,12 +103,14 @@ public class ScriptCommands {
     public static class RefreshScriptsCommand implements ConsoleCommand {
         private final ScriptingService scriptingService = new ScriptingService();
 
+
         @Override
         public void execute(String[] args) {
             ConsoleManager.getInstance().logInfo("Refreshing scripts...");
             scriptingService.refresh();
-            ConsoleManager.getInstance().logSuccess("Scripts refreshed and previously running scripts re-enabled.");
+            ConsoleManager.getInstance().logSuccess("Scripts refreshed. All scripts are now disabled.");
         }
+
 
         @Override
         public String getName() {
@@ -117,12 +119,38 @@ public class ScriptCommands {
 
         @Override
         public String getDescription() {
-            return "Refreshes and reloads all scripts from disk.";
+            return "Refreshes and reloads all scripts from disk, disabling all running scripts.";
         }
 
         @Override
         public String getUsage() {
             return "refresh";
+        }
+    }
+
+    public static class RefreshAndReenableCommand implements ConsoleCommand {
+        private final ScriptingService scriptingService = new ScriptingService();
+
+        @Override
+        public void execute(String[] args) {
+            ConsoleManager.getInstance().logInfo("Refreshing scripts and re-enabling...");
+            scriptingService.refreshAndReenable();
+            ConsoleManager.getInstance().logSuccess("Scripts refreshed and previously running scripts re-enabled.");
+        }
+
+        @Override
+        public String getName() {
+            return "refreshandreenable";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Refreshes and reloads all scripts, then re-enables previously running scripts.";
+        }
+
+        @Override
+        public String getUsage() {
+            return "refreshandreenable";
         }
     }
 
@@ -142,7 +170,7 @@ public class ScriptCommands {
 
         @Override
         public String getName() {
-            return "disable-all";
+            return "disableall";
         }
 
         @Override
@@ -152,7 +180,7 @@ public class ScriptCommands {
 
         @Override
         public String getUsage() {
-            return "disable-all";
+            return "disableall";
         }
     }
 }

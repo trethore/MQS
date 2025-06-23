@@ -34,7 +34,8 @@ public class EventManager {
 
     private final Map<Class<? extends Event>, List<Listener>> listeners = new ConcurrentHashMap<>();
 
-    private EventManager() {}
+    private EventManager() {
+    }
 
     public static EventManager getInstance() {
         return INSTANCE;

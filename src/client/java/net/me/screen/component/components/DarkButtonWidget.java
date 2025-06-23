@@ -13,7 +13,6 @@ public class DarkButtonWidget extends ButtonWidget {
     private int activeTextColor = GUIColors.WHITE.getRGBA();
 
 
-
     protected DarkButtonWidget(int x, int y, int width, int height, String message, PressAction onPress, int unactiveTextColor, int activeTextColor) {
         super(x, y, width, height, Text.literal(message), onPress, DEFAULT_NARRATION_SUPPLIER);
         this.unactiveTextColor = unactiveTextColor;
@@ -45,7 +44,7 @@ public class DarkButtonWidget extends ButtonWidget {
         int color = isHovered ? GUIColors.DARK_L3.getRGBA() : GUIColors.DARK_L2.getRGBA();
         Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.width, this.height, 3, 5, color);
 
-        int textColor = this.active ? activeTextColor  : unactiveTextColor;
+        int textColor = this.active ? activeTextColor : unactiveTextColor;
         context.drawCenteredTextWithShadow(
                 textRenderer,
                 this.getMessage(),

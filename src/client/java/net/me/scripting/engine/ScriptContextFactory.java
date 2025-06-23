@@ -128,8 +128,7 @@ public class ScriptContextFactory {
 
                 if (eventTypeArg.isProxyObject() && eventTypeArg.asProxyObject() instanceof JsClassWrapper wrapper) {
                     potentialClass = wrapper.getTargetClass();
-                }
-                else if (eventTypeArg.isHostObject() && eventTypeArg.asHostObject() instanceof Class) {
+                } else if (eventTypeArg.isHostObject() && eventTypeArg.asHostObject() instanceof Class) {
                     potentialClass = eventTypeArg.asHostObject();
                 }
 

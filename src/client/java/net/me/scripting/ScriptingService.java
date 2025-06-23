@@ -43,7 +43,11 @@ public class ScriptingService {
         return runningScriptIds.size();
     }
 
-    public void refresh() {
+    public void refreshAndReenable() {
         sm.refreshAndReenable();
+    }
+
+    public void refresh() {
+        sm.refresh();
     }
 }
