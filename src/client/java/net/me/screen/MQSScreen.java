@@ -56,7 +56,7 @@ public abstract class MQSScreen extends Screen {
 
     private void drawTitle(DrawContext context) {
         int x = getMiddlePoint().x();
-        int y = getMiddlePoint().y() - 115;
+        int y = getMiddlePoint().y() - this.windowHeight / 2 + 22;
         int color = Render2DUtils.getRainbowColor(2000, 0.8f, 1.0f);
         Render2DUtils.drawCenteredText(context, this.getStringTitle(), x, y, color, true, 1.5f);
     }

@@ -62,14 +62,13 @@ public class AllScriptsScreen extends MQSScreen {
         int searchX = this.getMiddlePoint().x() - PADDING;
         int searchY = this.getMiddlePoint().y() - PADDING;
 
-        if (this.searchTextField == null) {
-            this.searchTextField = DarkTextFieldWidget.builder(this.textRenderer)
-                    .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, SEARCH_BAR_HEIGHT)
-                    .placeholder("Search...")
-                    .build();
+        this.searchTextField = DarkTextFieldWidget.builder(this.textRenderer)
+                .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, SEARCH_BAR_HEIGHT)
+                .placeholder("Search...")
+                .build();
 
-            this.searchTextField.setChangedListener(this::onSearchTextChanged);
-        }
+        this.searchTextField.setChangedListener(this::onSearchTextChanged);
+
         this.addSelectableChild(this.searchTextField);
         DarkButtonWidget clearTextFieldButton = DarkButtonWidget.builder("❌", button -> this.searchTextField.clearText())
                 .dimensions(searchX + SEARCH_BAR_WIDTH + 10, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
@@ -147,14 +146,17 @@ public class AllScriptsScreen extends MQSScreen {
         this.refreshButton = DarkButtonWidget.builder("Refresh", button -> refreshScripts())
                 .dimensions(navX - PADDING, actionY, 60, BUTTON_HEIGHT).build();
 
-        DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> new ConsoleScreen(this).open()).dimensions(navX - 35, actionY, 70, BUTTON_HEIGHT).build();
+        DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> new ConsoleScreen(this).open()).dimensions(navX - 35, actionY, 60, BUTTON_HEIGHT).build();
 
         DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
-                .dimensions(navX + 40, actionY, 60, BUTTON_HEIGHT).build();
+                .dimensions(navX + 30, actionY, 50, BUTTON_HEIGHT).build();
+
+        DarkButtonWidget moreButton = DarkButtonWidget.builder(Formatting.BOLD + "⋮" + Formatting.RESET, button -> new MoreOptionsScreen(this).open()).dimensions(navX + 85,actionY,15,BUTTON_HEIGHT).build();
 
         this.addDrawableChild(this.refreshButton);
         this.addDrawableChild(consoleButton);
         this.addDrawableChild(offButton);
+        this.addDrawableChild(moreButton);
     }
 
     private void updateNavigationButtons() {
