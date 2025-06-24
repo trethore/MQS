@@ -1,7 +1,8 @@
 package net.me.event;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.me.event.events.TickEvent;
+import net.me.event.events.tick.EndClientTickEvent;
+import net.me.event.events.tick.StartClientTickEvent;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
@@ -43,8 +44,8 @@ public class EventManager {
     }
 
     public void init() {
-        ClientTickEvents.END_CLIENT_TICK.register(client -> this.post(new TickEvent()));
-        LOGGER.info("EventManager initialized and hooked into client ticks.");
+        ClientTickEvents.START_CLIENT_TICK.register(client -> this.post(new StartClientTickEvent(client)));
+        ClientTickEvents.END_CLIENT_TICK.register(client -> this.post(new EndClientTickEvent(client)));
     }
 
     public void post(Event event) {

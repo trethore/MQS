@@ -55,9 +55,9 @@ public class ScriptContextFactory {
         bindings.putMember("wrap", ScriptingApi.createWrapProxy(classResolver));
         bindings.putMember("exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
         bindings.putMember("EventManager", createEventManagerProxy());
-        bindings.putMember("Config", createConfigProxy());
+        bindings.putMember("ConfigManager", createConfigProxy());
 
-        bindings.putMember("Commands", new CommandsAPI());
+        bindings.putMember("CommandManager", new CommandsAPI());
 
         bindings.putMember("println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);
