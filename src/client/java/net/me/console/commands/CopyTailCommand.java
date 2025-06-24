@@ -41,9 +41,9 @@ public class CopyTailCommand implements ConsoleCommand {
             cm.logInfo("Console is empty, nothing to copy.");
             return;
         }
-
+        int lastMessageIndex = messages.size() - 1;
         int startIndex = Math.max(0, messages.size() - numberOfLines - 1);
-        List<ConsoleMessage> tail = messages.subList(startIndex, messages.size() - 1);
+        List<ConsoleMessage> tail = messages.subList(startIndex,lastMessageIndex);
 
         String textToCopy = tail.stream()
                 .map(msg -> String.format("[%s] %s", msg.timestamp(), msg.text()))

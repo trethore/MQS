@@ -3,7 +3,6 @@ package net.me.command;
 import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.me.command.commands.ScriptCommand;
 
 import java.util.ArrayList;
 
@@ -30,7 +29,6 @@ public class CommandManager {
     }
 
     private void registerClientCommands(CommandDispatcher<FabricClientCommandSource> dispatcher) {
-        commands.add(new ScriptCommand());
         commands.add(new MQSCommand());
         registerCommandsInDispatcher(dispatcher);
     }

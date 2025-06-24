@@ -7,8 +7,8 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.me.command.Command;
 import net.me.command.CommandManager;
-import net.me.command.MQSCommand;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
@@ -17,7 +17,7 @@ import net.minecraft.text.Text;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-public class ScriptCommand extends MQSCommand {
+public class ScriptCommand extends Command {
 
     private final ScriptingService scriptingService = ScriptingService.getInstance();
 

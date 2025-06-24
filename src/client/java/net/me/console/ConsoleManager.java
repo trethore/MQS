@@ -78,7 +78,7 @@ public class ConsoleManager {
     }
 
     private void addCommandToHistory(String command) {
-        if (commandHistory.isEmpty() || !commandHistory.getLast().equals(command)) {
+        if (commandHistory.isEmpty() || !command.equals(commandHistory.getLast())) {
             commandHistory.add(command);
             if (commandHistory.size() > MAX_HISTORY_SIZE) {
                 commandHistory.removeFirst();
