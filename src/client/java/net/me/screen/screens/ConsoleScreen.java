@@ -117,7 +117,7 @@ public class ConsoleScreen extends MQSScreen {
     private void renderMessages(DrawContext context, List<DisplayLine> linesToRender) {
         int fontHeight = this.textRenderer.fontHeight;
 
-        int windowStartX = getMiddlePoint().x()- getWindowWidth() / 2;
+        int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
         int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
 
         int renderAreaX = windowStartX + PADDING;

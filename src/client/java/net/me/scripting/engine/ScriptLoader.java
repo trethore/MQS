@@ -2,6 +2,7 @@ package net.me.scripting.engine;
 
 import net.me.Main;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
@@ -25,7 +26,11 @@ public class ScriptLoader {
 
             return perFileExports.get();
         } catch (Exception e) {
-            Main.LOGGER.error("Failed to load or parse script file for modules: {}", scriptPath, e);
+            if (e instanceof PolyglotException polyEx && polyEx.isHostException()) {
+                Main.LOGGER.error("A Java error occurred while loading script: {}", scriptPath, polyEx.asHostException());
+            } else {
+                Main.LOGGER.error("Failed to load or parse script file for modules: {}", scriptPath, e);
+            }
             return Collections.emptyMap();
         } finally {
             perFileExports.remove();

@@ -151,7 +151,7 @@ public class AllScriptsScreen extends MQSScreen {
         DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
                 .dimensions(navX + 30, actionY, 50, BUTTON_HEIGHT).build();
 
-        DarkButtonWidget moreButton = DarkButtonWidget.builder(Formatting.BOLD + "⋮" + Formatting.RESET, button -> new MoreOptionsScreen(this).open()).dimensions(navX + 85,actionY,15,BUTTON_HEIGHT).build();
+        DarkButtonWidget moreButton = DarkButtonWidget.builder(Formatting.BOLD + "⋮" + Formatting.RESET, button -> new MoreOptionsScreen(this).open()).dimensions(navX + 85, actionY, 15, BUTTON_HEIGHT).build();
 
         this.addDrawableChild(this.refreshButton);
         this.addDrawableChild(consoleButton);

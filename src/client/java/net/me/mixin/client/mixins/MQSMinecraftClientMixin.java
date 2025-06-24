@@ -13,6 +13,7 @@ public class MQSMinecraftClientMixin {
     private void init(CallbackInfo info) {
         // System.out.println("Client has started!");
     }
+
     @Inject(at = @At("HEAD"), method = "stop()V")
     private void onStop(CallbackInfo ci) {
         ConfigManager.getInstance().saveAllConfigs();

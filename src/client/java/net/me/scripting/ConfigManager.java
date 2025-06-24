@@ -18,7 +18,8 @@ public class ConfigManager {
 
     private final Map<String, Value> inMemoryConfigs = new ConcurrentHashMap<>();
 
-    private ConfigManager() {}
+    private ConfigManager() {
+    }
 
     public static ConfigManager getInstance() {
         return INSTANCE;

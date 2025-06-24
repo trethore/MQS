@@ -66,7 +66,7 @@ public class CommandBuilder {
 
     @HostAccess.Export
     public CommandBuilder suggests(Value callback) {
-        if (this.builder instanceof RequiredArgumentBuilder<?,?> rawArgBuilder) {
+        if (this.builder instanceof RequiredArgumentBuilder<?, ?> rawArgBuilder) {
             @SuppressWarnings("unchecked")
             RequiredArgumentBuilder<FabricClientCommandSource, ?>
                     argBuilder = (RequiredArgumentBuilder<FabricClientCommandSource, ?>) rawArgBuilder;

@@ -22,7 +22,7 @@ public class CommandsAPI implements ProxyObject {
     public Object getMember(String key) {
         if ("ArgType".equals(key)) {
             Value jsObject = Value.asValue(new Object());
-            for(ScriptArgumentType type : ScriptArgumentType.values()) {
+            for (ScriptArgumentType type : ScriptArgumentType.values()) {
                 jsObject.putMember(type.name(), type.toString());
             }
             return jsObject;
@@ -32,12 +32,14 @@ public class CommandsAPI implements ProxyObject {
             RunningScript owner = getCurrentScript();
             switch (key) {
                 case "builder": {
-                    if (args.length != 1 || !args[0].isString()) throw new IllegalArgumentException("Commands.builder(name) requires one string argument.");
+                    if (args.length != 1 || !args[0].isString())
+                        throw new IllegalArgumentException("Commands.builder(name) requires one string argument.");
                     String name = args[0].asString();
                     return new CommandBuilder(name, owner);
                 }
                 case "register": {
-                    if (args.length != 1) throw new IllegalArgumentException("Commands.register(builder) requires one argument.");
+                    if (args.length != 1)
+                        throw new IllegalArgumentException("Commands.register(builder) requires one argument.");
                     if (!args[0].isHostObject() || !(args[0].asHostObject() instanceof CommandBuilder)) {
                         throw new IllegalArgumentException("Argument must be a CommandBuilder instance.");
                     }
@@ -46,13 +48,15 @@ public class CommandsAPI implements ProxyObject {
                     return null;
                 }
                 case "unregister": {
-                    if (args.length != 1 || !args[0].isString()) throw new IllegalArgumentException("Commands.unregister(commandName) requires one string argument.");
+                    if (args.length != 1 || !args[0].isString())
+                        throw new IllegalArgumentException("Commands.unregister(commandName) requires one string argument.");
                     String commandName = args[0].asString();
                     service.unregister(owner, commandName);
                     return null;
                 }
                 case "unregisterAll": {
-                    if (args.length != 0) throw new IllegalArgumentException("Commands.unregisterAll() takes no arguments.");
+                    if (args.length != 0)
+                        throw new IllegalArgumentException("Commands.unregisterAll() takes no arguments.");
                     service.unregisterAllFor(owner);
                     return null;
                 }

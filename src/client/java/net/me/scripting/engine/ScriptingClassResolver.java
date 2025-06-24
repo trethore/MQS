@@ -91,7 +91,8 @@ public class ScriptingClassResolver {
                 || name.startsWith("net.minecraft.")
                 || name.startsWith("com.mojang.")
                 || name.startsWith("net.me")
-                || name.startsWith("com.oracle.truffle.host.adapters.");
+                || name.startsWith("com.oracle.truffle.host.adapters.")
+                || name.startsWith("net.fabricmc.");
     }
 
     public JsClassWrapper getOrCreateWrapper(String runtime) {

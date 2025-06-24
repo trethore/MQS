@@ -15,15 +15,16 @@ import net.minecraft.command.CommandSource;
 import net.minecraft.network.packet.s2c.play.CommandTreeS2CPacket;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Map;
 
 public class CommandAPIService {
     private static final CommandAPIService INSTANCE = new CommandAPIService();
     private final Map<RunningScript, Set<String>> scriptCommands = new ConcurrentHashMap<>();
 
-    private CommandAPIService() {}
+    private CommandAPIService() {
+    }
 
     public static CommandAPIService getInstance() {
         return INSTANCE;

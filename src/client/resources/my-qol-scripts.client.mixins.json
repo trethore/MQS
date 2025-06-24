@@ -1,10 +1,14 @@
 {
 	"required": true,
-	"package": "net.me.mixin.client",
-	"compatibilityLevel": "JAVA_21",
+	"package": "net.me.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"mixins": [
+		"client.mixins.MQSMinecraftClientMixin",
+		"fabric.event.ArrayBackedEventAccessor",
+		"fabric.event.EventPhaseDataAccessor"
+	],
 	"client": [
-		"mixins.MQSMinecraftClientMixin",
-		"accessors.CommandNodeAccessor"
+		"client.accessors.CommandNodeAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

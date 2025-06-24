@@ -1,12 +1,6 @@
 package net.me.console;
 
-import net.me.console.commands.ClearCommand;
-import net.me.console.commands.CopyTailCommand;
-import net.me.console.commands.HelpCommand;
-import net.me.console.commands.LogRedirectCommand;
-import net.me.console.commands.SaveAllConfigsCommand;
-import net.me.console.commands.SaveConfigCommand;
-import net.me.console.commands.ScriptCommands;
+import net.me.console.commands.*;
 import net.me.console.log.ConsoleManagerAppender;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;

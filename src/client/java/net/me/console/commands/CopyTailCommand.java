@@ -22,7 +22,7 @@ public class CopyTailCommand implements ConsoleCommand {
         int numberOfLines;
         if (args.length == 0) {
             numberOfLines = 10;
-        }else {
+        } else {
             try {
                 numberOfLines = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
@@ -42,8 +42,8 @@ public class CopyTailCommand implements ConsoleCommand {
             return;
         }
 
-        int startIndex = Math.max(0, messages.size() - numberOfLines - 1) ;
-        List<ConsoleMessage> tail = messages.subList(startIndex, messages.size()- 1);
+        int startIndex = Math.max(0, messages.size() - numberOfLines - 1);
+        List<ConsoleMessage> tail = messages.subList(startIndex, messages.size() - 1);
 
         String textToCopy = tail.stream()
                 .map(msg -> String.format("[%s] %s", msg.timestamp(), msg.text()))

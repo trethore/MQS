@@ -8,6 +8,7 @@ import net.me.scripting.ScriptManager;
 import net.me.scripting.commands.CommandsAPI;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.wrappers.JsClassWrapper;
+import net.me.scripting.wrappers.LazyJsClassHolder;
 import net.me.scripting.wrappers.LazyPackageProxy;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -54,7 +55,7 @@ public class ScriptContextFactory {
         bindings.putMember("extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
         bindings.putMember("wrap", ScriptingApi.createWrapProxy(classResolver));
         bindings.putMember("exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
-        bindings.putMember("EventManager", createEventManagerProxy());
+        bindings.putMember("EventManager", createEventManagerProxy()); // This is the method we are changing
         bindings.putMember("ConfigManager", createConfigProxy());
 
         bindings.putMember("CommandManager", new CommandsAPI());
@@ -101,8 +102,17 @@ public class ScriptContextFactory {
                         if (args.length != 2 || !args[1].canExecute()) {
                             throw new IllegalArgumentException("Usage: EventManager.register(EventType, callbackFunction)");
                         }
-                        Class<? extends Event> eventType = getEventTypeFromValue(args[0]);
-                        EventManager.getInstance().register(owner, eventType, args[1]);
+                        Object eventTarget = resolveEventTarget(args[0]);
+                        Value callback = args[1];
+
+                        if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
+                            //noinspection unchecked
+                            EventManager.getInstance().register(owner, (Class<? extends Event>) cls, callback);
+                        } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
+                            EventManager.getInstance().registerFabric(owner, fabricEvent, callback);
+                        } else {
+                            throw new IllegalArgumentException("First argument to EventManager.register must be a MQS event class or a Fabric Event object.");
+                        }
                         return null;
                     }
 
@@ -110,11 +120,26 @@ public class ScriptContextFactory {
                         if (args.length == 0) {
                             EventManager.getInstance().unregister(owner);
                         } else if (args.length == 1) {
-                            Class<? extends Event> eventType = getEventTypeFromValue(args[0]);
-                            EventManager.getInstance().unregister(owner, eventType);
+                            Object eventTarget = resolveEventTarget(args[0]);
+                            if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
+                                //noinspection unchecked
+                                EventManager.getInstance().unregister(owner, (Class<? extends Event>) cls);
+                            } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
+                                EventManager.getInstance().unregister(owner, fabricEvent);
+                            } else {
+                                throw new IllegalArgumentException("Argument to EventManager.unregister must be a MQS event class or a Fabric Event object.");
+                            }
                         } else if (args.length == 2 && args[1].canExecute()) {
-                            Class<? extends Event> eventType = getEventTypeFromValue(args[0]);
-                            EventManager.getInstance().unregister(owner, eventType, args[1]);
+                            Object eventTarget = resolveEventTarget(args[0]);
+                            Value callback = args[1];
+                            if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
+                                //noinspection unchecked
+                                EventManager.getInstance().unregister(owner, (Class<? extends Event>) cls, callback);
+                            } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
+                                EventManager.getInstance().unregister(owner, fabricEvent, callback);
+                            } else {
+                                throw new IllegalArgumentException("First argument to EventManager.unregister must be a MQS event class or a Fabric Event object.");
+                            }
                         } else {
                             throw new IllegalArgumentException("Invalid arguments for EventManager.unregister");
                         }
@@ -125,29 +150,24 @@ public class ScriptContextFactory {
                 };
             }
 
-            private Class<? extends Event> getEventTypeFromValue(Value eventTypeArg) {
+            private Object resolveEventTarget(Value eventTypeArg) {
                 if (eventTypeArg == null) {
                     throw new IllegalArgumentException("Event type cannot be null.");
                 }
 
-                Class<?> potentialClass = null;
-
-                if (eventTypeArg.isProxyObject() && eventTypeArg.asProxyObject() instanceof JsClassWrapper wrapper) {
-                    potentialClass = wrapper.getTargetClass();
-                } else if (eventTypeArg.isHostObject() && eventTypeArg.asHostObject() instanceof Class) {
-                    potentialClass = eventTypeArg.asHostObject();
+                if (eventTypeArg.isProxyObject()) {
+                    Object proxy = eventTypeArg.asProxyObject();
+                    if (proxy instanceof JsClassWrapper wrapper) return wrapper.getTargetClass();
+                    if (proxy instanceof LazyJsClassHolder holder) return holder.getWrapper().getTargetClass();
                 }
 
-                if (potentialClass != null) {
-                    if (Event.class.isAssignableFrom(potentialClass)) {
-                        //noinspection unchecked
-                        return (Class<? extends Event>) potentialClass;
-                    } else {
-                        throw new IllegalArgumentException("Class " + potentialClass.getName() + " does not extend the base Event class.");
-                    }
+                if (eventTypeArg.isHostObject()) {
+                    Object hostObject = eventTypeArg.asHostObject();
+                    if (hostObject instanceof Class) return hostObject;
+                    if (hostObject instanceof net.fabricmc.fabric.api.event.Event) return hostObject;
                 }
 
-                throw new IllegalArgumentException("Event type must be a class imported via importClass().");
+                throw new IllegalArgumentException("Event target must be a class imported via importClass() or a direct Fabric Event object.");
             }
 
             @Override
@@ -219,7 +239,7 @@ public class ScriptContextFactory {
                             if (args.length != 0)
                                 throw new IllegalArgumentException("Config.load takes no arguments.");
                             cm.unloadConfig(script);
-                            cm.getConfigForScript(script); // This will force a reload
+                            cm.getConfigForScript(script);
                             return null;
                         }
                         case "getAll": {
