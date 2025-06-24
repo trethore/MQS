@@ -46,7 +46,7 @@ public class ConfigManager {
 
     private Value loadConfig(RunningScript script) {
         Path configFile = getConfigFile(script);
-        Context context = script.getJsInstance().getContext();
+        Context context = script.getContext();
 
         if (Files.exists(configFile)) {
             try {
@@ -72,7 +72,7 @@ public class ConfigManager {
         Path configFile = getConfigFile(script);
 
         try {
-            Value JSON = script.getJsInstance().getContext().getBindings("js").getMember("JSON");
+            Value JSON = script.getContext().getBindings("js").getMember("JSON");
             String jsonString = JSON.invokeMember("stringify", configValue, null, 2).asString();
 
             Files.writeString(configFile, jsonString);

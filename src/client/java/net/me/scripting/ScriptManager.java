@@ -9,6 +9,7 @@ import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 
 import java.io.IOException;
@@ -24,7 +25,6 @@ public class ScriptManager {
 
     private ScriptContextFactory contextFactory;
     private ScriptLoader scriptLoader;
-    private Context scriptContext;
 
     private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
     private final ThreadLocal<RunningScript> currentScriptContext = new ThreadLocal<>();
@@ -39,27 +39,23 @@ public class ScriptManager {
 
     public void init() {
         ensureScriptDirectory();
+        Engine scriptEngine = Engine.create();
         ScriptingClassResolver classResolver = new ScriptingClassResolver();
         classResolver.init();
-        this.contextFactory = new ScriptContextFactory(classResolver);
+        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine);
         this.scriptLoader = new ScriptLoader();
-        this.scriptContext = this.contextFactory.createContext(perFileExports);
         discoverScripts();
-    }
-
-    private void refreshScriptContext() {
-        this.scriptContext = this.contextFactory.createContext(perFileExports);
     }
 
     public void enableAllScripts() {
         Main.LOGGER.info("Enabling all discovered scripts...");
+        discoverScripts();
         for (String scriptId : availableScripts.keySet()) {
             enableScript(scriptId);
         }
     }
 
     public void refreshAndReenable() {
-        refreshScriptContext();
         Set<String> previouslyRunningIds = new HashSet<>(runningScripts.keySet());
 
         new ArrayList<>(previouslyRunningIds).forEach(this::disableScript);
@@ -76,7 +72,6 @@ public class ScriptManager {
     }
 
     public void refresh() {
-        refreshScriptContext();
         new ArrayList<>(runningScripts.keySet()).forEach(this::disableScript);
         discoverScripts();
     }
@@ -93,18 +88,20 @@ public class ScriptManager {
     private void discoverScripts() {
         availableScripts.clear();
         Path scriptsDir = Main.MOD_DIR.resolve("scripts");
-        try (Stream<Path> paths = Files.walk(scriptsDir)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".js"))
-                    .forEach(this::discoverModulesInFile);
-        } catch (IOException e) {
-            Main.LOGGER.error("Error discovering scripts in {}", scriptsDir, e);
+        try (Context discoveryContext = this.contextFactory.createContext(perFileExports)) {
+            try (Stream<Path> paths = Files.walk(scriptsDir)) {
+                paths.filter(Files::isRegularFile)
+                        .filter(path -> path.toString().endsWith(".js"))
+                        .forEach(path -> discoverModulesInFile(path, discoveryContext));
+            } catch (IOException e) {
+                Main.LOGGER.error("Error discovering scripts in {}", scriptsDir, e);
+            }
         }
         Main.LOGGER.info("Discovered {} available script modules.", availableScripts.size());
     }
 
-    private void discoverModulesInFile(Path path) {
-        Map<String, Value> discoveredModules = scriptLoader.loadModules(path, this.scriptContext, perFileExports);
+    private void discoverModulesInFile(Path path, Context context) {
+        Map<String, Value> discoveredModules = scriptLoader.loadModules(path, context, perFileExports);
         for (Map.Entry<String, Value> entry : discoveredModules.entrySet()) {
             Value moduleClass = entry.getValue();
             String version = "N/A";
@@ -131,14 +128,15 @@ public class ScriptManager {
         }
 
         try {
-            Map<String, Value> fileExports = scriptLoader.loadModules(descriptor.path(), this.scriptContext, perFileExports);
+            Context newContext = this.contextFactory.createContext(perFileExports);
+            Map<String, Value> fileExports = scriptLoader.loadModules(descriptor.path(), newContext, perFileExports);
             Value scriptClass = fileExports.get(descriptor.moduleName());
 
             if (scriptClass == null || !scriptClass.canInstantiate()) {
                 throw new IllegalStateException("Module '" + descriptor.moduleName() + "' was not found or is not an instantiable class after loading. Did you use exportModule()?");
             }
             Value jsInstance = scriptClass.newInstance();
-            RunningScript runningScript = new RunningScript(descriptor, jsInstance);
+            RunningScript runningScript = new RunningScript(descriptor, jsInstance, newContext);
 
             runningScripts.put(scriptId, runningScript);
 
@@ -166,6 +164,7 @@ public class ScriptManager {
                 CommandAPIService.getInstance().unregisterAllFor(script);
                 ConfigManager.getInstance().saveConfig(script);
                 ConfigManager.getInstance().unloadConfig(script);
+                script.close();
                 clearCurrentScript();
             }
             Main.LOGGER.info("Disabled script: {}", script.getName());

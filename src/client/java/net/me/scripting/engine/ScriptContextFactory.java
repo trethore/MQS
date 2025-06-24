@@ -11,6 +11,7 @@ import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.LazyJsClassHolder;
 import net.me.scripting.wrappers.LazyPackageProxy;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -23,9 +24,11 @@ import java.util.Set;
 public class ScriptContextFactory {
 
     private final ScriptingClassResolver classResolver;
+    private final Engine sharedEngine;
 
-    public ScriptContextFactory(ScriptingClassResolver classResolver) {
+    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine) {
         this.classResolver = classResolver;
+        this.sharedEngine = sharedEngine;
     }
 
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
@@ -33,6 +36,7 @@ public class ScriptContextFactory {
         long startTime = System.currentTimeMillis();
 
         Context newContext = Context.newBuilder("js")
+                .engine(sharedEngine)
                 .allowHostAccess(HostAccess.ALL)
                 .allowHostClassLookup(classResolver::isClassAllowed)
                 .option("js.ecmascript-version", "2024")
@@ -55,7 +59,7 @@ public class ScriptContextFactory {
         bindings.putMember("extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
         bindings.putMember("wrap", ScriptingApi.createWrapProxy(classResolver));
         bindings.putMember("exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
-        bindings.putMember("EventManager", createEventManagerProxy()); // This is the method we are changing
+        bindings.putMember("EventManager", createEventManagerProxy());
         bindings.putMember("ConfigManager", createConfigProxy());
 
         bindings.putMember("CommandManager", new CommandsAPI());
@@ -211,7 +215,7 @@ public class ScriptContextFactory {
                             String configKey = args[0].asString();
                             Value result = config.getMember(configKey);
                             if (result == null || result.isNull()) {
-                                return args.length > 1 ? args[1] : script.getJsInstance().getContext().eval("js", "null");
+                                return args.length > 1 ? args[1] : script.getContext().eval("js", "null");
                             }
                             return result;
                         }
