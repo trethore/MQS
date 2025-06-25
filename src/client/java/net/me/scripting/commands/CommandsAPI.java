@@ -1,14 +1,18 @@
 package net.me.scripting.commands;
 
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.Arrays;
+
 public class CommandsAPI implements ProxyObject {
 
     private final CommandAPIService service = CommandAPIService.getInstance();
+    private static final ProxyObject ARG_TYPE_PROXY = createArgTypeProxy();
 
     private RunningScript getCurrentScript() {
         RunningScript script = ScriptManager.getInstance().getCurrentScript();
@@ -21,11 +25,7 @@ public class CommandsAPI implements ProxyObject {
     @Override
     public Object getMember(String key) {
         if ("ArgType".equals(key)) {
-            Value jsObject = Value.asValue(new Object());
-            for (ScriptArgumentType type : ScriptArgumentType.values()) {
-                jsObject.putMember(type.name(), type.toString());
-            }
-            return jsObject;
+            return ARG_TYPE_PROXY;
         }
 
         return (ProxyExecutable) args -> {
@@ -34,8 +34,22 @@ public class CommandsAPI implements ProxyObject {
                 case "builder": {
                     if (args.length != 1 || !args[0].isString())
                         throw new IllegalArgumentException("Commands.builder(name) requires one string argument.");
+                    return new CommandBuilder(args[0].asString(), owner);
+                }
+                case "literal": {
+                    if (args.length != 1 || !args[0].isString()) {
+                        throw new IllegalArgumentException("Commands.literal(name) requires one string argument.");
+                    }
+                    return new CommandBuilder(ClientCommandManager.literal(args[0].asString()), owner);
+                }
+                case "argument": {
+                    if (args.length != 2 || !args[0].isString() || !args[1].isString()) {
+                        throw new IllegalArgumentException("Commands.argument(name, type) requires two string arguments.");
+                    }
                     String name = args[0].asString();
-                    return new CommandBuilder(name, owner);
+                    String typeStr = args[1].asString();
+                    var type = ScriptArgumentType.fromString(typeStr);
+                    return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner);
                 }
                 case "register": {
                     if (args.length != 1)
@@ -66,14 +80,39 @@ public class CommandsAPI implements ProxyObject {
         };
     }
 
+    private static ProxyObject createArgTypeProxy() {
+        return new ProxyObject() {
+            @Override
+            public Object getMember(String key) {
+                return Arrays.stream(ScriptArgumentType.values())
+                        .filter(type -> type.name().equals(key))
+                        .findFirst()
+                        .map(ScriptArgumentType::toString)
+                        .orElse(null);
+            }
+            @Override
+            public Object getMemberKeys() {
+                return Arrays.stream(ScriptArgumentType.values()).map(Enum::name).toArray(String[]::new);
+            }
+            @Override
+            public boolean hasMember(String key) {
+                return Arrays.stream(ScriptArgumentType.values()).anyMatch(type -> type.name().equals(key));
+            }
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify the ArgType object.");
+            }
+        };
+    }
+
     @Override
     public Object getMemberKeys() {
-        return new String[]{"builder", "register", "unregister", "unregisterAll", "ArgType"};
+        return new String[]{"builder", "literal", "argument", "register", "unregister", "unregisterAll", "ArgType"};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "builder".equals(key) || "register".equals(key) || "unregister".equals(key) || "unregisterAll".equals(key) || "ArgType".equals(key);
+        return "builder".equals(key) || "literal".equals(key) || "argument".equals(key) || "register".equals(key) || "unregister".equals(key) || "unregisterAll".equals(key) || "ArgType".equals(key);
     }
 
     @Override
