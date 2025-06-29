@@ -13,7 +13,7 @@ public class HelpCommand extends ConsoleCommand {
 
     @Override
     public void execute(String[] args) {
-        ConsoleManager cm = getConsoleManager();
+        final ConsoleManager cm = getConsoleManager();
         cm.logInfo("--- Available Commands ---");
         cm.getCommands().values().stream()
                 .sorted(Comparator.comparing(ConsoleCommand::getName))

@@ -30,6 +30,7 @@ public class ScriptContextFactory {
     private final ScriptManager scriptManager;
     private final ConfigManager configManager;
     private final CommandAPIService commandApiService;
+    private final Set<String> standardApiMembers = new HashSet<>();
 
     public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService) {
         this.classResolver = classResolver;
@@ -60,27 +61,46 @@ public class ScriptContextFactory {
     }
 
     private void configureContext(Context context, ThreadLocal<Map<String, Value>> perFileExports) {
+        if (!standardApiMembers.isEmpty()) {
+            standardApiMembers.clear();
+        }
         registerPackages(context);
 
-        var bindings = context.getBindings("js");
+        Value bindings = context.getBindings("js");
 
-        bindings.putMember("importClass", ScriptingApi.createImportClassProxy(classResolver, context));
-        bindings.putMember("extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
-        bindings.putMember("wrap", ScriptingApi.createWrapProxy(classResolver));
-        bindings.putMember("exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
-        bindings.putMember("EventManager", createEventManagerProxy());
-        bindings.putMember("ConfigManager", createConfigProxy());
+        addApiMember(bindings, "importClass", ScriptingApi.createImportClassProxy(classResolver, context));
+        addApiMember(bindings, "extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
+        addApiMember(bindings, "wrap", ScriptingApi.createWrapProxy(classResolver));
+        addApiMember(bindings, "exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
+        addApiMember(bindings, "EventManager", createEventManagerProxy());
+        addApiMember(bindings, "ConfigManager", createConfigProxy());
 
-        bindings.putMember("CommandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
+        addApiMember(bindings, "CommandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
 
-        bindings.putMember("println", (ProxyExecutable) args -> {
+        addApiMember(bindings, "println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);
             return null;
         });
-        bindings.putMember("print", (ProxyExecutable) args -> {
+        addApiMember(bindings, "print", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.print(arg);
             return null;
         });
+    }
+
+    private void addApiMember(Value bindings, String name, Object member) {
+        bindings.putMember(name, member);
+        standardApiMembers.add(name);
+    }
+
+    public void resetContext(Context context) {
+        Value bindings = context.getBindings("js");
+        Set<String> memberKeys = new HashSet<>(bindings.getMemberKeys());
+
+        for (String key : memberKeys) {
+            if (!standardApiMembers.contains(key)) {
+                bindings.removeMember(key);
+            }
+        }
     }
 
     private void registerPackages(Context context) {
@@ -96,7 +116,7 @@ public class ScriptContextFactory {
         var bindings = context.getBindings("js");
         for (String pkg : topLevelPackages) {
             if (!bindings.hasMember(pkg)) {
-                bindings.putMember(pkg, new LazyPackageProxy(pkg, this.classResolver));
+                addApiMember(bindings, pkg, new LazyPackageProxy(pkg, this.classResolver));
             }
         }
     }

@@ -1,11 +1,14 @@
 package net.me.scripting.utils;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class MappingUtils {
 
     private MappingUtils() {
     }
+
+    private static final Map<Class<?>, ClassMappings> MAPPINGS_CACHE = new ConcurrentHashMap<>();
 
     public record ClassMappings(
             Map<String, List<String>> methods,
@@ -17,10 +20,12 @@ public final class MappingUtils {
                                                 Map<String, String> runtimeToYarn,
                                                 Map<String, Map<String, List<String>>> methodsMap,
                                                 Map<String, Map<String, String>> fieldsMap) {
-        Map<String, List<String>> methods = new LinkedHashMap<>();
-        Map<String, String> fields = new LinkedHashMap<>();
-        combineMappingsIterative(cls, runtimeToYarn, methodsMap, fieldsMap, methods, fields);
-        return new ClassMappings(methods, fields);
+        return MAPPINGS_CACHE.computeIfAbsent(cls, c -> {
+            Map<String, List<String>> methods = new LinkedHashMap<>();
+            Map<String, String> fields = new LinkedHashMap<>();
+            combineMappingsIterative(c, runtimeToYarn, methodsMap, fieldsMap, methods, fields);
+            return new ClassMappings(methods, fields);
+        });
     }
 
     private static void combineMappingsIterative(Class<?> startCls,

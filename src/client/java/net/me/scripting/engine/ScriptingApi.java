@@ -125,18 +125,15 @@ public class ScriptingApi {
         };
     }
 
+
     private static void addModule(Map<String, Value> exportsMap, Value moduleValue) {
         if (moduleValue != null && moduleValue.canInstantiate()) {
-            Value nameValue = moduleValue.getMember("name");
-            if (nameValue != null && nameValue.isString()) {
-                String moduleName = nameValue.asString();
-                if (moduleName != null && !moduleName.isEmpty()) {
-                    exportsMap.put(moduleName, moduleValue);
-                    return;
-                }
+            if (exportsMap.isEmpty()) {
+                exportsMap.put(moduleValue.getMetaQualifiedName(), moduleValue);
             }
+            return;
         }
-        Main.LOGGER.warn("An argument to exportModule was not a valid, named, instantiable class. Ignoring: {}", moduleValue);
+        Main.LOGGER.warn("An argument to exportModule was not a valid, instantiable class. Ignoring: {}", moduleValue);
     }
 
     private static ExtensionConfig parseExtensionConfig(Value configArg, Context context, ScriptingClassResolver resolver, Value extendsValueOverride) {

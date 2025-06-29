@@ -15,82 +15,55 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-
 
 public class MappingsManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(MappingsManager.class);
-    private MemoryMappingTree mappingsTree = new MemoryMappingTree();
+
     private Map<String, String> classMap = Collections.emptyMap();
     private Map<String, Map<String, List<String>>> methodMap = Collections.emptyMap();
     private Map<String, Map<String, String>> fieldMap = Collections.emptyMap();
     private Map<String, String> runtimeToYarnClassMap = Collections.emptyMap();
 
-    private final CompletableFuture<Void> initializationFuture = new CompletableFuture<>();
-    private final AtomicBoolean initializationStarted = new AtomicBoolean(false);
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "MappingsManager-Initializer");
-        t.setDaemon(true);
-        return t;
-    });
-
+    private boolean initialized = false;
 
     public void init() {
-        if (initializationFuture.isDone()) {
-            LOGGER.debug("Mappings initialization already completed or in progress.");
+        if (this.initialized) {
+            LOGGER.debug("Mappings already initialized.");
             return;
         }
-        if (initializationStarted.compareAndSet(false, true)) {
-            LOGGER.info("Starting asynchronous mappings initialization...");
-            executor.submit(() -> {
-                try {
-                    parseMappings();
-                    buildLookupTables();
-                    mappingsTree = null;
-                    LOGGER.info("Mappings tree memory released after successful parsing and table building.");
-                    initializationFuture.complete(null);
-                    LOGGER.info("Mappings initialization successful.");
-                } catch (Exception e) {
-                    LOGGER.error("Failed to initialize mappings asynchronously", e);
-                    initializationFuture.completeExceptionally(e);
-                }
-            });
-        } else {
-            LOGGER.debug("Mappings initialization already started or submitted by another call. Current call will not re-submit.");
+
+        LOGGER.info("Starting synchronous mappings initialization...");
+        try {
+            MemoryMappingTree mappingsTree = parseMappings();
+            buildLookupTables(mappingsTree);
+            this.initialized = true;
+            LOGGER.info("Mappings initialization successful.");
+        } catch (Exception e) {
+            LOGGER.error("Failed to initialize mappings", e);
         }
     }
 
     public boolean isReady() {
-        return initializationFuture.isDone();
+        return this.initialized;
     }
 
-    private void parseMappings() {
-        if (mappingsTree == null) {
-            LOGGER.error("parseMappings called but mappingsTree is null. This should not happen with the init() guard.");
-            mappingsTree = new MemoryMappingTree();
-        }
+    private MemoryMappingTree parseMappings() throws IOException {
+        MemoryMappingTree mappingsTree = new MemoryMappingTree();
         String fileName = "mappings.tiny";
         try (InputStream in = MappingsManager.class.getClassLoader()
                 .getResourceAsStream("assets/" + Main.MOD_ID + "/" + fileName)) {
             if (in == null) {
-                LOGGER.warn("Mappings file {} not found in resources", fileName);
-                return;
+                throw new IOException("Mappings file " + fileName + " not found in resources");
             }
             InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8);
             Tiny1FileReader.read(reader, mappingsTree);
-        } catch (IOException e) {
-            LOGGER.error("Error parsing mappings file {}: {}", fileName, e.getMessage(), e);
         }
+        return mappingsTree;
     }
 
-    private void buildLookupTables() {
+    private void buildLookupTables(MemoryMappingTree mappingsTree) {
         boolean isDev = FabricLoader.getInstance().isDevelopmentEnvironment();
-        @SuppressWarnings("unused")
-        int officialId = mappingsTree.getNamespaceId(MappingNames.OFFICIAL.getName());
         int intermediaryId = mappingsTree.getNamespaceId(MappingNames.INTERMEDIARY.getName());
         int namedId = mappingsTree.getNamespaceId(MappingNames.NAMED.getName());
 
@@ -121,7 +94,7 @@ public class MappingsManager {
             // Fields
             Map<String, String> fieldLookup = cls.getFields().stream()
                     .filter(f -> f.getName(namedId) != null)
-                    .collect(Collectors.toMap(f -> f.getName(namedId), f -> f.getName(runtimeId)));
+                    .collect(Collectors.toMap(f -> f.getName(namedId), f -> f.getName(runtimeId), (a, b) -> b)); // handle duplicates
             fields.put(yarnName, fieldLookup);
         }
 
@@ -131,49 +104,25 @@ public class MappingsManager {
         runtimeToYarnClassMap = classes.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
 
-        LOGGER.info("Mappings initialized in {} mode: {} classes, {} methods, {} fields",
+        LOGGER.info("Mappings tables built in {} mode: {} classes, {} methods, {} fields",
                 isDev ? "DEV" : "PROD",
                 classMap.size(), methodMap.values().stream().mapToInt(Map::size).sum(),
                 fieldMap.values().stream().mapToInt(Map::size).sum());
     }
 
     public Map<String, String> getClassMap() {
-        try {
-            initializationFuture.join();
-        } catch (Exception e) {
-            LOGGER.error("Mappings initialization failed. Returning empty map.", e);
-            return Collections.emptyMap();
-        }
         return classMap;
     }
 
     public Map<String, Map<String, List<String>>> getMethodMap() {
-        try {
-            initializationFuture.join();
-        } catch (Exception e) {
-            LOGGER.error("Mappings initialization failed. Returning empty map.", e);
-            return Collections.emptyMap();
-        }
         return methodMap;
     }
 
     public Map<String, Map<String, String>> getFieldMap() {
-        try {
-            initializationFuture.join();
-        } catch (Exception e) {
-            LOGGER.error("Mappings initialization failed. Returning empty map.", e);
-            return Collections.emptyMap();
-        }
         return fieldMap;
     }
 
     public Map<String, String> getRuntimeToYarnClassMap() {
-        try {
-            initializationFuture.join();
-        } catch (Exception e) {
-            LOGGER.error("Mappings initialization failed. Returning empty map.", e);
-            return Collections.emptyMap();
-        }
         return runtimeToYarnClassMap;
     }
 }

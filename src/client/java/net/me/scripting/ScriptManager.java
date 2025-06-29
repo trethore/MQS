@@ -17,6 +17,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class ScriptManager {
@@ -32,6 +35,9 @@ public class ScriptManager {
 
     private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
     private final ThreadLocal<RunningScript> currentScriptContext = new ThreadLocal<>();
+    private final Queue<Context> contextPool = new ConcurrentLinkedQueue<>();
+
+    private static final Pattern METADATA_PATTERN = Pattern.compile("^//\\s*@(\\w+)\\s+(.+)");
 
     public ScriptManager() {
         this.commandApiService = new CommandAPIService();
@@ -47,7 +53,19 @@ public class ScriptManager {
         classResolver.init(mappingsManager);
         this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService);
         this.scriptLoader = new ScriptLoader();
+        prewarmContextPool();
         discoverScripts();
+    }
+
+    private void prewarmContextPool() {
+        Main.LOGGER.info("Pre-warming script context pool...");
+        Context context = this.contextFactory.createContext(perFileExports);
+        if (context != null) {
+            contextPool.offer(context);
+            Main.LOGGER.info("Context pool pre-warmed successfully.");
+        } else {
+            Main.LOGGER.error("Failed to create a context for the pre-warming pool.");
+        }
     }
 
     public void enableAllScripts() {
@@ -88,33 +106,62 @@ public class ScriptManager {
     private void discoverScripts() {
         availableScripts.clear();
         Path scriptsDir = Main.MOD_DIR.resolve("scripts");
-        try (Context discoveryContext = this.contextFactory.createContext(perFileExports)) {
-            try (Stream<Path> paths = Files.walk(scriptsDir)) {
-                paths.filter(Files::isRegularFile)
-                        .filter(path -> path.toString().endsWith(".js"))
-                        .forEach(path -> discoverModulesInFile(path, discoveryContext));
-            } catch (IOException e) {
-                Main.LOGGER.error("Error discovering scripts in {}", scriptsDir, e);
-            }
+        try (Stream<Path> paths = Files.walk(scriptsDir)) {
+            paths.filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".js"))
+                    .forEach(this::discoverModulesInFileByParsing); // Use new method
+        } catch (IOException e) {
+            Main.LOGGER.error("Error discovering scripts in {}", scriptsDir, e);
         }
         Main.LOGGER.info("Discovered {} available script modules.", availableScripts.size());
     }
 
-    private void discoverModulesInFile(Path path, Context context) {
-        Map<String, Value> discoveredModules = scriptLoader.loadModules(path, context, perFileExports);
-        for (Map.Entry<String, Value> entry : discoveredModules.entrySet()) {
-            Value moduleClass = entry.getValue();
-            String version = "N/A";
-            if (moduleClass != null && moduleClass.hasMember("version")) {
-                Value versionValue = moduleClass.getMember("version");
-                if (versionValue.isString()) {
-                    version = versionValue.asString();
+    private void discoverModulesInFileByParsing(Path path) {
+        try {
+            List<String> lines = Files.readAllLines(path);
+            Map<String, String> metadata = new HashMap<>();
+            for (String line : lines) {
+                String trimmedLine = line.trim();
+                if (!trimmedLine.startsWith("//")) {
+                    if (metadata.containsKey("name")) break;
+                    continue;
+                }
+                Matcher matcher = METADATA_PATTERN.matcher(trimmedLine);
+                if (matcher.matches()) {
+                    metadata.put(matcher.group(1).toLowerCase(), matcher.group(2).trim());
                 }
             }
-            ScriptDescriptor descriptor = new ScriptDescriptor(path, entry.getKey(), version);
+
+            String moduleName = metadata.get("name");
+            if (moduleName == null || moduleName.isEmpty()) {
+                return;
+            }
+
+            String version = metadata.getOrDefault("version", "N/A");
+            ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version);
             availableScripts.put(descriptor.getId(), descriptor);
+
+        } catch (IOException e) {
+            Main.LOGGER.error("Could not read script file for metadata: {}", path, e);
         }
     }
+
+    private Context getContextFromPool() {
+        Context context = contextPool.poll();
+        if (context == null) {
+            Main.LOGGER.info("Context pool is empty. Creating a new context.");
+            context = this.contextFactory.createContext(perFileExports);
+        }
+        return context;
+    }
+
+    private void returnContextToPool(Context context) {
+        if (context != null) {
+            contextFactory.resetContext(context);
+            contextPool.offer(context);
+        }
+    }
+
 
     public void enableScript(String scriptId) {
         if (runningScripts.containsKey(scriptId)) {
@@ -127,16 +174,23 @@ public class ScriptManager {
             return;
         }
 
+        Context scriptContext = null;
         try {
-            Context newContext = this.contextFactory.createContext(perFileExports);
-            Map<String, Value> fileExports = scriptLoader.loadModules(descriptor.path(), newContext, perFileExports);
-            Value scriptClass = fileExports.get(descriptor.moduleName());
+            scriptContext = getContextFromPool();
+            Map<String, Value> fileExports = scriptLoader.loadModules(descriptor.path(), scriptContext, perFileExports);
+
+            if (fileExports.isEmpty()) {
+                throw new IllegalStateException("No modules were exported from '" + descriptor.path().getFileName() + "'. Did you use exportModule()?");
+            }
+
+            Value scriptClass = fileExports.values().iterator().next();
 
             if (scriptClass == null || !scriptClass.canInstantiate()) {
-                throw new IllegalStateException("Module '" + descriptor.moduleName() + "' was not found or is not an instantiable class after loading. Did you use exportModule()?");
+                throw new IllegalStateException("The module exported from '" + descriptor.path().getFileName() + "' is not an instantiable class.");
             }
+
             Value jsInstance = scriptClass.newInstance();
-            RunningScript runningScript = new RunningScript(descriptor, jsInstance, newContext);
+            RunningScript runningScript = new RunningScript(descriptor, jsInstance, scriptContext);
 
             runningScripts.put(scriptId, runningScript);
 
@@ -149,6 +203,7 @@ public class ScriptManager {
 
             Main.LOGGER.info("Enabled script: {}", runningScript.getName());
         } catch (Exception e) {
+            returnContextToPool(scriptContext);
             Main.LOGGER.error("Failed to enable script '{}'. It may be in a broken state. Please disable it to ensure cleanup.", scriptId, e);
         }
     }
@@ -164,7 +219,8 @@ public class ScriptManager {
                 commandApiService.unregisterAllFor(script);
                 configManager.saveConfig(script);
                 configManager.unloadConfig(script);
-                script.close();
+                returnContextToPool(script.getContext());
+                script.invalidate();
                 clearCurrentScript();
             }
             Main.LOGGER.info("Disabled script: {}", script.getName());

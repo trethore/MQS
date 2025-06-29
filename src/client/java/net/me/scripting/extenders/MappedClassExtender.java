@@ -24,6 +24,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     private final Value parentAddons;
     private final Value parentSuper;
     private final ScriptingClassResolver resolver;
+    private final Map<String, MappedClassInfo> unambiguousMethodTargets = new HashMap<>();
 
 
     public MappedClassExtender(ExtensionConfig config, Context context, Value parentOverrides, Value parentAddons, Value parentSuper, ScriptingClassResolver resolver) {
@@ -32,8 +33,20 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         this.parentOverrides = parentOverrides;
         this.parentAddons = parentAddons;
         this.parentSuper = parentSuper;
-        this.resolver = resolver; // Store the resolver
+        this.resolver = resolver;
         this.baseAdapterConstructor = createBaseAdapter();
+        precomputeOverrideTargets();
+    }
+
+    private void precomputeOverrideTargets() {
+        Set<String> allMethodNames = new HashSet<>(config.extendsClass().methodMappings().keySet());
+        config.implementsClasses().forEach(info -> allMethodNames.addAll(info.methodMappings().keySet()));
+        for (String methodName : allMethodNames) {
+            List<MappedClassInfo> targets = findTargetsForMethod(methodName);
+            if (targets.size() == 1) {
+                unambiguousMethodTargets.put(methodName, targets.getFirst());
+            }
+        }
     }
 
     private Value createBaseAdapter() {
@@ -183,15 +196,21 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     }
 
     private void handleSimpleOverride(String jsMethodName, Value jsFunction, Map<String, Object> runtimeOverrides) {
-        List<MappedClassInfo> targets = findTargetsForMethod(jsMethodName);
-        if (targets.size() > 1) {
-            List<String> targetNames = targets.stream().map(MappedClassInfo::yarnName).toList();
-            throw new RuntimeException("Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " + targetNames + ". Please specify the target: { '" + targetNames.getFirst() + "': fn, ... }");
-        }
-        if (targets.isEmpty()) {
-            runtimeOverrides.put(jsMethodName, jsFunction);
+        MappedClassInfo unambiguousTarget = unambiguousMethodTargets.get(jsMethodName);
+        if (unambiguousTarget != null) {
+            addOverride(runtimeOverrides, jsMethodName, jsFunction, unambiguousTarget);
         } else {
-            addOverride(runtimeOverrides, jsMethodName, jsFunction, targets.getFirst());
+            // It's either ambiguous or a new method, check for ambiguity
+            List<MappedClassInfo> targets = findTargetsForMethod(jsMethodName);
+            if (targets.size() > 1) {
+                List<String> targetNames = targets.stream().map(MappedClassInfo::yarnName).toList();
+                throw new RuntimeException("Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " + targetNames + ". Please specify the target: { overrides: { '" + jsMethodName + "': { '" + targetNames.getFirst() + "': fn } } }");
+            }
+            if (targets.isEmpty()) { // New method added to the class
+                runtimeOverrides.put(jsMethodName, jsFunction);
+            } else { // Should have been caught by unambiguous check, but for safety
+                addOverride(runtimeOverrides, jsMethodName, jsFunction, targets.getFirst());
+            }
         }
     }
 

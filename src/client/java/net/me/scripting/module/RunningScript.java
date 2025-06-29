@@ -6,17 +6,15 @@ import org.graalvm.polyglot.Value;
 
 public class RunningScript {
     private final ScriptDescriptor descriptor;
-    private final Value jsInstance;
+    private Value jsInstance;
     private final String name;
-    private final Context context;
+    private Context context;
 
     public RunningScript(ScriptDescriptor descriptor, Value jsInstance, Context context) {
         this.descriptor = descriptor;
         this.jsInstance = jsInstance;
         this.context = context;
-
-        Value nameValue = jsInstance.getMember("name");
-        this.name = (nameValue != null && nameValue.isString()) ? nameValue.asString() : descriptor.moduleName();
+        this.name = descriptor.moduleName();
     }
 
     public void onEnable() {
@@ -39,9 +37,15 @@ public class RunningScript {
         }
     }
 
-    public void close() {
-        if (this.context != null) {
-            this.context.close();
+
+    public void invalidate() {
+        this.context = null;
+        this.jsInstance = null;
+    }
+
+    private void ensureValid() {
+        if (context == null) {
+            throw new IllegalStateException("Attempted to use a script that has been disabled and its context recycled.");
         }
     }
 
@@ -50,10 +54,12 @@ public class RunningScript {
     }
 
     public Value getJsInstance() {
+        ensureValid();
         return jsInstance;
     }
 
     public Context getContext() {
+        ensureValid();
         return context;
     }
 
