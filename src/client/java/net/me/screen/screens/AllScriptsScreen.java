@@ -1,5 +1,6 @@
 package net.me.screen.screens;
 
+import net.me.console.ConsoleManager;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.components.DarkButtonWidget;
 import net.me.screen.component.components.DarkTextFieldWidget;
@@ -7,7 +8,6 @@ import net.me.screen.component.components.ScriptDescriptorToggleWidget;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
@@ -26,7 +26,8 @@ public class AllScriptsScreen extends MQSScreen {
     private static final int SEARCH_BAR_HEIGHT = 20;
     private static final int BUTTON_HEIGHT = 20;
 
-    private final ScriptingService scriptingService = ScriptingService.getInstance();
+    private final ScriptingService scriptingService;
+    private final ConsoleManager consoleManager;
 
     private final List<ScriptDescriptor> allScripts;
     private List<ScriptDescriptor> filteredScripts;
@@ -39,10 +40,12 @@ public class AllScriptsScreen extends MQSScreen {
     private DarkButtonWidget refreshButton;
     private boolean isRefreshing = false;
 
-    private final List<ClickableWidget> scriptEntryWidgets = new ArrayList<>();
+    private final List<ScriptDescriptorToggleWidget> scriptEntryWidgets = new ArrayList<>();
 
-    public AllScriptsScreen() {
+    public AllScriptsScreen(ScriptingService scriptingService, ConsoleManager consoleManager) {
         super("My QOL Scripts", 300, 280);
+        this.scriptingService = scriptingService;
+        this.consoleManager = consoleManager;
         this.allScripts = new ArrayList<>(scriptingService.listAvailable());
         this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
         this.filteredScripts = new ArrayList<>(this.allScripts);
@@ -54,8 +57,24 @@ public class AllScriptsScreen extends MQSScreen {
 
         addSearch();
         addNavigationAndActionButtons();
+        addScriptListWidgets();
 
         updateScriptList();
+    }
+
+    private void addScriptListWidgets() {
+        int listStartX = this.getMiddlePoint().x() - PADDING;
+        int listStartY = this.getMiddlePoint().y() - 70;
+
+        for (int i = 0; i < ITEMS_PER_PAGE; i++) {
+            int currentY = listStartY + (i * SCRIPT_ROW_HEIGHT);
+            ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(null, scriptingService)
+                    .position(listStartX, currentY)
+                    .build();
+            toggleWidget.visible = false; // Initially hide
+            this.addDrawableChild(toggleWidget);
+            this.scriptEntryWidgets.add(toggleWidget);
+        }
     }
 
     private void addSearch() {
@@ -74,7 +93,6 @@ public class AllScriptsScreen extends MQSScreen {
                 .dimensions(searchX + SEARCH_BAR_WIDTH + 10, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
                 .build();
         this.addDrawableChild(clearTextFieldButton);
-
     }
 
     private void onSearchTextChanged(String text) {
@@ -89,32 +107,24 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void updateScriptList() {
-        this.scriptEntryWidgets.forEach(this::remove);
-        this.scriptEntryWidgets.clear();
-
         this.totalPages = (int) Math.ceil((double) this.filteredScripts.size() / ITEMS_PER_PAGE);
         if (this.totalPages == 0) {
             this.totalPages = 1;
         }
         this.currentPage = Math.max(0, Math.min(this.currentPage, this.totalPages - 1));
 
-        int listStartX = this.getMiddlePoint().x() - PADDING;
-        int listStartY = this.getMiddlePoint().y() - 70;
-
         int startIndex = this.currentPage * ITEMS_PER_PAGE;
-        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, this.filteredScripts.size());
 
-        for (int i = startIndex; i < endIndex; i++) {
-            ScriptDescriptor descriptor = this.filteredScripts.get(i);
-            int itemIndexOnPage = i - startIndex;
-            int currentY = listStartY + (itemIndexOnPage * SCRIPT_ROW_HEIGHT);
+        for (int i = 0; i < ITEMS_PER_PAGE; i++) {
+            int scriptIndex = startIndex + i;
+            ScriptDescriptorToggleWidget widget = this.scriptEntryWidgets.get(i);
 
-            ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(descriptor)
-                    .position(listStartX, currentY)
-                    .build();
-
-            this.addDrawableChild(toggleWidget);
-            this.scriptEntryWidgets.add(toggleWidget);
+            if (scriptIndex < this.filteredScripts.size()) {
+                ScriptDescriptor descriptor = this.filteredScripts.get(scriptIndex);
+                widget.update(descriptor);
+            } else {
+                widget.update(null);
+            }
         }
 
         updateNavigationButtons();
@@ -146,7 +156,7 @@ public class AllScriptsScreen extends MQSScreen {
         this.refreshButton = DarkButtonWidget.builder("Refresh", button -> refreshScripts())
                 .dimensions(navX - PADDING, actionY, 60, BUTTON_HEIGHT).build();
 
-        DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> new ConsoleScreen(this).open()).dimensions(navX - 35, actionY, 60, BUTTON_HEIGHT).build();
+        DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> new ConsoleScreen(this, consoleManager).open()).dimensions(navX - 35, actionY, 60, BUTTON_HEIGHT).build();
 
         DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
                 .dimensions(navX + 30, actionY, 50, BUTTON_HEIGHT).build();

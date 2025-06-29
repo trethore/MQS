@@ -100,7 +100,7 @@ public class ScriptingApi {
                 config = parseExtensionConfig(configArg, context, resolver, extendsValue);
             }
 
-            return new MappedClassExtender(config, context, parentOverrides, parentAddons, parentSuper);
+            return new MappedClassExtender(config, context, parentOverrides, parentAddons, parentSuper, resolver);
         };
     }
 

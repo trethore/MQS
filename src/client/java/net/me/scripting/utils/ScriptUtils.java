@@ -1,5 +1,6 @@
 package net.me.scripting.utils;
 
+import net.me.Main;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
@@ -88,12 +89,20 @@ public final class ScriptUtils {
 
     public static Object wrapReturn(Object o) {
         if (o == null || o instanceof String || o instanceof Number || o instanceof Boolean) return o;
+
+        MappingsManager mappingsManager = Main.getMappingsManager();
+
+        if (mappingsManager == null || !mappingsManager.isReady()) {
+            return Value.asValue(o);
+        }
+
         Class<?> c = o.getClass();
-        Map<String, String> runtimeToYarn = MappingsManager.getInstance().getRuntimeToYarnClassMap();
+        Map<String, String> runtimeToYarn = mappingsManager.getRuntimeToYarnClassMap();
+
         if (runtimeToYarn.containsKey(c.getName()) || c.isArray()) {
             MappingUtils.ClassMappings cm = MappingUtils.combineMappings(c, runtimeToYarn,
-                    MappingsManager.getInstance().getMethodMap(),
-                    MappingsManager.getInstance().getFieldMap());
+                    mappingsManager.getMethodMap(),
+                    mappingsManager.getFieldMap());
             return new JsObjectWrapper(o, c, cm.methods(), cm.fields());
         }
         return Value.asValue(o);

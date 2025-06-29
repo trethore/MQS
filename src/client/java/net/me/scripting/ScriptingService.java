@@ -5,41 +5,40 @@ import net.me.scripting.module.ScriptDescriptor;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 public class ScriptingService {
-    private static final ScriptingService INSTANCE = new ScriptingService();
-    private final ScriptManager sm = ScriptManager.getInstance();
+    private ScriptManager scriptManager;
+    private ConfigManager configManager;
 
-    private ScriptingService() {
-    }
-
-    public static ScriptingService getInstance() {
-        return INSTANCE;
+    public void init(ScriptManager scriptManager, ConfigManager configManager) {
+        this.scriptManager = scriptManager;
+        this.configManager = configManager;
     }
 
     public Collection<ScriptDescriptor> listAvailable() {
-        return sm.getAvailableScripts();
+        return scriptManager.getAvailableScripts();
     }
 
     public Collection<RunningScript> listRunning() {
-        return sm.getRunningScripts();
+        return scriptManager.getRunningScripts();
     }
 
     public boolean isRunning(String scriptId) {
-        return sm.isRunning(scriptId);
+        return scriptManager.isRunning(scriptId);
     }
 
     public void enable(String scriptId) {
-        sm.enableScript(scriptId);
+        scriptManager.enableScript(scriptId);
     }
 
     public void disable(String scriptId) {
-        sm.disableScript(scriptId);
+        scriptManager.disableScript(scriptId);
     }
 
     public int disableAll() {
-        List<String> runningScriptIds = sm.getRunningScripts().stream()
+        List<String> runningScriptIds = scriptManager.getRunningScripts().stream()
                 .map(RunningScript::getId)
                 .toList();
 
@@ -51,28 +50,43 @@ public class ScriptingService {
         return runningScriptIds.size();
     }
 
+    public String getFormattedScriptList() {
+        Collection<ScriptDescriptor> available = listAvailable();
+        if (available.isEmpty()) {
+            return "No scripts found. Add .js files to the 'my-qol-scripts/scripts' folder.";
+        }
+
+        return available.stream()
+                .map(descriptor -> {
+                    boolean isRunning = isRunning(descriptor.getId());
+                    String status = isRunning ? "§a[ENABLED]" : "§c[DISABLED]";
+                    return String.format(" - %s (%s) %s", descriptor.moduleName(), descriptor.getId(), status);
+                })
+                .collect(Collectors.joining("\n"));
+    }
+
     public void refreshAndReenable() {
-        sm.refreshAndReenable();
+        scriptManager.refreshAndReenable();
     }
 
     public void refresh() {
-        sm.refresh();
+        scriptManager.refresh();
     }
 
     public boolean save(String scriptId) {
-        RunningScript scriptToSave = sm.getRunningScripts().stream()
+        RunningScript scriptToSave = scriptManager.getRunningScripts().stream()
                 .filter(script -> script.getId().equals(scriptId))
                 .findFirst()
                 .orElse(null);
 
         if (scriptToSave != null) {
-            ConfigManager.getInstance().saveConfig(scriptToSave);
+            configManager.saveConfig(scriptToSave);
             return true;
         }
         return false;
     }
 
     public int saveAll() {
-        return ConfigManager.getInstance().saveAllConfigs();
+        return configManager.saveAllConfigs(scriptManager.getRunningScripts());
     }
 }

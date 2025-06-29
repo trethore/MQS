@@ -4,12 +4,17 @@ import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 import net.me.scripting.ScriptingService;
 
-public class SaveAllConfigsCommand implements ConsoleCommand {
-    private final ScriptingService scriptingService = ScriptingService.getInstance();
+public class SaveAllConfigsCommand extends ConsoleCommand {
+    private final ScriptingService scriptingService;
+
+    public SaveAllConfigsCommand(ConsoleManager consoleManager, ScriptingService scriptingService) {
+        super(consoleManager, "saveconfigs", "Saves the configurations for all currently running scripts.", "saveconfigs");
+        this.scriptingService = scriptingService;
+    }
 
     @Override
     public void execute(String[] args) {
-        ConsoleManager cm = ConsoleManager.getInstance();
+        ConsoleManager cm = getConsoleManager();
         int count = scriptingService.saveAll();
 
         if (count > 0) {
@@ -17,20 +22,5 @@ public class SaveAllConfigsCommand implements ConsoleCommand {
         } else {
             cm.logInfo("No running scripts found, nothing to save.");
         }
-    }
-
-    @Override
-    public String getName() {
-        return "saveconfigs";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Saves the configurations for all currently running scripts.";
-    }
-
-    @Override
-    public String getUsage() {
-        return "saveconfigs";
     }
 }

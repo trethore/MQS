@@ -16,14 +16,16 @@ import org.graalvm.polyglot.Value;
 public class CommandBuilder {
     private final ArgumentBuilder<FabricClientCommandSource, ?> builder;
     private final RunningScript owner;
+    private final ScriptManager scriptManager;
 
-    public CommandBuilder(String name, RunningScript owner) {
-        this(ClientCommandManager.literal(name), owner);
+    public CommandBuilder(String name, RunningScript owner, ScriptManager scriptManager) {
+        this(ClientCommandManager.literal(name), owner, scriptManager);
     }
 
-    CommandBuilder(ArgumentBuilder<FabricClientCommandSource, ?> builder, RunningScript owner) {
+    CommandBuilder(ArgumentBuilder<FabricClientCommandSource, ?> builder, RunningScript owner, ScriptManager scriptManager) {
         this.builder = builder;
         this.owner = owner;
+        this.scriptManager = scriptManager;
     }
 
     @HostAccess.Export
@@ -35,15 +37,14 @@ public class CommandBuilder {
     @HostAccess.Export
     public CommandBuilder executes(Value callback) {
         this.builder.executes(context -> {
-            ScriptManager sm = ScriptManager.getInstance();
-            sm.setCurrentScript(owner);
+            scriptManager.setCurrentScript(owner);
             try {
                 Value jsInstance = owner.getJsInstance();
                 callback.invokeMember("call", jsInstance, new JSCommandContext(context));
             } catch (Exception e) {
                 Main.LOGGER.error("Error executing command in script '{}': {}", owner.getName(), e.getMessage(), e);
             } finally {
-                sm.clearCurrentScript();
+                scriptManager.clearCurrentScript();
             }
             return CommandManager.COMMAND_SUCCESS;
         });
@@ -64,28 +65,23 @@ public class CommandBuilder {
                     (RequiredArgumentBuilder<FabricClientCommandSource, ?>) rawArgBuilder;
 
             argBuilder.suggests((context, builder) -> {
-                ScriptManager sm = ScriptManager.getInstance();
-                sm.setCurrentScript(this.owner);
+                scriptManager.setCurrentScript(this.owner);
                 try {
                     Value jsInstance = this.owner.getJsInstance();
-                    Value result = callback.invokeMember("call", jsInstance);
+                    Value result = callback.invokeMember("call", jsInstance, new JSCommandContext(context));
 
                     if (result != null && result.hasArrayElements()) {
-                        String input = builder.getRemainingLowerCase();
                         for (long i = 0; i < result.getArraySize(); i++) {
                             Value element = result.getArrayElement(i);
                             if (element.isString()) {
-                                String suggestion = element.asString();
-                                if (suggestion.toLowerCase().startsWith(input)) {
-                                    builder.suggest(suggestion);
-                                }
+                                builder.suggest(element.asString());
                             }
                         }
                     }
-                } catch (Throwable t) { // Catch Throwable for maximum safety
+                } catch (Throwable t) {
                     Main.LOGGER.error("Error executing suggestion provider for script '{}'", this.owner.getName(), t);
                 } finally {
-                    sm.clearCurrentScript();
+                    scriptManager.clearCurrentScript();
                 }
                 return builder.buildFuture();
             });

@@ -1,23 +1,27 @@
 package net.me.scripting.extenders.proxies;
 
-import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.List;
+import java.util.Map;
+
 public class MappedInstanceProxy implements ProxyObject {
     private final Object extendedInstance;
     private final JsObjectWrapper methodAndFieldWrapper;
 
-    public MappedInstanceProxy(Object extendedInstance) {
+    public MappedInstanceProxy(Object extendedInstance, Map<String, String> runtimeToYarnClassMap,
+                               Map<String, Map<String, List<String>>> methodMap,
+                               Map<String, Map<String, String>> fieldMap) {
         this.extendedInstance = extendedInstance;
 
         var cm = MappingUtils.combineMappings(
                 extendedInstance.getClass(),
-                MappingsManager.getInstance().getRuntimeToYarnClassMap(),
-                MappingsManager.getInstance().getMethodMap(),
-                MappingsManager.getInstance().getFieldMap()
+                runtimeToYarnClassMap,
+                methodMap,
+                fieldMap
         );
         this.methodAndFieldWrapper = new JsObjectWrapper(extendedInstance, extendedInstance.getClass(), cm.methods(), cm.fields());
     }

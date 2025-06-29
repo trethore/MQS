@@ -2,6 +2,7 @@ package net.me.scripting.extenders;
 
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
+import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.extenders.proxies.RuntimeBinderProxy;
@@ -22,13 +23,16 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     private final Value parentOverrides;
     private final Value parentAddons;
     private final Value parentSuper;
+    private final ScriptingClassResolver resolver;
 
-    public MappedClassExtender(ExtensionConfig config, Context context, Value parentOverrides, Value parentAddons, Value parentSuper) {
+
+    public MappedClassExtender(ExtensionConfig config, Context context, Value parentOverrides, Value parentAddons, Value parentSuper, ScriptingClassResolver resolver) {
         this.config = config;
         this.context = context;
         this.parentOverrides = parentOverrides;
         this.parentAddons = parentAddons;
         this.parentSuper = parentSuper;
+        this.resolver = resolver; // Store the resolver
         this.baseAdapterConstructor = createBaseAdapter();
     }
 
@@ -89,7 +93,10 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         Map<String, Object> wrapperProperties = wrapper.getPropertiesForModification();
         Value wrapperVal = context.asValue(wrapper);
 
-        wrapperProperties.put("instance", new MappedInstanceProxy(baseInstance));
+        wrapperProperties.put("instance", new MappedInstanceProxy(baseInstance,
+                resolver.getRuntimeToYarnMap(),
+                resolver.getMethodMap(),
+                resolver.getFieldMap()));
         wrapperProperties.put("_self", baseInstance);
 
         Value actualGrandParentSuper = (this.parentSuper != null) ? this.parentSuper : context.eval("js", "Java.super").execute(baseInstance);

@@ -3,184 +3,115 @@ package net.me.console.commands;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 import net.me.scripting.ScriptingService;
-import net.me.scripting.module.ScriptDescriptor;
 
 public class ScriptCommands {
 
-    public static class ListScriptsCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = ScriptingService.getInstance();
+    public static class ListScriptsCommand extends ConsoleCommand {
+        private final ScriptingService scriptingService;
+
+        public ListScriptsCommand(ConsoleManager consoleManager, ScriptingService scriptingService) {
+            super(consoleManager, "list", "Lists all available scripts and their status.", "list");
+            this.scriptingService = scriptingService;
+        }
 
         @Override
         public void execute(String[] args) {
-            ConsoleManager cm = ConsoleManager.getInstance();
+            ConsoleManager cm = getConsoleManager();
             cm.logInfo("--- Available Scripts ---");
-
-            if (scriptingService.listAvailable().isEmpty()) {
-                cm.logInfo("No scripts found. Add .js files to the 'my-qol-scripts/scripts' folder.");
-                return;
+            String scriptList = scriptingService.getFormattedScriptList();
+            for (String line : scriptList.split("\n")) {
+                cm.logInfo(line.replace("§a", "").replace("§c", "").replace("§r", "")); // Remove color codes for console
             }
-            for (ScriptDescriptor descriptor : scriptingService.listAvailable()) {
-                boolean isRunning = scriptingService.isRunning(descriptor.getId());
-                String status = isRunning ? "§a[ENABLED]§r" : "§c[DISABLED]§r";
-                cm.logInfo(String.format(" - %s %s", descriptor.getId(), status));
-            }
-        }
-
-        @Override
-        public String getName() {
-            return "list";
-        }
-
-        @Override
-        public String getDescription() {
-            return "Lists all available scripts and their status.";
-        }
-
-        @Override
-        public String getUsage() {
-            return "list";
         }
     }
 
-    public static class EnableScriptCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = ScriptingService.getInstance();
+    public static class EnableScriptCommand extends ConsoleCommand {
+        private final ScriptingService scriptingService;
+
+        public EnableScriptCommand(ConsoleManager consoleManager, ScriptingService scriptingService) {
+            super(consoleManager, "enable", "Enables a script by its ID.", "enable <script_id>");
+            this.scriptingService = scriptingService;
+        }
 
         @Override
         public void execute(String[] args) {
             if (args.length == 0) {
-                ConsoleManager.getInstance().logError("No script ID provided. Usage: " + getUsage());
+                getConsoleManager().logError("No script ID provided. Usage: " + getUsage());
                 return;
             }
             String scriptId = String.join(" ", args);
             scriptingService.enable(scriptId);
         }
-
-        @Override
-        public String getName() {
-            return "enable";
-        }
-
-        @Override
-        public String getDescription() {
-            return "Enables a script by its ID.";
-        }
-
-        @Override
-        public String getUsage() {
-            return "enable <script_id>";
-        }
     }
 
-    public static class DisableScriptCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = ScriptingService.getInstance();
+    public static class DisableScriptCommand extends ConsoleCommand {
+        private final ScriptingService scriptingService;
+
+        public DisableScriptCommand(ConsoleManager consoleManager, ScriptingService scriptingService) {
+            super(consoleManager, "disable", "Disables a running script by its ID.", "disable <script_id>");
+            this.scriptingService = scriptingService;
+        }
 
         @Override
         public void execute(String[] args) {
             if (args.length == 0) {
-                ConsoleManager.getInstance().logError("No script ID provided. Usage: " + getUsage());
+                getConsoleManager().logError("No script ID provided. Usage: " + getUsage());
                 return;
             }
             String scriptId = String.join(" ", args);
             scriptingService.disable(scriptId);
         }
-
-        @Override
-        public String getName() {
-            return "disable";
-        }
-
-        @Override
-        public String getDescription() {
-            return "Disables a running script by its ID.";
-        }
-
-        @Override
-        public String getUsage() {
-            return "disable <script_id>";
-        }
     }
 
-    public static class RefreshScriptsCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = ScriptingService.getInstance();
+    public static class RefreshScriptsCommand extends ConsoleCommand {
+        private final ScriptingService scriptingService;
 
+        public RefreshScriptsCommand(ConsoleManager consoleManager, ScriptingService scriptingService) {
+            super(consoleManager, "refresh", "Refreshes and reloads all scripts from disk, disabling all running scripts.", "refresh");
+            this.scriptingService = scriptingService;
+        }
 
         @Override
         public void execute(String[] args) {
-            ConsoleManager.getInstance().logInfo("Refreshing scripts...");
+            getConsoleManager().logInfo("Refreshing scripts...");
             scriptingService.refresh();
-            ConsoleManager.getInstance().logSuccess("Scripts refreshed. All scripts are now disabled.");
-        }
-
-
-        @Override
-        public String getName() {
-            return "refresh";
-        }
-
-        @Override
-        public String getDescription() {
-            return "Refreshes and reloads all scripts from disk, disabling all running scripts.";
-        }
-
-        @Override
-        public String getUsage() {
-            return "refresh";
+            getConsoleManager().logSuccess("Scripts refreshed. All scripts are now disabled.");
         }
     }
 
-    public static class RefreshAndReenableCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = ScriptingService.getInstance();
+    public static class RefreshAndReenableCommand extends ConsoleCommand {
+        private final ScriptingService scriptingService;
+
+        public RefreshAndReenableCommand(ConsoleManager consoleManager, ScriptingService scriptingService) {
+            super(consoleManager, "refreshandreenable", "Refreshes and reloads all scripts, then re-enables previously running scripts.", "refreshandreenable");
+            this.scriptingService = scriptingService;
+        }
 
         @Override
         public void execute(String[] args) {
-            ConsoleManager.getInstance().logInfo("Refreshing scripts and re-enabling...");
+            getConsoleManager().logInfo("Refreshing scripts and re-enabling...");
             scriptingService.refreshAndReenable();
-            ConsoleManager.getInstance().logSuccess("Scripts refreshed and previously running scripts re-enabled.");
-        }
-
-        @Override
-        public String getName() {
-            return "refreshandreenable";
-        }
-
-        @Override
-        public String getDescription() {
-            return "Refreshes and reloads all scripts, then re-enables previously running scripts.";
-        }
-
-        @Override
-        public String getUsage() {
-            return "refreshandreenable";
+            getConsoleManager().logSuccess("Scripts refreshed and previously running scripts re-enabled.");
         }
     }
 
-    public static class DisableAllCommand implements ConsoleCommand {
-        private final ScriptingService scriptingService = ScriptingService.getInstance();
+    public static class DisableAllCommand extends ConsoleCommand {
+        private final ScriptingService scriptingService;
+
+        public DisableAllCommand(ConsoleManager consoleManager, ScriptingService scriptingService) {
+            super(consoleManager, "disableall", "Disables all currently running scripts.", "disableall");
+            this.scriptingService = scriptingService;
+        }
 
         @Override
         public void execute(String[] args) {
             int disabledCount = scriptingService.disableAll();
 
             if (disabledCount == 0) {
-                ConsoleManager.getInstance().logInfo("No scripts are currently running.");
+                getConsoleManager().logInfo("No scripts are currently running.");
             } else {
-                ConsoleManager.getInstance().logSuccess("Disabled all " + disabledCount + " running scripts.");
+                getConsoleManager().logSuccess("Disabled all " + disabledCount + " running scripts.");
             }
-        }
-
-        @Override
-        public String getName() {
-            return "disableall";
-        }
-
-        @Override
-        public String getDescription() {
-            return "Disables all currently running scripts.";
-        }
-
-        @Override
-        public String getUsage() {
-            return "disableall";
         }
     }
 }

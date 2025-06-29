@@ -1,6 +1,6 @@
 package net.me.mixin.client.mixins;
 
-import net.me.scripting.ConfigManager;
+import net.me.Main;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,6 +16,7 @@ public class MQSMinecraftClientMixin {
 
     @Inject(at = @At("HEAD"), method = "stop()V")
     private void onStop(CallbackInfo ci) {
-        ConfigManager.getInstance().saveAllConfigs();
+        Main.getConfigManager().saveAllConfigs(Main.getScriptManager().getRunningScripts());
+
     }
 }

@@ -5,30 +5,20 @@ import net.me.console.ConsoleManager;
 
 import java.util.Comparator;
 
-public class HelpCommand implements ConsoleCommand {
+public class HelpCommand extends ConsoleCommand {
+
+    public HelpCommand(ConsoleManager consoleManager) {
+        super(consoleManager, "help", "Shows this help message.", "help");
+    }
+
     @Override
     public void execute(String[] args) {
-        ConsoleManager cm = ConsoleManager.getInstance();
+        ConsoleManager cm = getConsoleManager();
         cm.logInfo("--- Available Commands ---");
         cm.getCommands().values().stream()
                 .sorted(Comparator.comparing(ConsoleCommand::getName))
                 .forEach(cmd ->
                         cm.logInfo(String.format("%-15s - %s (Usage: %s)", cmd.getName(), cmd.getDescription(), cmd.getUsage()))
                 );
-    }
-
-    @Override
-    public String getName() {
-        return "help";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Shows this help message.";
-    }
-
-    @Override
-    public String getUsage() {
-        return "help";
     }
 }

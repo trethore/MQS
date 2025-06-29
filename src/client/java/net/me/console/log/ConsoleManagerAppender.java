@@ -10,19 +10,20 @@ import org.apache.logging.log4j.core.layout.PatternLayout;
 
 @Plugin(name = "ConsoleManagerAppender", category = "Core", elementType = "appender", printObject = true)
 public class ConsoleManagerAppender extends AbstractAppender {
+    private final ConsoleManager consoleManager;
 
-    private ConsoleManagerAppender() {
+    private ConsoleManagerAppender(ConsoleManager consoleManager) {
         super("ConsoleManagerAppender", null, PatternLayout.createDefaultLayout(), true, null);
+        this.consoleManager = consoleManager;
     }
 
     @PluginFactory
-    public static ConsoleManagerAppender createAppender() {
-        return new ConsoleManagerAppender();
+    public static ConsoleManagerAppender createAppender(ConsoleManager consoleManager) {
+        return new ConsoleManagerAppender(consoleManager);
     }
 
     @Override
     public void append(LogEvent event) {
-        ConsoleManager cm = ConsoleManager.getInstance();
         String message = String.format("[%s/%s] %s",
                 event.getThreadName(),
                 event.getLoggerName().substring(event.getLoggerName().lastIndexOf('.') + 1),
@@ -35,14 +36,14 @@ public class ConsoleManagerAppender extends AbstractAppender {
         }
 
         if (event.getLevel().isMoreSpecificThan(Level.WARN)) {
-            cm.logError(message);
+            consoleManager.logError(message);
             if (thrown != null) {
                 for (StackTraceElement ste : thrown.getStackTrace()) {
-                    cm.logError("  at " + ste.toString());
+                    consoleManager.logError("  at " + ste.toString());
                 }
             }
         } else {
-            cm.logInfo(message);
+            consoleManager.logInfo(message);
         }
     }
 }

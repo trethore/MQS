@@ -18,8 +18,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class ScriptCommand extends Command {
+    private final ScriptingService scriptingService;
 
-    private final ScriptingService scriptingService = ScriptingService.getInstance();
+    public ScriptCommand(ScriptingService scriptingService) {
+        this.scriptingService = scriptingService;
+    }
 
     @Override
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
@@ -52,10 +55,9 @@ public class ScriptCommand extends Command {
 
     private int listScripts(CommandContext<FabricClientCommandSource> context) {
         context.getSource().sendFeedback(Text.literal("§a--- Available Scripts ---"));
-        for (ScriptDescriptor descriptor : scriptingService.listAvailable()) {
-            boolean isRunning = scriptingService.isRunning(descriptor.getId());
-            Text status = isRunning ? Text.literal("§a[ENABLED]") : Text.literal("§c[DISABLED]");
-            context.getSource().sendFeedback(Text.literal(" - " + descriptor.moduleName() + " (" + descriptor.getId() + ") ").append(status));
+        String scriptList = scriptingService.getFormattedScriptList();
+        for (String line : scriptList.split("\n")) {
+            context.getSource().sendFeedback(Text.literal(line));
         }
         return CommandManager.COMMAND_SUCCESS;
     }

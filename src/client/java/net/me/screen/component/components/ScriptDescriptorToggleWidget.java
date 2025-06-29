@@ -1,7 +1,5 @@
 package net.me.screen.component.components;
 
-
-import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.me.utils.GUIColors;
@@ -10,31 +8,43 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.PressableWidget;
 import net.minecraft.text.Text;
+import org.jetbrains.annotations.Nullable;
 
 public class ScriptDescriptorToggleWidget extends PressableWidget {
-    private final ScriptDescriptor descriptor;
+    private ScriptDescriptor descriptor;
+    private final ScriptingService scriptingService;
 
-    protected ScriptDescriptorToggleWidget(int x, int y, int width, int height, ScriptDescriptor descriptor) {
+    protected ScriptDescriptorToggleWidget(int x, int y, int width, int height, @Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
         super(x, y, width, height, Text.literal(""));
-        this.descriptor = descriptor;
+        this.scriptingService = scriptingService;
+        this.update(descriptor);
     }
 
-    public static Builder builder(ScriptDescriptor descriptor) {
-        return new Builder(descriptor);
+    public static Builder builder(@Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
+        return new Builder(descriptor, scriptingService);
+    }
+
+    public void update(@Nullable ScriptDescriptor descriptor) {
+        this.descriptor = descriptor;
+        this.visible = (descriptor != null);
+        this.active = (descriptor != null);
     }
 
     @Override
     public void onPress() {
-        ScriptingService ss = ScriptingService.getInstance();
-        if (ss.isRunning(descriptor.getId())) {
-            ss.disable(descriptor.getId());
+        if (descriptor == null) return;
+
+        if (scriptingService.isRunning(descriptor.getId())) {
+            scriptingService.disable(descriptor.getId());
         } else {
-            ss.enable(descriptor.getId());
+            scriptingService.enable(descriptor.getId());
         }
     }
 
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+        if (this.descriptor == null) return;
+
         boolean isHovered = this.active && this.isMouseOver(mouseX, mouseY);
         int color = isHovered ? GUIColors.DARK_L3.getRGBA() : GUIColors.DARK_L2.getRGBA();
         Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, color);
@@ -45,11 +55,12 @@ public class ScriptDescriptorToggleWidget extends PressableWidget {
     }
 
     private void renderToggleState(DrawContext context, boolean isHovered) {
+        if (this.descriptor == null) return;
         int color = isHovered ? GUIColors.DARK_L3.lighter(10).getRGB() : GUIColors.DARK_L3.getRGBA();
 
         Render2DUtils.drawRoundedRect(context, this.getX() + this.getWidth() - 25, this.getY() + 5, 20, 20, 2, 5, color);
         int stateColor;
-        if (ScriptManager.getInstance().isRunning(descriptor.getId())) {
+        if (scriptingService.isRunning(descriptor.getId())) {
             stateColor = GUIColors.SUCCESS.getRGBA();
         } else {
             stateColor = GUIColors.ERROR.getRGBA();
@@ -63,19 +74,22 @@ public class ScriptDescriptorToggleWidget extends PressableWidget {
         this.appendDefaultNarrations(builder);
     }
 
+    @Nullable
     public ScriptDescriptor getDescriptor() {
         return descriptor;
     }
 
     public static class Builder {
         private final ScriptDescriptor descriptor;
+        private final ScriptingService scriptingService;
         private int x;
         private int y;
         private int width = 200;
         private int height = 30;
 
-        public Builder(ScriptDescriptor descriptor) {
+        public Builder(@Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
             this.descriptor = descriptor;
+            this.scriptingService = scriptingService;
         }
 
         public ScriptDescriptorToggleWidget.Builder dimensions(int x, int y, int width, int height) {
@@ -93,7 +107,7 @@ public class ScriptDescriptorToggleWidget extends PressableWidget {
         }
 
         public ScriptDescriptorToggleWidget build() {
-            return new ScriptDescriptorToggleWidget(this.x, this.y, this.width, this.height, descriptor);
+            return new ScriptDescriptorToggleWidget(this.x, this.y, this.width, this.height, descriptor, scriptingService);
         }
     }
 

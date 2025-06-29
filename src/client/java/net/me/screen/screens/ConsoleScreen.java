@@ -15,6 +15,8 @@ import java.util.List;
 
 public class ConsoleScreen extends MQSScreen {
 
+    private final ConsoleManager consoleManager;
+
     private record DisplayLine(String text, int color) {
     }
 
@@ -34,8 +36,10 @@ public class ConsoleScreen extends MQSScreen {
     private final List<DisplayLine> displayLines = new ArrayList<>();
     private int lastMessageCount = 0;
 
-    public ConsoleScreen(AllScriptsScreen parent) {
+
+    public ConsoleScreen(AllScriptsScreen parent, ConsoleManager consoleManager) {
         super("The QOL Console", 400, 300, parent);
+        this.consoleManager = consoleManager;
     }
 
     @Override
@@ -54,7 +58,7 @@ public class ConsoleScreen extends MQSScreen {
                 .build();
 
         this.inputField.setChangedListener(this::onInputChanged);
-        this.historyIndex = ConsoleManager.getInstance().getCommandHistory().size();
+        this.historyIndex = consoleManager.getCommandHistory().size();
 
         this.addSelectableChild(this.inputField);
         this.setFocused(this.inputField);
@@ -66,7 +70,7 @@ public class ConsoleScreen extends MQSScreen {
 
     private void onInputChanged(String text) {
         if (!navigatingHistory) {
-            this.historyIndex = ConsoleManager.getInstance().getCommandHistory().size();
+            this.historyIndex = consoleManager.getCommandHistory().size();
             this.unsentInput = text;
         }
     }
@@ -75,7 +79,7 @@ public class ConsoleScreen extends MQSScreen {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
 
-        if (ConsoleManager.getInstance().getMessages().size() != lastMessageCount) {
+        if (consoleManager.getMessages().size() != lastMessageCount) {
             updateDisplayLines();
         }
 
@@ -85,7 +89,7 @@ public class ConsoleScreen extends MQSScreen {
     }
 
     private void updateDisplayLines() {
-        List<ConsoleMessage> messages = ConsoleManager.getInstance().getMessages();
+        List<ConsoleMessage> messages = consoleManager.getMessages();
         int currentMessageCount = messages.size();
 
         if (currentMessageCount < lastMessageCount) {
@@ -162,7 +166,7 @@ public class ConsoleScreen extends MQSScreen {
     }
 
     private void navigateHistory(int direction) {
-        List<String> history = ConsoleManager.getInstance().getCommandHistory();
+        List<String> history = consoleManager.getCommandHistory();
         if (history.isEmpty()) {
             return;
         }
@@ -197,14 +201,14 @@ public class ConsoleScreen extends MQSScreen {
             }
             if (keyCode == GLFW.GLFW_KEY_ENTER) {
                 String command = this.inputField.getText();
-                ConsoleManager.getInstance().executeCommand(command);
+                consoleManager.executeCommand(command);
 
                 navigatingHistory = true;
                 this.inputField.setText("");
                 navigatingHistory = false;
 
                 autoScroll = true;
-                this.historyIndex = ConsoleManager.getInstance().getCommandHistory().size();
+                this.historyIndex = consoleManager.getCommandHistory().size();
                 this.unsentInput = "";
                 return true;
             }

@@ -2,6 +2,7 @@ package net.me.console;
 
 import net.me.console.commands.*;
 import net.me.console.log.ConsoleManagerAppender;
+import net.me.scripting.ScriptingService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 
@@ -12,7 +13,6 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ConsoleManager {
-    private static final ConsoleManager INSTANCE = new ConsoleManager();
     private final List<ConsoleMessage> messages = new CopyOnWriteArrayList<>();
     private final Map<String, ConsoleCommand> commands = new HashMap<>();
     private final List<String> commandHistory = new ArrayList<>();
@@ -22,36 +22,57 @@ public class ConsoleManager {
     private final PrintStream originalErr = System.err;
     private boolean logsRedirected = false;
     private ConsoleManagerAppender slf4jAppender;
+    private ScriptingService scriptingService;
 
-    private ConsoleManager() {
-    }
-
-    public static ConsoleManager getInstance() {
-        return INSTANCE;
-    }
-
-    public void init() {
+    public void init(ScriptingService scriptingService) {
+        this.scriptingService = scriptingService;
         registerCommands();
         logSuccess("Console initialized. Type 'help' for a list of commands.");
     }
 
     private void registerCommands() {
-        addCommand(new HelpCommand());
-        addCommand(new ClearCommand());
-        addCommand(new ScriptCommands.ListScriptsCommand());
-        addCommand(new ScriptCommands.EnableScriptCommand());
-        addCommand(new ScriptCommands.DisableScriptCommand());
-        addCommand(new ScriptCommands.RefreshScriptsCommand());
-        addCommand(new ScriptCommands.RefreshAndReenableCommand());
-        addCommand(new ScriptCommands.DisableAllCommand());
-        addCommand(new LogRedirectCommand());
-        addCommand(new CopyTailCommand());
-        addCommand(new SaveConfigCommand());
-        addCommand(new SaveAllConfigsCommand());
+        addCommand(new HelpCommand(this));
+        addCommand(new ClearCommand(this));
+        addCommand(new ScriptCommands.ListScriptsCommand(this, scriptingService));
+        addCommand(new ScriptCommands.EnableScriptCommand(this, scriptingService));
+        addCommand(new ScriptCommands.DisableScriptCommand(this, scriptingService));
+        addCommand(new ScriptCommands.RefreshScriptsCommand(this, scriptingService));
+        addCommand(new ScriptCommands.RefreshAndReenableCommand(this, scriptingService));
+        addCommand(new ScriptCommands.DisableAllCommand(this, scriptingService));
+        addCommand(new LogRedirectCommand(this));
+        addCommand(new CopyTailCommand(this));
+        addCommand(new SaveConfigCommand(this, scriptingService));
+        addCommand(new SaveAllConfigsCommand(this, scriptingService));
     }
 
     private void addCommand(ConsoleCommand command) {
         commands.put(command.getName().toLowerCase(), command);
+    }
+
+    private List<String> parseArguments(String commandLine) {
+        List<String> tokens = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        boolean inQuotes = false;
+        for (char c : commandLine.toCharArray()) {
+            if (c == '"') {
+                inQuotes = !inQuotes;
+                if (!inQuotes && !sb.isEmpty()) {
+                    tokens.add(sb.toString());
+                    sb.setLength(0);
+                }
+            } else if (c == ' ' && !inQuotes) {
+                if (!sb.isEmpty()) {
+                    tokens.add(sb.toString());
+                    sb.setLength(0);
+                }
+            } else {
+                sb.append(c);
+            }
+        }
+        if (!sb.isEmpty()) {
+            tokens.add(sb.toString());
+        }
+        return tokens;
     }
 
     public void executeCommand(String input) {
@@ -61,9 +82,13 @@ public class ConsoleManager {
         log(trimmedInput, ConsoleMessage.MessageType.COMMAND);
         addCommandToHistory(trimmedInput);
 
-        String[] parts = trimmedInput.split("\\s+");
-        String commandName = parts[0].toLowerCase();
-        String[] args = Arrays.copyOfRange(parts, 1, parts.length);
+        List<String> parts = parseArguments(trimmedInput);
+        if (parts.isEmpty()) {
+            return;
+        }
+
+        String commandName = parts.getFirst().toLowerCase();
+        String[] args = parts.subList(1, parts.size()).toArray(new String[0]);
 
         ConsoleCommand command = commands.get(commandName);
         if (command != null) {
@@ -130,11 +155,11 @@ public class ConsoleManager {
         Logger rootLogger = (Logger) LogManager.getRootLogger();
 
         if (enable) {
-            System.setOut(new PrintStream(new ConsoleOutputStream(ConsoleMessage.MessageType.INFO), true));
-            System.setErr(new PrintStream(new ConsoleOutputStream(ConsoleMessage.MessageType.ERROR), true));
+            System.setOut(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.INFO), true));
+            System.setErr(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.ERROR), true));
 
             if (this.slf4jAppender == null) {
-                this.slf4jAppender = ConsoleManagerAppender.createAppender();
+                this.slf4jAppender = ConsoleManagerAppender.createAppender(this);
             }
             this.slf4jAppender.start();
             rootLogger.addAppender(this.slf4jAppender);
@@ -151,11 +176,12 @@ public class ConsoleManager {
     }
 
     private static class ConsoleOutputStream extends ByteArrayOutputStream {
-        private final ConsoleManager consoleManager = ConsoleManager.getInstance();
+        private final ConsoleManager consoleManager;
         private final ConsoleMessage.MessageType messageType;
         private final String lineSeparator = System.lineSeparator();
 
-        public ConsoleOutputStream(ConsoleMessage.MessageType messageType) {
+        public ConsoleOutputStream(ConsoleManager consoleManager, ConsoleMessage.MessageType messageType) {
+            this.consoleManager = consoleManager;
             this.messageType = messageType;
         }
 

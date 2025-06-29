@@ -1,27 +1,24 @@
 package net.me.event;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.me.mixin.fabric.event.ArrayBackedEventAccessor;
-import net.me.mixin.fabric.event.EventPhaseDataAccessor;
-import net.minecraft.util.Identifier;
-
-import java.lang.reflect.*;
-
 import net.me.event.events.tick.EndClientTickEvent;
 import net.me.event.events.tick.StartClientTickEvent;
+import net.me.mixin.fabric.event.ArrayBackedEventAccessor;
+import net.me.mixin.fabric.event.EventPhaseDataAccessor;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
+import net.minecraft.util.Identifier;
 import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EventManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(EventManager.class);
-    private static final EventManager INSTANCE = new EventManager();
 
     private record Listener(RunningScript owner, Value callback) {
         @Override
@@ -38,20 +35,17 @@ public class EventManager {
         }
     }
 
-    private record FabricListener(net.fabricmc.fabric.api.event.Event<?> event, Object listenerProxy, Value jsCallback) {
+    private record FabricListener(net.fabricmc.fabric.api.event.Event<?> event, Object listenerProxy,
+                                  Value jsCallback) {
     }
 
     private final Map<Class<? extends Event>, List<Listener>> listeners = new ConcurrentHashMap<>();
     private final Map<RunningScript, List<FabricListener>> fabricListeners = new ConcurrentHashMap<>();
 
-    private EventManager() {
-    }
+    private ScriptManager scriptManager;
 
-    public static EventManager getInstance() {
-        return INSTANCE;
-    }
-
-    public void init() {
+    public void init(ScriptManager scriptManager) {
+        this.scriptManager = scriptManager;
         ClientTickEvents.START_CLIENT_TICK.register(client -> this.post(new StartClientTickEvent(client)));
         ClientTickEvents.END_CLIENT_TICK.register(client -> this.post(new EndClientTickEvent(client)));
     }
@@ -60,15 +54,14 @@ public class EventManager {
         List<Listener> eventListeners = listeners.get(event.getClass());
         if (eventListeners != null) {
             for (Listener listener : eventListeners) {
-                ScriptManager sm = ScriptManager.getInstance();
-                sm.setCurrentScript(listener.owner());
+                scriptManager.setCurrentScript(listener.owner());
                 try {
                     listener.callback().execute(event);
                 } catch (Exception e) {
                     LOGGER.error("Error executing event listener for {} in script '{}'",
                             event.getClass().getSimpleName(), listener.owner().getName(), e);
                 } finally {
-                    sm.clearCurrentScript();
+                    scriptManager.clearCurrentScript();
                 }
             }
         }
@@ -91,15 +84,14 @@ public class EventManager {
                         return InvocationHandler.invokeDefault(proxy, method, args);
                     }
                     if (method.equals(sam)) {
-                        ScriptManager sm = ScriptManager.getInstance();
-                        sm.setCurrentScript(owner);
+                        scriptManager.setCurrentScript(owner);
                         try {
                             jsCallback.execute(args);
                         } catch (Exception e) {
                             LOGGER.error("Error executing Fabric event listener for {} in script '{}'",
                                     listenerType.getSimpleName(), owner.getName(), e);
                         } finally {
-                            sm.clearCurrentScript();
+                            scriptManager.clearCurrentScript();
                         }
                         return getReturnValueFor(sam.getReturnType());
                     }

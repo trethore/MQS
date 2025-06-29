@@ -5,6 +5,7 @@ import net.me.event.Event;
 import net.me.event.EventManager;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.commands.CommandsAPI;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.wrappers.JsClassWrapper;
@@ -25,10 +26,18 @@ public class ScriptContextFactory {
 
     private final ScriptingClassResolver classResolver;
     private final Engine sharedEngine;
+    private final EventManager eventManager;
+    private final ScriptManager scriptManager;
+    private final ConfigManager configManager;
+    private final CommandAPIService commandApiService;
 
-    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine) {
+    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService) {
         this.classResolver = classResolver;
         this.sharedEngine = sharedEngine;
+        this.scriptManager = scriptManager;
+        this.configManager = configManager;
+        this.commandApiService = commandApiService;
+        this.eventManager = eventManager;
     }
 
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
@@ -62,7 +71,7 @@ public class ScriptContextFactory {
         bindings.putMember("EventManager", createEventManagerProxy());
         bindings.putMember("ConfigManager", createConfigProxy());
 
-        bindings.putMember("CommandManager", new CommandsAPI());
+        bindings.putMember("CommandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
 
         bindings.putMember("println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);
@@ -97,7 +106,7 @@ public class ScriptContextFactory {
             @Override
             public Object getMember(String key) {
                 return (ProxyExecutable) args -> {
-                    RunningScript owner = ScriptManager.getInstance().getCurrentScript();
+                    RunningScript owner = scriptManager.getCurrentScript();
                     if (owner == null) {
                         throw new IllegalStateException("EventManager can only be used inside onEnable/onDisable or a registered event callback.");
                     }
@@ -111,9 +120,9 @@ public class ScriptContextFactory {
 
                         if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
                             //noinspection unchecked
-                            EventManager.getInstance().register(owner, (Class<? extends Event>) cls, callback);
+                            eventManager.register(owner, (Class<? extends Event>) cls, callback);
                         } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-                            EventManager.getInstance().registerFabric(owner, fabricEvent, callback);
+                            eventManager.registerFabric(owner, fabricEvent, callback);
                         } else {
                             throw new IllegalArgumentException("First argument to EventManager.register must be a MQS event class or a Fabric Event object.");
                         }
@@ -122,14 +131,14 @@ public class ScriptContextFactory {
 
                     if ("unregister".equals(key)) {
                         if (args.length == 0) {
-                            EventManager.getInstance().unregister(owner);
+                            eventManager.unregister(owner);
                         } else if (args.length == 1) {
                             Object eventTarget = resolveEventTarget(args[0]);
                             if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
                                 //noinspection unchecked
-                                EventManager.getInstance().unregister(owner, (Class<? extends Event>) cls);
+                                eventManager.unregister(owner, (Class<? extends Event>) cls);
                             } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-                                EventManager.getInstance().unregister(owner, fabricEvent);
+                                eventManager.unregister(owner, fabricEvent);
                             } else {
                                 throw new IllegalArgumentException("Argument to EventManager.unregister must be a MQS event class or a Fabric Event object.");
                             }
@@ -138,9 +147,9 @@ public class ScriptContextFactory {
                             Value callback = args[1];
                             if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
                                 //noinspection unchecked
-                                EventManager.getInstance().unregister(owner, (Class<? extends Event>) cls, callback);
+                                eventManager.unregister(owner, (Class<? extends Event>) cls, callback);
                             } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-                                EventManager.getInstance().unregister(owner, fabricEvent, callback);
+                                eventManager.unregister(owner, fabricEvent, callback);
                             } else {
                                 throw new IllegalArgumentException("First argument to EventManager.unregister must be a MQS event class or a Fabric Event object.");
                             }
@@ -192,11 +201,11 @@ public class ScriptContextFactory {
     }
 
     private ProxyObject createConfigProxy() {
-        final ConfigManager cm = ConfigManager.getInstance();
+        final ConfigManager cm = configManager;
 
         return new ProxyObject() {
             private RunningScript getCurrentScript() {
-                RunningScript script = ScriptManager.getInstance().getCurrentScript();
+                RunningScript script = scriptManager.getCurrentScript();
                 if (script == null) {
                     throw new IllegalStateException("Config API can only be used within a running script context (e.g., onEnable, onDisable, or an event).");
                 }

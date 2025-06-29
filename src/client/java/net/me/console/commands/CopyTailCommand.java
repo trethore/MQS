@@ -8,12 +8,15 @@ import net.minecraft.client.MinecraftClient;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class CopyTailCommand implements ConsoleCommand {
+public class CopyTailCommand extends ConsoleCommand {
+
+    public CopyTailCommand(ConsoleManager consoleManager) {
+        super(consoleManager, "copytail", "Copies the last <n> lines of the console to the clipboard.", "copytail <number=10>");
+    }
 
     @Override
     public void execute(String[] args) {
-        ConsoleManager cm = ConsoleManager.getInstance();
-
+        ConsoleManager cm = this.getConsoleManager();
         if (args.length > 1) {
             cm.logError("Invalid arguments. Usage: " + getUsage());
             return;
@@ -43,7 +46,7 @@ public class CopyTailCommand implements ConsoleCommand {
         }
         int lastMessageIndex = messages.size() - 1;
         int startIndex = Math.max(0, messages.size() - numberOfLines - 1);
-        List<ConsoleMessage> tail = messages.subList(startIndex,lastMessageIndex);
+        List<ConsoleMessage> tail = messages.subList(startIndex, lastMessageIndex);
 
         String textToCopy = tail.stream()
                 .map(msg -> String.format("[%s] %s", msg.timestamp(), msg.text()))
@@ -51,20 +54,5 @@ public class CopyTailCommand implements ConsoleCommand {
 
         MinecraftClient.getInstance().keyboard.setClipboard(textToCopy);
         cm.logSuccess("Copied " + tail.size() + " lines to clipboard.");
-    }
-
-    @Override
-    public String getName() {
-        return "copytail";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Copies the last <n> lines of the console to the clipboard.";
-    }
-
-    @Override
-    public String getUsage() {
-        return "copytail <number=10>";
     }
 }

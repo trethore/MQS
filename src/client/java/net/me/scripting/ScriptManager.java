@@ -6,6 +6,7 @@ import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.engine.ScriptContextFactory;
 import net.me.scripting.engine.ScriptLoader;
 import net.me.scripting.engine.ScriptingClassResolver;
+import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
 import org.graalvm.polyglot.Context;
@@ -19,30 +20,32 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public class ScriptManager {
-    private static ScriptManager instance;
     private final Map<String, ScriptDescriptor> availableScripts = new HashMap<>();
     private final Map<String, RunningScript> runningScripts = new HashMap<>();
 
     private ScriptContextFactory contextFactory;
     private ScriptLoader scriptLoader;
 
+    private EventManager eventManager;
+    private ConfigManager configManager;
+    private final CommandAPIService commandApiService;
+
     private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
     private final ThreadLocal<RunningScript> currentScriptContext = new ThreadLocal<>();
 
-    private ScriptManager() {
+    public ScriptManager() {
+        this.commandApiService = new CommandAPIService();
     }
 
-    public static ScriptManager getInstance() {
-        if (instance == null) instance = new ScriptManager();
-        return instance;
-    }
+    public void init(MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager) {
+        this.configManager = configManager;
+        this.eventManager = eventManager;
 
-    public void init() {
         ensureScriptDirectory();
         Engine scriptEngine = Engine.create();
         ScriptingClassResolver classResolver = new ScriptingClassResolver();
-        classResolver.init();
-        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine);
+        classResolver.init(mappingsManager);
+        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService);
         this.scriptLoader = new ScriptLoader();
         discoverScripts();
     }
@@ -57,11 +60,8 @@ public class ScriptManager {
 
     public void refreshAndReenable() {
         Set<String> previouslyRunningIds = new HashSet<>(runningScripts.keySet());
-
         new ArrayList<>(previouslyRunningIds).forEach(this::disableScript);
-
         discoverScripts();
-
         previouslyRunningIds.forEach(scriptId -> {
             if (availableScripts.containsKey(scriptId)) {
                 enableScript(scriptId);
@@ -160,10 +160,10 @@ public class ScriptManager {
             try {
                 script.onDisable();
             } finally {
-                EventManager.getInstance().unregister(script);
-                CommandAPIService.getInstance().unregisterAllFor(script);
-                ConfigManager.getInstance().saveConfig(script);
-                ConfigManager.getInstance().unloadConfig(script);
+                eventManager.unregister(script);
+                commandApiService.unregisterAllFor(script);
+                configManager.saveConfig(script);
+                configManager.unloadConfig(script);
                 script.close();
                 clearCurrentScript();
             }

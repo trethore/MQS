@@ -3,10 +3,15 @@ package net.me.console.commands;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 
-public class LogRedirectCommand implements ConsoleCommand {
+public class LogRedirectCommand extends ConsoleCommand {
+
+    public LogRedirectCommand(ConsoleManager consoleManager) {
+        super(consoleManager, "logredirect", "Redirects System.out, System.err, and SLF4J logs to this console.", "logredirect <true|false>");
+    }
+
     @Override
     public void execute(String[] args) {
-        ConsoleManager cm = ConsoleManager.getInstance();
+        ConsoleManager cm = getConsoleManager();
         if (args.length != 1) {
             cm.logError("Invalid arguments. Usage: " + getUsage());
             return;
@@ -24,20 +29,5 @@ public class LogRedirectCommand implements ConsoleCommand {
 
         cm.setLogRedirect(enable);
         cm.logSuccess("Log redirection " + (enable ? "enabled" : "disabled") + ".");
-    }
-
-    @Override
-    public String getName() {
-        return "logredirect";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Redirects System.out, System.err, and SLF4J logs to this console.";
-    }
-
-    @Override
-    public String getUsage() {
-        return "logredirect <true|false>";
     }
 }

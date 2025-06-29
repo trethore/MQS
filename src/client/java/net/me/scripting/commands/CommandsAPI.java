@@ -11,11 +11,17 @@ import java.util.Arrays;
 
 public class CommandsAPI implements ProxyObject {
 
-    private final CommandAPIService service = CommandAPIService.getInstance();
+    private final CommandAPIService service;
+    private final ScriptManager scriptManager;
     private static final ProxyObject ARG_TYPE_PROXY = createArgTypeProxy();
 
+    public CommandsAPI(ScriptManager scriptManager, CommandAPIService service) {
+        this.scriptManager = scriptManager;
+        this.service = service;
+    }
+
     private RunningScript getCurrentScript() {
-        RunningScript script = ScriptManager.getInstance().getCurrentScript();
+        RunningScript script = scriptManager.getCurrentScript();
         if (script == null) {
             throw new IllegalStateException("Commands API can only be used within a running script context (e.g., onEnable, onDisable, or an event).");
         }
@@ -34,13 +40,13 @@ public class CommandsAPI implements ProxyObject {
                 case "builder": {
                     if (args.length != 1 || !args[0].isString())
                         throw new IllegalArgumentException("Commands.builder(name) requires one string argument.");
-                    return new CommandBuilder(args[0].asString(), owner);
+                    return new CommandBuilder(args[0].asString(), owner, this.scriptManager);
                 }
                 case "literal": {
                     if (args.length != 1 || !args[0].isString()) {
                         throw new IllegalArgumentException("Commands.literal(name) requires one string argument.");
                     }
-                    return new CommandBuilder(ClientCommandManager.literal(args[0].asString()), owner);
+                    return new CommandBuilder(ClientCommandManager.literal(args[0].asString()), owner, this.scriptManager);
                 }
                 case "argument": {
                     if (args.length != 2 || !args[0].isString() || !args[1].isString()) {
@@ -49,7 +55,7 @@ public class CommandsAPI implements ProxyObject {
                     String name = args[0].asString();
                     String typeStr = args[1].asString();
                     var type = ScriptArgumentType.fromString(typeStr);
-                    return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner);
+                    return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, this.scriptManager);
                 }
                 case "register": {
                     if (args.length != 1)
@@ -90,14 +96,17 @@ public class CommandsAPI implements ProxyObject {
                         .map(ScriptArgumentType::toString)
                         .orElse(null);
             }
+
             @Override
             public Object getMemberKeys() {
                 return Arrays.stream(ScriptArgumentType.values()).map(Enum::name).toArray(String[]::new);
             }
+
             @Override
             public boolean hasMember(String key) {
                 return Arrays.stream(ScriptArgumentType.values()).anyMatch(type -> type.name().equals(key));
             }
+
             @Override
             public void putMember(String key, Value value) {
                 throw new UnsupportedOperationException("Cannot modify the ArgType object.");

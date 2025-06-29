@@ -21,18 +21,16 @@ public class ScriptingClassResolver {
     public ScriptingClassResolver() {
     }
 
-    public void init() {
-        loadMappings();
+    public void init(MappingsManager mappingsManager) {
+        loadMappings(mappingsManager);
         precomputePackagePrefixes();
     }
 
-    private void loadMappings() {
-        MappingsManager.getInstance().init();
-        var mm = MappingsManager.getInstance();
-        classMap = mm.getClassMap();
-        methodMap = mm.getMethodMap();
-        fieldMap = mm.getFieldMap();
-        runtimeToYarn = mm.getRuntimeToYarnClassMap();
+    private void loadMappings(MappingsManager mappingsManager) {
+        classMap = mappingsManager.getClassMap();
+        methodMap = mappingsManager.getMethodMap();
+        fieldMap = mappingsManager.getFieldMap();
+        runtimeToYarn = mappingsManager.getRuntimeToYarnClassMap();
     }
 
     private void precomputePackagePrefixes() {

@@ -38,15 +38,6 @@ public class MappingsManager {
         return t;
     });
 
-    private static final MappingsManager INSTANCE = new MappingsManager();
-
-    private MappingsManager() {
-    }
-
-    public static MappingsManager getInstance() {
-        return INSTANCE;
-    }
-
 
     public void init() {
         if (initializationFuture.isDone()) {
@@ -71,6 +62,10 @@ public class MappingsManager {
         } else {
             LOGGER.debug("Mappings initialization already started or submitted by another call. Current call will not re-submit.");
         }
+    }
+
+    public boolean isReady() {
+        return initializationFuture.isDone();
     }
 
     private void parseMappings() {

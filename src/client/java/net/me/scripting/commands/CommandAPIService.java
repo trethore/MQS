@@ -20,15 +20,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CommandAPIService {
-    private static final CommandAPIService INSTANCE = new CommandAPIService();
     private final Map<RunningScript, Set<String>> scriptCommands = new ConcurrentHashMap<>();
 
-    private CommandAPIService() {
-    }
-
-    public static CommandAPIService getInstance() {
-        return INSTANCE;
-    }
 
     public void register(RunningScript owner, CommandBuilder commandBuilder) {
         LiteralArgumentBuilder<FabricClientCommandSource> literalBuilder = commandBuilder.getRootBuilder();
@@ -59,6 +52,7 @@ public class CommandAPIService {
             return;
         }
         if (removeNode(name)) {
+            removeNodeFromServerTree(name);
             owned.remove(name);
             if (owned.isEmpty()) scriptCommands.remove(owner);
             CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
@@ -73,6 +67,7 @@ public class CommandAPIService {
         boolean changed = false;
         for (String name : owned) {
             if (removeNode(name)) {
+                removeNodeFromServerTree(name);
                 Main.LOGGER.info("Unregistered '{}' from disabled script '{}'", name, owner.getName());
                 changed = true;
             }
@@ -102,15 +97,45 @@ public class CommandAPIService {
         return removed;
     }
 
-    private void pushCommandTree(CommandDispatcher<FabricClientCommandSource> dispatcher) {
-        RootCommandNode<FabricClientCommandSource> clientRoot = dispatcher.getRoot();
+    private void removeNodeFromServerTree(String name) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.getNetworkHandler() == null || client.player == null) {
+            return;
+        }
+
+        RootCommandNode<CommandSource> root = client.getNetworkHandler().getCommandDispatcher().getRoot();
 
         @SuppressWarnings("unchecked")
-        RootCommandNode<CommandSource> vanillaRoot = (RootCommandNode<CommandSource>) (Object) clientRoot;
+        CommandNodeAccessor<CommandSource> accessor = (CommandNodeAccessor<CommandSource>) root;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.getNetworkHandler() != null && client.player != null) {
-            client.getNetworkHandler().onCommandTree(new CommandTreeS2CPacket(vanillaRoot));
+        Map<String, CommandNode<CommandSource>> children = accessor.getChildrenMap();
+        Map<String, LiteralCommandNode<CommandSource>> literals = accessor.getLiteralsMap();
+
+        if (children.remove(name) != null) {
+            literals.remove(name);
         }
+    }
+
+    private void pushCommandTree(CommandDispatcher<FabricClientCommandSource> dispatcher) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.getNetworkHandler() == null || client.player == null) {
+            return;
+        }
+
+        RootCommandNode<CommandSource> newRoot = new RootCommandNode<>();
+
+        RootCommandNode<CommandSource> serverRoot = client.getNetworkHandler().getCommandDispatcher().getRoot();
+        for (CommandNode<CommandSource> node : serverRoot.getChildren()) {
+            newRoot.addChild(node);
+        }
+
+        for (CommandNode<FabricClientCommandSource> node : dispatcher.getRoot().getChildren()) {
+            if (newRoot.getChild(node.getName()) == null) {
+                //noinspection unchecked
+                newRoot.addChild((CommandNode<CommandSource>) (Object) node);
+            }
+        }
+
+        client.getNetworkHandler().onCommandTree(new CommandTreeS2CPacket(newRoot));
     }
 }

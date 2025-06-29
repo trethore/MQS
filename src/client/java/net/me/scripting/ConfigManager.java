@@ -13,17 +13,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ConfigManager {
-    private static final ConfigManager INSTANCE = new ConfigManager();
     private final Path configsDir = Main.MOD_DIR.resolve("configs");
 
     private final Map<String, Value> inMemoryConfigs = new ConcurrentHashMap<>();
 
-    private ConfigManager() {
-    }
-
-    public static ConfigManager getInstance() {
-        return INSTANCE;
-    }
 
     public void init() {
         try {
@@ -88,9 +81,7 @@ public class ConfigManager {
         inMemoryConfigs.remove(script.getId());
     }
 
-    public int saveAllConfigs() {
-        ScriptManager scriptManager = ScriptManager.getInstance();
-        Collection<RunningScript> runningScripts = scriptManager.getRunningScripts();
+    public int saveAllConfigs(Collection<RunningScript> runningScripts) {
         for (RunningScript script : runningScripts) {
             this.saveConfig(script);
         }

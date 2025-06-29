@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class JsObjectWrapper implements ProxyObject {
     private final Object javaInstance;
@@ -21,6 +22,8 @@ public class JsObjectWrapper implements ProxyObject {
     private final MethodLookup methods;
     private final FieldLookup fields;
     private final String[] memberKeys;
+
+    private static final Map<Class<?>, String[]> MEMBER_KEYS_CACHE = new ConcurrentHashMap<>();
 
     public JsObjectWrapper(Object instance,
                            Class<?> cls,
@@ -34,21 +37,23 @@ public class JsObjectWrapper implements ProxyObject {
         this.methods = new MethodLookup(methodMap);
         this.fields = new FieldLookup(fieldMap);
 
-        Set<String> keys = new HashSet<>(methods.methodKeys());
-        keys.addAll(fields.fieldKeys());
+        this.memberKeys = MEMBER_KEYS_CACHE.computeIfAbsent(this.instanceClass, c -> {
+            Set<String> keys = new HashSet<>(methods.methodKeys());
+            keys.addAll(fields.fieldKeys());
 
-        for (Method method : instanceClass.getMethods()) {
-            if (!Modifier.isStatic(method.getModifiers())) {
-                keys.add(method.getName());
+            for (Method method : c.getMethods()) {
+                if (!Modifier.isStatic(method.getModifiers())) {
+                    keys.add(method.getName());
+                }
             }
-        }
-        for (Field field : instanceClass.getFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) {
-                keys.add(field.getName());
+            for (Field field : c.getFields()) {
+                if (!Modifier.isStatic(field.getModifiers())) {
+                    keys.add(field.getName());
+                }
             }
-        }
-        keys.add("_self");
-        this.memberKeys = keys.toArray(new String[0]);
+            keys.add("_self");
+            return keys.toArray(new String[0]);
+        });
     }
 
     @Override
