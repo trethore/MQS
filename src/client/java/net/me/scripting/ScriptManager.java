@@ -32,6 +32,7 @@ public class ScriptManager {
 
     private EventManager eventManager;
     private ConfigManager configManager;
+    private HookManager hookManager;
     private final CommandAPIService commandApiService;
 
     private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
@@ -47,12 +48,14 @@ public class ScriptManager {
     public void init(MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager) {
         this.configManager = configManager;
         this.eventManager = eventManager;
+        this.hookManager = hookManager;
 
         ensureScriptDirectory();
         Engine scriptEngine = Engine.create();
         ScriptingClassResolver classResolver = new ScriptingClassResolver();
         classResolver.init(mappingsManager);
-        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService, hookManager);        this.scriptLoader = new ScriptLoader();
+        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService, hookManager);
+        this.scriptLoader = new ScriptLoader();
         prewarmContextPool();
         discoverScripts();
         loadAndEnableScriptsFromConfig();
@@ -229,6 +232,7 @@ public class ScriptManager {
             } finally {
                 eventManager.unregister(script);
                 commandApiService.unregisterAllFor(script);
+                hookManager.unhookAll(script);
                 configManager.saveConfig(script);
                 configManager.unloadConfig(script);
                 returnContextToPool(script.getContext());

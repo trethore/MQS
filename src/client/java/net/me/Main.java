@@ -22,27 +22,26 @@ public class Main implements ClientModInitializer {
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
 
     private static ConfigManager configManager;
-    private static ScriptManager scriptManager;
     private static MappingsManager mappingsManager;
-    private static HookManager hookManager;
 
     @Override
     public void onInitializeClient() {
         Main.mappingsManager = new MappingsManager();
         Main.configManager = new ConfigManager();
-        Main.scriptManager = new ScriptManager();
+        ScriptManager scriptManager = new ScriptManager();
+        HookManager hookManager = new HookManager();
         EventManager eventManager = new EventManager();
         CommandManager commandManager = new CommandManager();
         ConsoleManager consoleManager = new ConsoleManager();
         ScriptingService scriptingService = new ScriptingService();
-        Main.hookManager = new HookManager(scriptManager, mappingsManager);
 
         mappingsManager.init();
         configManager.init();
         eventManager.init(scriptManager);
         consoleManager.init(scriptingService);
-        scriptManager.init(mappingsManager, configManager, eventManager,hookManager);
+        scriptManager.init(mappingsManager, configManager, eventManager, hookManager);
         scriptingService.init(scriptManager, configManager);
+        hookManager.init(scriptManager, mappingsManager);
         commandManager.init(scriptingService, consoleManager);
 
         LOGGER.info("Hello from MyQOLScripts!");
@@ -53,14 +52,7 @@ public class Main implements ClientModInitializer {
         return configManager;
     }
 
-    public static ScriptManager getScriptManager() {
-        return scriptManager;
-    }
-
     public static MappingsManager getMappingsManager() {
         return mappingsManager;
-    }
-    public static HookManager getHookManager() {
-        return hookManager;
     }
 }

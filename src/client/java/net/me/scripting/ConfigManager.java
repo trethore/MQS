@@ -62,15 +62,16 @@ public class ConfigManager {
         return configContext.eval("js", "({})");
     }
 
-/* <<<<<<<<<<<<<<  ✨ Windsurf Command ⭐ >>>>>>>>>>>>>>>> */
+    /* <<<<<<<<<<<<<<  ✨ Windsurf Command ⭐ >>>>>>>>>>>>>>>> */
+
     /**
      * Sets the enabled state of a script's configuration.
      *
-     * @param scriptId the identifier of the script whose configuration is to be modified
+     * @param scriptId  the identifier of the script whose configuration is to be modified
      * @param isEnabled the new enabled state to set in the configuration
      */
 
-/* <<<<<<<<<<  b2411796-1816-4e23-a32d-f2d848ebc723  >>>>>>>>>>> */
+    /* <<<<<<<<<<  b2411796-1816-4e23-a32d-f2d848ebc723  >>>>>>>>>>> */
     public void setEnabledState(String scriptId, boolean isEnabled) {
         Value config = getConfig(scriptId);
         config.putMember("enabled", isEnabled);

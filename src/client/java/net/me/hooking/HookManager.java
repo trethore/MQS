@@ -4,6 +4,7 @@ import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.ByteBuddyAgent;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
+import net.bytebuddy.dynamic.scaffold.TypeValidation;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
@@ -11,11 +12,10 @@ import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.MappingUtils;
 import org.graalvm.polyglot.Value;
-import net.bytebuddy.dynamic.scaffold.TypeValidation;
-
 
 import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.Instrumentation;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,20 +24,28 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class HookManager {
-
-    private final ScriptManager scriptManager;
-    private final MappingsManager mappingsManager;
     private final Instrumentation instrumentation;
+
+    private record HookIdentifier(Class<?> targetClass, String yarnMethodName) {
+    }
+
+    private final Map<RunningScript, Set<HookIdentifier>> scriptOwnedHooks = new ConcurrentHashMap<>();
 
     private final Map<String, Class<?>> nameToClassMap = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<String>> hookedMethods = new ConcurrentHashMap<>();
     private final Map<Class<?>, byte[]> originalClassBytes = new ConcurrentHashMap<>();
 
-    public HookManager(ScriptManager scriptManager, MappingsManager mappingsManager) {
-        this.scriptManager = scriptManager;
-        this.mappingsManager = mappingsManager;
+    private ScriptManager scriptManager;
+    private MappingsManager mappingsManager;
+
+    public HookManager() {
         this.instrumentation = ByteBuddyAgent.install();
         installAgent();
+    }
+
+    public void init(ScriptManager scriptManager, MappingsManager mappingsManager) {
+        this.scriptManager = scriptManager;
+        this.mappingsManager = mappingsManager;
     }
 
     private void installAgent() {
@@ -94,6 +102,7 @@ public class HookManager {
         }
 
         hookedMethods.computeIfAbsent(targetClass, k -> ConcurrentHashMap.newKeySet()).add(yarnMethodName);
+        scriptOwnedHooks.computeIfAbsent(owner, k -> ConcurrentHashMap.newKeySet()).add(new HookIdentifier(targetClass, yarnMethodName));
 
         try {
             instrumentation.retransformClasses(targetClass);
@@ -108,25 +117,42 @@ public class HookManager {
                 HookInterceptor.unregister(generateHookId(targetClass, runtimeName));
             }
             Set<String> methods = hookedMethods.get(targetClass);
-            if(methods != null) {
+            if (methods != null) {
                 methods.remove(yarnMethodName);
                 if (methods.isEmpty()) {
                     nameToClassMap.remove(targetClass.getName());
                 }
             }
+            Set<HookIdentifier> owned = scriptOwnedHooks.get(owner);
+            if (owned != null) {
+                owned.remove(new HookIdentifier(targetClass, yarnMethodName));
+                if (owned.isEmpty()) {
+                    scriptOwnedHooks.remove(owner);
+                }
+            }
         }
     }
 
-    public void unhook(Class<?> targetClass, String yarnMethodName) {
+    public void unhook(RunningScript owner, Class<?> targetClass, String yarnMethodName) {
         String yarnHookId = generateHookId(targetClass, yarnMethodName);
-        if (!HookInterceptor.hasHook(yarnHookId)) {
-            Main.LOGGER.warn("Attempted to unhook {}, but no active hook was found.", yarnHookId);
+        HookInterceptor.HookData data = HookInterceptor.HOOKS.get(yarnHookId);
+        if (data == null || !data.owner().equals(owner)) {
+            Main.LOGGER.warn("Script '{}' attempted to unhook '{}', which it does not own or is not hooked.",
+                    owner.getName(), yarnHookId);
             return;
         }
 
         HookInterceptor.unregister(yarnHookId);
         for (String runtimeMethodName : resolveRuntimeMethodNames(targetClass, yarnMethodName)) {
             HookInterceptor.unregister(generateHookId(targetClass, runtimeMethodName));
+        }
+
+        Set<HookIdentifier> owned = scriptOwnedHooks.get(owner);
+        if (owned != null) {
+            owned.remove(new HookIdentifier(targetClass, yarnMethodName));
+            if (owned.isEmpty()) {
+                scriptOwnedHooks.remove(owner);
+            }
         }
 
         Set<String> methodsOnClass = hookedMethods.get(targetClass);
@@ -161,6 +187,20 @@ public class HookManager {
                     Main.LOGGER.error("Failed to re-transform class '{}' after unhooking.", targetClass.getName(), e);
                 }
             }
+        }
+    }
+
+    public void unhookAll(RunningScript owner) {
+        Set<HookIdentifier> owned = scriptOwnedHooks.get(owner);
+        if (owned == null || owned.isEmpty()) {
+            return;
+        }
+
+        Main.LOGGER.info("Unhooking all {} hooks for script '{}'.", owned.size(), owner.getName());
+        Set<HookIdentifier> hooksToProcess = new HashSet<>(owned);
+
+        for (HookIdentifier id : hooksToProcess) {
+            unhook(owner, id.targetClass(), id.yarnMethodName());
         }
     }
 

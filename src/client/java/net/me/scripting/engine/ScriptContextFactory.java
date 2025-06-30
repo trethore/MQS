@@ -137,7 +137,7 @@ public class ScriptContextFactory {
                                     throw new IllegalArgumentException("First argument must be a class (e.g. from importClass).");
                         };
                         String yarnMethodName = args[1].asString();
-                        hookManager.unhook(targetClass, yarnMethodName);
+                        hookManager.unhook(owner, targetClass, yarnMethodName);
                         return null;
                     }
 
@@ -146,15 +146,22 @@ public class ScriptContextFactory {
             }
 
             @Override
-            public Object getMemberKeys() { return new String[]{"hook", "unhook"}; }
+            public Object getMemberKeys() {
+                return new String[]{"hook", "unhook"};
+            }
 
             @Override
-            public boolean hasMember(String key) { return "hook".equals(key) || "unhook".equals(key); }
+            public boolean hasMember(String key) {
+                return "hook".equals(key) || "unhook".equals(key);
+            }
 
             @Override
-            public void putMember(String key, Value value) { throw new UnsupportedOperationException("Cannot modify the HookManager object."); }
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify the HookManager object.");
+            }
         };
     }
+
     private void addApiMember(Value bindings, String name, Object member) {
         bindings.putMember(name, member);
         standardApiMembers.add(name);

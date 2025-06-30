@@ -14,12 +14,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+@SuppressWarnings("unused")
 public class HookInterceptor {
 
     public static final Map<String, HookData> HOOKS = new ConcurrentHashMap<>();
     public static final ThreadLocal<AdviceContext> adviceContext = new ThreadLocal<>();
 
-    // --- Helper Methods ---
     public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager) {
         HOOKS.put(hookId, new HookData(jsCallback, owner, scriptManager));
         Main.LOGGER.info("Registered hook: {}", hookId);
@@ -35,7 +35,6 @@ public class HookInterceptor {
         return HOOKS.containsKey(hookId);
     }
 
-    // --- Byte Buddy Advice ---
     @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
     public static boolean onEnter(
             @Advice.Origin Method method,
@@ -55,7 +54,6 @@ public class HookInterceptor {
         data.scriptManager().setCurrentScript(data.owner());
 
         try {
-            // FIX: Wrap each argument individually and pass as a JS array
             Object[] wrappedArgs = new Object[args.length];
             for (int i = 0; i < args.length; i++) {
                 wrappedArgs[i] = ScriptUtils.wrapReturn(args[i]);
@@ -92,6 +90,7 @@ public class HookInterceptor {
         }
     }
 
+    @SuppressWarnings({"UnusedAssignment", "ParameterCanBeLocal"})
     @Advice.OnMethodExit(onThrowable = Throwable.class)
     public static void onExit(
             @Advice.Return(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object returnValue
@@ -107,7 +106,6 @@ public class HookInterceptor {
         adviceContext.remove();
     }
 
-    // --- Public Inner Class to Replace Lambda ---
     public static class SuperCallProxy implements ProxyExecutable {
         private final AtomicReference<Boolean> shouldCallSuper;
 
@@ -123,7 +121,9 @@ public class HookInterceptor {
     }
 
 
-    // --- Data Records ---
-    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager) {}
-    public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue) {}
+    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager) {
+    }
+
+    public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue) {
+    }
 }
