@@ -10,6 +10,7 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
+import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +36,13 @@ public class Main implements ClientModInitializer {
         ConsoleManager consoleManager = new ConsoleManager();
         ScriptingService scriptingService = new ScriptingService();
 
+        Engine scriptEngine = Engine.create();
+
         mappingsManager.init();
-        configManager.init();
+        configManager.init(scriptEngine);
         eventManager.init(scriptManager);
         consoleManager.init(scriptingService);
-        scriptManager.init(mappingsManager, configManager, eventManager, hookManager);
+        scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager);
         scriptingService.init(scriptManager, configManager);
         hookManager.init(scriptManager, mappingsManager);
         commandManager.init(scriptingService, consoleManager);

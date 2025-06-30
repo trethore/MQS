@@ -45,13 +45,12 @@ public class ScriptManager {
         this.commandApiService = new CommandAPIService();
     }
 
-    public void init(MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager) {
+    public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager) {
         this.configManager = configManager;
         this.eventManager = eventManager;
         this.hookManager = hookManager;
 
         ensureScriptDirectory();
-        Engine scriptEngine = Engine.create();
         ScriptingClassResolver classResolver = new ScriptingClassResolver();
         classResolver.init(mappingsManager);
         this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService, hookManager);

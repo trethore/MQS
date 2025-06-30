@@ -102,6 +102,8 @@ shadowJar {
 	archiveClassifier.set("dev")
 	from sourceSets.client.output
 
+	mergeServiceFiles()
+
 	relocate 'org.graalvm', 'net.me.libs.graalvm'
 	relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
 }

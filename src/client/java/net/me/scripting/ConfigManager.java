@@ -3,6 +3,7 @@ package net.me.scripting;
 import net.me.Main;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
@@ -19,12 +20,13 @@ public class ConfigManager {
     private Context configContext;
 
 
-    public void init() {
+    public void init(Engine scriptEngine) {
         try {
             if (!Files.exists(configsDir)) {
                 Files.createDirectories(configsDir);
             }
             this.configContext = Context.newBuilder("js")
+                    .engine(scriptEngine)
                     .allowHostAccess(HostAccess.ALL)
                     .build();
         } catch (IOException e) {
