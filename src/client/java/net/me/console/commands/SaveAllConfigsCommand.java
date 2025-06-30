@@ -18,9 +18,9 @@ public class SaveAllConfigsCommand extends ConsoleCommand {
         int count = scriptingService.saveAll();
 
         if (count > 0) {
-            cm.logSuccess("Successfully saved configs for all " + count + " running scripts.");
+            cm.logSuccess("Successfully saved all " + count + " loaded script configurations.");
         } else {
-            cm.logInfo("No running scripts found, nothing to save.");
+            cm.logInfo("No script configs loaded in memory, nothing to save.");
         }
     }
 }

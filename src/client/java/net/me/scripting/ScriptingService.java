@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 public class ScriptingService {
     private ScriptManager scriptManager;
     private ConfigManager configManager;
@@ -31,9 +30,17 @@ public class ScriptingService {
 
     public void enable(String scriptId) {
         scriptManager.enableScript(scriptId);
+        if (scriptManager.isRunning(scriptId)) {
+            configManager.setEnabledState(scriptId, true);
+            configManager.saveConfig(scriptId);
+        }
     }
 
     public void disable(String scriptId) {
+        if (!scriptManager.isRunning(scriptId)) {
+            return;
+        }
+        configManager.setEnabledState(scriptId, false);
         scriptManager.disableScript(scriptId);
     }
 
@@ -87,6 +94,6 @@ public class ScriptingService {
     }
 
     public int saveAll() {
-        return configManager.saveAllConfigs(scriptManager.getRunningScripts());
+        return configManager.saveAllConfigs();
     }
 }

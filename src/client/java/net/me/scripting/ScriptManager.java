@@ -55,7 +55,19 @@ public class ScriptManager {
         this.scriptLoader = new ScriptLoader();
         prewarmContextPool();
         discoverScripts();
+        loadAndEnableScriptsFromConfig();
     }
+
+    private void loadAndEnableScriptsFromConfig() {
+        Main.LOGGER.info("Checking configs to auto-enable scripts...");
+        for (ScriptDescriptor descriptor : availableScripts.values()) {
+            if (configManager.getEnabledState(descriptor.getId())) {
+                Main.LOGGER.info("Auto-enabling script '{}' as per config.", descriptor.moduleName());
+                enableScript(descriptor.getId());
+            }
+        }
+    }
+
 
     private void prewarmContextPool() {
         Main.LOGGER.info("Pre-warming script context pool...");
@@ -109,7 +121,7 @@ public class ScriptManager {
         try (Stream<Path> paths = Files.walk(scriptsDir)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".js"))
-                    .forEach(this::discoverModulesInFileByParsing); // Use new method
+                    .forEach(this::discoverModulesInFileByParsing);
         } catch (IOException e) {
             Main.LOGGER.error("Error discovering scripts in {}", scriptsDir, e);
         }
