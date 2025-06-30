@@ -2,6 +2,7 @@ package net.me.scripting;
 
 import net.me.Main;
 import net.me.event.EventManager;
+import net.me.hooking.HookManager;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.engine.ScriptContextFactory;
 import net.me.scripting.engine.ScriptLoader;
@@ -43,7 +44,7 @@ public class ScriptManager {
         this.commandApiService = new CommandAPIService();
     }
 
-    public void init(MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager) {
+    public void init(MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager) {
         this.configManager = configManager;
         this.eventManager = eventManager;
 
@@ -51,8 +52,7 @@ public class ScriptManager {
         Engine scriptEngine = Engine.create();
         ScriptingClassResolver classResolver = new ScriptingClassResolver();
         classResolver.init(mappingsManager);
-        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService);
-        this.scriptLoader = new ScriptLoader();
+        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService, hookManager);        this.scriptLoader = new ScriptLoader();
         prewarmContextPool();
         discoverScripts();
         loadAndEnableScriptsFromConfig();

@@ -3,11 +3,13 @@ package net.me.scripting.engine;
 import net.me.Main;
 import net.me.event.Event;
 import net.me.event.EventManager;
+import net.me.hooking.HookManager;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.commands.CommandsAPI;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.LazyJsClassHolder;
 import net.me.scripting.wrappers.LazyPackageProxy;
@@ -28,17 +30,19 @@ public class ScriptContextFactory {
     private final Engine sharedEngine;
     private final EventManager eventManager;
     private final ScriptManager scriptManager;
+    private final HookManager hookManager;
     private final ConfigManager configManager;
     private final CommandAPIService commandApiService;
     private final Set<String> standardApiMembers = new HashSet<>();
 
-    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService) {
+    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager) {
         this.classResolver = classResolver;
         this.sharedEngine = sharedEngine;
         this.scriptManager = scriptManager;
         this.configManager = configManager;
         this.commandApiService = commandApiService;
         this.eventManager = eventManager;
+        this.hookManager = hookManager;
     }
 
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
@@ -76,7 +80,7 @@ public class ScriptContextFactory {
         addApiMember(bindings, "ConfigManager", createConfigProxy());
 
         addApiMember(bindings, "CommandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
-
+        addApiMember(bindings, "HookManager", createHookManagerProxy());
         addApiMember(bindings, "println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);
             return null;
@@ -87,6 +91,70 @@ public class ScriptContextFactory {
         });
     }
 
+    private ProxyObject createHookManagerProxy() {
+        return new ProxyObject() {
+            private RunningScript getCurrentScript() {
+                RunningScript script = scriptManager.getCurrentScript();
+                if (script == null) {
+                    throw new IllegalStateException("HookManager can only be used inside a running script context.");
+                }
+                return script;
+            }
+
+            @Override
+            public Object getMember(String key) {
+                return (ProxyExecutable) args -> {
+                    RunningScript owner = getCurrentScript();
+
+                    if ("hook".equals(key)) {
+                        if (args.length != 3 || !args[1].isString() || !args[2].canExecute()) {
+                            throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction)");
+                        }
+                        Object unwrappedArg = ScriptUtils.unwrapReceiver(args[0]);
+                        Class<?> targetClass = switch (unwrappedArg) {
+                            case JsClassWrapper wrapper -> wrapper.getTargetClass();
+                            case LazyJsClassHolder holder -> holder.getWrapper().getTargetClass();
+                            case Class<?> cls -> cls;
+                            case null, default ->
+                                    throw new IllegalArgumentException("First argument must be a class (e.g. from importClass).");
+                        };
+                        String yarnMethodName = args[1].asString();
+                        Value callback = args[2];
+                        hookManager.hook(owner, targetClass, yarnMethodName, callback);
+                        return null;
+                    }
+
+                    if ("unhook".equals(key)) {
+                        if (args.length != 2 || !args[1].isString()) {
+                            throw new IllegalArgumentException("Usage: HookManager.unhook(TargetClass, 'methodName')");
+                        }
+                        Object unwrappedArg = ScriptUtils.unwrapReceiver(args[0]);
+                        Class<?> targetClass = switch (unwrappedArg) {
+                            case JsClassWrapper wrapper -> wrapper.getTargetClass();
+                            case LazyJsClassHolder holder -> holder.getWrapper().getTargetClass();
+                            case Class<?> cls -> cls;
+                            case null, default ->
+                                    throw new IllegalArgumentException("First argument must be a class (e.g. from importClass).");
+                        };
+                        String yarnMethodName = args[1].asString();
+                        hookManager.unhook(targetClass, yarnMethodName);
+                        return null;
+                    }
+
+                    throw new UnsupportedOperationException("Unsupported HookManager operation: " + key);
+                };
+            }
+
+            @Override
+            public Object getMemberKeys() { return new String[]{"hook", "unhook"}; }
+
+            @Override
+            public boolean hasMember(String key) { return "hook".equals(key) || "unhook".equals(key); }
+
+            @Override
+            public void putMember(String key, Value value) { throw new UnsupportedOperationException("Cannot modify the HookManager object."); }
+        };
+    }
     private void addApiMember(Value bindings, String name, Object member) {
         bindings.putMember(name, member);
         standardApiMembers.add(name);

@@ -44,6 +44,9 @@ dependencies {
 	shadow(implementation "org.graalvm.truffle:truffle-api:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-language:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-scriptengine:${graalVersion}")
+
+	shadow(implementation "net.bytebuddy:byte-buddy:1.17.6")
+	shadow(implementation "net.bytebuddy:byte-buddy-agent:1.17.6")
 }
 
 processResources {
@@ -98,6 +101,9 @@ shadowJar {
 	configurations = [project.configurations.shadow]
 	archiveClassifier.set("dev")
 	from sourceSets.client.output
+
+	relocate 'org.graalvm', 'net.me.libs.graalvm'
+	relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
 }
 remapJar {
 	dependsOn(shadowJar)

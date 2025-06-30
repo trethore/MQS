@@ -5,6 +5,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
 import net.me.console.ConsoleManager;
 import net.me.event.EventManager;
+import net.me.hooking.HookManager;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
@@ -23,6 +24,7 @@ public class Main implements ClientModInitializer {
     private static ConfigManager configManager;
     private static ScriptManager scriptManager;
     private static MappingsManager mappingsManager;
+    private static HookManager hookManager;
 
     @Override
     public void onInitializeClient() {
@@ -33,13 +35,13 @@ public class Main implements ClientModInitializer {
         CommandManager commandManager = new CommandManager();
         ConsoleManager consoleManager = new ConsoleManager();
         ScriptingService scriptingService = new ScriptingService();
-
+        Main.hookManager = new HookManager(scriptManager, mappingsManager);
 
         mappingsManager.init();
         configManager.init();
         eventManager.init(scriptManager);
         consoleManager.init(scriptingService);
-        scriptManager.init(mappingsManager, configManager, eventManager);
+        scriptManager.init(mappingsManager, configManager, eventManager,hookManager);
         scriptingService.init(scriptManager, configManager);
         commandManager.init(scriptingService, consoleManager);
 
@@ -58,5 +60,7 @@ public class Main implements ClientModInitializer {
     public static MappingsManager getMappingsManager() {
         return mappingsManager;
     }
-
+    public static HookManager getHookManager() {
+        return hookManager;
+    }
 }

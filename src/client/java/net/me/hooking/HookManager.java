@@ -1,0 +1,186 @@
+package net.me.hooking;
+
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.agent.ByteBuddyAgent;
+import net.bytebuddy.agent.builder.AgentBuilder;
+import net.bytebuddy.asm.Advice;
+import net.bytebuddy.matcher.ElementMatchers;
+import net.me.Main;
+import net.me.scripting.ScriptManager;
+import net.me.scripting.mappings.MappingsManager;
+import net.me.scripting.module.RunningScript;
+import net.me.scripting.utils.MappingUtils;
+import org.graalvm.polyglot.Value;
+import net.bytebuddy.dynamic.scaffold.TypeValidation;
+
+
+import java.lang.instrument.ClassDefinition;
+import java.lang.instrument.Instrumentation;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+public class HookManager {
+
+    private final ScriptManager scriptManager;
+    private final MappingsManager mappingsManager;
+    private final Instrumentation instrumentation;
+
+    private final Map<String, Class<?>> nameToClassMap = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Set<String>> hookedMethods = new ConcurrentHashMap<>();
+    private final Map<Class<?>, byte[]> originalClassBytes = new ConcurrentHashMap<>();
+
+    public HookManager(ScriptManager scriptManager, MappingsManager mappingsManager) {
+        this.scriptManager = scriptManager;
+        this.mappingsManager = mappingsManager;
+        this.instrumentation = ByteBuddyAgent.install();
+        installAgent();
+    }
+
+    private void installAgent() {
+        ByteBuddy byteBuddy = new ByteBuddy().with(TypeValidation.DISABLED);
+
+        new AgentBuilder.Default(byteBuddy)
+                .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
+                .with(AgentBuilder.Listener.StreamWriting.toSystemError().withErrorsOnly())
+                .type((typeDescription, classLoader, module, classBeingRedefined, protectionDomain) ->
+                        nameToClassMap.containsKey(typeDescription.getName()))
+                .transform((builder, typeDescription, classLoader, module, protectionDomain) -> {
+                    Class<?> type = nameToClassMap.get(typeDescription.getName());
+                    if (type == null) return builder;
+
+                    Set<String> yarnMethodNames = hookedMethods.get(type);
+                    if (yarnMethodNames == null || yarnMethodNames.isEmpty()) return builder;
+
+                    List<String> runtimeMethodNames = yarnMethodNames.stream()
+                            .flatMap(yarn -> Stream.of(resolveRuntimeMethodNames(type, yarn)))
+                            .distinct()
+                            .collect(Collectors.toList());
+
+
+                    Main.LOGGER.info("Agent is advising {} for methods: {}", type.getSimpleName(), String.join(", ", runtimeMethodNames));
+
+                    return builder.visit(Advice.to(HookInterceptor.class)
+                            .on(ElementMatchers.namedOneOf(runtimeMethodNames.toArray(new String[0]))));
+                })
+                .installOn(instrumentation);
+    }
+
+    public void hook(RunningScript owner, Class<?> targetClass, String yarnMethodName, Value jsCallback) {
+        String yarnHookId = generateHookId(targetClass, yarnMethodName);
+        if (HookInterceptor.hasHook(yarnHookId)) {
+            Main.LOGGER.warn("Hook for {} is already active. Unhook it first.", yarnHookId);
+            return;
+        }
+
+        nameToClassMap.put(targetClass.getName(), targetClass);
+
+        try {
+            if (!originalClassBytes.containsKey(targetClass)) {
+                byte[] bytes = net.bytebuddy.dynamic.ClassFileLocator.ForClassLoader.read(targetClass);
+                originalClassBytes.put(targetClass, bytes);
+            }
+        } catch (Exception e) {
+            Main.LOGGER.error("Could not cache original bytes for {}. Unhooking will not be possible.", targetClass.getName(), e);
+        }
+
+        HookInterceptor.register(yarnHookId, jsCallback, owner, scriptManager);
+
+        for (String runtimeName : resolveRuntimeMethodNames(targetClass, yarnMethodName)) {
+            HookInterceptor.register(generateHookId(targetClass, runtimeName), jsCallback, owner, scriptManager);
+        }
+
+        hookedMethods.computeIfAbsent(targetClass, k -> ConcurrentHashMap.newKeySet()).add(yarnMethodName);
+
+        try {
+            instrumentation.retransformClasses(targetClass);
+            Main.LOGGER.info("Successfully requested hook for method '{}' in class '{}' for script '{}'.",
+                    yarnMethodName, targetClass.getSimpleName(), owner.getName());
+        } catch (Throwable e) {
+            Main.LOGGER.error("Failed to trigger hook for method '{}' in class '{}' for script '{}'.",
+                    yarnMethodName, targetClass.getName(), owner.getName(), e);
+
+            HookInterceptor.unregister(yarnHookId);
+            for (String runtimeName : resolveRuntimeMethodNames(targetClass, yarnMethodName)) {
+                HookInterceptor.unregister(generateHookId(targetClass, runtimeName));
+            }
+            Set<String> methods = hookedMethods.get(targetClass);
+            if(methods != null) {
+                methods.remove(yarnMethodName);
+                if (methods.isEmpty()) {
+                    nameToClassMap.remove(targetClass.getName());
+                }
+            }
+        }
+    }
+
+    public void unhook(Class<?> targetClass, String yarnMethodName) {
+        String yarnHookId = generateHookId(targetClass, yarnMethodName);
+        if (!HookInterceptor.hasHook(yarnHookId)) {
+            Main.LOGGER.warn("Attempted to unhook {}, but no active hook was found.", yarnHookId);
+            return;
+        }
+
+        HookInterceptor.unregister(yarnHookId);
+        for (String runtimeMethodName : resolveRuntimeMethodNames(targetClass, yarnMethodName)) {
+            HookInterceptor.unregister(generateHookId(targetClass, runtimeMethodName));
+        }
+
+        Set<String> methodsOnClass = hookedMethods.get(targetClass);
+        if (methodsOnClass != null) {
+            methodsOnClass.remove(yarnMethodName);
+            if (methodsOnClass.isEmpty()) {
+                byte[] originalBytes = originalClassBytes.remove(targetClass);
+                nameToClassMap.remove(targetClass.getName());
+                hookedMethods.remove(targetClass);
+
+                if (originalBytes == null) {
+                    Main.LOGGER.error("Cannot fully unhook {}: Original class bytes were not cached. A game restart is required.", yarnHookId);
+                    try {
+                        instrumentation.retransformClasses(targetClass);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                    return;
+                }
+                try {
+                    instrumentation.redefineClasses(new ClassDefinition(targetClass, originalBytes));
+                    Main.LOGGER.info("Successfully unhooked and restored class '{}'.", targetClass.getSimpleName());
+                } catch (Exception e) {
+                    Main.LOGGER.error("Failed to restore original class '{}'. A restart may be required.", targetClass.getName(), e);
+                }
+            } else {
+                try {
+                    instrumentation.retransformClasses(targetClass);
+                    Main.LOGGER.info("Successfully unregistered hook for '{}' on class '{}'. Class was re-transformed.",
+                            yarnMethodName, targetClass.getSimpleName());
+                } catch (Exception e) {
+                    Main.LOGGER.error("Failed to re-transform class '{}' after unhooking.", targetClass.getName(), e);
+                }
+            }
+        }
+    }
+
+    private String[] resolveRuntimeMethodNames(Class<?> targetClass, String yarnMethodName) {
+        MappingUtils.ClassMappings classMappings = MappingUtils.combineMappings(
+                targetClass,
+                mappingsManager.getRuntimeToYarnClassMap(),
+                mappingsManager.getMethodMap(),
+                mappingsManager.getFieldMap()
+        );
+
+        var runtimeNames = classMappings.methods().get(yarnMethodName);
+        if (runtimeNames != null && !runtimeNames.isEmpty()) {
+            return runtimeNames.toArray(new String[0]);
+        } else {
+            return new String[]{yarnMethodName};
+        }
+    }
+
+    private String generateHookId(Class<?> targetClass, String methodName) {
+        return targetClass.getName() + "::" + methodName;
+    }
+}
