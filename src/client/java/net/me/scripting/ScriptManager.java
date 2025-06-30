@@ -39,7 +39,7 @@ public class ScriptManager {
     private final ThreadLocal<RunningScript> currentScriptContext = new ThreadLocal<>();
     private final Queue<Context> contextPool = new ConcurrentLinkedQueue<>();
 
-    private static final Pattern METADATA_PATTERN = Pattern.compile("^//\\s*@(\\w+)\\s+(.+)");
+    private static final Pattern MODULE_ANNOTATION_PATTERN = Pattern.compile("^//\\s*@module\\((.*)\\)");
 
     public ScriptManager() {
         this.commandApiService = new CommandAPIService();
@@ -122,42 +122,61 @@ public class ScriptManager {
         try (Stream<Path> paths = Files.walk(scriptsDir)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".js"))
-                    .forEach(this::discoverModulesInFileByParsing);
+                    .forEach(this::discoverModulesInFile);
         } catch (IOException e) {
             Main.LOGGER.error("Error discovering scripts in {}", scriptsDir, e);
         }
         Main.LOGGER.info("Discovered {} available script modules.", availableScripts.size());
     }
 
-    private void discoverModulesInFileByParsing(Path path) {
+    private void discoverModulesInFile(Path path) {
         try {
             List<String> lines = Files.readAllLines(path);
-            Map<String, String> metadata = new HashMap<>();
             for (String line : lines) {
-                String trimmedLine = line.trim();
-                if (!trimmedLine.startsWith("//")) {
-                    if (metadata.containsKey("name")) break;
-                    continue;
-                }
-                Matcher matcher = METADATA_PATTERN.matcher(trimmedLine);
+                Matcher matcher = MODULE_ANNOTATION_PATTERN.matcher(line.trim());
                 if (matcher.matches()) {
-                    metadata.put(matcher.group(1).toLowerCase(), matcher.group(2).trim());
+                    String content = matcher.group(1);
+                    Map<String, String> metadata = parseModuleMetadata(content);
+
+                    String mainClass = metadata.get("main");
+                    String moduleName = metadata.get("name");
+
+                    if (mainClass == null || moduleName == null) {
+                        Main.LOGGER.warn("Skipping malformed @module in {}: 'main' and 'name' properties are required. Found: {}", path.getFileName(), line);
+                        continue;
+                    }
+
+                    String version = metadata.getOrDefault("version", "N/A");
+                    ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version, mainClass);
+
+                    if (availableScripts.containsKey(descriptor.getId())) {
+                        Main.LOGGER.warn("Duplicate script ID found in {}: {}. The last one found will be used.", path.getFileName(), descriptor.getId());
+                    }
+                    availableScripts.put(descriptor.getId(), descriptor);
                 }
             }
-
-            String moduleName = metadata.get("name");
-            if (moduleName == null || moduleName.isEmpty()) {
-                return;
-            }
-
-            String version = metadata.getOrDefault("version", "N/A");
-            ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version);
-            availableScripts.put(descriptor.getId(), descriptor);
-
         } catch (IOException e) {
             Main.LOGGER.error("Could not read script file for metadata: {}", path, e);
         }
     }
+
+    private Map<String, String> parseModuleMetadata(String content) {
+        Map<String, String> metadata = new HashMap<>();
+        String[] pairs = content.split(",");
+        for (String pair : pairs) {
+            String[] keyValue = pair.split("=", 2);
+            if (keyValue.length == 2) {
+                String key = keyValue[0].trim();
+                String value = keyValue[1].trim();
+                if (value.startsWith("'") && value.endsWith("'") || value.startsWith("\"") && value.endsWith("\"")) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                metadata.put(key, value);
+            }
+        }
+        return metadata;
+    }
+
 
     private Context getContextFromPool() {
         Context context = contextPool.poll();
@@ -192,14 +211,15 @@ public class ScriptManager {
             scriptContext = getContextFromPool();
             Map<String, Value> fileExports = scriptLoader.loadModules(descriptor.path(), scriptContext, perFileExports);
 
-            if (fileExports.isEmpty()) {
-                throw new IllegalStateException("No modules were exported from '" + descriptor.path().getFileName() + "'. Did you use exportModule()?");
+            String mainClassName = descriptor.mainClass();
+            Value scriptClass = fileExports.get(mainClassName);
+
+            if (scriptClass == null) {
+                throw new IllegalStateException("Could not find exported class '" + mainClassName + "' specified in @module annotation. Make sure it is exported with exportModule().");
             }
 
-            Value scriptClass = fileExports.values().iterator().next();
-
-            if (scriptClass == null || !scriptClass.canInstantiate()) {
-                throw new IllegalStateException("The module exported from '" + descriptor.path().getFileName() + "' is not an instantiable class.");
+            if (!scriptClass.canInstantiate()) {
+                throw new IllegalStateException("The module '" + mainClassName + "' exported from '" + descriptor.path().getFileName() + "' is not an instantiable class.");
             }
 
             Value jsInstance = scriptClass.newInstance();

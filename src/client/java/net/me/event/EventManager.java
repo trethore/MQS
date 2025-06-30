@@ -7,6 +7,7 @@ import net.me.mixin.fabric.event.ArrayBackedEventAccessor;
 import net.me.mixin.fabric.event.EventPhaseDataAccessor;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.utils.ScriptUtils;
 import net.minecraft.util.Identifier;
 import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
@@ -86,7 +87,11 @@ public class EventManager {
                     if (method.equals(sam)) {
                         scriptManager.setCurrentScript(owner);
                         try {
-                            jsCallback.execute(args);
+                            Object[] wrappedArgs = new Object[args.length];
+                            for (int i = 0; i < args.length; i++) {
+                                wrappedArgs[i] = ScriptUtils.wrapReturn(args[i]);
+                            }
+                            jsCallback.execute(wrappedArgs);
                         } catch (Exception e) {
                             LOGGER.error("Error executing Fabric event listener for {} in script '{}'",
                                     listenerType.getSimpleName(), owner.getName(), e);
