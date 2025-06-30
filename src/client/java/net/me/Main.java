@@ -47,6 +47,8 @@ public class Main implements ClientModInitializer {
         hookManager.init(scriptManager, mappingsManager);
         commandManager.init(scriptingService, consoleManager);
 
+        // and finally, enable all scripts !
+        scriptManager.loadAndEnableScriptsFromConfig();
         LOGGER.info("Hello from MyQOLScripts!");
     }
 

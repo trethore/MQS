@@ -57,10 +57,9 @@ public class ScriptManager {
         this.scriptLoader = new ScriptLoader();
         prewarmContextPool();
         discoverScripts();
-        loadAndEnableScriptsFromConfig();
     }
 
-    private void loadAndEnableScriptsFromConfig() {
+    public void loadAndEnableScriptsFromConfig() {
         Main.LOGGER.info("Checking configs to auto-enable scripts...");
         for (ScriptDescriptor descriptor : availableScripts.values()) {
             if (configManager.getEnabledState(descriptor.getId())) {

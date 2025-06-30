@@ -7,9 +7,6 @@ import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import org.graalvm.polyglot.Value;
 
-import java.util.Map;
-
-
 public final class ScriptUtils {
 
     private ScriptUtils() {
@@ -97,14 +94,11 @@ public final class ScriptUtils {
         }
 
         Class<?> c = o.getClass();
-        Map<String, String> runtimeToYarn = mappingsManager.getRuntimeToYarnClassMap();
 
-        if (runtimeToYarn.containsKey(c.getName()) || c.isArray()) {
-            MappingUtils.ClassMappings cm = MappingUtils.combineMappings(c, runtimeToYarn,
-                    mappingsManager.getMethodMap(),
-                    mappingsManager.getFieldMap());
-            return new JsObjectWrapper(o, c, cm.methods(), cm.fields());
-        }
-        return Value.asValue(o);
+        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(c,
+                mappingsManager.getRuntimeToYarnClassMap(),
+                mappingsManager.getMethodMap(),
+                mappingsManager.getFieldMap());
+        return new JsObjectWrapper(o, c, cm.methods(), cm.fields());
     }
 }

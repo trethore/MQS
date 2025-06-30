@@ -6,6 +6,7 @@ import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.dynamic.scaffold.TypeValidation;
 import net.bytebuddy.matcher.ElementMatchers;
+import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.mappings.MappingsManager;
@@ -13,7 +14,6 @@ import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.MappingUtils;
 import org.graalvm.polyglot.Value;
 
-import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.Instrumentation;
 import java.util.HashSet;
 import java.util.List;
@@ -33,7 +33,6 @@ public class HookManager {
 
     private final Map<String, Class<?>> nameToClassMap = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<String>> hookedMethods = new ConcurrentHashMap<>();
-    private final Map<Class<?>, byte[]> originalClassBytes = new ConcurrentHashMap<>();
 
     private ScriptManager scriptManager;
     private MappingsManager mappingsManager;
@@ -61,7 +60,10 @@ public class HookManager {
                     if (type == null) return builder;
 
                     Set<String> yarnMethodNames = hookedMethods.get(type);
-                    if (yarnMethodNames == null || yarnMethodNames.isEmpty()) return builder;
+                    if (yarnMethodNames == null || yarnMethodNames.isEmpty()) {
+                        Main.LOGGER.info("Agent is un-advising class: {}", type.getSimpleName());
+                        return builder;
+                    }
 
                     List<String> runtimeMethodNames = yarnMethodNames.stream()
                             .flatMap(yarn -> Stream.of(resolveRuntimeMethodNames(type, yarn)))
@@ -85,20 +87,18 @@ public class HookManager {
         }
 
         nameToClassMap.put(targetClass.getName(), targetClass);
-
-        try {
-            if (!originalClassBytes.containsKey(targetClass)) {
-                byte[] bytes = net.bytebuddy.dynamic.ClassFileLocator.ForClassLoader.read(targetClass);
-                originalClassBytes.put(targetClass, bytes);
-            }
-        } catch (Exception e) {
-            Main.LOGGER.error("Could not cache original bytes for {}. Unhooking will not be possible.", targetClass.getName(), e);
-        }
-
         HookInterceptor.register(yarnHookId, jsCallback, owner, scriptManager);
 
-        for (String runtimeName : resolveRuntimeMethodNames(targetClass, yarnMethodName)) {
-            HookInterceptor.register(generateHookId(targetClass, runtimeName), jsCallback, owner, scriptManager);
+        String[] runtimeNames = resolveRuntimeMethodNames(targetClass, yarnMethodName);
+        if (runtimeNames.length == 0) {
+            HookInterceptor.unregister(yarnHookId);
+            return;
+        }
+
+        for (String runtimeName : runtimeNames) {
+            if (!runtimeName.equals(yarnMethodName)) {
+                HookInterceptor.register(generateHookId(targetClass, runtimeName), jsCallback, owner, scriptManager);
+            }
         }
 
         hookedMethods.computeIfAbsent(targetClass, k -> ConcurrentHashMap.newKeySet()).add(yarnMethodName);
@@ -109,27 +109,10 @@ public class HookManager {
             Main.LOGGER.info("Successfully requested hook for method '{}' in class '{}' for script '{}'.",
                     yarnMethodName, targetClass.getSimpleName(), owner.getName());
         } catch (Throwable e) {
-            Main.LOGGER.error("Failed to trigger hook for method '{}' in class '{}' for script '{}'.",
+            Main.LOGGER.error("Failed to trigger hook for method '{}' in class '{}' for script '{}'. Cleaning up...",
                     yarnMethodName, targetClass.getName(), owner.getName(), e);
 
-            HookInterceptor.unregister(yarnHookId);
-            for (String runtimeName : resolveRuntimeMethodNames(targetClass, yarnMethodName)) {
-                HookInterceptor.unregister(generateHookId(targetClass, runtimeName));
-            }
-            Set<String> methods = hookedMethods.get(targetClass);
-            if (methods != null) {
-                methods.remove(yarnMethodName);
-                if (methods.isEmpty()) {
-                    nameToClassMap.remove(targetClass.getName());
-                }
-            }
-            Set<HookIdentifier> owned = scriptOwnedHooks.get(owner);
-            if (owned != null) {
-                owned.remove(new HookIdentifier(targetClass, yarnMethodName));
-                if (owned.isEmpty()) {
-                    scriptOwnedHooks.remove(owner);
-                }
-            }
+            unhook(owner, targetClass, yarnMethodName);
         }
     }
 
@@ -144,7 +127,9 @@ public class HookManager {
 
         HookInterceptor.unregister(yarnHookId);
         for (String runtimeMethodName : resolveRuntimeMethodNames(targetClass, yarnMethodName)) {
-            HookInterceptor.unregister(generateHookId(targetClass, runtimeMethodName));
+            if (!runtimeMethodName.equals(yarnMethodName)) {
+                HookInterceptor.unregister(generateHookId(targetClass, runtimeMethodName));
+            }
         }
 
         Set<HookIdentifier> owned = scriptOwnedHooks.get(owner);
@@ -159,33 +144,20 @@ public class HookManager {
         if (methodsOnClass != null) {
             methodsOnClass.remove(yarnMethodName);
             if (methodsOnClass.isEmpty()) {
-                byte[] originalBytes = originalClassBytes.remove(targetClass);
-                nameToClassMap.remove(targetClass.getName());
                 hookedMethods.remove(targetClass);
+                nameToClassMap.remove(targetClass.getName());
+            }
 
-                if (originalBytes == null) {
-                    Main.LOGGER.error("Cannot fully unhook {}: Original class bytes were not cached. A game restart is required.", yarnHookId);
-                    try {
-                        instrumentation.retransformClasses(targetClass);
-                    } catch (Exception e) {
-                        // ignore
-                    }
-                    return;
-                }
-                try {
-                    instrumentation.redefineClasses(new ClassDefinition(targetClass, originalBytes));
+            try {
+                instrumentation.retransformClasses(targetClass);
+                if (methodsOnClass.isEmpty()) {
                     Main.LOGGER.info("Successfully unhooked and restored class '{}'.", targetClass.getSimpleName());
-                } catch (Exception e) {
-                    Main.LOGGER.error("Failed to restore original class '{}'. A restart may be required.", targetClass.getName(), e);
-                }
-            } else {
-                try {
-                    instrumentation.retransformClasses(targetClass);
+                } else {
                     Main.LOGGER.info("Successfully unregistered hook for '{}' on class '{}'. Class was re-transformed.",
                             yarnMethodName, targetClass.getSimpleName());
-                } catch (Exception e) {
-                    Main.LOGGER.error("Failed to re-transform class '{}' after unhooking.", targetClass.getName(), e);
                 }
+            } catch (Exception e) {
+                Main.LOGGER.error("Failed to re-transform class '{}' after unhooking.", targetClass.getName(), e);
             }
         }
     }
@@ -216,7 +188,12 @@ public class HookManager {
         if (runtimeNames != null && !runtimeNames.isEmpty()) {
             return runtimeNames.toArray(new String[0]);
         } else {
-            return new String[]{yarnMethodName};
+            if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+                return new String[]{yarnMethodName};
+            } else {
+                Main.LOGGER.error("Could not find production mapping for method '{}' on class '{}'. The hook will not be applied.", yarnMethodName, targetClass.getName());
+                return new String[0];
+            }
         }
     }
 

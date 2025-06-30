@@ -53,6 +53,7 @@ public class AllScriptsScreen extends MQSScreen {
 
     @Override
     public void init() {
+        this.scriptEntryWidgets.clear();
         super.init();
 
         addSearch();
