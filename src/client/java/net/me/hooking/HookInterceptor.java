@@ -8,90 +8,128 @@ import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @SuppressWarnings("unused")
 public class HookInterceptor {
 
-    public static final Map<String, HookData> HOOKS = new ConcurrentHashMap<>();
+    public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
     public static final ThreadLocal<AdviceContext> adviceContext = new ThreadLocal<>();
 
     public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager) {
-        HOOKS.put(hookId, new HookData(jsCallback, owner, scriptManager));
+        HOOKS.computeIfAbsent(hookId, k -> new CopyOnWriteArrayList<>())
+                .addFirst(new HookData(jsCallback, owner, scriptManager));
         Main.LOGGER.info("Registered hook: {}", hookId);
     }
 
-    public static void unregister(String hookId) {
-        if (HOOKS.remove(hookId) != null) {
-            Main.LOGGER.info("Unregistered hook: {}", hookId);
+    public static void unregister(String hookId, RunningScript owner) {
+        CopyOnWriteArrayList<HookData> hookList = HOOKS.get(hookId);
+        if (hookList != null) {
+            boolean removed = hookList.removeIf(data -> data.owner().equals(owner));
+            if (removed) {
+                Main.LOGGER.info("Unregistered hook owned by '{}': {}", owner.getName(), hookId);
+            }
+            if (hookList.isEmpty()) {
+                HOOKS.remove(hookId);
+            }
         }
     }
 
     public static boolean hasHook(String hookId) {
-        return HOOKS.containsKey(hookId);
+        CopyOnWriteArrayList<HookData> hookList = HOOKS.get(hookId);
+        return hookList != null && !hookList.isEmpty();
     }
 
     @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
     public static boolean onEnter(
             @Advice.Origin Method method,
-            @Advice.AllArguments Object[] args
+            @Advice.AllArguments(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object[] args
     ) {
         String hookId = method.getDeclaringClass().getName() + "::" + method.getName();
-        HookData data = HOOKS.get(hookId);
+        CopyOnWriteArrayList<HookData> hookList = HOOKS.get(hookId);
 
-        if (data == null) {
+        if (hookList == null || hookList.isEmpty()) {
             return false;
         }
 
-        AtomicReference<Boolean> shouldCallSuper = new AtomicReference<>(false);
-        ProxyExecutable superProxy = new SuperCallProxy(shouldCallSuper);
-
-        Main.LOGGER.debug("Hook (enter) found for {}, executing JS callback", hookId);
-        data.scriptManager().setCurrentScript(data.owner());
+        ProxyExecutable nextInChain = getProxyExecutable(method, hookList);
 
         try {
-            Object[] wrappedArgs = new Object[args.length];
+            Value[] initialChainArgs = new Value[args.length];
             for (int i = 0; i < args.length; i++) {
-                wrappedArgs[i] = ScriptUtils.wrapReturn(args[i]);
+                initialChainArgs[i] = Value.asValue(args[i]);
             }
+            Object raw = nextInChain.execute(initialChainArgs);
+            Value result = (Value) raw;
 
-            Value result = data.jsCallback().execute(
-                    ScriptUtils.wrapReturn(method),
-                    data.owner().getContext().asValue(wrappedArgs),
-                    data.owner().getContext().asValue(superProxy)
-            );
-
-            boolean hasReturnValue = method.getReturnType() != void.class && method.getReturnType() != Void.class;
-
-            if (shouldCallSuper.get()) {
-                adviceContext.set(new AdviceContext(true, null));
+            AdviceContext context = adviceContext.get();
+            if (context != null && context.shouldExecuteOriginal()) {
+                Value[] newArgs = context.modifiedArgs();
+                if (newArgs != null && newArgs.length == args.length) {
+                    for (int i = 0; i < args.length; i++) {
+                        args[i] = ScriptUtils.unwrapArgs(
+                                new Value[]{ newArgs[i] },
+                                new Class<?>[]{ args[i].getClass() }
+                        )[0];
+                    }
+                }
+                adviceContext.set(new AdviceContext(true, null, null));
                 return false;
             } else {
+                boolean hasReturnValue = method.getReturnType() != void.class
+                        && method.getReturnType() != Void.class;
                 if (hasReturnValue) {
-                    Object unwrappedResult = ScriptUtils.unwrapArgs(new Value[]{result}, new Class<?>[]{method.getReturnType()})[0];
-                    adviceContext.set(new AdviceContext(false, unwrappedResult));
+                    Object unwrapped = ScriptUtils.unwrapArgs(
+                            new Value[]{ result },
+                            new Class<?>[]{ method.getReturnType() }
+                    )[0];
+                    adviceContext.set(new AdviceContext(false, unwrapped, null));
                 } else {
-                    adviceContext.set(new AdviceContext(false, null));
+                    adviceContext.set(new AdviceContext(false, null, null));
                 }
                 return true;
             }
         } catch (Exception e) {
-            Main.LOGGER.error("JS hook error {}#{} in {}",
+            Main.LOGGER.error("JS hook chain error in {}#{}",
                     method.getDeclaringClass().getSimpleName(),
-                    method.getName(), data.owner().getName(), e);
-            adviceContext.set(new AdviceContext(true, null));
+                    method.getName(), e);
+            adviceContext.set(new AdviceContext(true, null, null));
             return false;
-        } finally {
-            data.scriptManager().clearCurrentScript();
         }
     }
 
+    public static @NotNull ProxyExecutable getProxyExecutable(Method method, CopyOnWriteArrayList<HookData> hookList) {
+        ProxyExecutable nextInChain = passedArgs -> {
+            adviceContext.set(new AdviceContext(true, null, passedArgs));
+            return null;
+        };
+
+        for (int i = hookList.size() - 1; i >= 0; i--) {
+            final HookData data = hookList.get(i);
+            final ProxyExecutable finalNextInChain = nextInChain;
+            nextInChain = passedArgs -> {
+                data.scriptManager().setCurrentScript(data.owner());
+                try {
+                    return data.jsCallback().execute(
+                            ScriptUtils.wrapReturn(method),
+                            data.owner().getContext().asValue(ScriptUtils.unwrapArgs(passedArgs, null)),
+                            data.owner().getContext().asValue(finalNextInChain)
+                    );
+                } finally {
+                    data.scriptManager().clearCurrentScript();
+                }
+            };
+        }
+        return nextInChain;
+    }
+
     @SuppressWarnings({"UnusedAssignment", "ParameterCanBeLocal"})
-    @Advice.OnMethodExit(onThrowable = Throwable.class)
+    @Advice.OnMethodExit
     public static void onExit(
             @Advice.Return(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object returnValue
     ) {
@@ -99,31 +137,12 @@ public class HookInterceptor {
         if (context == null) {
             return;
         }
-
         if (!context.shouldExecuteOriginal()) {
             returnValue = context.overriddenReturnValue();
         }
         adviceContext.remove();
     }
 
-    public static class SuperCallProxy implements ProxyExecutable {
-        private final AtomicReference<Boolean> shouldCallSuper;
-
-        public SuperCallProxy(AtomicReference<Boolean> shouldCallSuper) {
-            this.shouldCallSuper = shouldCallSuper;
-        }
-
-        @Override
-        public Object execute(Value... arguments) {
-            shouldCallSuper.set(true);
-            return null;
-        }
-    }
-
-
-    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager) {
-    }
-
-    public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue) {
-    }
+    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager) { }
+    public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue, Value[] modifiedArgs) { }
 }

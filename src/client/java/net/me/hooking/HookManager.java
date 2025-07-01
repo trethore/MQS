@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -81,17 +82,30 @@ public class HookManager {
 
     public void hook(RunningScript owner, Class<?> targetClass, String yarnMethodName, Value jsCallback) {
         String yarnHookId = generateHookId(targetClass, yarnMethodName);
-        if (HookInterceptor.hasHook(yarnHookId)) {
-            Main.LOGGER.warn("Hook for {} is already active. Unhook it first.", yarnHookId);
+
+        boolean alreadyHookedByThisScript = HookInterceptor.HOOKS
+                .getOrDefault(yarnHookId, new CopyOnWriteArrayList<>())
+                .stream()
+                .anyMatch(data -> data.owner().equals(owner));
+
+        if (alreadyHookedByThisScript) {
+            Main.LOGGER.warn("Script '{}' has already hooked '{}'. Unhook it first if you wish to replace it.", owner.getName(), yarnHookId);
             return;
         }
 
-        nameToClassMap.put(targetClass.getName(), targetClass);
+        boolean isFirstHookForClass = !nameToClassMap.containsKey(targetClass.getName());
+        if (isFirstHookForClass) {
+            nameToClassMap.put(targetClass.getName(), targetClass);
+        }
+
         HookInterceptor.register(yarnHookId, jsCallback, owner, scriptManager);
 
         String[] runtimeNames = resolveRuntimeMethodNames(targetClass, yarnMethodName);
         if (runtimeNames.length == 0) {
-            HookInterceptor.unregister(yarnHookId);
+            HookInterceptor.unregister(yarnHookId, owner);
+            if (isFirstHookForClass) {
+                nameToClassMap.remove(targetClass.getName());
+            }
             return;
         }
 
@@ -118,17 +132,20 @@ public class HookManager {
 
     public void unhook(RunningScript owner, Class<?> targetClass, String yarnMethodName) {
         String yarnHookId = generateHookId(targetClass, yarnMethodName);
-        HookInterceptor.HookData data = HookInterceptor.HOOKS.get(yarnHookId);
-        if (data == null || !data.owner().equals(owner)) {
+
+        CopyOnWriteArrayList<HookInterceptor.HookData> hookList = HookInterceptor.HOOKS.get(yarnHookId);
+        boolean isOwner = hookList != null && hookList.stream().anyMatch(d -> d.owner().equals(owner));
+
+        if (!isOwner) {
             Main.LOGGER.warn("Script '{}' attempted to unhook '{}', which it does not own or is not hooked.",
                     owner.getName(), yarnHookId);
             return;
         }
 
-        HookInterceptor.unregister(yarnHookId);
+        HookInterceptor.unregister(yarnHookId, owner);
         for (String runtimeMethodName : resolveRuntimeMethodNames(targetClass, yarnMethodName)) {
             if (!runtimeMethodName.equals(yarnMethodName)) {
-                HookInterceptor.unregister(generateHookId(targetClass, runtimeMethodName));
+                HookInterceptor.unregister(generateHookId(targetClass, runtimeMethodName), owner);
             }
         }
 
@@ -140,25 +157,28 @@ public class HookManager {
             }
         }
 
-        Set<String> methodsOnClass = hookedMethods.get(targetClass);
-        if (methodsOnClass != null) {
-            methodsOnClass.remove(yarnMethodName);
-            if (methodsOnClass.isEmpty()) {
-                hookedMethods.remove(targetClass);
-                nameToClassMap.remove(targetClass.getName());
-            }
-
-            try {
-                instrumentation.retransformClasses(targetClass);
+        if (!HookInterceptor.hasHook(yarnHookId)) {
+            Set<String> methodsOnClass = hookedMethods.get(targetClass);
+            if (methodsOnClass != null) {
+                methodsOnClass.remove(yarnMethodName);
                 if (methodsOnClass.isEmpty()) {
-                    Main.LOGGER.info("Successfully unhooked and restored class '{}'.", targetClass.getSimpleName());
+                    hookedMethods.remove(targetClass);
+                    nameToClassMap.remove(targetClass.getName());
+                    Main.LOGGER.info("All hooks for class '{}' have been removed. It will be restored to its original state.", targetClass.getSimpleName());
                 } else {
-                    Main.LOGGER.info("Successfully unregistered hook for '{}' on class '{}'. Class was re-transformed.",
+                    Main.LOGGER.info("Successfully unregistered hook for '{}' on class '{}'. Other hooks remain.",
                             yarnMethodName, targetClass.getSimpleName());
                 }
-            } catch (Exception e) {
-                Main.LOGGER.error("Failed to re-transform class '{}' after unhooking.", targetClass.getName(), e);
+
+                try {
+                    instrumentation.retransformClasses(targetClass);
+                } catch (Exception e) {
+                    Main.LOGGER.error("Failed to re-transform class '{}' after unhooking.", targetClass.getName(), e);
+                }
             }
+        } else {
+            Main.LOGGER.info("Successfully unregistered hook for '{}' on class '{}' for script '{}'. Other scripts still have hooks.",
+                    yarnMethodName, targetClass.getSimpleName(), owner.getName());
         }
     }
 

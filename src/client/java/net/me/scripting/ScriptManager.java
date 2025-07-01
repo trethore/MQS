@@ -53,6 +53,7 @@ public class ScriptManager {
         ensureScriptDirectory();
         ScriptingClassResolver classResolver = new ScriptingClassResolver();
         classResolver.init(mappingsManager);
+        this.commandApiService.init();
         this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService, hookManager);
         this.scriptLoader = new ScriptLoader();
         prewarmContextPool();
