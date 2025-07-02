@@ -45,6 +45,7 @@ public class Main implements ClientModInitializer {
     public static EventManager getEventManager() {
         return eventManager;
     }
+
     public static GlobalConfigManager getGlobalConfigManager() {
         return globalConfigManager;
     }

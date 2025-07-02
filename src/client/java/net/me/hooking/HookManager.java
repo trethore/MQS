@@ -31,6 +31,7 @@ public class HookManager {
     private final Map<Class<?>, Set<String>> hookedMethods = new ConcurrentHashMap<>();
     private ScriptManager scriptManager;
     private MappingsManager mappingsManager;
+
     public HookManager() {
         this.instrumentation = ByteBuddyAgent.install();
         installAgent();

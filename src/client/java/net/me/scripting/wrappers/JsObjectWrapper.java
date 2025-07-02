@@ -1,5 +1,6 @@
 package net.me.scripting.wrappers;
 
+import net.me.scripting.utils.FastAccessorUtils;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.support.FieldLookup;
 import net.me.scripting.wrappers.support.MethodLookup;
@@ -7,6 +8,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -116,10 +118,12 @@ public class JsObjectWrapper implements ProxyObject {
         try {
             Field f = fields.accessField(instanceClass, key);
             if (Modifier.isStatic(f.getModifiers())) return null;
-            return ScriptUtils.wrapReturn(f.get(javaInstance));
+            MethodHandle getter = FastAccessorUtils.getFieldGetter(f);
+            Object result = getter.bindTo(javaInstance).invoke();
+            return ScriptUtils.wrapReturn(result);
         } catch (NoSuchFieldException e) {
             return null;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new RuntimeException("Field access failed: " + key, e);
         }
     }
@@ -129,10 +133,10 @@ public class JsObjectWrapper implements ProxyObject {
             if (m.getParameterCount() == args.length) {
                 try {
                     Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
-
-                    Object result = m.invoke(this.javaInstance, javaArgs);
+                    MethodHandle handle = FastAccessorUtils.getMethodHandle(m);
+                    Object result = handle.bindTo(this.javaInstance).invokeWithArguments(javaArgs);
                     return ScriptUtils.wrapReturn(result);
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     if (e.getCause() != null) {
                         throw new RuntimeException("Method '" + yarnName + "' threw an exception: " + e.getCause().getMessage(), e.getCause());
                     }
@@ -149,8 +153,9 @@ public class JsObjectWrapper implements ProxyObject {
             if (Modifier.isStatic(f.getModifiers()) || Modifier.isFinal(f.getModifiers()))
                 throw new UnsupportedOperationException("Cannot modify field: " + key);
             Object javaVal = ScriptUtils.unwrapArgs(new Value[]{value}, new Class[]{f.getType()})[0];
-            f.set(javaInstance, javaVal);
-        } catch (Exception e) {
+            MethodHandle setter = FastAccessorUtils.getFieldSetter(f);
+            setter.bindTo(javaInstance).invoke(javaVal);
+        } catch (Throwable e) {
             throw new RuntimeException("Field write failed: " + key, e);
         }
     }

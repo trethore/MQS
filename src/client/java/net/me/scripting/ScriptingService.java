@@ -40,7 +40,6 @@ public class ScriptingService {
         if (!scriptManager.isRunning(scriptId)) {
             return;
         }
-        configManager.setEnabledState(scriptId, false);
         scriptManager.disableScript(scriptId);
     }
 

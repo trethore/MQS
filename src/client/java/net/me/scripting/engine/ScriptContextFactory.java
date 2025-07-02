@@ -324,7 +324,6 @@ public class ScriptContextFactory {
                             return result;
                         }
                         case "set": {
-                            Main.LOGGER.info("Config.set called");
                             if (args.length != 2)
                                 throw new IllegalArgumentException("Config.set requires two arguments (key, value).");
                             Value config = cm.getConfigForScript(script);

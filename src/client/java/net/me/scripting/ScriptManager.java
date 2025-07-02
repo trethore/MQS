@@ -244,6 +244,7 @@ public class ScriptManager {
             setCurrentScript(script);
             try {
                 script.onDisable();
+                configManager.setEnabledState(scriptId, false);
             } finally {
                 eventManager.unregister(script);
                 commandApiService.unregisterAllFor(script);

@@ -28,6 +28,7 @@ public class ConsoleScreen extends MQSScreen {
     private String unsentInput = "";
     private boolean navigatingHistory = false;
     private int lastMessageCount = 0;
+
     public ConsoleScreen(AllScriptsScreen parent, ConsoleManager consoleManager) {
         super("The QOL Console", 400, 300, parent);
         this.consoleManager = consoleManager;

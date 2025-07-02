@@ -1,6 +1,7 @@
 package net.me.scripting.wrappers;
 
 import net.me.Main;
+import net.me.scripting.utils.FastAccessorUtils;
 import net.me.scripting.utils.ReflectionUtils;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Value;
@@ -8,6 +9,8 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -24,6 +27,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     private final Map<String, List<String>> yarnToRuntimeMethods;
     private final Map<String, String> yarnToRuntimeFields;
     private final List<Constructor<?>> constructors;
+    private final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
     public JsClassWrapper(String runtimeFqcn,
                           Map<String, List<String>> methodLookup,
@@ -115,9 +119,10 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
             if (ctor.getParameterCount() == argCount) {
                 try {
                     Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, ctor.getParameterTypes());
-                    Object instance = ctor.newInstance(javaArgs);
+                    MethodHandle handle = lookup.unreflectConstructor(ctor);
+                    Object instance = handle.invokeWithArguments(javaArgs);
                     return ScriptUtils.wrapReturn(instance);
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     throw new RuntimeException(
                             String.format("Failed to instantiate %s: %s", targetClassName, e.getMessage()), e);
                 }
@@ -141,11 +146,14 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                 if (m.getParameterCount() == argCount) {
                     try {
                         Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, m.getParameterTypes());
-                        Object result = m.invoke(null, javaArgs);
+                        MethodHandle handle = FastAccessorUtils.getMethodHandle(m);
+                        Object result = handle.invokeWithArguments(javaArgs);
                         return ScriptUtils.wrapReturn(result);
-                    } catch (Exception e) {
-                        throw new RuntimeException(
-                                String.format("Failed to instantiate %s: %s", targetClassName, e.getMessage()), e);
+                    } catch (Throwable e) {
+                        if (e.getCause() != null) {
+                            throw new RuntimeException(String.format("Static method %s.%s threw an exception: %s", targetClassName, yarnKey, e.getCause().getMessage()), e.getCause());
+                        }
+                        throw new RuntimeException(String.format("Method invocation failed for static method %s.%s. See logs for details.", targetClassName, yarnKey), e);
                     }
                 }
             }
@@ -161,8 +169,9 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
             if (!Modifier.isStatic(f.getModifiers())) {
                 throw new RuntimeException(yarnKey + " is not a static field.");
             }
-            return ScriptUtils.wrapReturn(f.get(null));
-        } catch (Exception e) {
+            MethodHandle getter = FastAccessorUtils.getFieldGetter(f);
+            return ScriptUtils.wrapReturn(getter.invoke());
+        } catch (Throwable e) {
             throw new RuntimeException(
                     String.format("Error accessing static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
         }
@@ -179,8 +188,9 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                 throw new UnsupportedOperationException("Cannot modify final static field '" + yarnKey + "'.");
             }
             Object javaVal = ScriptUtils.unwrapArgs(new Value[]{value}, new Class[]{f.getType()})[0];
-            f.set(null, javaVal);
-        } catch (Exception e) {
+            MethodHandle setter = FastAccessorUtils.getFieldSetter(f);
+            setter.invoke(javaVal);
+        } catch (Throwable e) {
             throw new RuntimeException(
                     String.format("Error setting static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
         }
