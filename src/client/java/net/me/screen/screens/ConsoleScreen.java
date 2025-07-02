@@ -16,27 +16,18 @@ import java.util.List;
 public class ConsoleScreen extends MQSScreen {
 
     private final ConsoleManager consoleManager;
-
-    private record DisplayLine(String text, int color) {
-    }
-
-    private DarkTextFieldWidget inputField;
-    private double scrollY = 0;
-    private boolean autoScroll = true;
-
-    private int historyIndex;
-    private String unsentInput = "";
-    private boolean navigatingHistory = false;
-
     private final int PADDING = 10;
     private final int INPUT_HEIGHT = 20;
     private final int HEADER_MARGIN = 55;
     private final int FOOTER_MARGIN = 15;
-
     private final List<DisplayLine> displayLines = new ArrayList<>();
+    private DarkTextFieldWidget inputField;
+    private double scrollY = 0;
+    private boolean autoScroll = true;
+    private int historyIndex;
+    private String unsentInput = "";
+    private boolean navigatingHistory = false;
     private int lastMessageCount = 0;
-
-
     public ConsoleScreen(AllScriptsScreen parent, ConsoleManager consoleManager) {
         super("The QOL Console", 400, 300, parent);
         this.consoleManager = consoleManager;
@@ -214,6 +205,9 @@ public class ConsoleScreen extends MQSScreen {
             }
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    private record DisplayLine(String text, int color) {
     }
 
 

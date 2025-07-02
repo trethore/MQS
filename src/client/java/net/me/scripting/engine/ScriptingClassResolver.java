@@ -10,13 +10,13 @@ import java.util.*;
 
 public class ScriptingClassResolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScriptingClassResolver.class);
+    private static final Set<String> EXCLUDED = Set.of();
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
     private Map<String, String> classMap;
     private Map<String, Map<String, List<String>>> methodMap;
     private Map<String, Map<String, String>> fieldMap;
     private Map<String, String> runtimeToYarn;
     private Set<String> knownPackagePrefixes;
-    private static final Set<String> EXCLUDED = Set.of();
 
     public ScriptingClassResolver() {
     }

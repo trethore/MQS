@@ -145,9 +145,6 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         }
     }
 
-    private record ArgumentParser(Value overridesValue, Value addonsValue, Value[] constructorArgs) {
-    }
-
     private ArgumentParser parseArguments(Value[] args) {
         Value lastArg = args[args.length - 1];
         if (!isObjectLike(lastArg)) {
@@ -291,5 +288,8 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     @Override
     public void putMember(String key, Value value) {
         throw new UnsupportedOperationException("Cannot set members on MappedClassExtender function object.");
+    }
+
+    private record ArgumentParser(Value overridesValue, Value addonsValue, Value[] constructorArgs) {
     }
 }

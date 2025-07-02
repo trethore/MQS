@@ -19,6 +19,10 @@ public class DarkButtonWidget extends ButtonWidget {
         this.activeTextColor = activeTextColor;
     }
 
+    public static Builder builder(String message, PressAction onPress) {
+        return new Builder(message, onPress);
+    }
+
     public void setColors(int unactiveTextColor, int activeTextColor) {
         this.unactiveTextColor = unactiveTextColor;
         this.activeTextColor = activeTextColor;
@@ -29,10 +33,6 @@ public class DarkButtonWidget extends ButtonWidget {
         this.setY(y);
         this.setWidth(width);
         this.setHeight(height);
-    }
-
-    public static Builder builder(String message, PressAction onPress) {
-        return new Builder(message, onPress);
     }
 
     @Override

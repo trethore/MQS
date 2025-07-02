@@ -5,15 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class MappingUtils {
 
-    private MappingUtils() {
-    }
-
     private static final Map<Class<?>, ClassMappings> MAPPINGS_CACHE = new ConcurrentHashMap<>();
 
-    public record ClassMappings(
-            Map<String, List<String>> methods,
-            Map<String, String> fields
-    ) {
+    private MappingUtils() {
     }
 
     public static ClassMappings combineMappings(Class<?> cls,
@@ -67,5 +61,11 @@ public final class MappingUtils {
             }
             toSearch.addAll(Arrays.asList(current.getInterfaces()));
         }
+    }
+
+    public record ClassMappings(
+            Map<String, List<String>> methods,
+            Map<String, String> fields
+    ) {
     }
 }

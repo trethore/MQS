@@ -23,9 +23,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class CommandAPIService {
     private final Map<RunningScript, Map<String, LiteralArgumentBuilder<FabricClientCommandSource>>> scriptCommands = new ConcurrentHashMap<>();
     private final Set<String> allManagedCommandNames = ConcurrentHashMap.newKeySet();
-    private record QueuedCommand(RunningScript owner, LiteralArgumentBuilder<FabricClientCommandSource> builder){}
     private final Queue<QueuedCommand> commandQueue = new ConcurrentLinkedQueue<>();
-
 
     public void init() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
@@ -164,5 +162,8 @@ public class CommandAPIService {
             }
             Main.LOGGER.info("Patched client suggestion command tree in-memory.");
         });
+    }
+
+    private record QueuedCommand(RunningScript owner, LiteralArgumentBuilder<FabricClientCommandSource> builder) {
     }
 }

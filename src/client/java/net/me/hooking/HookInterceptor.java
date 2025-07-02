@@ -73,8 +73,8 @@ public class HookInterceptor {
                 if (newArgs != null && newArgs.length == args.length) {
                     for (int i = 0; i < args.length; i++) {
                         args[i] = ScriptUtils.unwrapArgs(
-                                new Value[]{ newArgs[i] },
-                                new Class<?>[]{ args[i].getClass() }
+                                new Value[]{newArgs[i]},
+                                new Class<?>[]{args[i].getClass()}
                         )[0];
                     }
                 }
@@ -85,8 +85,8 @@ public class HookInterceptor {
                         && method.getReturnType() != Void.class;
                 if (hasReturnValue) {
                     Object unwrapped = ScriptUtils.unwrapArgs(
-                            new Value[]{ result },
-                            new Class<?>[]{ method.getReturnType() }
+                            new Value[]{result},
+                            new Class<?>[]{method.getReturnType()}
                     )[0];
                     adviceContext.set(new AdviceContext(false, unwrapped, null));
                 } else {
@@ -143,6 +143,9 @@ public class HookInterceptor {
         adviceContext.remove();
     }
 
-    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager) { }
-    public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue, Value[] modifiedArgs) { }
+    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager) {
+    }
+
+    public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue, Value[] modifiedArgs) {
+    }
 }

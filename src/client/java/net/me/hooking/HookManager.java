@@ -26,18 +26,11 @@ import java.util.stream.Stream;
 
 public class HookManager {
     private final Instrumentation instrumentation;
-
-    private record HookIdentifier(Class<?> targetClass, String yarnMethodName) {
-    }
-
     private final Map<RunningScript, Set<HookIdentifier>> scriptOwnedHooks = new ConcurrentHashMap<>();
-
     private final Map<String, Class<?>> nameToClassMap = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<String>> hookedMethods = new ConcurrentHashMap<>();
-
     private ScriptManager scriptManager;
     private MappingsManager mappingsManager;
-
     public HookManager() {
         this.instrumentation = ByteBuddyAgent.install();
         installAgent();
@@ -219,5 +212,8 @@ public class HookManager {
 
     private String generateHookId(Class<?> targetClass, String methodName) {
         return targetClass.getName() + "::" + methodName;
+    }
+
+    private record HookIdentifier(Class<?> targetClass, String yarnMethodName) {
     }
 }

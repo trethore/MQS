@@ -11,13 +11,41 @@ import java.util.Arrays;
 
 public class CommandsAPI implements ProxyObject {
 
+    private static final ProxyObject ARG_TYPE_PROXY = createArgTypeProxy();
     private final CommandAPIService service;
     private final ScriptManager scriptManager;
-    private static final ProxyObject ARG_TYPE_PROXY = createArgTypeProxy();
 
     public CommandsAPI(ScriptManager scriptManager, CommandAPIService service) {
         this.scriptManager = scriptManager;
         this.service = service;
+    }
+
+    private static ProxyObject createArgTypeProxy() {
+        return new ProxyObject() {
+            @Override
+            public Object getMember(String key) {
+                return Arrays.stream(ScriptArgumentType.values())
+                        .filter(type -> type.name().equals(key))
+                        .findFirst()
+                        .map(ScriptArgumentType::toString)
+                        .orElse(null);
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return Arrays.stream(ScriptArgumentType.values()).map(Enum::name).toArray(String[]::new);
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return Arrays.stream(ScriptArgumentType.values()).anyMatch(type -> type.name().equals(key));
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify the ArgType object.");
+            }
+        };
     }
 
     private RunningScript getCurrentScript() {
@@ -82,34 +110,6 @@ public class CommandsAPI implements ProxyObject {
                 }
                 default:
                     throw new UnsupportedOperationException("Unsupported Commands operation: " + key);
-            }
-        };
-    }
-
-    private static ProxyObject createArgTypeProxy() {
-        return new ProxyObject() {
-            @Override
-            public Object getMember(String key) {
-                return Arrays.stream(ScriptArgumentType.values())
-                        .filter(type -> type.name().equals(key))
-                        .findFirst()
-                        .map(ScriptArgumentType::toString)
-                        .orElse(null);
-            }
-
-            @Override
-            public Object getMemberKeys() {
-                return Arrays.stream(ScriptArgumentType.values()).map(Enum::name).toArray(String[]::new);
-            }
-
-            @Override
-            public boolean hasMember(String key) {
-                return Arrays.stream(ScriptArgumentType.values()).anyMatch(type -> type.name().equals(key));
-            }
-
-            @Override
-            public void putMember(String key, Value value) {
-                throw new UnsupportedOperationException("Cannot modify the ArgType object.");
             }
         };
     }

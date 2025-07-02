@@ -24,22 +24,18 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class ScriptManager {
+    private static final Pattern MODULE_ANNOTATION_PATTERN = Pattern.compile("^//\\s*@module\\((.*)\\)");
     private final Map<String, ScriptDescriptor> availableScripts = new HashMap<>();
     private final Map<String, RunningScript> runningScripts = new HashMap<>();
-
-    private ScriptContextFactory contextFactory;
-    private ScriptLoader scriptLoader;
-
-    private EventManager eventManager;
-    private ConfigManager configManager;
-    private HookManager hookManager;
     private final CommandAPIService commandApiService;
-
     private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
     private final ThreadLocal<RunningScript> currentScriptContext = new ThreadLocal<>();
     private final Queue<Context> contextPool = new ConcurrentLinkedQueue<>();
-
-    private static final Pattern MODULE_ANNOTATION_PATTERN = Pattern.compile("^//\\s*@module\\((.*)\\)");
+    private ScriptContextFactory contextFactory;
+    private ScriptLoader scriptLoader;
+    private EventManager eventManager;
+    private ConfigManager configManager;
+    private HookManager hookManager;
 
     public ScriptManager() {
         this.commandApiService = new CommandAPIService();

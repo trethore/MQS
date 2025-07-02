@@ -30,17 +30,15 @@ public class AllScriptsScreen extends MQSScreen {
     private final ConsoleManager consoleManager;
 
     private final List<ScriptDescriptor> allScripts;
+    private final List<ScriptDescriptorToggleWidget> scriptEntryWidgets = new ArrayList<>();
     private List<ScriptDescriptor> filteredScripts;
     private int currentPage = 0;
     private int totalPages = 1;
-
     private DarkTextFieldWidget searchTextField;
     private DarkButtonWidget prevButton;
     private DarkButtonWidget nextButton;
     private DarkButtonWidget refreshButton;
     private boolean isRefreshing = false;
-
-    private final List<ScriptDescriptorToggleWidget> scriptEntryWidgets = new ArrayList<>();
 
     public AllScriptsScreen(ScriptingService scriptingService, ConsoleManager consoleManager) {
         super("My QOL Scripts", 300, 280);

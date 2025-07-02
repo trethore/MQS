@@ -6,8 +6,8 @@ import org.graalvm.polyglot.Value;
 
 public class RunningScript {
     private final ScriptDescriptor descriptor;
-    private Value jsInstance;
     private final String name;
+    private Value jsInstance;
     private Context context;
 
     public RunningScript(ScriptDescriptor descriptor, Value jsInstance, Context context) {

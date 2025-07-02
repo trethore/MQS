@@ -24,19 +24,38 @@ public class Main implements ClientModInitializer {
 
     private static ConfigManager configManager;
     private static MappingsManager mappingsManager;
+    private static ScriptManager scriptManager;
+    private static HookManager hookManager;
+    private static EventManager eventManager;
+    private static CommandManager commandManager;
+    private static ConsoleManager consoleManager;
+    private static ScriptingService scriptingService;
+    private static Engine scriptEngine;
+
+    public static ConfigManager getConfigManager() {
+        return configManager;
+    }
+
+    public static MappingsManager getMappingsManager() {
+        return mappingsManager;
+    }
+
+    public static EventManager getEventManager() {
+        return eventManager;
+    }
 
     @Override
     public void onInitializeClient() {
         Main.mappingsManager = new MappingsManager();
         Main.configManager = new ConfigManager();
-        ScriptManager scriptManager = new ScriptManager();
-        HookManager hookManager = new HookManager();
-        EventManager eventManager = new EventManager();
-        CommandManager commandManager = new CommandManager();
-        ConsoleManager consoleManager = new ConsoleManager();
-        ScriptingService scriptingService = new ScriptingService();
+        Main.scriptManager = new ScriptManager();
+        Main.hookManager = new HookManager();
+        Main.eventManager = new EventManager();
+        Main.commandManager = new CommandManager();
+        Main.consoleManager = new ConsoleManager();
+        Main.scriptingService = new ScriptingService();
 
-        Engine scriptEngine = Engine.create();
+        Main.scriptEngine = Engine.create();
 
         mappingsManager.init();
         configManager.init(scriptEngine);
@@ -50,14 +69,5 @@ public class Main implements ClientModInitializer {
         // and finally, enable all scripts !
         scriptManager.loadAndEnableScriptsFromConfig();
         LOGGER.info("Hello from MyQOLScripts!");
-    }
-
-
-    public static ConfigManager getConfigManager() {
-        return configManager;
-    }
-
-    public static MappingsManager getMappingsManager() {
-        return mappingsManager;
     }
 }

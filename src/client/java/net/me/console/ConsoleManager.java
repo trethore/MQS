@@ -13,11 +13,10 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ConsoleManager {
+    private static final int MAX_HISTORY_SIZE = 100;
     private final List<ConsoleMessage> messages = new CopyOnWriteArrayList<>();
     private final Map<String, ConsoleCommand> commands = new HashMap<>();
     private final List<String> commandHistory = new ArrayList<>();
-    private static final int MAX_HISTORY_SIZE = 100;
-
     private final PrintStream originalOut = System.out;
     private final PrintStream originalErr = System.err;
     private boolean logsRedirected = false;

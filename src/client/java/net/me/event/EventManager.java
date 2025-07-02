@@ -20,35 +20,48 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EventManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(EventManager.class);
-
-    private record Listener(RunningScript owner, Value callback) {
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Listener that = (Listener) o;
-            return owner.equals(that.owner) && callback.equals(that.callback);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(owner, callback);
-        }
-    }
-
-    private record FabricListener(net.fabricmc.fabric.api.event.Event<?> event, Object listenerProxy,
-                                  Value jsCallback) {
-    }
-
     private final Map<Class<? extends Event>, List<Listener>> listeners = new ConcurrentHashMap<>();
     private final Map<RunningScript, List<FabricListener>> fabricListeners = new ConcurrentHashMap<>();
-
     private ScriptManager scriptManager;
+
+    private static Class<?> findListenerType(net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
+        if (!fabricEvent.getClass().getName().equals("net.fabricmc.fabric.impl.base.event.ArrayBackedEvent")) {
+            LOGGER.warn("Attempting to find listener type for non-ArrayBackedEvent: {}. This may fail.", fabricEvent.getClass());
+            return Arrays.stream(fabricEvent.getClass().getMethods())
+                    .filter(m -> m.getName().equals("register") && m.getParameterCount() == 1 && m.getParameterTypes()[0] != Identifier.class)
+                    .findFirst()
+                    .map(m -> m.getParameterTypes()[0])
+                    .orElseThrow(() -> new IllegalArgumentException("Could not find a single-argument register method on the event " + fabricEvent));
+        }
+
+        try {
+            ArrayBackedEventAccessor<?> accessor = (ArrayBackedEventAccessor<?>) fabricEvent;
+            Object[] handlers = accessor.getHandlers();
+            return handlers.getClass().getComponentType();
+        } catch (Exception e) {
+            LOGGER.error("Failed to introspect Fabric event listener type via accessor", e);
+            throw new IllegalStateException("Could not determine listener type for Fabric event: " + fabricEvent, e);
+        }
+    }
+
+    private static Method findSingleAbstractMethod(Class<?> listenerType) {
+        return Arrays.stream(listenerType.getMethods())
+                .filter(m -> Modifier.isAbstract(m.getModifiers()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Could not find abstract method in " + listenerType.getName()));
+    }
+
+    private static Object getReturnValueFor(Class<?> clazz) {
+        if (clazz == boolean.class) return false;
+        if (clazz.isPrimitive()) return 0;
+        return null;
+    }
 
     public void init(ScriptManager scriptManager) {
         this.scriptManager = scriptManager;
         ClientTickEvents.START_CLIENT_TICK.register(client -> this.post(new StartClientTickEvent(client)));
         ClientTickEvents.END_CLIENT_TICK.register(client -> this.post(new EndClientTickEvent(client)));
+
     }
 
     public void post(Event event) {
@@ -196,36 +209,22 @@ public class EventManager {
         }
     }
 
-    private static Class<?> findListenerType(net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-        if (!fabricEvent.getClass().getName().equals("net.fabricmc.fabric.impl.base.event.ArrayBackedEvent")) {
-            LOGGER.warn("Attempting to find listener type for non-ArrayBackedEvent: {}. This may fail.", fabricEvent.getClass());
-            return Arrays.stream(fabricEvent.getClass().getMethods())
-                    .filter(m -> m.getName().equals("register") && m.getParameterCount() == 1 && m.getParameterTypes()[0] != Identifier.class)
-                    .findFirst()
-                    .map(m -> m.getParameterTypes()[0])
-                    .orElseThrow(() -> new IllegalArgumentException("Could not find a single-argument register method on the event " + fabricEvent));
+    private record Listener(RunningScript owner, Value callback) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Listener that = (Listener) o;
+            return owner.equals(that.owner) && callback.equals(that.callback);
         }
 
-        try {
-            ArrayBackedEventAccessor<?> accessor = (ArrayBackedEventAccessor<?>) fabricEvent;
-            Object[] handlers = accessor.getHandlers();
-            return handlers.getClass().getComponentType();
-        } catch (Exception e) {
-            LOGGER.error("Failed to introspect Fabric event listener type via accessor", e);
-            throw new IllegalStateException("Could not determine listener type for Fabric event: " + fabricEvent, e);
+        @Override
+        public int hashCode() {
+            return Objects.hash(owner, callback);
         }
     }
 
-    private static Method findSingleAbstractMethod(Class<?> listenerType) {
-        return Arrays.stream(listenerType.getMethods())
-                .filter(m -> Modifier.isAbstract(m.getModifiers()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Could not find abstract method in " + listenerType.getName()));
-    }
-
-    private static Object getReturnValueFor(Class<?> clazz) {
-        if (clazz == boolean.class) return false;
-        if (clazz.isPrimitive()) return 0;
-        return null;
+    private record FabricListener(net.fabricmc.fabric.api.event.Event<?> event, Object listenerProxy,
+                                  Value jsCallback) {
     }
 }

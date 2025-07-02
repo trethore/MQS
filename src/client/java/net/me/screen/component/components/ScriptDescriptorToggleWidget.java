@@ -11,8 +11,8 @@ import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
 public class ScriptDescriptorToggleWidget extends PressableWidget {
-    private ScriptDescriptor descriptor;
     private final ScriptingService scriptingService;
+    private ScriptDescriptor descriptor;
 
     protected ScriptDescriptorToggleWidget(int x, int y, int width, int height, @Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
         super(x, y, width, height, Text.literal(""));

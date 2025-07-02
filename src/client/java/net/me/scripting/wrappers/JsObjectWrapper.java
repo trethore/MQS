@@ -17,13 +17,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class JsObjectWrapper implements ProxyObject {
+    private static final Map<Class<?>, String[]> MEMBER_KEYS_CACHE = new ConcurrentHashMap<>();
     private final Object javaInstance;
     private final Class<?> instanceClass;
     private final MethodLookup methods;
     private final FieldLookup fields;
     private final String[] memberKeys;
-
-    private static final Map<Class<?>, String[]> MEMBER_KEYS_CACHE = new ConcurrentHashMap<>();
 
     public JsObjectWrapper(Object instance,
                            Class<?> cls,
