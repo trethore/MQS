@@ -1,7 +1,9 @@
 package net.me.screen;
 
-import net.me.utils.Position;
+import net.me.utils.ColorUtils;
+import net.me.utils.records.Position;
 import net.me.utils.Render2DUtils;
+import net.me.utils.TextRenderUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -57,8 +59,8 @@ public abstract class MQSScreen extends Screen {
     private void drawTitle(DrawContext context) {
         int x = getMiddlePoint().x();
         int y = getMiddlePoint().y() - this.windowHeight / 2 + 22;
-        int color = Render2DUtils.getRainbowColor(2000, 0.8f, 1.0f);
-        Render2DUtils.drawCenteredText(context, this.getStringTitle(), x, y, color, true, 1.5f);
+        int color = ColorUtils.getRainbowColor(2000, 0.8f, 1.0f);
+        TextRenderUtils.drawCenteredText(context, this.getStringTitle(), x, y, color, true, 1.5f);
     }
 
     public void open() {

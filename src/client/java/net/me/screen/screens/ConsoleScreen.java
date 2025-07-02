@@ -4,7 +4,7 @@ import net.me.console.ConsoleManager;
 import net.me.console.ConsoleMessage;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.components.DarkTextFieldWidget;
-import net.me.utils.Render2DUtils;
+import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
@@ -135,7 +135,7 @@ public class ConsoleScreen extends MQSScreen {
 
             int yPos = renderAreaY + (i * fontHeight);
 
-            Render2DUtils.drawText(context, line.text(), renderAreaX, yPos, line.color(), true, 1f);
+            TextRenderUtils.drawText(context, line.text(), renderAreaX, yPos, line.color(), true, 1f);
         }
 
         context.disableScissor();

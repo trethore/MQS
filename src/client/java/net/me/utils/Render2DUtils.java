@@ -2,12 +2,11 @@ package net.me.utils;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gl.ShaderProgramKey;
 import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.*;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.joml.Matrix4f;
 
 import java.awt.*;
@@ -15,20 +14,10 @@ import java.awt.*;
 @SuppressWarnings("unused")
 public final class Render2DUtils {
 
-    private static final MinecraftClient mc = MinecraftClient.getInstance();
+    private static final MinecraftClient mc = McUtils.getMc().orElse(null);
 
     private Render2DUtils() {
     }
-
-    public static int getRainbowColor(long speed, float saturation, float brightness) {
-        return getRainbowColor(0, speed, saturation, brightness);
-    }
-
-    public static int getRainbowColor(long offset, long speed, float saturation, float brightness) {
-        float hue = ((System.currentTimeMillis() + offset) % speed) / (float) speed;
-        return Color.HSBtoRGB(hue, saturation, brightness);
-    }
-
 
     public static void drawRect(DrawContext context, float x, float y, float width, float height, int color) {
         drawRect(x, y, width, height, color);
@@ -38,7 +27,7 @@ public final class Render2DUtils {
         float x2 = x + width;
         float y2 = y + height;
 
-        BufferBuilder buffer = setupRender(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR,VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
         buffer.vertex(x, y2, 0).color(color);
         buffer.vertex(x2, y2, 0).color(color);
@@ -59,7 +48,7 @@ public final class Render2DUtils {
     public static void drawRoundedRect(DrawContext context, float x, float y, float width, float height, float radius, float quality, int color) {
         Matrix4f matrix = context.getMatrices().peek().getPositionMatrix();
 
-        BufferBuilder buffer = setupRender(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR,VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
 
         radius = Math.min(Math.min(width, height) / 2, radius);
         if (radius < 0) radius = 0;
@@ -118,7 +107,7 @@ public final class Render2DUtils {
 
     public static void drawRoundedOutline(DrawContext context, float x, float y, float width, float height, float radius, float lineWidth, float quality, int color) {
         Matrix4f matrix = context.getMatrices().peek().getPositionMatrix();
-        BufferBuilder buffer = setupRender(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR,VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
 
         radius = Math.min(Math.min(width, height) / 2, radius);
 
@@ -159,33 +148,51 @@ public final class Render2DUtils {
     }
 
 
-    public static void drawText(DrawContext context, String text, float x, float y, int color, boolean shadow, float scale) {
-        MatrixStack matrices = context.getMatrices();
-        matrices.push();
-        matrices.translate(x, y, 0);
-        matrices.scale(scale, scale, 1.0f);
 
-        context.drawText(mc.textRenderer, Text.literal(text), 0, 0, color, shadow);
 
-        matrices.pop();
+    public void drawImage(Identifier id, int x1, int y1, int x2, int y2, int rotation, boolean parity, Color color) {
+        int[][] texCoords = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
+        for (int i = 0; i < rotation % 4; i++) {
+            int temp1 = texCoords[3][0], temp2 = texCoords[3][1];
+            texCoords[3][0] = texCoords[2][0];
+            texCoords[3][1] = texCoords[2][1];
+            texCoords[2][0] = texCoords[1][0];
+            texCoords[2][1] = texCoords[1][1];
+            texCoords[1][0] = texCoords[0][0];
+            texCoords[1][1] = texCoords[0][1];
+            texCoords[0][0] = temp1;
+            texCoords[0][1] = temp2;
+        }
+        if (parity) {
+            int temp1 = texCoords[1][0];
+            texCoords[1][0] = texCoords[0][0];
+            texCoords[0][0] = temp1;
+            temp1 = texCoords[3][0];
+            texCoords[3][0] = texCoords[2][0];
+            texCoords[2][0] = temp1;
+        }
+        RenderSystem.setShaderTexture(0, id);
+        BufferBuilder bufferbuilder = setupRender(ShaderProgramKeys.POSITION_TEX_COLOR,VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        bufferbuilder.vertex(x1, y2, 0).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()).texture(texCoords[0][0], texCoords[0][1]);
+        bufferbuilder.vertex(x2, y2, 0).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()).texture(texCoords[1][0], texCoords[1][1]);
+        bufferbuilder.vertex(x2, y1, 0).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()).texture(texCoords[2][0], texCoords[2][1]);
+        bufferbuilder.vertex(x1, y1, 0).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()).texture(texCoords[3][0], texCoords[3][1]);
+        endRender(bufferbuilder);
     }
 
-    public static void drawCenteredText(DrawContext context, String text, float x, float y, int color, boolean shadow, float scale) {
-        TextRenderer textRenderer = mc.textRenderer;
-        float textWidth = textRenderer.getWidth(text) * scale;
-        float textHeight = textRenderer.fontHeight * scale;
+    public static void enableScissor(DrawContext context, int x, int y, int width, int height) {
+        context.enableScissor(x, y, x + width, y + height);
+    }
 
-        float drawX = x - textWidth / 2.0f;
-        float drawY = y - textHeight / 2.0f;
-
-        drawText(context, text, drawX, drawY, color, shadow, scale);
+    public static void disableScissor(DrawContext context) {
+        context.disableScissor();
     }
 
 
-    private static BufferBuilder setupRender(VertexFormat.DrawMode drawMode, VertexFormat vertexFormat) {
+    private static BufferBuilder setupRender(ShaderProgramKey shaderProgramKey, VertexFormat.DrawMode drawMode, VertexFormat vertexFormat) {
         RenderSystem.enableBlend();
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.setShader(shaderProgramKey);
         return Tessellator.getInstance().begin(drawMode, vertexFormat);
     }
 

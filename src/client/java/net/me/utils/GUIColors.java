@@ -2,6 +2,7 @@ package net.me.utils;
 
 import java.awt.*;
 
+@SuppressWarnings("unused")
 public enum GUIColors {
     BLACK(0, 0, 0, 255),
     DARK_L1(23, 23, 23, 255),
