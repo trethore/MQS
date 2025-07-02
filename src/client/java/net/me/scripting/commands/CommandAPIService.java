@@ -13,9 +13,7 @@ import net.me.mixin.client.accessors.CommandNodeAccessor;
 import net.me.scripting.module.RunningScript;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.command.CommandSource;
-import net.minecraft.network.packet.s2c.play.CommandTreeS2CPacket;
 
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -23,20 +21,34 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CommandAPIService {
-    private final Map<RunningScript, Set<String>> scriptCommands = new ConcurrentHashMap<>();
+    private final Map<RunningScript, Map<String, LiteralArgumentBuilder<FabricClientCommandSource>>> scriptCommands = new ConcurrentHashMap<>();
+    private final Set<String> allManagedCommandNames = ConcurrentHashMap.newKeySet();
     private record QueuedCommand(RunningScript owner, LiteralArgumentBuilder<FabricClientCommandSource> builder){}
     private final Queue<QueuedCommand> commandQueue = new ConcurrentLinkedQueue<>();
 
 
     public void init() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            Main.LOGGER.info("Client command registration event fired. Re-registering script commands.");
+
+            for (Map.Entry<RunningScript, Map<String, LiteralArgumentBuilder<FabricClientCommandSource>>> scriptEntry : scriptCommands.entrySet()) {
+                for (LiteralArgumentBuilder<FabricClientCommandSource> builder : scriptEntry.getValue().values()) {
+                    dispatcher.register(builder);
+                    Main.LOGGER.debug("Re-registered command '{}' for script '{}'", builder.getLiteral(), scriptEntry.getKey().getName());
+                }
+            }
+
             if (!commandQueue.isEmpty()) {
                 Main.LOGGER.info("Registering {} queued script commands...", commandQueue.size());
                 QueuedCommand queuedCommand;
                 while ((queuedCommand = commandQueue.poll()) != null) {
-                    registerInternal(dispatcher, queuedCommand.owner(), queuedCommand.builder());
+                    try {
+                        registerInternal(dispatcher, queuedCommand.owner(), queuedCommand.builder());
+                    } catch (Exception e) {
+                        Main.LOGGER.error("Failed to register queued command '{}' for script '{}': {}",
+                                queuedCommand.builder().getLiteral(), queuedCommand.owner().getName(), e.getMessage());
+                    }
                 }
-                pushCommandTree(dispatcher);
             }
         });
     }
@@ -58,58 +70,54 @@ public class CommandAPIService {
     private void registerInternal(CommandDispatcher<FabricClientCommandSource> dispatcher, RunningScript owner, LiteralArgumentBuilder<FabricClientCommandSource> literalBuilder) {
         String name = literalBuilder.getLiteral();
         if (dispatcher.getRoot().getChild(name) != null) {
-            throw new IllegalStateException("Command '" + name + "' is already registered.");
+            Main.LOGGER.warn("Command '{}' already exists. It will be replaced.", name);
+            removeNode(name);
         }
         dispatcher.register(literalBuilder);
-        scriptCommands.computeIfAbsent(owner, k -> new HashSet<>()).add(name);
+        scriptCommands.computeIfAbsent(owner, k -> new ConcurrentHashMap<>()).put(name, literalBuilder);
+        allManagedCommandNames.add(name);
     }
 
     public void unregister(RunningScript owner, String name) {
-        Set<String> owned = scriptCommands.get(owner);
+        commandQueue.removeIf(qc -> qc.owner().equals(owner) && qc.builder().getLiteral().equals(name));
 
-        boolean removedFromQueue = commandQueue.removeIf(qc ->
-                qc.owner().equals(owner) && qc.builder().getLiteral().equals(name)
-        );
-
-        if (removedFromQueue) {
-            Main.LOGGER.info("Unregistered command '{}' from queue for script '{}'", name, owner.getName());
-            if (owned != null) owned.remove(name);
+        Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = scriptCommands.get(owner);
+        if (owned == null || !owned.containsKey(name)) {
+            Main.LOGGER.warn("Script '{}' tried to unregister '{}' which it does not own or wasn’t found.", owner.getName(), name);
             return;
         }
 
-        if (owned == null || !owned.contains(name)) {
-            Main.LOGGER.warn(
-                    "Script '{}' tried to unregister '{}' which it does not own or wasn’t found.",
-                    owner.getName(), name
-            );
-            return;
-        }
         if (removeNode(name)) {
-            removeNodeFromServerTree(name);
             owned.remove(name);
-            if (owned.isEmpty()) scriptCommands.remove(owner);
+            if (owned.isEmpty()) {
+                scriptCommands.remove(owner);
+            }
             CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
-            if (dispatcher != null) pushCommandTree(dispatcher);
+            if (dispatcher != null) {
+                pushCommandTree(dispatcher);
+            }
         }
     }
 
     public void unregisterAllFor(RunningScript owner) {
         commandQueue.removeIf(qc -> qc.owner().equals(owner));
 
-        Set<String> owned = scriptCommands.remove(owner);
+        Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = scriptCommands.remove(owner);
         if (owned == null) return;
 
         boolean changed = false;
-        for (String name : owned) {
+        for (String name : owned.keySet()) {
             if (removeNode(name)) {
-                removeNodeFromServerTree(name);
                 Main.LOGGER.info("Unregistered '{}' from disabled script '{}'", name, owner.getName());
                 changed = true;
             }
         }
+
         if (changed) {
             CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
-            if (dispatcher != null) pushCommandTree(dispatcher);
+            if (dispatcher != null) {
+                pushCommandTree(dispatcher);
+            }
         }
     }
 
@@ -118,59 +126,43 @@ public class CommandAPIService {
         if (dispatcher == null) return false;
 
         RootCommandNode<FabricClientCommandSource> root = dispatcher.getRoot();
-
         @SuppressWarnings("unchecked")
         CommandNodeAccessor<FabricClientCommandSource> accessor = (CommandNodeAccessor<FabricClientCommandSource>) root;
 
-        Map<String, CommandNode<FabricClientCommandSource>> children = accessor.getChildrenMap();
-        Map<String, LiteralCommandNode<FabricClientCommandSource>> literals = accessor.getLiteralsMap();
-
-        boolean removed = children.remove(name) != null;
+        boolean removed = accessor.getChildrenMap().remove(name) != null;
         if (removed) {
-            literals.remove(name);
+            accessor.getLiteralsMap().remove(name);
         }
         return removed;
     }
 
-    private void removeNodeFromServerTree(String name) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.getNetworkHandler() == null || client.player == null) {
-            return;
-        }
-
-        RootCommandNode<CommandSource> root = client.getNetworkHandler().getCommandDispatcher().getRoot();
-
-        @SuppressWarnings("unchecked")
-        CommandNodeAccessor<CommandSource> accessor = (CommandNodeAccessor<CommandSource>) root;
-
-        Map<String, CommandNode<CommandSource>> children = accessor.getChildrenMap();
-        Map<String, LiteralCommandNode<CommandSource>> literals = accessor.getLiteralsMap();
-
-        if (children.remove(name) != null) {
-            literals.remove(name);
-        }
-    }
-
     private void pushCommandTree(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.getNetworkHandler() == null || client.player == null) {
+        if (client.player == null || client.getNetworkHandler() == null) {
             return;
         }
 
-        RootCommandNode<CommandSource> newRoot = new RootCommandNode<>();
+        client.send(() -> {
+            final CommandDispatcher<CommandSource> suggestionDispatcher = client.getNetworkHandler().getCommandDispatcher();
+            final RootCommandNode<CommandSource> suggestionRoot = suggestionDispatcher.getRoot();
+            @SuppressWarnings("unchecked") final CommandNodeAccessor<CommandSource> rootAccessor = (CommandNodeAccessor<CommandSource>) suggestionRoot;
 
-        RootCommandNode<CommandSource> serverRoot = client.getNetworkHandler().getCommandDispatcher().getRoot();
-        for (CommandNode<CommandSource> node : serverRoot.getChildren()) {
-            newRoot.addChild(node);
-        }
+            final Map<String, CommandNode<CommandSource>> children = rootAccessor.getChildrenMap();
+            final Map<String, LiteralCommandNode<CommandSource>> literals = rootAccessor.getLiteralsMap();
 
-        for (CommandNode<FabricClientCommandSource> node : dispatcher.getRoot().getChildren()) {
-            if (newRoot.getChild(node.getName()) == null) {
-                //noinspection unchecked
-                newRoot.addChild((CommandNode<CommandSource>) (Object) node);
+            for (String commandName : allManagedCommandNames) {
+                children.remove(commandName);
+                literals.remove(commandName);
             }
-        }
 
-        client.getNetworkHandler().onCommandTree(new CommandTreeS2CPacket(newRoot));
+            for (CommandNode<FabricClientCommandSource> node : dispatcher.getRoot().getChildren()) {
+                if (allManagedCommandNames.contains(node.getName())) {
+                    @SuppressWarnings("unchecked")
+                    CommandNode<CommandSource> castedNode = (CommandNode<CommandSource>) (Object) node;
+                    suggestionRoot.addChild(castedNode);
+                }
+            }
+            Main.LOGGER.info("Patched client suggestion command tree in-memory.");
+        });
     }
 }
