@@ -7,6 +7,7 @@ import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleManager;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
+import net.me.keybinds.KeybindManager;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
@@ -32,6 +33,7 @@ public class Main implements ClientModInitializer {
     private static ConsoleManager consoleManager;
     private static ScriptingService scriptingService;
     private static GlobalConfigManager globalConfigManager;
+    private static KeybindManager keybindManager;
     private static Engine scriptEngine;
 
     public static ConfigManager getConfigManager() {
@@ -61,6 +63,7 @@ public class Main implements ClientModInitializer {
         Main.consoleManager = new ConsoleManager();
         Main.scriptingService = new ScriptingService();
         Main.globalConfigManager = new GlobalConfigManager();
+        Main.keybindManager = new KeybindManager();
 
         Main.scriptEngine = Engine.create();
 
@@ -68,10 +71,11 @@ public class Main implements ClientModInitializer {
         mappingsManager.init();
         configManager.init(scriptEngine);
 
-        scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager);
+        scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager);
 
         eventManager.init(scriptManager);
         hookManager.init(scriptManager, mappingsManager);
+        keybindManager.init(scriptManager);
 
         scriptingService.init(scriptManager, configManager);
 

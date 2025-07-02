@@ -3,6 +3,7 @@ package net.me.scripting;
 import net.me.Main;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
+import net.me.keybinds.KeybindManager;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.engine.ScriptContextFactory;
 import net.me.scripting.engine.ScriptLoader;
@@ -36,21 +37,23 @@ public class ScriptManager {
     private EventManager eventManager;
     private ConfigManager configManager;
     private HookManager hookManager;
+    private KeybindManager keybindManager;
 
     public ScriptManager() {
         this.commandApiService = new CommandAPIService();
     }
 
-    public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager) {
+    public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager) {
         this.configManager = configManager;
         this.eventManager = eventManager;
         this.hookManager = hookManager;
-
+        this.keybindManager = keybindManager;
+        
         ensureScriptDirectory();
         ScriptingClassResolver classResolver = new ScriptingClassResolver();
         classResolver.init(mappingsManager);
         this.commandApiService.init();
-        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService, hookManager);
+        this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService, hookManager, keybindManager);
         this.scriptLoader = new ScriptLoader();
         prewarmContextPool();
         discoverScripts();
@@ -251,6 +254,7 @@ public class ScriptManager {
                 hookManager.unhookAll(script);
                 configManager.saveConfig(script);
                 configManager.unloadConfig(script);
+                keybindManager.unregister(script);
                 returnContextToPool(script.getContext());
                 script.invalidate();
                 clearCurrentScript();

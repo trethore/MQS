@@ -4,10 +4,12 @@ import net.me.Main;
 import net.me.event.Event;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
+import net.me.keybinds.KeybindManager;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.commands.CommandsAPI;
+import net.me.scripting.keybinds.KeybindAPI;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
@@ -34,8 +36,9 @@ public class ScriptContextFactory {
     private final ConfigManager configManager;
     private final CommandAPIService commandApiService;
     private final Set<String> standardApiMembers = new HashSet<>();
+    private final KeybindManager keybindManager;
 
-    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager) {
+    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager) {
         this.classResolver = classResolver;
         this.sharedEngine = sharedEngine;
         this.scriptManager = scriptManager;
@@ -43,6 +46,8 @@ public class ScriptContextFactory {
         this.commandApiService = commandApiService;
         this.eventManager = eventManager;
         this.hookManager = hookManager;
+        this.keybindManager = keybindManager;
+
     }
 
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
@@ -79,6 +84,7 @@ public class ScriptContextFactory {
         addApiMember(bindings, "EventManager", createEventManagerProxy());
         addApiMember(bindings, "ConfigManager", createConfigProxy());
 
+        addApiMember(bindings, "KeybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
         addApiMember(bindings, "CommandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
         addApiMember(bindings, "HookManager", createHookManagerProxy());
         addApiMember(bindings, "println", (ProxyExecutable) args -> {
