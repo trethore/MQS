@@ -48,7 +48,7 @@ public class ScriptManager {
         this.eventManager = eventManager;
         this.hookManager = hookManager;
         this.keybindManager = keybindManager;
-        
+
         ensureScriptDirectory();
         ScriptingClassResolver classResolver = new ScriptingClassResolver();
         classResolver.init(mappingsManager);

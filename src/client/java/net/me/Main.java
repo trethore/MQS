@@ -52,6 +52,10 @@ public class Main implements ClientModInitializer {
         return globalConfigManager;
     }
 
+    public static KeybindManager getKeybindManager() {
+        return keybindManager;
+    }
+
     @Override
     public void onInitializeClient() {
         Main.mappingsManager = new MappingsManager();
