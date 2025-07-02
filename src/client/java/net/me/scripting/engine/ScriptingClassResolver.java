@@ -1,5 +1,6 @@
 package net.me.scripting.engine;
 
+import net.me.Main;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
@@ -83,6 +84,10 @@ public class ScriptingClassResolver {
     }
 
     public boolean isClassAllowed(String name) {
+        if (Main.getGlobalConfigManager().areAllClassesAllowed()) {
+            return true;
+        }
+
         if (EXCLUDED.contains(name)) return false;
 
         return name.startsWith("java.")

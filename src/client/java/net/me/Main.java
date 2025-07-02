@@ -3,6 +3,7 @@ package net.me;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
+import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleManager;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
@@ -30,6 +31,7 @@ public class Main implements ClientModInitializer {
     private static CommandManager commandManager;
     private static ConsoleManager consoleManager;
     private static ScriptingService scriptingService;
+    private static GlobalConfigManager globalConfigManager;
     private static Engine scriptEngine;
 
     public static ConfigManager getConfigManager() {
@@ -43,6 +45,9 @@ public class Main implements ClientModInitializer {
     public static EventManager getEventManager() {
         return eventManager;
     }
+    public static GlobalConfigManager getGlobalConfigManager() {
+        return globalConfigManager;
+    }
 
     @Override
     public void onInitializeClient() {
@@ -54,16 +59,23 @@ public class Main implements ClientModInitializer {
         Main.commandManager = new CommandManager();
         Main.consoleManager = new ConsoleManager();
         Main.scriptingService = new ScriptingService();
+        Main.globalConfigManager = new GlobalConfigManager();
 
         Main.scriptEngine = Engine.create();
 
+        globalConfigManager.init();
         mappingsManager.init();
         configManager.init(scriptEngine);
-        eventManager.init(scriptManager);
-        consoleManager.init(scriptingService);
+
         scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager);
-        scriptingService.init(scriptManager, configManager);
+
+        eventManager.init(scriptManager);
         hookManager.init(scriptManager, mappingsManager);
+
+        scriptingService.init(scriptManager, configManager);
+
+        consoleManager.init(scriptingService);
+        commandManager.init(scriptingService, consoleManager);
         commandManager.init(scriptingService, consoleManager);
 
         // and finally, enable all scripts !
