@@ -1,5 +1,6 @@
 package net.me.console;
 
+import net.me.Main;
 import net.me.console.commands.*;
 import net.me.console.log.ConsoleManagerAppender;
 import net.me.scripting.ScriptingService;
@@ -19,7 +20,6 @@ public class ConsoleManager {
     private final List<String> commandHistory = new ArrayList<>();
     private final PrintStream originalOut = System.out;
     private final PrintStream originalErr = System.err;
-    private boolean logsRedirected = false;
     private ConsoleManagerAppender slf4jAppender;
     private ScriptingService scriptingService;
 
@@ -146,12 +146,17 @@ public class ConsoleManager {
     }
 
     public void setLogRedirect(boolean enable) {
-        if (enable == this.logsRedirected) {
+        if (enable == Main.getGlobalConfigManager().isLogRedirectEnabled()) {
             logInfo("Log redirection is already " + (enable ? "enabled." : "disabled."));
             return;
         }
 
-        this.logsRedirected = enable;
+        Main.getGlobalConfigManager().setLogRedirectEnabled(enable);
+
+        applyLogRedirectState(enable);
+    }
+
+    private void applyLogRedirectState(boolean enable) {
         Logger rootLogger = (Logger) LogManager.getRootLogger();
 
         if (enable) {
@@ -165,13 +170,12 @@ public class ConsoleManager {
             rootLogger.addAppender(this.slf4jAppender);
 
         } else {
-            System.setOut(originalOut);
-            System.setErr(originalErr);
-
             if (this.slf4jAppender != null) {
                 rootLogger.removeAppender(this.slf4jAppender);
                 this.slf4jAppender.stop();
             }
+            System.setOut(originalOut);
+            System.setErr(originalErr);
         }
     }
 
