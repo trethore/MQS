@@ -33,8 +33,15 @@ public class KeybindManager {
             Main.LOGGER.warn("Keybind '{}' is already registered for script '{}'. Overwriting.", name, owner.getName());
         }
 
-        KeyBinding keyBinding = new KeyBinding(name, defaultKey, repeatable, owner, action, scriptManager);
+        KeyBinding keyBinding = new KeyBinding(name, defaultKey, repeatable, owner, action);
         registeredKeybinds.put(uniqueName, keyBinding);
+    }
+
+    public void unregister(RunningScript owner, String name) {
+        String uniqueName = owner.getId() + "::" + name;
+        if (registeredKeybinds.remove(uniqueName) == null) {
+            Main.LOGGER.warn("Script '{}' attempted to unregister keybind '{}', which was not found.", owner.getName(), name);
+        }
     }
 
     public void unregister(RunningScript owner) {

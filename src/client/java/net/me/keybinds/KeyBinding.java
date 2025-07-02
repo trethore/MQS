@@ -16,10 +16,12 @@ public class KeyBinding {
 
     private int key;
 
-    private long lastPress = 0;
-    private boolean hasBeenSet = false;
+    private boolean isHeld = false;
+    private long lastPressTime = 0;
 
-    public KeyBinding(String name, int key, boolean repeatable, RunningScript owner, Value action, ScriptManager scriptManager) {
+    private static final int COOLDOWN_MS = 200;
+
+    public KeyBinding(String name, int key, boolean repeatable, RunningScript owner, Value action) {
         this.name = name;
         this.key = key;
         this.repeatable = repeatable;
@@ -29,36 +31,54 @@ public class KeyBinding {
 
     public void execute(ScriptManager scriptManager) {
         if (key < 0 || action == null || !action.canExecute()) return;
-
-        long windowHandle = MinecraftClient.getInstance().getWindow().getHandle();
-        boolean isPressed = (key < 8)
-                ? GLFW.glfwGetMouseButton(windowHandle, key) == GLFW.GLFW_PRESS
-                : InputUtil.isKeyPressed(windowHandle, key);
-
-        if (isPressed) {
-            long currentTime = System.currentTimeMillis();
-            int cooldown = 200;
-            if (currentTime - lastPress > cooldown || (repeatable && !hasBeenSet)) {
-                lastPress = currentTime;
-                hasBeenSet = false;
-
-                scriptManager.setCurrentScript(owner);
-                try {
-                    action.execute();
-                } catch (Exception e) {
-                    Main.LOGGER.error("Error executing keybind '{}' for script '{}'", name, owner.getName(), e);
-                } finally {
-                    scriptManager.clearCurrentScript();
+        if (isPressed(key)) {
+            if (!isHeld) {
+                isHeld = true;
+                fireAction(scriptManager);
+            } else if (repeatable) {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastPressTime > COOLDOWN_MS) {
+                    fireAction(scriptManager);
                 }
+            }
+        } else {
+            if (isHeld) {
+                isHeld = false;
             }
         }
     }
+    private boolean isPressed(int key) {
+        long windowHandle = MinecraftClient.getInstance().getWindow().getHandle();
+        return (key < 8)
+                ? GLFW.glfwGetMouseButton(windowHandle, key) == GLFW.GLFW_PRESS
+                : InputUtil.isKeyPressed(windowHandle, key);
+    }
 
-    public String getName() { return name; }
-    public int getKey() { return key; }
+    private void fireAction(ScriptManager scriptManager) {
+        this.lastPressTime = System.currentTimeMillis();
+        scriptManager.setCurrentScript(owner);
+        try {
+            action.execute();
+        } catch (Exception e) {
+            Main.LOGGER.error("Error executing keybind '{}' for script '{}'", name, owner.getName(), e);
+        } finally {
+            scriptManager.clearCurrentScript();
+        }
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getKey() {
+        return key;
+    }
+
     public void setKey(int key) {
         this.key = key;
     }
 
-    public RunningScript getOwner() { return owner; }
+    public RunningScript getOwner() {
+        return owner;
+    }
 }

@@ -28,30 +28,41 @@ public class KeybindAPI implements ProxyObject {
     public Object getMember(String key) {
         return (ProxyExecutable) args -> {
             RunningScript owner = getCurrentScript();
-            if ("register".equals(key)) {
-                if (args.length < 3 || !args[0].isString() || !args[1].isNumber() || !args[2].canExecute()) {
-                    throw new IllegalArgumentException("Usage: Keybinds.register('name', keyCode, action, isRepeatable = false)");
-                }
-                String name = args[0].asString();
-                int keyCode = args[1].asInt();
-                Value action = args[2];
-                boolean repeatable = args.length > 3 && args[3].isBoolean() && args[3].asBoolean();
+            switch (key) {
+                case "register": {
+                    if (args.length < 3 || !args[0].isString() || !args[1].isNumber() || !args[2].canExecute()) {
+                        throw new IllegalArgumentException("Usage: Keybinds.register('name', keyCode, action, isRepeatable = false)");
+                    }
+                    String name = args[0].asString();
+                    int keyCode = args[1].asInt();
+                    Value action = args[2];
+                    boolean repeatable = args.length > 3 && args[3].isBoolean() && args[3].asBoolean();
 
-                keybindManager.register(name, keyCode, repeatable, owner, action);
-                return null;
+                    keybindManager.register(name, keyCode, repeatable, owner, action);
+                    return null;
+                }
+                case "unregister": {
+                    if (args.length != 1 || !args[0].isString()) {
+                        throw new IllegalArgumentException("Usage: Keybinds.unregister('name')");
+                    }
+                    String name = args[0].asString();
+                    keybindManager.unregister(owner, name);
+                    return null;
+                }
+                default:
+                    throw new UnsupportedOperationException("Unsupported Keybinds operation: " + key);
             }
-            throw new UnsupportedOperationException("Unsupported Keybinds operation: " + key);
         };
     }
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{"register"};
+        return new String[]{"register", "unregister"};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "register".equals(key);
+        return "register".equals(key) || "unregister".equals(key);
     }
 
     @Override
