@@ -1,4 +1,5 @@
-// New File: java/net/me/screen/screens/KeybindsScreen.java
+// java/net/me/screen/screens/KeybindsScreen.java
+
 package net.me.screen.screens;
 
 import net.me.Main;
@@ -63,8 +64,7 @@ public class KeybindsScreen extends MQSScreen {
             }
         }
 
-        this.keybindEntryWidgets.forEach(this::addDrawableChild);
-        updateWidgetPositions();
+        this.keybindEntryWidgets.forEach(this::addSelectableChild);
     }
 
     private void startListening(KeyBinding bindingToRebind) {
@@ -106,8 +106,8 @@ public class KeybindsScreen extends MQSScreen {
         sortedScripts.sort(Comparator.comparing(RunningScript::getName, String.CASE_INSENSITIVE_ORDER));
 
         for (RunningScript script : sortedScripts) {
-            String header = script.getName() + " v" + script.getVersion();
-            TextRenderUtils.drawText(context, header, windowStartX + PADDING, currentY, GUIColors.TEXT_GREY_DISABLED.getRGBA(), true, 1f);
+            String header =  script.getName() + " v" + script.getVersion();
+            TextRenderUtils.drawCenteredText(context, header, this.getMiddlePoint().x(), currentY+8, GUIColors.WHITE.getRGBA(), true, 1.1f);
             currentY += HEADER_HEIGHT;
 
             for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
@@ -120,17 +120,6 @@ public class KeybindsScreen extends MQSScreen {
         }
 
         context.disableScissor();
-    }
-
-    private void updateWidgetPositions() {
-        int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
-        int listStartY = windowStartY + 55;
-        int currentY = (int) (listStartY - scrollY);
-
-        for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
-            widget.setY(currentY);
-            currentY += ENTRY_HEIGHT;
-        }
     }
 
     @Override
@@ -149,7 +138,6 @@ public class KeybindsScreen extends MQSScreen {
         if (scrollY < 0) scrollY = 0;
         if (scrollY > maxScroll) scrollY = maxScroll;
 
-        updateWidgetPositions();
         return true;
     }
 

@@ -1,86 +1,109 @@
 package net.me.utils;
 
-import java.awt.*;
+import java.awt.Color;
 
 @SuppressWarnings("unused")
 public enum GUIColors {
-    BLACK(0, 0, 0, 255),
-    DARK_L1(23, 23, 23, 255),
-    DARK_L2(33, 33, 33, 255),
-    DARK_L3(48, 48, 48, 255),
-    DARK_L4(69, 69, 69, 255),
-    BG_DARK(51, 51, 51, 255),
-    TEXT_GREY_DISABLED(151, 151, 151, 255),
-    WHITE(255, 255, 255, 255),
-    GREEN(0, 255, 0, 255),
-    SUCCESS(33, 199, 33, 255),
-    RED(255, 0, 0, 255),
-    ERROR(173, 14, 14, 255);
+    // basics
+    BLACK(new Color(0, 0, 0, 255)),
+    WHITE(new Color(255, 255, 255, 255)),
+    // text
+    TEXT(new Color(250, 250, 250, 255)),
+    TEXT_DISABLED(new Color(151, 151, 151, 240)),
+    // default
+    SUCCESS(new Color(33, 199, 33, 255)),
+    WARN(new Color(255,204,0, 255)),
+    ERROR(new Color(204,51,0, 255)),
+    // gradients
+    DARK_L1(new Color(23, 23, 23, 255)),
+    DARK_L2(new Color(33, 33, 33, 255)),
+    DARK_L3(new Color(48, 48, 48, 255)),
+    DARK_L4(new Color(69, 69, 69, 255)),
+    // ui color
+    PRIMARY(new Color(96, 255, 255,255)),
+    SECONDARY(new Color(255, 96, 96, 255));
 
-    private final int red;
-    private final int green;
-    private final int blue;
-    private final int alpha;
+    private final Color color;
 
-    GUIColors(int red, int green, int blue, int alpha) {
-        this.red = red;
-        this.green = green;
-        this.blue = blue;
-        this.alpha = alpha;
-
+    GUIColors(Color color) {
+        this.color = color;
     }
 
-    public int getRGBA() {
-        return (alpha << 24) | (red << 16) | (green << 8) | blue;
+    public Color darker(Level level) {
+        return darker(level.getPercentage());
+    }
+
+    public Color lighter(Level level) {
+        return lighter(level.getPercentage());
     }
 
     public Color darker(int percentage) {
         if (percentage < 0 || percentage > 100) {
             throw new IllegalArgumentException("Percentage must be between 0 and 100.");
         }
-        double factor = 1.0 - (percentage / 100.0);
-
-        int newRed = (int) (this.red * factor);
-        int newGreen = (int) (this.green * factor);
-        int newBlue = (int) (this.blue * factor);
-
-        return new Color(clamp(newRed), clamp(newGreen), clamp(newBlue), this.alpha);
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        hsb[2] = Math.max(0f, hsb[2] - (percentage / 100f));
+        int rgb = Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]);
+        int r = (rgb >> 16) & 0xFF;
+        int g = (rgb >> 8) & 0xFF;
+        int b = rgb & 0xFF;
+        return new Color(r, g, b, color.getAlpha());
     }
 
     public Color lighter(int percentage) {
         if (percentage < 0 || percentage > 100) {
             throw new IllegalArgumentException("Percentage must be between 0 and 100.");
         }
-        double factor = percentage / 100.0;
-
-        int newRed = (int) (this.red + (255 - this.red) * factor);
-        int newGreen = (int) (this.green + (255 - this.green) * factor);
-        int newBlue = (int) (this.blue + (255 - this.blue) * factor);
-
-        return new Color(clamp(newRed), clamp(newGreen), clamp(newBlue), this.alpha);
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        hsb[2] = Math.min(1f, hsb[2] + (percentage / 100f));
+        int rgb = Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]);
+        int r = (rgb >> 16) & 0xFF;
+        int g = (rgb >> 8) & 0xFF;
+        int b = rgb & 0xFF;
+        return new Color(r, g, b, color.getAlpha());
     }
 
     private int clamp(int value) {
         return Math.max(0, Math.min(255, value));
     }
 
+    public int getRGB() {
+        return this.color.getRGB();
+    }
+
     public Color getColor() {
-        return new Color(red, green, blue, alpha);
+        return color;
     }
 
     public int getRed() {
-        return red;
+        return color.getRed();
     }
 
     public int getGreen() {
-        return green;
+        return color.getGreen();
     }
 
     public int getBlue() {
-        return blue;
+        return color.getBlue();
     }
 
     public int getAlpha() {
-        return alpha;
+        return color.getAlpha();
+    }
+
+    public enum Level{
+        LOW(10),
+        MEDIUM(20),
+        HIGH(30);
+
+        private final int percentage;
+
+        Level(int percentage) {
+            this.percentage = percentage;
+        }
+
+        public int getPercentage() {
+            return percentage;
+        }
     }
 }

@@ -101,14 +101,8 @@ public class ConfigManager {
             config.putMember(KEYBINDS_KEY, keybinds);
         }
 
-        if (keyCode < 0) {
-            keybinds.removeMember(keybindName);
-            if (keybinds.getMemberKeys().isEmpty()) {
-                config.removeMember(KEYBINDS_KEY);
-            }
-        } else {
-            keybinds.putMember(keybindName, keyCode);
-        }
+        // Always store the keycode, even if it's -1 (unbound)
+        keybinds.putMember(keybindName, keyCode);
     }
 
     public void saveConfig(RunningScript script) {
