@@ -31,14 +31,15 @@ public class KeybindAPI implements ProxyObject {
             switch (key) {
                 case "register": {
                     if (args.length < 3 || !args[0].isString() || !args[1].isNumber() || !args[2].canExecute()) {
-                        throw new IllegalArgumentException("Usage: Keybinds.register('name', keyCode, action, isRepeatable = false)");
+                        throw new IllegalArgumentException("Usage: Keybinds.register('name', keyCode, action, isRepeatable = false, debounceMs = 100)");
                     }
                     String name = args[0].asString();
                     int keyCode = args[1].asInt();
                     Value action = args[2];
                     boolean repeatable = args.length > 3 && args[3].isBoolean() && args[3].asBoolean();
+                    int debounceTime = args.length > 4 && args[4].isNumber() ? args[4].asInt(): 100;
 
-                    keybindManager.register(name, keyCode, repeatable, owner, action);
+                    keybindManager.register(name, keyCode, repeatable, owner, action, debounceTime);
                     return null;
                 }
                 case "unregister": {

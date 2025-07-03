@@ -66,14 +66,14 @@ public class KeybindManager {
         processInput(button, action);
     }
 
-    public void register(String name, int defaultKey, boolean repeatable, RunningScript owner, Value action) {
+    public void register(String name, int defaultKey, boolean repeatable, RunningScript owner, Value action, int debounceTime) {
         String uniqueName = owner.getId() + "::" + name;
         if (keybindsByName.containsKey(uniqueName)) {
             Main.LOGGER.warn("Keybind '{}' is already registered for script '{}'. It will be replaced.", name, owner.getName());
             this.unregister(owner, name);
         }
 
-        KeyBinding keyBinding = new KeyBinding(name, defaultKey, repeatable, owner, action);
+        KeyBinding keyBinding = new KeyBinding(name, defaultKey, repeatable, owner, action, debounceTime);
         keybindsByName.put(uniqueName, keyBinding);
         keybindsByKeycode.computeIfAbsent(defaultKey, k -> new CopyOnWriteArrayList<>()).add(keyBinding);
     }

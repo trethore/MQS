@@ -11,30 +11,30 @@ public class KeyBinding {
     private final RunningScript owner;
     private final Value action;
     private final boolean repeatable;
-
+    private final int debounceTime;
     private int key;
     private long lastReleaseTime = 0;
-    private static final long DEBOUNCE_MS = 100;
     private boolean hasBeenPressed = false;
 
-    public KeyBinding(String name, int key, boolean repeatable, RunningScript owner, Value action) {
+    public KeyBinding(String name, int key, boolean repeatable, RunningScript owner, Value action, int debounceTime) {
         this.name = name;
         this.key = key;
         this.repeatable = repeatable;
         this.owner = owner;
         this.action = action;
+        this.debounceTime = debounceTime;
     }
 
     public void execute(int glfwAction, ScriptManager scriptManager) {
         if (key < 0 || action == null || !action.canExecute()) return;
         long currentTime = System.currentTimeMillis();
         if (glfwAction == GLFW.GLFW_PRESS || (glfwAction == GLFW.GLFW_REPEAT && repeatable)) {
-            if (currentTime - lastReleaseTime < DEBOUNCE_MS) {
+            if (currentTime - lastReleaseTime < debounceTime) {
                 return;
             }
             fireAction(scriptManager);
             hasBeenPressed = true;
-        } else if (glfwAction == GLFW.GLFW_RELEASE && !(currentTime - lastReleaseTime < DEBOUNCE_MS) && hasBeenPressed) {
+        } else if (glfwAction == GLFW.GLFW_RELEASE && !(currentTime - lastReleaseTime < debounceTime) && hasBeenPressed) {
             lastReleaseTime = System.currentTimeMillis();
             hasBeenPressed = false;
         }
