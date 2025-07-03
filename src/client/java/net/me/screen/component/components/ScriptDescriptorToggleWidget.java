@@ -1,5 +1,6 @@
 package net.me.screen.component.components;
 
+import net.me.screen.component.IResizableWidget;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.me.utils.GUIColors;
@@ -11,18 +12,27 @@ import net.minecraft.client.gui.widget.PressableWidget;
 import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
-public class ScriptDescriptorToggleWidget extends PressableWidget {
+@SuppressWarnings("unused")
+public class ScriptDescriptorToggleWidget extends PressableWidget implements IResizableWidget {
+
+    private static final int PADDING = 5;
+    private static final int TOGGLE_BG_WIDTH = 20;
+    private static final int TOGGLE_BG_HEIGHT = 20;
+    private static final int TOGGLE_INDICATOR_SIZE = 16;
+    private static final float TITLE_SCALE = 1.0f;
+    private static final float PATH_SCALE = 0.8f;
+
     private final ScriptingService scriptingService;
     private ScriptDescriptor descriptor;
 
     protected ScriptDescriptorToggleWidget(int x, int y, int width, int height, @Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
-        super(x, y, width, height, Text.literal(""));
+        super(x, y, width, height, Text.empty());
         this.scriptingService = scriptingService;
         this.update(descriptor);
     }
 
-    public static Builder builder(@Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
-        return new Builder(descriptor, scriptingService);
+    public static Builder builder(ScriptingService scriptingService) {
+        return new Builder(scriptingService);
     }
 
     public void update(@Nullable ScriptDescriptor descriptor) {
@@ -44,30 +54,45 @@ public class ScriptDescriptorToggleWidget extends PressableWidget {
 
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        if (this.descriptor == null) return;
+        if (this.descriptor == null || !this.visible) {
+            return;
+        }
 
         boolean isHovered = this.active && this.isMouseOver(mouseX, mouseY);
-        int color = isHovered ? GUIColors.DARK_L3.getRGBA() : GUIColors.DARK_L2.getRGBA();
-        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, color);
+        int bgColor = isHovered ? GUIColors.DARK_L3.getRGB() : GUIColors.DARK_L2.getRGB();
+        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, bgColor);
+
         String title = this.descriptor.moduleName() + " v" + this.descriptor.version();
-        TextRenderUtils.drawText(context, title, this.getX() + 5, this.getY() + 5, GUIColors.WHITE.getRGBA(), true, 1);
-        TextRenderUtils.drawText(context, this.descriptor.path().getFileName().toString(), this.getX() + 5, this.getY() + 16, GUIColors.WHITE.darker(25).getRGB(), true, 0.8f);
-        renderToggleState(context, isHovered);
+        TextRenderUtils.drawText(context, title, this.getX() + PADDING, this.getY() + PADDING, GUIColors.TEXT.getRGB(), true, TITLE_SCALE);
+        TextRenderUtils.drawText(context, this.descriptor.path().getFileName().toString(), this.getX() + PADDING, this.getY() + 16, GUIColors.TEXT.darker(25).getRGB(), true, PATH_SCALE);
+        renderToggle(context, isHovered);
     }
 
-    private void renderToggleState(DrawContext context, boolean isHovered) {
-        if (this.descriptor == null) return;
-        int color = isHovered ? GUIColors.DARK_L3.lighter(10).getRGB() : GUIColors.DARK_L3.getRGBA();
+    private void renderToggle(DrawContext context, boolean isHovered) {
+        int toggleBgColor = isHovered ? GUIColors.DARK_L3.lighter(10).getRGB() : GUIColors.DARK_L3.getRGB();
+        int toggleBgX = this.getX() + this.getWidth() - TOGGLE_BG_WIDTH - PADDING;
+        int toggleBgY = this.getY() + (this.getHeight() - TOGGLE_BG_HEIGHT) / 2;
+        Render2DUtils.drawRoundedRect(context, toggleBgX, toggleBgY, TOGGLE_BG_WIDTH, TOGGLE_BG_HEIGHT, 2, 5, toggleBgColor);
 
-        Render2DUtils.drawRoundedRect(context, this.getX() + this.getWidth() - 25, this.getY() + 5, 20, 20, 2, 5, color);
-        int stateColor;
-        if (scriptingService.isRunning(descriptor.getId())) {
-            stateColor = GUIColors.SUCCESS.getRGBA();
-        } else {
-            stateColor = GUIColors.ERROR.getRGBA();
-        }
-        Render2DUtils.drawRoundedRect(context, this.getX() + this.getWidth() - 23, this.getY() + 7, 16, 16, 2, 10, stateColor);
+        int stateColor = scriptingService.isRunning(descriptor.getId())
+                ? GUIColors.SUCCESS.getRGB()
+                : GUIColors.ERROR.getRGB();
+        int indicatorX = toggleBgX + (TOGGLE_BG_WIDTH - TOGGLE_INDICATOR_SIZE) / 2;
+        int indicatorY = toggleBgY + (TOGGLE_BG_HEIGHT - TOGGLE_INDICATOR_SIZE) / 2;
+        Render2DUtils.drawRoundedRect(context, indicatorX, indicatorY, TOGGLE_INDICATOR_SIZE, TOGGLE_INDICATOR_SIZE, 2, 10, stateColor);
+    }
 
+
+    @Override
+    public void setPos(int x, int y) {
+        this.setX(x);
+        this.setY(y);
+    }
+
+    @Override
+    public void setSize(int width, int height) {
+        this.setWidth(width);
+        this.setHeight(height);
     }
 
     @Override
@@ -81,19 +106,23 @@ public class ScriptDescriptorToggleWidget extends PressableWidget {
     }
 
     public static class Builder {
-        private final ScriptDescriptor descriptor;
         private final ScriptingService scriptingService;
-        private int x;
-        private int y;
+        private ScriptDescriptor descriptor = null;
+        private int x = 0;
+        private int y = 0;
         private int width = 200;
         private int height = 30;
 
-        public Builder(@Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
-            this.descriptor = descriptor;
+        public Builder(ScriptingService scriptingService) {
             this.scriptingService = scriptingService;
         }
 
-        public ScriptDescriptorToggleWidget.Builder dimensions(int x, int y, int width, int height) {
+        public Builder descriptor(@Nullable ScriptDescriptor descriptor) {
+            this.descriptor = descriptor;
+            return this;
+        }
+
+        public Builder dimensions(int x, int y, int width, int height) {
             this.x = x;
             this.y = y;
             this.width = width;
@@ -101,15 +130,20 @@ public class ScriptDescriptorToggleWidget extends PressableWidget {
             return this;
         }
 
-        public ScriptDescriptorToggleWidget.Builder position(int x, int y) {
+        public Builder position(int x, int y) {
             this.x = x;
             this.y = y;
             return this;
         }
 
+        public Builder size(int width, int height) {
+            this.width = width;
+            this.height = height;
+            return this;
+        }
+
         public ScriptDescriptorToggleWidget build() {
-            return new ScriptDescriptorToggleWidget(this.x, this.y, this.width, this.height, descriptor, scriptingService);
+            return new ScriptDescriptorToggleWidget(this.x, this.y, this.width, this.height, this.descriptor, this.scriptingService);
         }
     }
-
 }

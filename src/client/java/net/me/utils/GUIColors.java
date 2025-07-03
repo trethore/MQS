@@ -1,6 +1,6 @@
 package net.me.utils;
 
-import java.awt.Color;
+import java.awt.*;
 
 @SuppressWarnings("unused")
 public enum GUIColors {
@@ -12,15 +12,15 @@ public enum GUIColors {
     TEXT_DISABLED(new Color(151, 151, 151, 240)),
     // default
     SUCCESS(new Color(33, 199, 33, 255)),
-    WARN(new Color(255,204,0, 255)),
-    ERROR(new Color(204,51,0, 255)),
+    WARN(new Color(255, 204, 0, 255)),
+    ERROR(new Color(204, 51, 0, 255)),
     // gradients
     DARK_L1(new Color(23, 23, 23, 255)),
     DARK_L2(new Color(33, 33, 33, 255)),
     DARK_L3(new Color(48, 48, 48, 255)),
     DARK_L4(new Color(69, 69, 69, 255)),
     // ui color
-    PRIMARY(new Color(96, 255, 255,255)),
+    PRIMARY(new Color(96, 255, 255, 255)),
     SECONDARY(new Color(255, 96, 96, 255));
 
     private final Color color;
@@ -91,7 +91,7 @@ public enum GUIColors {
         return color.getAlpha();
     }
 
-    public enum Level{
+    public enum Level {
         LOW(10),
         MEDIUM(20),
         HIGH(30);

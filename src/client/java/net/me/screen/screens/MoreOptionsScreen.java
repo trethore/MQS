@@ -2,7 +2,8 @@ package net.me.screen.screens;
 
 import net.me.Main;
 import net.me.screen.MQSScreen;
-import net.me.screen.component.components.DarkButtonWidget;
+import net.me.screen.component.WidgetLayoutHelper;
+import net.me.screen.component.components.MQSButtonWidget;
 import net.me.utils.ChatUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.Util;
@@ -54,27 +55,41 @@ public class MoreOptionsScreen extends MQSScreen {
     @Override
     protected void init() {
         super.init();
+        MQSButtonWidget openConfigsButton = MQSButtonWidget.builder("Open Configs Folder", button -> openFolder("configs"))
+                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .build();
 
-        int centerX = getMiddlePoint().x();
-        int startY = getMiddlePoint().y() - 35;
+        MQSButtonWidget openScriptsButton = MQSButtonWidget.builder("Open Scripts Folder", button -> openFolder("scripts"))
+                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .build();
 
-        addDrawableChild(DarkButtonWidget.builder("Open Configs Folder", button -> openFolder("configs")).dimensions(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
-
-        startY += BUTTON_HEIGHT + BUTTON_SPACING;
-        addDrawableChild(DarkButtonWidget.builder("Open Scripts Folder", button -> openFolder("scripts")).dimensions(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
-
-        startY += BUTTON_HEIGHT + BUTTON_SPACING;
-        addDrawableChild(DarkButtonWidget.builder("Open in VS Code", button -> {
+        MQSButtonWidget openVSCodeButton = MQSButtonWidget.builder("Open in VS Code", button -> {
             Main.LOGGER.info("Opening in VS Code");
             if (isVSCodeInstalled()) {
                 openScriptsInVSCodeDesktop();
             } else {
                 openScriptsInVSCodeWeb();
             }
-        }).dimensions(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        }).size(BUTTON_WIDTH, BUTTON_HEIGHT).build();
 
-        startY += BUTTON_HEIGHT + BUTTON_SPACING;
-        addDrawableChild(DarkButtonWidget.builder("Keybinds", button -> new KeybindsScreen(this).open()).dimensions(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        MQSButtonWidget keybindsButton = MQSButtonWidget.builder("Keybinds", button -> new KeybindsScreen(this).open())
+                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .build();
+
+        this.addDrawableChild(openConfigsButton);
+        this.addDrawableChild(openScriptsButton);
+        this.addDrawableChild(openVSCodeButton);
+        this.addDrawableChild(keybindsButton);
+
+        WidgetLayoutHelper.layoutVertically(
+                getMiddlePoint().x() - BUTTON_WIDTH / 2,
+                getMiddlePoint().y() - 35,
+                BUTTON_SPACING,
+                openConfigsButton,
+                openScriptsButton,
+                openVSCodeButton,
+                keybindsButton
+        );
     }
 
     private void openScriptsInVSCodeDesktop() {

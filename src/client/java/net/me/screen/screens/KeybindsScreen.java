@@ -1,5 +1,3 @@
-// java/net/me/screen/screens/KeybindsScreen.java
-
 package net.me.screen.screens;
 
 import net.me.Main;
@@ -17,54 +15,108 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class KeybindsScreen extends MQSScreen {
+    private static final int PADDING = 20;
+    private static final int ENTRY_HEIGHT = 30;
+    private static final int HEADER_HEIGHT = 20;
+    private static final int LIST_TOP_MARGIN = 55;
+    private static final int LIST_BOTTOM_MARGIN = 70;
     private final KeybindManager keybindManager;
     private final List<KeybindEntryWidget> keybindEntryWidgets = new ArrayList<>();
-    private final int PADDING = 20;
-    private final int ENTRY_HEIGHT = 30;
-    private final int HEADER_HEIGHT = 20;
-    private double scrollY = 0;
     private KeybindEntryWidget listeningWidget = null;
+    private double scrollY = 0;
+    private int totalContentHeight = 0;
 
     public KeybindsScreen(MQSScreen parent) {
         super("Keybinds", 400, 300, parent);
         this.keybindManager = Main.getKeybindManager();
     }
 
+    private Map<RunningScript, List<KeyBinding>> getSortedScriptGroups() {
+        return keybindManager.getGroupedKeybinds().entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(RunningScript::getName, String.CASE_INSENSITIVE_ORDER)))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, java.util.LinkedHashMap::new));
+    }
+
     @Override
     protected void init() {
         super.init();
         this.keybindEntryWidgets.clear();
+        this.totalContentHeight = 0;
+
         int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
-        int currentY = getMiddlePoint().y() - getWindowHeight() / 2 + 55;
+        int currentY = getMiddlePoint().y() - getWindowHeight() / 2 + LIST_TOP_MARGIN;
 
-        Map<RunningScript, List<KeyBinding>> groupedKeybinds = keybindManager.getGroupedKeybinds();
-        List<RunningScript> sortedScripts = new ArrayList<>(groupedKeybinds.keySet());
-        sortedScripts.sort(Comparator.comparing(RunningScript::getName, String.CASE_INSENSITIVE_ORDER));
+        Map<RunningScript, List<KeyBinding>> groupedKeybinds = getSortedScriptGroups();
 
-        for (RunningScript script : sortedScripts) {
+        for (Map.Entry<RunningScript, List<KeyBinding>> entry : groupedKeybinds.entrySet()) {
             currentY += HEADER_HEIGHT;
-            List<KeyBinding> bindings = groupedKeybinds.get(script);
-            if (bindings == null) continue;
+            this.totalContentHeight += HEADER_HEIGHT;
 
+            List<KeyBinding> bindings = entry.getValue();
             bindings.sort(Comparator.comparing(KeyBinding::getName, String.CASE_INSENSITIVE_ORDER));
 
             for (KeyBinding binding : bindings) {
-                KeybindEntryWidget widget = new KeybindEntryWidget(
-                        windowStartX + PADDING,
-                        currentY,
-                        getWindowWidth() - (PADDING * 2),
-                        ENTRY_HEIGHT,
-                        binding,
-                        this::startListening
-                );
+                KeybindEntryWidget widget = KeybindEntryWidget.builder(binding, this::startListening)
+                        .dimensions(
+                                windowStartX + PADDING,
+                                currentY,
+                                getWindowWidth() - (PADDING * 2),
+                                ENTRY_HEIGHT
+                        )
+                        .build();
+
                 this.keybindEntryWidgets.add(widget);
                 currentY += ENTRY_HEIGHT;
+                this.totalContentHeight += ENTRY_HEIGHT;
+            }
+        }
+        this.keybindEntryWidgets.forEach(this::addSelectableChild);
+    }
+
+    @Override
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        super.render(context, mouseX, mouseY, delta);
+
+        int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
+        int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
+        int listStartY = windowStartY + LIST_TOP_MARGIN;
+        int listHeight = getWindowHeight() - LIST_BOTTOM_MARGIN;
+
+        context.enableScissor(windowStartX, listStartY, windowStartX + getWindowWidth(), listStartY + listHeight);
+
+        int currentY = (int) (listStartY - scrollY);
+        Map<RunningScript, List<KeyBinding>> groupedKeybinds = getSortedScriptGroups();
+
+        for (Map.Entry<RunningScript, List<KeyBinding>> entry : groupedKeybinds.entrySet()) {
+            RunningScript script = entry.getKey();
+            String header = script.getName() + " v" + script.getVersion();
+            TextRenderUtils.drawCenteredText(context, header, this.getMiddlePoint().x(), currentY + 8, GUIColors.TEXT.getRGB(), true, 1.1f);
+            currentY += HEADER_HEIGHT;
+
+            for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
+                if (widget.getKeyBinding().getOwner().equals(script)) {
+                    widget.setY(currentY);
+                    widget.render(context, mouseX, mouseY, delta);
+                    currentY += ENTRY_HEIGHT;
+                }
             }
         }
 
-        this.keybindEntryWidgets.forEach(this::addSelectableChild);
+        context.disableScissor();
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        int viewHeight = getWindowHeight() - LIST_BOTTOM_MARGIN;
+        double maxScroll = Math.max(0, this.totalContentHeight - viewHeight);
+
+        scrollY -= verticalAmount * 10;
+        scrollY = Math.max(0, Math.min(scrollY, maxScroll));
+
+        return true;
     }
 
     private void startListening(KeyBinding bindingToRebind) {
@@ -90,62 +142,15 @@ public class KeybindsScreen extends MQSScreen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
-
-        int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
-        int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
-        int listStartY = windowStartY + 55;
-        int listHeight = getWindowHeight() - 70;
-
-        context.enableScissor(windowStartX, listStartY, windowStartX + getWindowWidth(), listStartY + listHeight);
-
-        int currentY = (int) (listStartY - scrollY);
-        Map<RunningScript, List<KeyBinding>> groupedKeybinds = keybindManager.getGroupedKeybinds();
-        List<RunningScript> sortedScripts = new ArrayList<>(groupedKeybinds.keySet());
-        sortedScripts.sort(Comparator.comparing(RunningScript::getName, String.CASE_INSENSITIVE_ORDER));
-
-        for (RunningScript script : sortedScripts) {
-            String header =  script.getName() + " v" + script.getVersion();
-            TextRenderUtils.drawCenteredText(context, header, this.getMiddlePoint().x(), currentY+8, GUIColors.WHITE.getRGBA(), true, 1.1f);
-            currentY += HEADER_HEIGHT;
-
-            for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
-                if (widget.getKeyBinding().getOwner().equals(script)) {
-                    widget.setY(currentY);
-                    widget.render(context, mouseX, mouseY, delta);
-                    currentY += ENTRY_HEIGHT;
-                }
-            }
-        }
-
-        context.disableScissor();
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        int contentHeight = 0;
-        Map<RunningScript, List<KeyBinding>> groupedKeybinds = keybindManager.getGroupedKeybinds();
-        for (RunningScript script : groupedKeybinds.keySet()) {
-            contentHeight += HEADER_HEIGHT;
-            contentHeight += groupedKeybinds.get(script).size() * ENTRY_HEIGHT;
-        }
-
-        int viewHeight = getWindowHeight() - 70;
-        double maxScroll = Math.max(0, contentHeight - viewHeight);
-
-        scrollY -= verticalAmount * 10;
-        if (scrollY < 0) scrollY = 0;
-        if (scrollY > maxScroll) scrollY = maxScroll;
-
-        return true;
-    }
-
-    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (listeningWidget != null) {
-            stopListening(button);
+            stopListening(button - 100);
             return true;
+        }
+        for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
+            if (widget.mouseClicked(mouseX, mouseY, button)) {
+                return true;
+            }
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
@@ -154,7 +159,7 @@ public class KeybindsScreen extends MQSScreen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (listeningWidget != null) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-                stopListening(-1); // Unbind
+                stopListening(-1); // Use -1 to signify unbinding
             } else {
                 stopListening(keyCode);
             }

@@ -3,7 +3,7 @@ package net.me.screen.screens;
 import net.me.console.ConsoleManager;
 import net.me.console.ConsoleMessage;
 import net.me.screen.MQSScreen;
-import net.me.screen.component.components.DarkTextFieldWidget;
+import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.OrderedText;
@@ -21,7 +21,7 @@ public class ConsoleScreen extends MQSScreen {
     private final int HEADER_MARGIN = 55;
     private final int FOOTER_MARGIN = 15;
     private final List<DisplayLine> displayLines = new ArrayList<>();
-    private DarkTextFieldWidget inputField;
+    private MQSTextFieldWidget inputField;
     private double scrollY = 0;
     private boolean autoScroll = true;
     private int historyIndex;
@@ -44,7 +44,7 @@ public class ConsoleScreen extends MQSScreen {
         int inputY = windowStartY + getWindowHeight() - INPUT_HEIGHT - PADDING;
         int inputWidth = getWindowWidth() - (PADDING * 2);
 
-        this.inputField = DarkTextFieldWidget.builder(this.textRenderer)
+        this.inputField = MQSTextFieldWidget.builder()
                 .dimensions(inputX, inputY, inputWidth, INPUT_HEIGHT)
                 .placeholder("> Enter a command... (Type 'help')")
                 .build();

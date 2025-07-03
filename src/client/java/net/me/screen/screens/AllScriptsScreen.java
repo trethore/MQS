@@ -2,8 +2,9 @@ package net.me.screen.screens;
 
 import net.me.console.ConsoleManager;
 import net.me.screen.MQSScreen;
-import net.me.screen.component.components.DarkButtonWidget;
-import net.me.screen.component.components.DarkTextFieldWidget;
+import net.me.screen.component.WidgetLayoutHelper;
+import net.me.screen.component.components.MQSButtonWidget;
+import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.screen.component.components.ScriptDescriptorToggleWidget;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
@@ -34,10 +35,10 @@ public class AllScriptsScreen extends MQSScreen {
     private List<ScriptDescriptor> filteredScripts;
     private int currentPage = 0;
     private int totalPages = 1;
-    private DarkTextFieldWidget searchTextField;
-    private DarkButtonWidget prevButton;
-    private DarkButtonWidget nextButton;
-    private DarkButtonWidget refreshButton;
+    private MQSTextFieldWidget searchTextField;
+    private MQSButtonWidget prevButton;
+    private MQSButtonWidget nextButton;
+    private MQSButtonWidget refreshButton;
     private boolean isRefreshing = false;
 
     public AllScriptsScreen(ScriptingService scriptingService, ConsoleManager consoleManager) {
@@ -66,21 +67,27 @@ public class AllScriptsScreen extends MQSScreen {
         int listStartY = this.getMiddlePoint().y() - 70;
 
         for (int i = 0; i < ITEMS_PER_PAGE; i++) {
-            int currentY = listStartY + (i * SCRIPT_ROW_HEIGHT);
-            ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(null, scriptingService)
-                    .position(listStartX, currentY)
+            ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(scriptingService)
+                    .size(200, SCRIPT_ROW_HEIGHT - 5)
                     .build();
-            toggleWidget.visible = false; // Initially hide
+            toggleWidget.visible = false;
             this.addDrawableChild(toggleWidget);
             this.scriptEntryWidgets.add(toggleWidget);
         }
+
+        WidgetLayoutHelper.layoutVertically(
+                listStartX,
+                listStartY,
+                5,
+                this.scriptEntryWidgets.toArray(new ScriptDescriptorToggleWidget[0])
+        );
     }
 
     private void addSearch() {
         int searchX = this.getMiddlePoint().x() - PADDING;
         int searchY = this.getMiddlePoint().y() - PADDING;
 
-        this.searchTextField = DarkTextFieldWidget.builder(this.textRenderer)
+        this.searchTextField = MQSTextFieldWidget.builder()
                 .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, SEARCH_BAR_HEIGHT)
                 .placeholder("Search...")
                 .build();
@@ -88,7 +95,7 @@ public class AllScriptsScreen extends MQSScreen {
         this.searchTextField.setChangedListener(this::onSearchTextChanged);
 
         this.addSelectableChild(this.searchTextField);
-        DarkButtonWidget clearTextFieldButton = DarkButtonWidget.builder("❌", button -> this.searchTextField.clearText())
+        MQSButtonWidget clearTextFieldButton = MQSButtonWidget.builder("❌", button -> this.searchTextField.clearText())
                 .dimensions(searchX + SEARCH_BAR_WIDTH + 10, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
                 .build();
         this.addDrawableChild(clearTextFieldButton);
@@ -133,14 +140,14 @@ public class AllScriptsScreen extends MQSScreen {
         int navY = this.getMiddlePoint().y() + 75;
         int navX = this.getMiddlePoint().x();
 
-        this.prevButton = DarkButtonWidget.builder("Previous", button -> {
+        this.prevButton = MQSButtonWidget.builder("Previous", button -> {
             if (this.currentPage > 0) {
                 this.currentPage--;
                 updateScriptList();
             }
         }).dimensions(navX - PADDING, navY, 80, BUTTON_HEIGHT).build();
 
-        this.nextButton = DarkButtonWidget.builder("Next", button -> {
+        this.nextButton = MQSButtonWidget.builder("Next", button -> {
             if (this.currentPage < this.totalPages - 1) {
                 this.currentPage++;
                 updateScriptList();
@@ -152,15 +159,15 @@ public class AllScriptsScreen extends MQSScreen {
 
         int actionY = navY + 25;
 
-        this.refreshButton = DarkButtonWidget.builder("Refresh", button -> refreshScripts())
+        this.refreshButton = MQSButtonWidget.builder("Refresh", button -> refreshScripts())
                 .dimensions(navX - PADDING, actionY, 60, BUTTON_HEIGHT).build();
 
-        DarkButtonWidget consoleButton = DarkButtonWidget.builder("Console", button -> new ConsoleScreen(this, consoleManager).open()).dimensions(navX - 35, actionY, 60, BUTTON_HEIGHT).build();
+        MQSButtonWidget consoleButton = MQSButtonWidget.builder("Console", button -> new ConsoleScreen(this, consoleManager).open()).dimensions(navX - 35, actionY, 60, BUTTON_HEIGHT).build();
 
-        DarkButtonWidget offButton = DarkButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
+        MQSButtonWidget offButton = MQSButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
                 .dimensions(navX + 30, actionY, 50, BUTTON_HEIGHT).build();
 
-        DarkButtonWidget moreButton = DarkButtonWidget.builder(Formatting.BOLD + "⋮" + Formatting.RESET, button -> new MoreOptionsScreen(this).open()).dimensions(navX + 85, actionY, 15, BUTTON_HEIGHT).build();
+        MQSButtonWidget moreButton = MQSButtonWidget.builder(Formatting.BOLD + "⋮" + Formatting.RESET, button -> new MoreOptionsScreen(this).open()).dimensions(navX + 85, actionY, 15, BUTTON_HEIGHT).build();
 
         this.addDrawableChild(this.refreshButton);
         this.addDrawableChild(consoleButton);
