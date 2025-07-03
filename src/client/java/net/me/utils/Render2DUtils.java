@@ -19,6 +19,21 @@ public final class Render2DUtils {
     private Render2DUtils() {
     }
 
+    private static BufferBuilder setupRender(ShaderProgramKey shaderProgramKey, VertexFormat.DrawMode drawMode, VertexFormat vertexFormat) {
+        RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.setShader(shaderProgramKey);
+        return Tessellator.getInstance().begin(drawMode, vertexFormat);
+    }
+
+    private static void endRender(BufferBuilder buffer) {
+        BuiltBuffer builtBuffer = buffer.end();
+        if (builtBuffer != null) {
+            BufferRenderer.drawWithGlobalProgram(builtBuffer);
+        }
+        RenderSystem.disableBlend();
+    }
+
     public static void drawRect(DrawContext context, float x, float y, float width, float height, int color) {
         drawRect(x, y, width, height, color);
     }
@@ -189,18 +204,5 @@ public final class Render2DUtils {
     }
 
 
-    private static BufferBuilder setupRender(ShaderProgramKey shaderProgramKey, VertexFormat.DrawMode drawMode, VertexFormat vertexFormat) {
-        RenderSystem.enableBlend();
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        RenderSystem.setShader(shaderProgramKey);
-        return Tessellator.getInstance().begin(drawMode, vertexFormat);
-    }
 
-    private static void endRender(BufferBuilder buffer) {
-        BuiltBuffer builtBuffer = buffer.end();
-        if (builtBuffer != null) {
-            BufferRenderer.drawWithGlobalProgram(builtBuffer);
-        }
-        RenderSystem.disableBlend();
-    }
 }

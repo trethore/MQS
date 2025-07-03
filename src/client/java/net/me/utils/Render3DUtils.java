@@ -2,9 +2,10 @@ package net.me.utils;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.me.Main;
 import net.me.utils.records.Box6d;
+import net.me.utils.records.Vector3f;
 import net.minecraft.client.gl.ShaderProgramKey;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.*;
 import net.minecraft.entity.LivingEntity;
@@ -15,11 +16,13 @@ import java.awt.*;
 
 @SuppressWarnings("unused")
 public final class Render3DUtils {
-    private Render3DUtils() {}
+    public static final Box6d DEFAULT_BOX = new Box6d(0, 0, 0, 1, 1, 1);
 
-    public static final Box6d DEFAULT_BOX = new Box6d(0,0,0, 1, 1, 1);
+    private Render3DUtils() {
+    }
 
     public static BufferBuilder setupRender(ShaderProgramKey key, VertexFormat.DrawMode drawMode, VertexFormat vertexFormat, boolean espMode) {
+        RenderSystem.setShaderColor(1, 1, 1, 1);
         RenderSystem.setShader(key);
         RenderSystem.disableCull();
         RenderSystem.depthMask(false);
@@ -46,38 +49,53 @@ public final class Render3DUtils {
         RenderSystem.enableCull();
     }
 
+    public static void drawLine(DrawContext context, BufferBuilder bufferBuilder, Color color, float x1, float y1, float z1, float x2, float y2, float z2, float width, boolean espMode) {
+        McUtils.getMc().map(mc -> {
+            GameRenderer renderer = mc.gameRenderer;
+            if (renderer == null || renderer.getCamera() == null || !renderer.getCamera().isReady()) {
+                Main.LOGGER.error("Error: GameRenderer or Camera is null or not ready when drawing a line.");
+                return null;
+            }
+            return renderer.getCamera();
+        }).ifPresentOrElse(camera -> {
+            RenderSystem.lineWidth(width);
+            Matrix4f mat = context.getMatrices().peek().getPositionMatrix();
 
-    public static void drawBox(DrawContext context, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, Color color, boolean espMode) {
-        RenderSystem.setShaderColor(1, 1, 1, 1);
-        float alpha = (float) (color.getRGB() >> 24 & 255) / 255.0F;
-        float red = (float) (color.getRGB() >> 16 & 255) / 255.0F;
-        float green = (float) (color.getRGB() >> 8 & 255) / 255.0F;
-        float blue = (float) (color.getRGB() & 255) / 255.0F;
+            Vec3d camPos = camera.getPos().negate();
 
-        Camera camera = McUtils.getMc().map(mc -> {
+            Vector3f v1 = new Vector3f(x1, y1, z1).add((float) camPos.x, (float) camPos.y, (float) camPos.z);
+            Vector3f v2 = new Vector3f(x2, y2, z2).add((float) camPos.x, (float) camPos.y, (float) camPos.z);
+
+            bufferBuilder.vertex(mat, v1.x(), v1.y(), v1.z()).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+            bufferBuilder.vertex(mat, v2.x(), v2.y(), v2.z()).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+        }, () -> Main.LOGGER.error("Error: MinecraftClient instance is not present when drawing a line."));
+    }
+
+
+    public static void drawBox(DrawContext context, BufferBuilder bufferBuilder, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, Color color, boolean espMode) {
+        McUtils.getMc().map(mc -> {
             GameRenderer gameRenderer = mc.gameRenderer;
-            if (gameRenderer == null || gameRenderer.getCamera() == null || !gameRenderer.getCamera().isReady()) return null;
+            if (gameRenderer == null || gameRenderer.getCamera() == null || !gameRenderer.getCamera().isReady()) {
+                Main.LOGGER.error("Error: GameRenderer or Camera is null or not ready when drawing a box.");
+                return null;
+            }
             return gameRenderer.getCamera();
-        }).orElse(null);
+        }).ifPresentOrElse(camera -> {
+            Vec3d vec3d = camera.getPos().negate();
 
-        if (camera == null) {
-            return;
-        }
-        Vec3d vec3d = camera.getPos().negate();
-        Vec3d v1 = new Vec3d(minX, minY, minZ);
-        Vec3d v2 = new Vec3d(maxX, maxY, maxZ);
-        v1.add(vec3d);
-        v2.add(vec3d);
+            Vector3f v1 = new Vector3f(minX, minY, minZ);
+            Vector3f v2 = new Vector3f(maxX, maxY, maxZ);
 
-        float boxMinX = (float) v1.getX();
-        float boxMinY = (float) v1.getY();
-        float boxMinZ = (float) v1.getZ();
-        float boxMaxX = (float) v2.getX();
-        float boxMaxY = (float) v2.getY();
-        float boxMaxZ = (float) v2.getZ();
+            v1 = v1.add((float) vec3d.x, (float) vec3d.y, (float) vec3d.z);
+            v2 = v2.add((float) vec3d.x, (float) vec3d.y, (float) vec3d.z);
 
-        BufferBuilder bufferBuilder = setupRender(ShaderProgramKeys.POSITION_COLOR, VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR,espMode);
-        Matrix4f matrix4f = context.getMatrices().peek().getPositionMatrix();
+            Matrix4f matrix4f = context.getMatrices().peek().getPositionMatrix();
+
+            doDrawBox(bufferBuilder, matrix4f, v1.x(), v1.y(), v1.z(), v2.x(), v2.y(), v2.z(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+        }, () -> Main.LOGGER.error("Error: MinecraftClient instance is not present when drawing a box."));
+    }
+
+    private static void doDrawBox(BufferBuilder bufferBuilder, Matrix4f matrix4f, float boxMinX, float boxMinY, float boxMinZ, float boxMaxX, float boxMaxY, float boxMaxZ, int red, int green, int blue, int alpha) {
         bufferBuilder.vertex(matrix4f, boxMinX, boxMinY, boxMinZ).color(red, green, blue, alpha);
         bufferBuilder.vertex(matrix4f, boxMinX, boxMinY, boxMaxZ).color(red, green, blue, alpha);
         bufferBuilder.vertex(matrix4f, boxMinX, boxMaxY, boxMinZ).color(red, green, blue, alpha);

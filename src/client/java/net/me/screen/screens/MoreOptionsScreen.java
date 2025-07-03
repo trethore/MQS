@@ -3,9 +3,8 @@ package net.me.screen.screens;
 import net.me.Main;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.components.DarkButtonWidget;
+import net.me.utils.ChatUtils;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Util;
 
 import java.io.IOException;
@@ -98,13 +97,13 @@ public class MoreOptionsScreen extends MQSScreen {
             Util.getOperatingSystem().open(uri);
 
             if (mc != null && mc.player != null) {
-                mc.player.sendMessage(Text.literal("Attempting to open scripts folder in VS Code (Desktop)...").formatted(Formatting.GREEN), false);
+                ChatUtils.addSuccessChatMessage("Attempting to open scripts folder in VS Code (Desktop)...", true);
             }
         } catch (Exception e) {
             Main.LOGGER.error("Could not open scripts folder in VS Code Desktop", e);
             if (mc != null && mc.player != null) {
-                mc.player.sendMessage(Text.literal("Failed to open VS Code (Desktop).").formatted(Formatting.RED), false);
-                mc.player.sendMessage(Text.literal("Make sure it's installed and the 'code' command is in your PATH.").formatted(Formatting.YELLOW), false);
+                ChatUtils.addErrorChatMessage("Failed to open VS Code (Desktop).", true);
+                ChatUtils.addWarnChatMessage("Make sure it's installed and the 'code' command is in your PATH.", true);
             }
         }
     }
@@ -124,15 +123,15 @@ public class MoreOptionsScreen extends MQSScreen {
             Util.getOperatingSystem().open("https://vscode.dev/");
 
             if (this.client.player != null) {
-                this.client.player.sendMessage(Text.literal("VS Code (Desktop) not found.").formatted(Formatting.YELLOW), false);
-                this.client.player.sendMessage(Text.literal("Copied scripts folder path to clipboard.").formatted(Formatting.GREEN), false);
-                this.client.player.sendMessage(Text.literal("In your browser, click 'Open Folder' and paste the path.").formatted(Formatting.AQUA), false);
+                ChatUtils.addWarnChatMessage("VS Code (Desktop) not found.", true);
+                ChatUtils.addSuccessChatMessage("Copied scripts folder path to clipboard.", true);
+                ChatUtils.addInfoChatMessage("In your browser, click 'Open Folder' and paste the path.", true);
             }
 
         } catch (Exception e) {
             Main.LOGGER.error("Could not open scripts folder in VS Code Web", e);
             if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(Text.literal("Failed to open VS Code Web.").formatted(Formatting.RED), false);
+                ChatUtils.addErrorChatMessage("Failed to open VS Code Web.", true);
             }
         }
     }

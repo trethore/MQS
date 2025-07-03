@@ -12,7 +12,7 @@ import net.me.command.CommandManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
-import net.minecraft.text.Text;
+import net.me.utils.ChatUtils;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -54,10 +54,10 @@ public class ScriptCommand extends Command {
     }
 
     private int listScripts(CommandContext<FabricClientCommandSource> context) {
-        context.getSource().sendFeedback(Text.literal("§a--- Available Scripts ---"));
+        ChatUtils.addSuccessChatMessage("--- Available Scripts ---", true);
         String scriptList = scriptingService.getFormattedScriptList();
         for (String line : scriptList.split("\n")) {
-            context.getSource().sendFeedback(Text.literal(line));
+            ChatUtils.addRawMessage(line);
         }
         return CommandManager.COMMAND_SUCCESS;
     }
@@ -65,14 +65,14 @@ public class ScriptCommand extends Command {
     private int enableScript(CommandContext<FabricClientCommandSource> context) {
         String scriptId = StringArgumentType.getString(context, "script_id");
         scriptingService.enable(scriptId);
-        context.getSource().sendFeedback(Text.literal("Attempting to enable script: " + scriptId));
+        ChatUtils.addInfoChatMessage("Attempting to enable script: " + scriptId, true);
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private int disableScript(CommandContext<FabricClientCommandSource> context) {
         String scriptId = StringArgumentType.getString(context, "script_id");
         scriptingService.disable(scriptId);
-        context.getSource().sendFeedback(Text.literal("Disabled script: " + scriptId));
+        ChatUtils.addSuccessChatMessage("Disabled script: " + scriptId, true);
         return CommandManager.COMMAND_SUCCESS;
     }
 
@@ -80,19 +80,19 @@ public class ScriptCommand extends Command {
         String scriptId = StringArgumentType.getString(context, "script_id");
         scriptingService.disable(scriptId);
         scriptingService.enable(scriptId);
-        context.getSource().sendFeedback(Text.literal("Reloaded script: " + scriptId));
+        ChatUtils.addSuccessChatMessage("Reloaded script: " + scriptId, true);
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private int refreshScripts(CommandContext<FabricClientCommandSource> context) {
         scriptingService.refresh();
-        context.getSource().sendFeedback(Text.literal("Scripts refreshed. All running scripts have been disabled."));
+        ChatUtils.addInfoChatMessage("Scripts refreshed. All running scripts have been disabled.", true);
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private int refreshAndReenableScripts(CommandContext<FabricClientCommandSource> context) {
         scriptingService.refreshAndReenable();
-        context.getSource().sendFeedback(Text.literal("Scripts refreshed and previously running scripts were re-enabled."));
+        ChatUtils.addSuccessChatMessage("Scripts refreshed and previously running scripts were re-enabled.", true);
         return CommandManager.COMMAND_SUCCESS;
     }
 
@@ -100,9 +100,9 @@ public class ScriptCommand extends Command {
         String scriptId = StringArgumentType.getString(context, "script_id");
         boolean success = scriptingService.save(scriptId);
         if (success) {
-            context.getSource().sendFeedback(Text.literal("Saved config for script: " + scriptId));
+            ChatUtils.addSuccessChatMessage("Saved config for script: " + scriptId, true);
         } else {
-            context.getSource().sendError(Text.literal("Could not save config. Script not running or not found: " + scriptId));
+            ChatUtils.addErrorChatMessage("Could not save config. Script not running or not found: " + scriptId, true);
         }
         return success ? CommandManager.COMMAND_SUCCESS : CommandManager.COMMAND_FAILURE;
     }
@@ -110,9 +110,9 @@ public class ScriptCommand extends Command {
     private int saveAllScriptConfigs(CommandContext<FabricClientCommandSource> context) {
         int count = scriptingService.saveAll();
         if (count > 0) {
-            context.getSource().sendFeedback(Text.literal("Saved configs for all " + count + " running scripts."));
+            ChatUtils.addSuccessChatMessage("Saved configs for all " + count + " running scripts.", true);
         } else {
-            context.getSource().sendFeedback(Text.literal("No running scripts to save configs for."));
+            ChatUtils.addInfoChatMessage("No running scripts to save configs for.", true);
         }
         return CommandManager.COMMAND_SUCCESS;
     }

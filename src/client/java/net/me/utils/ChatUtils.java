@@ -5,9 +5,10 @@ import net.minecraft.util.Formatting;
 
 @SuppressWarnings("unused")
 public final class ChatUtils {
-    public static String TAG = Formatting.GRAY + "[" +Formatting.GREEN + "MQS" + Formatting.GRAY + "] " + Formatting.RESET;
+    public static String TAG = Formatting.GRAY + "[" + Formatting.GREEN + "MQS" + Formatting.GRAY + "] " + Formatting.RESET;
 
-    private ChatUtils() {}
+    private ChatUtils() {
+    }
 
     public static void sendChatMessage(String s) {
         McUtils.getPlayer().ifPresent(player ->
@@ -32,21 +33,38 @@ public final class ChatUtils {
     public static void addErrorChatMessage(String message, boolean prefix) {
         addChatMessage(message, Level.ERROR, prefix);
     }
+    public static void addSuccessChatMessage(String message, boolean prefix) {
+        addChatMessage(message, Level.SUCCESS, prefix);
+    }
 
     public static void addChatMessage(String message, Level level, boolean prefix) {
-        McUtils.getPlayer().ifPresent(player -> player.sendMessage(Text.literal(TAG)
-                .append(Text.literal(message).formatted(level.getFormatting())), false));
+        Text text = Text.literal(message).formatted(level.getFormatting());
+        if (prefix) {
+            text = Text.literal(TAG).append(text);
+        }
+        Text finalText = text;
+        McUtils.getPlayer().ifPresent(p -> p.sendMessage(finalText, false));
+    }
+
+    public static void addRawMessage(String message) {
+        McUtils.getPlayer().ifPresent(player -> player.sendMessage(Text.literal(message), false));
     }
 
 
     public enum Level {
         ERROR(Formatting.RED),
         INFO(Formatting.WHITE),
-        WARN(Formatting.GOLD);
-
+        WARN(Formatting.GOLD),
+        SUCCESS(Formatting.GREEN);
         private final Formatting fmt;
-        Level(Formatting fmt) { this.fmt = fmt; }
-        public Formatting getFormatting() { return fmt; }
+
+        Level(Formatting fmt) {
+            this.fmt = fmt;
+        }
+
+        public Formatting getFormatting() {
+            return fmt;
+        }
     }
 
 
