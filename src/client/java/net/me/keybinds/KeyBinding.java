@@ -13,6 +13,9 @@ public class KeyBinding {
     private final boolean repeatable;
 
     private int key;
+    private long lastReleaseTime = 0;
+    private static final long DEBOUNCE_MS = 100;
+    private boolean hasBeenPressed = false;
 
     public KeyBinding(String name, int key, boolean repeatable, RunningScript owner, Value action) {
         this.name = name;
@@ -24,11 +27,16 @@ public class KeyBinding {
 
     public void execute(int glfwAction, ScriptManager scriptManager) {
         if (key < 0 || action == null || !action.canExecute()) return;
-
-        if (glfwAction == GLFW.GLFW_PRESS) {
+        long currentTime = System.currentTimeMillis();
+        if (glfwAction == GLFW.GLFW_PRESS || (glfwAction == GLFW.GLFW_REPEAT && repeatable)) {
+            if (currentTime - lastReleaseTime < DEBOUNCE_MS) {
+                return;
+            }
             fireAction(scriptManager);
-        } else if (glfwAction == GLFW.GLFW_REPEAT && repeatable) {
-            fireAction(scriptManager);
+            hasBeenPressed = true;
+        } else if (glfwAction == GLFW.GLFW_RELEASE && !(currentTime - lastReleaseTime < DEBOUNCE_MS) && hasBeenPressed) {
+            lastReleaseTime = System.currentTimeMillis();
+            hasBeenPressed = false;
         }
     }
 

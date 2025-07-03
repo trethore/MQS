@@ -17,7 +17,7 @@ public class KeybindManager {
 
     private final Map<String, KeyBinding> keybindsByName = new ConcurrentHashMap<>();
     private final Map<Integer, List<KeyBinding>> keybindsByKeycode = new ConcurrentHashMap<>();
-    private final Set<Integer> heldMouseButtons = ConcurrentHashMap.newKeySet();
+    private final Set<Integer> heldKeys = ConcurrentHashMap.newKeySet();
     private ScriptManager scriptManager;
 
     public void init(ScriptManager scriptManager) {
@@ -26,11 +26,11 @@ public class KeybindManager {
     }
 
     private void onTick() {
-        if (heldMouseButtons.isEmpty()) {
+        if (heldKeys.isEmpty()) {
             return;
         }
 
-        for (Integer button : heldMouseButtons) {
+        for (Integer button : heldKeys) {
             processInput(button, GLFW.GLFW_REPEAT);
         }
     }
@@ -45,16 +45,25 @@ public class KeybindManager {
     }
 
     public void onKey(int key, int action) {
-        processInput(key, action);
+        if (action != GLFW.GLFW_REPEAT) {
+            processInput(key, action);
+        }
+
+        if (action == GLFW.GLFW_PRESS) {
+            heldKeys.add(key);
+        } else if (action == GLFW.GLFW_RELEASE) {
+            heldKeys.remove(key);
+        }
+
     }
 
     public void onMouseClick(int button, int action) {
         if (action == GLFW.GLFW_PRESS) {
-            heldMouseButtons.add(button);
-            processInput(button, GLFW.GLFW_PRESS);
+            heldKeys.add(button);
         } else if (action == GLFW.GLFW_RELEASE) {
-            heldMouseButtons.remove(button);
+            heldKeys.remove(button);
         }
+        processInput(button, action);
     }
 
     public void register(String name, int defaultKey, boolean repeatable, RunningScript owner, Value action) {
@@ -76,7 +85,7 @@ public class KeybindManager {
             Main.LOGGER.warn("Script '{}' attempted to unregister keybind '{}', which was not found.", owner.getName(), name);
             return;
         }
-        heldMouseButtons.remove(keyBinding.getKey());
+        heldKeys.remove(keyBinding.getKey());
         List<KeyBinding> bindings = keybindsByKeycode.get(keyBinding.getKey());
         if (bindings != null) {
             bindings.remove(keyBinding);
@@ -90,7 +99,7 @@ public class KeybindManager {
         keybindsByName.entrySet().removeIf(entry -> {
             if (entry.getKey().startsWith(owner.getId() + "::")) {
                 KeyBinding kb = entry.getValue();
-                heldMouseButtons.remove(kb.getKey());
+                heldKeys.remove(kb.getKey());
                 List<KeyBinding> bindings = keybindsByKeycode.get(kb.getKey());
                 if (bindings != null) {
                     bindings.remove(kb);

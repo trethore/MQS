@@ -234,7 +234,6 @@ public class ScriptManager {
                 clearCurrentScript();
             }
 
-            Main.LOGGER.info("Enabled script: {}", runningScript.getName());
         } catch (Exception e) {
             returnContextToPool(scriptContext);
             Main.LOGGER.error("Failed to enable script '{}'. It may be in a broken state. Please disable it to ensure cleanup.", scriptId, e);
@@ -259,7 +258,6 @@ public class ScriptManager {
                 script.invalidate();
                 clearCurrentScript();
             }
-            Main.LOGGER.info("Disabled script: {}", script.getName());
         }
     }
 
