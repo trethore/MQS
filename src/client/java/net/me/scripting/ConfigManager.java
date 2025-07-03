@@ -11,11 +11,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ConfigManager {
+    private static final String KEYBINDS_KEY = "keybinds";
     private final Path configsDir = Main.MOD_DIR.resolve("configs");
-
     private final Map<String, Value> inMemoryConfigs = new ConcurrentHashMap<>();
     private Context configContext;
 
@@ -76,6 +77,38 @@ public class ConfigManager {
             return enabled != null && !enabled.isNull() && enabled.isBoolean() && enabled.asBoolean();
         }
         return false;
+    }
+
+    public Optional<Integer> getKeybind(String scriptId, String keybindName) {
+        Value config = getConfig(scriptId);
+        if (config.hasMember(KEYBINDS_KEY)) {
+            Value keybinds = config.getMember(KEYBINDS_KEY);
+            if (keybinds != null && keybinds.hasMember(keybindName)) {
+                Value key = keybinds.getMember(keybindName);
+                if (key != null && key.isNumber()) {
+                    return Optional.of(key.asInt());
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    public void setKeybind(String scriptId, String keybindName, int keyCode) {
+        Value config = getConfig(scriptId);
+        Value keybinds = config.getMember(KEYBINDS_KEY);
+        if (keybinds == null || keybinds.isNull()) {
+            keybinds = configContext.eval("js", "({})");
+            config.putMember(KEYBINDS_KEY, keybinds);
+        }
+
+        if (keyCode < 0) {
+            keybinds.removeMember(keybindName);
+            if (keybinds.getMemberKeys().isEmpty()) {
+                config.removeMember(KEYBINDS_KEY);
+            }
+        } else {
+            keybinds.putMember(keybindName, keyCode);
+        }
     }
 
     public void saveConfig(RunningScript script) {

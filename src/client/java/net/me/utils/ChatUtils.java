@@ -33,6 +33,7 @@ public final class ChatUtils {
     public static void addErrorChatMessage(String message, boolean prefix) {
         addChatMessage(message, Level.ERROR, prefix);
     }
+
     public static void addSuccessChatMessage(String message, boolean prefix) {
         addChatMessage(message, Level.SUCCESS, prefix);
     }

@@ -1,5 +1,6 @@
 package net.me.utils.records;
 
+@SuppressWarnings("unused")
 public interface Boxable<T> extends Cloneable {
     T clone();
 
@@ -7,7 +8,7 @@ public interface Boxable<T> extends Cloneable {
 
     T mirror();
 
-    T add(double ox1, double oy1, double oz1,double ox2, double oy2, double oz2);
+    T add(double ox1, double oy1, double oz1, double ox2, double oy2, double oz2);
 
     T add(T other);
 }

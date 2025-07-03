@@ -79,7 +79,7 @@ public class Main implements ClientModInitializer {
 
         eventManager.init(scriptManager);
         hookManager.init(scriptManager, mappingsManager);
-        keybindManager.init(scriptManager);
+        keybindManager.init(scriptManager, configManager);
 
         scriptingService.init(scriptManager, configManager);
 

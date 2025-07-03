@@ -8,7 +8,8 @@ import net.minecraft.text.Text;
 @SuppressWarnings("unused")
 public final class TextRenderUtils {
 
-    private TextRenderUtils() {}
+    private TextRenderUtils() {
+    }
 
     public static void drawText(DrawContext context, String text, float x, float y, int color, boolean shadow, float scale) {
         MatrixStack matrices = context.getMatrices();

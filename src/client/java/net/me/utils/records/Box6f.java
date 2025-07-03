@@ -18,8 +18,8 @@ public record Box6f(
     @Override
     public Box6f translate(double dx, double dy, double dz) {
         return new Box6f(
-                (float)(x1 + dx), (float)(y1 + dy), (float)(z1 + dz),
-                (float)(x2 + dx), (float)(y2 + dy), (float)(z2 + dz)
+                (float) (x1 + dx), (float) (y1 + dy), (float) (z1 + dz),
+                (float) (x2 + dx), (float) (y2 + dy), (float) (z2 + dz)
         );
     }
 
@@ -34,8 +34,8 @@ public record Box6f(
     @Override
     public Box6f add(double ox1, double oy1, double oz1, double ox2, double oy2, double oz2) {
         return new Box6f(
-                (float)(x1 + ox1), (float)(y1 + oy1), (float)(z1 + oz1),
-                (float)(x2 + ox2), (float)(y2 + oy2), (float)(z2 + oz2)
+                (float) (x1 + ox1), (float) (y1 + oy1), (float) (z1 + oz1),
+                (float) (x2 + ox2), (float) (y2 + oy2), (float) (z2 + oz2)
         );
     }
 

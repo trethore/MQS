@@ -37,7 +37,7 @@ public class KeybindAPI implements ProxyObject {
                     int keyCode = args[1].asInt();
                     Value action = args[2];
                     boolean repeatable = args.length > 3 && args[3].isBoolean() && args[3].asBoolean();
-                    int debounceTime = args.length > 4 && args[4].isNumber() ? args[4].asInt(): 100;
+                    int debounceTime = args.length > 4 && args[4].isNumber() ? args[4].asInt() : 100;
 
                     keybindManager.register(name, keyCode, repeatable, owner, action, debounceTime);
                     return null;

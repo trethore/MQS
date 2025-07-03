@@ -42,7 +42,7 @@ public final class Render2DUtils {
         float x2 = x + width;
         float y2 = y + height;
 
-        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR,VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR, VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
         buffer.vertex(x, y2, 0).color(color);
         buffer.vertex(x2, y2, 0).color(color);
@@ -63,7 +63,7 @@ public final class Render2DUtils {
     public static void drawRoundedRect(DrawContext context, float x, float y, float width, float height, float radius, float quality, int color) {
         Matrix4f matrix = context.getMatrices().peek().getPositionMatrix();
 
-        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR,VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
 
         radius = Math.min(Math.min(width, height) / 2, radius);
         if (radius < 0) radius = 0;
@@ -122,7 +122,7 @@ public final class Render2DUtils {
 
     public static void drawRoundedOutline(DrawContext context, float x, float y, float width, float height, float radius, float lineWidth, float quality, int color) {
         Matrix4f matrix = context.getMatrices().peek().getPositionMatrix();
-        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR,VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
 
         radius = Math.min(Math.min(width, height) / 2, radius);
 
@@ -162,8 +162,13 @@ public final class Render2DUtils {
         endRender(buffer);
     }
 
+    public static void enableScissor(DrawContext context, int x, int y, int width, int height) {
+        context.enableScissor(x, y, x + width, y + height);
+    }
 
-
+    public static void disableScissor(DrawContext context) {
+        context.disableScissor();
+    }
 
     public void drawImage(Identifier id, int x1, int y1, int x2, int y2, int rotation, boolean parity, Color color) {
         int[][] texCoords = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
@@ -187,22 +192,13 @@ public final class Render2DUtils {
             texCoords[2][0] = temp1;
         }
         RenderSystem.setShaderTexture(0, id);
-        BufferBuilder bufferbuilder = setupRender(ShaderProgramKeys.POSITION_TEX_COLOR,VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        BufferBuilder bufferbuilder = setupRender(ShaderProgramKeys.POSITION_TEX_COLOR, VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
         bufferbuilder.vertex(x1, y2, 0).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()).texture(texCoords[0][0], texCoords[0][1]);
         bufferbuilder.vertex(x2, y2, 0).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()).texture(texCoords[1][0], texCoords[1][1]);
         bufferbuilder.vertex(x2, y1, 0).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()).texture(texCoords[2][0], texCoords[2][1]);
         bufferbuilder.vertex(x1, y1, 0).color(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()).texture(texCoords[3][0], texCoords[3][1]);
         endRender(bufferbuilder);
     }
-
-    public static void enableScissor(DrawContext context, int x, int y, int width, int height) {
-        context.enableScissor(x, y, x + width, y + height);
-    }
-
-    public static void disableScissor(DrawContext context) {
-        context.disableScissor();
-    }
-
 
 
 }

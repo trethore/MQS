@@ -2,6 +2,7 @@ package net.me.keybinds;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.Main;
+import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
@@ -19,9 +20,11 @@ public class KeybindManager {
     private final Map<Integer, List<KeyBinding>> keybindsByKeycode = new ConcurrentHashMap<>();
     private final Set<Integer> heldKeys = ConcurrentHashMap.newKeySet();
     private ScriptManager scriptManager;
+    private ConfigManager configManager;
 
-    public void init(ScriptManager scriptManager) {
+    public void init(ScriptManager scriptManager, ConfigManager configManager) {
         this.scriptManager = scriptManager;
+        this.configManager = configManager;
         ClientTickEvents.END_CLIENT_TICK.register(client -> onTick());
     }
 
@@ -73,9 +76,13 @@ public class KeybindManager {
             this.unregister(owner, name);
         }
 
-        KeyBinding keyBinding = new KeyBinding(name, defaultKey, repeatable, owner, action, debounceTime);
+        int finalKey = configManager.getKeybind(owner.getId(), name).orElse(defaultKey);
+
+        KeyBinding keyBinding = new KeyBinding(name, finalKey, repeatable, owner, action, debounceTime);
         keybindsByName.put(uniqueName, keyBinding);
-        keybindsByKeycode.computeIfAbsent(defaultKey, k -> new CopyOnWriteArrayList<>()).add(keyBinding);
+        if (finalKey >= 0) {
+            keybindsByKeycode.computeIfAbsent(finalKey, k -> new CopyOnWriteArrayList<>()).add(keyBinding);
+        }
     }
 
     public void unregister(RunningScript owner, String name) {
@@ -111,5 +118,35 @@ public class KeybindManager {
             }
             return false;
         });
+    }
+
+    public void rebindKey(KeyBinding binding, int newKeyCode) {
+        if (binding == null) return;
+
+        List<KeyBinding> oldBindings = keybindsByKeycode.get(binding.getKey());
+        if (oldBindings != null) {
+            oldBindings.remove(binding);
+            if (oldBindings.isEmpty()) {
+                keybindsByKeycode.remove(binding.getKey());
+            }
+        }
+
+        binding.setKey(newKeyCode);
+
+        if (newKeyCode >= 0) {
+            keybindsByKeycode.computeIfAbsent(newKeyCode, k -> new CopyOnWriteArrayList<>()).add(binding);
+        }
+        Main.LOGGER.info("Rebound '{}' to key code {}", binding.getName(), newKeyCode);
+
+        configManager.setKeybind(binding.getOwner().getId(), binding.getName(), newKeyCode);
+        configManager.saveConfig(binding.getOwner().getId());
+    }
+
+    public Map<RunningScript, List<KeyBinding>> getGroupedKeybinds() {
+        Map<RunningScript, List<KeyBinding>> grouped = new ConcurrentHashMap<>();
+        for (KeyBinding binding : keybindsByName.values()) {
+            grouped.computeIfAbsent(binding.getOwner(), k -> new CopyOnWriteArrayList<>()).add(binding);
+        }
+        return grouped;
     }
 }

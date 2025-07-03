@@ -4,7 +4,8 @@ import java.awt.*;
 
 @SuppressWarnings("unused")
 public final class ColorUtils {
-    private ColorUtils() {}
+    private ColorUtils() {
+    }
 
     public static int getRainbowColor(long speed, float saturation, float brightness) {
         return getRainbowColor(0, speed, saturation, brightness);

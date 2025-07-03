@@ -1,9 +1,9 @@
 package net.me.screen;
 
 import net.me.utils.ColorUtils;
-import net.me.utils.records.Position;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRenderUtils;
+import net.me.utils.records.Position;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;

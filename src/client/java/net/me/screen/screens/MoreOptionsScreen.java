@@ -23,6 +23,34 @@ public class MoreOptionsScreen extends MQSScreen {
         super("More Options", 200, 150, parent);
     }
 
+    private static synchronized boolean isVSCodeInstalled() {
+        if (isVSCodeInstalledCache != null) {
+            return isVSCodeInstalledCache;
+        }
+
+        try {
+            String command = System.getProperty("os.name").toLowerCase().contains("win") ? "code.cmd" : "code";
+            ProcessBuilder pb = new ProcessBuilder(command, "--version");
+            pb.redirectErrorStream(true);
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+
+            isVSCodeInstalledCache = (exitCode == 0);
+        } catch (IOException | InterruptedException e) {
+            isVSCodeInstalledCache = false;
+        }
+
+        if (isVSCodeInstalledCache) {
+            Main.LOGGER.info("VS Code command-line tool detected.");
+        } else {
+            Main.LOGGER.info("VS Code command-line tool not found. Will fall back to web version.");
+        }
+
+        return isVSCodeInstalledCache;
+    }
+
     @Override
     protected void init() {
         super.init();
@@ -46,40 +74,7 @@ public class MoreOptionsScreen extends MQSScreen {
         }).dimensions(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
 
         startY += BUTTON_HEIGHT + BUTTON_SPACING;
-        addDrawableChild(DarkButtonWidget.builder("Keybinds", button -> {
-            System.out.println("Keybinds screen here");
-            // Later: new KeybindsScreen(this).open();
-        }).dimensions(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
-
-
-    }
-
-    private static synchronized boolean isVSCodeInstalled() {
-        if (isVSCodeInstalledCache != null) {
-            return isVSCodeInstalledCache;
-        }
-
-        try {
-            String command = System.getProperty("os.name").toLowerCase().contains("win") ? "code.cmd" : "code";
-            ProcessBuilder pb = new ProcessBuilder(command, "--version");
-            pb.redirectErrorStream(true);
-            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-
-            isVSCodeInstalledCache = (exitCode == 0);
-        } catch (IOException | InterruptedException e) {
-            isVSCodeInstalledCache = false;
-        }
-
-        if(isVSCodeInstalledCache){
-            Main.LOGGER.info("VS Code command-line tool detected.");
-        } else {
-            Main.LOGGER.info("VS Code command-line tool not found. Will fall back to web version.");
-        }
-
-        return isVSCodeInstalledCache;
+        addDrawableChild(DarkButtonWidget.builder("Keybinds", button -> new KeybindsScreen(this).open()).dimensions(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT).build());
     }
 
     private void openScriptsInVSCodeDesktop() {

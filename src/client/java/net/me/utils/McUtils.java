@@ -10,7 +10,8 @@ import java.util.Optional;
 @SuppressWarnings("unused")
 public final class McUtils {
 
-    private McUtils() {}
+    private McUtils() {
+    }
 
     public static Optional<MinecraftClient> getMc() {
         return Optional.ofNullable(MinecraftClient.getInstance());
