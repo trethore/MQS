@@ -1,6 +1,5 @@
 package net.me.console;
 
-import net.me.Main;
 import net.me.config.GlobalConfigManager;
 import net.me.console.commands.*;
 import net.me.console.log.ConsoleManagerAppender;
