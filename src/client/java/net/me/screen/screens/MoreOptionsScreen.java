@@ -3,9 +3,10 @@ package net.me.screen.screens;
 import net.me.Main;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
-import net.me.screen.component.components.MQSButtonWidget;
+import net.me.screen.component.components.MQSImageButtonWidget;
 import net.me.utils.ChatUtils;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 
 import java.io.IOException;
@@ -55,19 +56,15 @@ public class MoreOptionsScreen extends MQSScreen {
     @Override
     protected void init() {
         super.init();
-        MQSButtonWidget settingsButton = MQSButtonWidget.builder("Settings", button -> new SettingsScreen(this).open())
+        MQSImageButtonWidget settingsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/settings.png"),"Settings", button -> new SettingsScreen(this).open())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
-        MQSButtonWidget keybindsButton = MQSButtonWidget.builder("Keybinds", button -> new KeybindsScreen(this).open())
+        MQSImageButtonWidget keybindsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/keyboard.png"),"Keybinds", button -> new KeybindsScreen(this).open())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
-        MQSButtonWidget createScriptButton = MQSButtonWidget.builder("Create Script", button -> new CreateScriptScreen(this).open())
-                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
-                .build();
-
-        MQSButtonWidget openVSCodeButton = MQSButtonWidget.builder("Open in VS Code", button -> {
+        MQSImageButtonWidget openVSCodeButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/app-window.png"),"Open in VS Code", button -> {
             Main.LOGGER.info("Opening in VS Code");
             if (isVSCodeInstalled()) {
                 openScriptsInVSCodeDesktop();
@@ -76,18 +73,22 @@ public class MoreOptionsScreen extends MQSScreen {
             }
         }).size(BUTTON_WIDTH, BUTTON_HEIGHT).build();
 
-        MQSButtonWidget openConfigsButton = MQSButtonWidget.builder("Open Configs Folder", button -> openFolder("configs"))
+        MQSImageButtonWidget createScriptButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-code.png"),"Create Script", button -> new CreateScriptScreen(this).open())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
-        MQSButtonWidget openScriptsButton = MQSButtonWidget.builder("Open Scripts Folder", button -> openFolder("scripts"))
+        MQSImageButtonWidget openConfigsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-sliders.png"),"Open Configs Folder", button -> openFolder("configs"))
+                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .build();
+
+        MQSImageButtonWidget openScriptsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/binary.png"),"Open Scripts Folder", button -> openFolder("scripts"))
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
         this.addDrawableChild(settingsButton);
         this.addDrawableChild(keybindsButton);
-        this.addDrawableChild(createScriptButton);
         this.addDrawableChild(openVSCodeButton);
+        this.addDrawableChild(createScriptButton);
         this.addDrawableChild(openConfigsButton);
         this.addDrawableChild(openScriptsButton);
 
@@ -97,8 +98,8 @@ public class MoreOptionsScreen extends MQSScreen {
                 BUTTON_SPACING,
                 settingsButton,
                 keybindsButton,
-                createScriptButton,
                 openVSCodeButton,
+                createScriptButton,
                 openConfigsButton,
                 openScriptsButton
         );
