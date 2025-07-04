@@ -19,8 +19,8 @@ public class GlobalConfigManager {
     private ConsoleManager manager;
 
     public void init(ConsoleManager manager) {
-        load();
         this.manager = manager;
+        load();
     }
 
     public void load() {

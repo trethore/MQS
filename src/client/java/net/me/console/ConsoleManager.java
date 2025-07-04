@@ -149,11 +149,6 @@ public class ConsoleManager {
     }
 
     public void setLogRedirect(boolean enable) {
-        if (enable == Main.getGlobalConfigManager().isLogRedirectEnabled()) {
-            logInfo("Log redirection is already " + (enable ? "enabled." : "disabled."));
-            return;
-        }
-
         applyLogRedirectState(enable);
     }
 

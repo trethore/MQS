@@ -31,6 +31,11 @@ public class LogRedirectCommand extends ConsoleCommand {
             return;
         }
 
+        if (globalConfigManager.isLogRedirectEnabled() == enable) {
+            cm.logInfo("Log redirection is already " + (enable ? "enabled" : "disabled") + ".");
+            return;
+        }
+
         globalConfigManager.setLogRedirectEnabled(enable);
         cm.logSuccess("Log redirection " + (enable ? "enabled" : "disabled") + ".");
     }
