@@ -144,7 +144,7 @@ public class KeybindsScreen extends MQSScreen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (listeningWidget != null) {
-            stopListening(button - 100);
+            stopListening(button);
             return true;
         }
         for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
