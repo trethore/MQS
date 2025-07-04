@@ -60,7 +60,7 @@ public abstract class MQSScreen extends Screen {
         int x = getMiddlePoint().x();
         int y = getMiddlePoint().y() - this.windowHeight / 2 + 22;
         int color = ColorUtils.getRainbowColor(2000, 0.8f, 1.0f);
-        TextRenderUtils.drawCenteredText(context, this.getStringTitle(), x, y, color, true, 1.5f);
+        TextRenderUtils.drawCustomCenteredText(context, this.getStringTitle(), x, y, color, true, 1.5f);
     }
 
     public void open() {

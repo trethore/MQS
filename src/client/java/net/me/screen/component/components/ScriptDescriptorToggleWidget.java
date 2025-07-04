@@ -63,8 +63,8 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
         Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, bgColor);
 
         String title = this.descriptor.moduleName() + " v" + this.descriptor.version();
-        TextRenderUtils.drawText(context, title, this.getX() + PADDING, this.getY() + PADDING, GUIColors.TEXT.getRGB(), true, TITLE_SCALE);
-        TextRenderUtils.drawText(context, this.descriptor.path().getFileName().toString(), this.getX() + PADDING, this.getY() + 16, GUIColors.TEXT.darker(25).getRGB(), true, PATH_SCALE);
+        TextRenderUtils.drawCustomText(context, title, this.getX() + PADDING, this.getY() + PADDING, GUIColors.TEXT.getRGB(), true, TITLE_SCALE);
+        TextRenderUtils.drawCustomText(context, this.descriptor.path().getFileName().toString(), this.getX() + PADDING, this.getY() + 16, GUIColors.TEXT.darker(25).getRGB(), true, PATH_SCALE);
         renderToggle(context, isHovered);
     }
 

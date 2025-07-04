@@ -23,7 +23,7 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
     private boolean isListening = false;
 
     protected KeybindEntryWidget(int x, int y, int width, int height, KeyBinding keyBinding, Consumer<KeyBinding> onRebindClick) {
-        super(x, y, width, height, Text.literal(keyBinding.getName()));
+        super(x, y, width, height, Text.literal(""));
         this.keyBinding = keyBinding;
 
         this.rebindButton = MQSButtonWidget.builder(keyBinding.getKeyName(), (btn) -> {
@@ -48,7 +48,7 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
 
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        TextRenderUtils.drawText(
+        TextRenderUtils.drawCustomText(
                 context,
                 keyBinding.getName(),
                 this.getX() + 5,

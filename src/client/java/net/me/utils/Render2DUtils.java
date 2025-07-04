@@ -170,7 +170,7 @@ public final class Render2DUtils {
         context.disableScissor();
     }
 
-    public void drawImage(Identifier id, int x1, int y1, int x2, int y2, int rotation, boolean parity, Color color) {
+    public static void drawImage(Identifier id, int x1, int y1, int x2, int y2, int rotation, boolean parity, Color color) {
         int[][] texCoords = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
         for (int i = 0; i < rotation % 4; i++) {
             int temp1 = texCoords[3][0], temp2 = texCoords[3][1];

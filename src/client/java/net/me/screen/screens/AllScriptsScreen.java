@@ -1,9 +1,11 @@
 package net.me.screen.screens;
 
+import net.me.Main;
 import net.me.console.ConsoleManager;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
 import net.me.screen.component.components.MQSButtonWidget;
+import net.me.screen.component.components.MQSImageButtonWidget;
 import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.screen.component.components.ScriptDescriptorToggleWidget;
 import net.me.scripting.ScriptingService;
@@ -11,6 +13,7 @@ import net.me.scripting.module.ScriptDescriptor;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -95,7 +98,7 @@ public class AllScriptsScreen extends MQSScreen {
         this.searchTextField.setChangedListener(this::onSearchTextChanged);
 
         this.addSelectableChild(this.searchTextField);
-        MQSButtonWidget clearTextFieldButton = MQSButtonWidget.builder("❌", button -> this.searchTextField.clearText())
+        MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID,"icons/backspace.png"),"", button -> this.searchTextField.clearText())
                 .dimensions(searchX + SEARCH_BAR_WIDTH + 10, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
                 .build();
         this.addDrawableChild(clearTextFieldButton);
@@ -167,7 +170,7 @@ public class AllScriptsScreen extends MQSScreen {
         MQSButtonWidget offButton = MQSButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
                 .dimensions(navX + 30, actionY, 50, BUTTON_HEIGHT).build();
 
-        MQSButtonWidget moreButton = MQSButtonWidget.builder(Formatting.BOLD + "⋮" + Formatting.RESET, button -> new MoreOptionsScreen(this).open()).dimensions(navX + 85, actionY, 15, BUTTON_HEIGHT).build();
+        MQSButtonWidget moreButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID,"icons/dots-vertical.png"),"", button -> new MoreOptionsScreen(this).open()).dimensions(navX + 85, actionY, 15, BUTTON_HEIGHT).build();
 
         this.addDrawableChild(this.refreshButton);
         this.addDrawableChild(consoleButton);

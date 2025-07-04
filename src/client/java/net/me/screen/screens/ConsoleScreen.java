@@ -5,6 +5,7 @@ import net.me.console.ConsoleMessage;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.utils.TextRenderUtils;
+import net.me.utils.TextRendererUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
@@ -95,7 +96,7 @@ public class ConsoleScreen extends MQSScreen {
         for (int i = lastMessageCount; i < currentMessageCount; i++) {
             ConsoleMessage msg = messages.get(i);
             String textToWrap = String.format("[%s] %s", msg.timestamp(), msg.text());
-            List<OrderedText> wrapped = this.textRenderer.wrapLines(Text.literal(textToWrap), renderAreaWidth);
+            List<OrderedText> wrapped = TextRendererUtils.getCustomTextRenderer().wrapLines(Text.literal(textToWrap), renderAreaWidth);
 
             for (OrderedText line : wrapped) {
                 final StringBuilder sb = new StringBuilder();
@@ -111,7 +112,7 @@ public class ConsoleScreen extends MQSScreen {
     }
 
     private void renderMessages(DrawContext context, List<DisplayLine> linesToRender) {
-        int fontHeight = this.textRenderer.fontHeight;
+        int fontHeight = TextRendererUtils.getCustomTextRenderer().fontHeight;
 
         int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
         int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
@@ -143,7 +144,7 @@ public class ConsoleScreen extends MQSScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        int fontHeight = this.textRenderer.fontHeight;
+        int fontHeight = TextRendererUtils.getCustomTextRenderer().fontHeight;
         int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - INPUT_HEIGHT - FOOTER_MARGIN;
         int maxLinesVisible = renderAreaHeight / fontHeight;
 

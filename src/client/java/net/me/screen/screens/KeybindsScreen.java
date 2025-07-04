@@ -93,7 +93,7 @@ public class KeybindsScreen extends MQSScreen {
         for (Map.Entry<RunningScript, List<KeyBinding>> entry : groupedKeybinds.entrySet()) {
             RunningScript script = entry.getKey();
             String header = script.getName() + " v" + script.getVersion();
-            TextRenderUtils.drawCenteredText(context, header, this.getMiddlePoint().x(), currentY + 8, GUIColors.TEXT.getRGB(), true, 1.1f);
+            TextRenderUtils.drawCustomCenteredText(context, header, this.getMiddlePoint().x(), currentY + 8, GUIColors.TEXT.getRGB(), true, 1.1f);
             currentY += HEADER_HEIGHT;
 
             for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
