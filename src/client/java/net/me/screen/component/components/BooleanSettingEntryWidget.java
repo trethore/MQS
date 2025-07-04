@@ -1,8 +1,6 @@
 package net.me.screen.component.components;
 
 import net.me.screen.component.IResizableWidget;
-import net.me.scripting.ScriptingService;
-import net.me.scripting.module.ScriptDescriptor;
 import net.me.utils.GUIColors;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRenderUtils;
@@ -11,54 +9,50 @@ import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.PressableWidget;
 import net.minecraft.client.sound.SoundManager;
 import net.minecraft.text.Text;
-import org.jetbrains.annotations.Nullable;
+
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
-public class ScriptDescriptorToggleWidget extends PressableWidget implements IResizableWidget {
+public class BooleanSettingEntryWidget extends PressableWidget implements IResizableWidget {
 
     private static final int PADDING = 5;
     private static final int TOGGLE_BG_SIZE = 20;
     private static final int TOGGLE_INDICATOR_SIZE = 16;
     private static final float TITLE_SCALE = 1.0f;
-    private static final float PATH_SCALE = 0.8f;
+    private static final float DESC_SCALE = 0.8f;
 
-    private final ScriptingService scriptingService;
-    private ScriptDescriptor descriptor;
+    private final String name;
+    private final String description;
+    private final Supplier<Boolean> getter;
+    private final Consumer<Boolean> setter;
 
-    protected ScriptDescriptorToggleWidget(int x, int y, int width, int height, @Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
-        super(x, y, width, height, Text.empty());
-        this.scriptingService = scriptingService;
-        this.update(descriptor);
+    protected BooleanSettingEntryWidget(int x, int y, int width, int height, String name, String description, Supplier<Boolean> getter, Consumer<Boolean> setter) {
+        super(x, y, width, height, Text.literal(name));
+        this.name = name;
+        this.description = description;
+        this.getter = getter;
+        this.setter = setter;
     }
 
-    public static Builder builder(ScriptingService scriptingService) {
-        return new Builder(scriptingService);
+    public static Builder builder() {
+        return new Builder();
     }
 
     @Override
     public void playDownSound(SoundManager soundManager) {
     }
 
-    public void update(@Nullable ScriptDescriptor descriptor) {
-        this.descriptor = descriptor;
-        this.visible = (descriptor != null);
-        this.active = (descriptor != null);
-    }
-
     @Override
     public void onPress() {
-        if (descriptor == null) return;
-
-        if (scriptingService.isRunning(descriptor.getId())) {
-            scriptingService.disable(descriptor.getId());
-        } else {
-            scriptingService.enable(descriptor.getId());
+        if (this.setter != null) {
+            this.setter.accept(!this.getter.get());
         }
     }
 
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        if (this.descriptor == null || !this.visible) {
+        if (!this.visible) {
             return;
         }
 
@@ -66,9 +60,10 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
         int bgColor = isHovered ? GUIColors.DARK_L3.getRGB() : GUIColors.DARK_L2.getRGB();
         Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, bgColor);
 
-        String title = this.descriptor.moduleName() + " v" + this.descriptor.version();
-        TextRenderUtils.drawCustomText(context, title, this.getX() + PADDING, this.getY() + PADDING, GUIColors.TEXT.getRGB(), true, TITLE_SCALE);
-        TextRenderUtils.drawCustomText(context, this.descriptor.path().getFileName().toString(), this.getX() + PADDING, this.getY() + 16, GUIColors.TEXT.darker(25).getRGB(), true, PATH_SCALE);
+        TextRenderUtils.drawCustomText(context, this.name, this.getX() + PADDING, this.getY() + PADDING, GUIColors.TEXT.getRGB(), true, TITLE_SCALE);
+        if (this.description != null && !this.description.isEmpty()) {
+            TextRenderUtils.drawCustomText(context, this.description, this.getX() + PADDING, this.getY() + PADDING + 12, GUIColors.TEXT_DISABLED.getRGB(), true, DESC_SCALE);
+        }
         renderToggle(context, isHovered);
     }
 
@@ -78,14 +73,13 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
         int toggleBgY = this.getY() + (this.getHeight() - TOGGLE_BG_SIZE) / 2;
         Render2DUtils.drawRoundedRect(context, toggleBgX, toggleBgY, TOGGLE_BG_SIZE, TOGGLE_BG_SIZE, 2, 5, toggleBgColor);
 
-        int stateColor = scriptingService.isRunning(descriptor.getId())
+        int stateColor = this.getter.get()
                 ? GUIColors.SUCCESS.getRGB()
                 : GUIColors.ERROR.getRGB();
         int indicatorX = toggleBgX + (TOGGLE_BG_SIZE - TOGGLE_INDICATOR_SIZE) / 2;
         int indicatorY = toggleBgY + (TOGGLE_BG_SIZE - TOGGLE_INDICATOR_SIZE) / 2;
         Render2DUtils.drawRoundedRect(context, indicatorX, indicatorY, TOGGLE_INDICATOR_SIZE, TOGGLE_INDICATOR_SIZE, 2, 10, stateColor);
     }
-
 
     @Override
     public void setPos(int x, int y) {
@@ -104,25 +98,34 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
         this.appendDefaultNarrations(builder);
     }
 
-    @Nullable
-    public ScriptDescriptor getDescriptor() {
-        return descriptor;
-    }
-
     public static class Builder {
-        private final ScriptingService scriptingService;
-        private ScriptDescriptor descriptor = null;
+        private String name = "";
+        private String description = "";
+        private Supplier<Boolean> getter = () -> false;
+        private Consumer<Boolean> setter = (b) -> {
+        };
         private int x = 0;
         private int y = 0;
         private int width = 200;
-        private int height = 30;
+        private int height = 40;
 
-        public Builder(ScriptingService scriptingService) {
-            this.scriptingService = scriptingService;
+        public Builder name(String name) {
+            this.name = name;
+            return this;
         }
 
-        public Builder descriptor(@Nullable ScriptDescriptor descriptor) {
-            this.descriptor = descriptor;
+        public Builder description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        public Builder getter(Supplier<Boolean> getter) {
+            this.getter = getter;
+            return this;
+        }
+
+        public Builder setter(Consumer<Boolean> setter) {
+            this.setter = setter;
             return this;
         }
 
@@ -146,8 +149,8 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
             return this;
         }
 
-        public ScriptDescriptorToggleWidget build() {
-            return new ScriptDescriptorToggleWidget(this.x, this.y, this.width, this.height, this.descriptor, this.scriptingService);
+        public BooleanSettingEntryWidget build() {
+            return new BooleanSettingEntryWidget(this.x, this.y, this.width, this.height, this.name, this.description, this.getter, this.setter);
         }
     }
 }

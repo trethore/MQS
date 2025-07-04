@@ -104,7 +104,6 @@ public class KeybindsScreen extends MQSScreen {
                 }
             }
         }
-
         context.disableScissor();
     }
 

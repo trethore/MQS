@@ -3,6 +3,7 @@ package net.me.screen.component.components;
 import net.me.keybinds.KeyBinding;
 import net.me.screen.component.IResizableWidget;
 import net.me.utils.GUIColors;
+import net.me.utils.Render2DUtils;
 import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
@@ -32,6 +33,7 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
                     onRebindClick.accept(this.keyBinding);
                 })
                 .size(REBIND_BUTTON_WIDTH, REBIND_BUTTON_HEIGHT)
+                .backgroundColors(GUIColors.DARK_L3.getRGB(), GUIColors.DARK_L4.getRGB())
                 .build();
 
         this.updateButtonBounds();
@@ -54,6 +56,8 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
 
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+        int color = GUIColors.DARK_L2.getRGB();
+        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, color);
         TextRenderUtils.drawCustomText(
                 context,
                 keyBinding.getName(),

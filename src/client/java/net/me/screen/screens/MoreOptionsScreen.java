@@ -55,11 +55,11 @@ public class MoreOptionsScreen extends MQSScreen {
     @Override
     protected void init() {
         super.init();
-        MQSButtonWidget openConfigsButton = MQSButtonWidget.builder("Open Configs Folder", button -> openFolder("configs"))
+        MQSButtonWidget settingsButton = MQSButtonWidget.builder("Settings", button -> new SettingsScreen(this).open())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
-        MQSButtonWidget openScriptsButton = MQSButtonWidget.builder("Open Scripts Folder", button -> openFolder("scripts"))
+        MQSButtonWidget keybindsButton = MQSButtonWidget.builder("Keybinds", button -> new KeybindsScreen(this).open())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
@@ -72,23 +72,29 @@ public class MoreOptionsScreen extends MQSScreen {
             }
         }).size(BUTTON_WIDTH, BUTTON_HEIGHT).build();
 
-        MQSButtonWidget keybindsButton = MQSButtonWidget.builder("Keybinds", button -> new KeybindsScreen(this).open())
+        MQSButtonWidget openConfigsButton = MQSButtonWidget.builder("Open Configs Folder", button -> openFolder("configs"))
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
+        MQSButtonWidget openScriptsButton = MQSButtonWidget.builder("Open Scripts Folder", button -> openFolder("scripts"))
+                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .build();
+
+        this.addDrawableChild(settingsButton);
+        this.addDrawableChild(keybindsButton);
+        this.addDrawableChild(openVSCodeButton);
         this.addDrawableChild(openConfigsButton);
         this.addDrawableChild(openScriptsButton);
-        this.addDrawableChild(openVSCodeButton);
-        this.addDrawableChild(keybindsButton);
 
         WidgetLayoutHelper.layoutVertically(
                 getMiddlePoint().x() - BUTTON_WIDTH / 2,
-                getMiddlePoint().y() - 35,
+                getMiddlePoint().y() - 50,
                 BUTTON_SPACING,
-                openConfigsButton,
-                openScriptsButton,
+                settingsButton,
+                keybindsButton,
                 openVSCodeButton,
-                keybindsButton
+                openConfigsButton,
+                openScriptsButton
         );
     }
 

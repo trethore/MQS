@@ -71,7 +71,7 @@ public class Main implements ClientModInitializer {
 
         Main.scriptEngine = Engine.create();
 
-        globalConfigManager.init();
+        globalConfigManager.init(consoleManager);
         mappingsManager.init();
         configManager.init(scriptEngine);
 

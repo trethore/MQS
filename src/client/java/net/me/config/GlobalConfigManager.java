@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import net.me.Main;
+import net.me.console.ConsoleManager;
 
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -15,9 +16,11 @@ public class GlobalConfigManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private ConfigData data = new ConfigData();
+    private ConsoleManager manager;
 
-    public void init() {
+    public void init(ConsoleManager manager) {
         load();
+        this.manager = manager;
     }
 
     public void load() {
@@ -51,6 +54,7 @@ public class GlobalConfigManager {
     public void setLogRedirectEnabled(boolean enabled) {
         if (data.logRedirect != enabled) {
             data.logRedirect = enabled;
+            manager.setLogRedirect(enabled);
             save();
         }
     }
