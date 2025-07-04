@@ -10,12 +10,15 @@ import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.screen.component.components.ScriptDescriptorToggleWidget;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.utils.GUIColors;
+import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
 import java.awt.*;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -26,7 +29,7 @@ public class AllScriptsScreen extends MQSScreen {
     private static final int ITEMS_PER_PAGE = 4;
     private static final int SCRIPT_ROW_HEIGHT = 35;
     private static final int PADDING = 100;
-    private static final int SEARCH_BAR_WIDTH = 170;
+    private static final int SEARCH_BAR_WIDTH = 175;
     private static final int SEARCH_BAR_HEIGHT = 20;
     private static final int BUTTON_HEIGHT = 20;
 
@@ -41,11 +44,13 @@ public class AllScriptsScreen extends MQSScreen {
     private MQSTextFieldWidget searchTextField;
     private MQSButtonWidget prevButton;
     private MQSButtonWidget nextButton;
-    private MQSButtonWidget refreshButton;
+    private MQSImageButtonWidget refreshButton;
     private boolean isRefreshing = false;
+    private long refreshFinishTime = -1L;
+
 
     public AllScriptsScreen(ScriptingService scriptingService, ConsoleManager consoleManager) {
-        super("My QOL Scripts", 300, 280);
+        super("My QOL Scripts", 260, 280);
         this.scriptingService = scriptingService;
         this.consoleManager = consoleManager;
         this.allScripts = new ArrayList<>(scriptingService.listAvailable());
@@ -98,8 +103,8 @@ public class AllScriptsScreen extends MQSScreen {
         this.searchTextField.setChangedListener(this::onSearchTextChanged);
 
         this.addSelectableChild(this.searchTextField);
-        MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID,"icons/backspace.png"),"", button -> this.searchTextField.clearText())
-                .dimensions(searchX + SEARCH_BAR_WIDTH + 10, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
+        MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/close.png"), button -> this.searchTextField.clearText())
+                .dimensions(searchX + SEARCH_BAR_WIDTH + 5, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
                 .build();
         this.addDrawableChild(clearTextFieldButton);
     }
@@ -162,15 +167,18 @@ public class AllScriptsScreen extends MQSScreen {
 
         int actionY = navY + 25;
 
-        this.refreshButton = MQSButtonWidget.builder("Refresh", button -> refreshScripts())
-                .dimensions(navX - PADDING, actionY, 60, BUTTON_HEIGHT).build();
+        this.refreshButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"), "Refresh", button -> refreshScripts())
+                .dimensions(navX - PADDING, actionY, 65, BUTTON_HEIGHT).build();
 
-        MQSButtonWidget consoleButton = MQSButtonWidget.builder("Console", button -> new ConsoleScreen(this, consoleManager).open()).dimensions(navX - 35, actionY, 60, BUTTON_HEIGHT).build();
+        MQSButtonWidget consoleButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/square-terminal.png"), "Console", button -> new ConsoleScreen(this, consoleManager).open())
+                .dimensions(navX - 30, actionY, 65, BUTTON_HEIGHT).build();
 
-        MQSButtonWidget offButton = MQSButtonWidget.builder("All" + Formatting.RED + " Off", button -> disableAllScripts())
-                .dimensions(navX + 30, actionY, 50, BUTTON_HEIGHT).build();
+        MQSButtonWidget offButton = MQSButtonWidget.builder(MessageFormat.format("All{0} Off", Formatting.RED), button -> disableAllScripts())
+                .dimensions(navX + 40, actionY, 40, BUTTON_HEIGHT).build();
 
-        MQSButtonWidget moreButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID,"icons/dots-vertical.png"),"", button -> new MoreOptionsScreen(this).open()).dimensions(navX + 85, actionY, 15, BUTTON_HEIGHT).build();
+        MQSButtonWidget moreButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/ellipsis-vertical.png"), button -> new MoreOptionsScreen(this).open())
+                .dimensions(navX + 85, actionY, 15, BUTTON_HEIGHT)
+                .build();
 
         this.addDrawableChild(this.refreshButton);
         this.addDrawableChild(consoleButton);
@@ -190,7 +198,9 @@ public class AllScriptsScreen extends MQSScreen {
         isRefreshing = true;
         if (this.refreshButton != null) {
             this.refreshButton.active = false;
-            this.refreshButton.setMessage(Text.literal("Refreshing"));
+            this.refreshButton.setMessage(Text.literal("Refreshing..."));
+            this.allScripts.clear();
+            this.filteredScripts.clear();
         }
 
         assert this.client != null;
@@ -206,7 +216,9 @@ public class AllScriptsScreen extends MQSScreen {
             isRefreshing = false;
             if (this.refreshButton != null) {
                 this.refreshButton.active = true;
-                this.refreshButton.setMessage(Text.literal("Refresh"));
+                this.refreshButton.setImage(null);
+                this.refreshButton.setMessage(Text.literal("Refreshed!"));
+                this.refreshFinishTime = System.currentTimeMillis();
             }
         });
     }
@@ -218,15 +230,32 @@ public class AllScriptsScreen extends MQSScreen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        if (refreshFinishTime != -1L && System.currentTimeMillis() - refreshFinishTime > 1000L) {
+            if (this.refreshButton != null) {
+                this.refreshButton.setImage(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"));
+                this.refreshButton.active = true;
+                this.refreshButton.setMessage(Text.literal("Refresh"));
+            }
+            refreshFinishTime = -1L;
+        }
+
         super.render(context, mouseX, mouseY, delta);
         this.searchTextField.render(context, mouseX, mouseY, delta);
+
+        if (filteredScripts.isEmpty()) {
+            TextRenderUtils.drawCustomCenteredText(context, "No modules found.",
+                    this.getMiddlePoint().x(),
+                    this.getMiddlePoint().y() - 10,
+                    GUIColors.TEXT_DISABLED.getRGB(), true, 1.1f);
+        }
         drawPageNumber(context);
+
     }
 
     private void drawPageNumber(DrawContext context) {
-        int navY = this.getMiddlePoint().y() + 75;
+        int navY = this.getMiddlePoint().y() + 86;
         int navCenterX = this.getMiddlePoint().x();
         String pageText = (currentPage + 1) + " / " + totalPages;
-        context.drawCenteredTextWithShadow(this.textRenderer, pageText, navCenterX, navY + 6, Color.WHITE.getRGB());
+        TextRenderUtils.drawCustomCenteredText(context, pageText, navCenterX, navY, Color.WHITE.getRGB(), true, 1.0f);
     }
 }

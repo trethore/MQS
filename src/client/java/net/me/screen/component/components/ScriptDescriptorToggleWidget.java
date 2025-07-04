@@ -9,6 +9,7 @@ import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.PressableWidget;
+import net.minecraft.client.sound.SoundManager;
 import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,6 +34,10 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
 
     public static Builder builder(ScriptingService scriptingService) {
         return new Builder(scriptingService);
+    }
+
+    @Override
+    public void playDownSound(SoundManager soundManager) {
     }
 
     public void update(@Nullable ScriptDescriptor descriptor) {

@@ -7,6 +7,7 @@ import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.client.sound.SoundManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
@@ -45,6 +46,11 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
         int buttonY = this.getY() + (this.getHeight() - REBIND_BUTTON_HEIGHT) / 2;
         this.rebindButton.setPos(buttonX, buttonY);
     }
+
+    @Override
+    public void playDownSound(SoundManager soundManager) {
+    }
+
 
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {

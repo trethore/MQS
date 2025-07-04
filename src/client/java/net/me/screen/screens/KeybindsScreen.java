@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class KeybindsScreen extends MQSScreen {
-    private static final int PADDING = 20;
+    private static final int PADDING = 30;
     private static final int ENTRY_HEIGHT = 30;
     private static final int HEADER_HEIGHT = 20;
     private static final int LIST_TOP_MARGIN = 55;
@@ -30,7 +30,7 @@ public class KeybindsScreen extends MQSScreen {
     private int totalContentHeight = 0;
 
     public KeybindsScreen(MQSScreen parent) {
-        super("Keybinds", 400, 300, parent);
+        super("Keybinds", 300, 280, parent);
         this.keybindManager = Main.getKeybindManager();
     }
 

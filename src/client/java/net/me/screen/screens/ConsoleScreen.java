@@ -111,8 +111,12 @@ public class ConsoleScreen extends MQSScreen {
         this.lastMessageCount = currentMessageCount;
     }
 
+    private int getLineHeight() {
+        return TextRendererUtils.getCustomTextRenderer().fontHeight + 2;
+    }
+
     private void renderMessages(DrawContext context, List<DisplayLine> linesToRender) {
-        int fontHeight = TextRendererUtils.getCustomTextRenderer().fontHeight;
+        int fontHeight = getLineHeight();
 
         int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
         int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
@@ -128,7 +132,7 @@ public class ConsoleScreen extends MQSScreen {
 
         int firstLineIndex = (int) Math.max(0, scrollY);
 
-        context.enableScissor(renderAreaX, renderAreaY, renderAreaX + getWindowWidth() - (PADDING * 2), renderAreaY + renderAreaHeight);
+        context.enableScissor(renderAreaX, renderAreaY - 2, renderAreaX + getWindowWidth() - (PADDING * 2), renderAreaY + renderAreaHeight + 2);
 
         for (int i = 0; i < maxLinesVisible && (firstLineIndex + i) < linesToRender.size(); i++) {
             int currentLineIndex = firstLineIndex + i;
@@ -136,7 +140,7 @@ public class ConsoleScreen extends MQSScreen {
 
             int yPos = renderAreaY + (i * fontHeight);
 
-            TextRenderUtils.drawText(context, line.text(), renderAreaX, yPos, line.color(), true, 1f);
+            TextRenderUtils.drawCustomText(context, line.text(), renderAreaX, yPos, line.color(), true, 1f);
         }
 
         context.disableScissor();
@@ -144,10 +148,13 @@ public class ConsoleScreen extends MQSScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        int fontHeight = TextRendererUtils.getCustomTextRenderer().fontHeight;
+        int fontHeight = getLineHeight();
         int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - INPUT_HEIGHT - FOOTER_MARGIN;
-        int maxLinesVisible = renderAreaHeight / fontHeight;
+        if (renderAreaHeight <= 0) {
+            return false;
+        }
 
+        int maxLinesVisible = renderAreaHeight / fontHeight;
         double maxScroll = Math.max(0, this.displayLines.size() - maxLinesVisible);
 
         double newScrollY = scrollY - verticalAmount;
@@ -192,7 +199,7 @@ public class ConsoleScreen extends MQSScreen {
                 navigateHistory(1);
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_ENTER) {
+            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
                 String command = this.inputField.getText();
                 consoleManager.executeCommand(command);
 
@@ -211,6 +218,4 @@ public class ConsoleScreen extends MQSScreen {
 
     private record DisplayLine(String text, int color) {
     }
-
-
 }

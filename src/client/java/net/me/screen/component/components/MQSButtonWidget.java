@@ -8,6 +8,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.sound.SoundManager;
 import net.minecraft.text.Text;
 
 @SuppressWarnings("unused")
@@ -34,6 +35,10 @@ public class MQSButtonWidget extends ButtonWidget implements IResizableWidget {
     public void setBackgroundColors(int nonHoveredColor, int hoveredColor) {
         this.nonHoveredBackgroundColor = nonHoveredColor;
         this.hoveredBackgroundColor = hoveredColor;
+    }
+
+    @Override
+    public void playDownSound(SoundManager soundManager) {
     }
 
     public void setTextColors(int inactiveColor, int activeColor) {
