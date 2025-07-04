@@ -19,6 +19,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
@@ -60,6 +61,7 @@ public class ScriptContextFactory {
                 .allowHostClassLookup(classResolver::isClassAllowed)
                 .option("js.ecmascript-version", "2024")
                 .option("js.esm-eval-returns-exports", "true")
+                .allowIO(IOAccess.ALL)
                 .build();
 
         configureContext(newContext, perFileExports);

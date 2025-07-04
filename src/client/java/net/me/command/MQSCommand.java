@@ -4,6 +4,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.me.command.commands.ScreenCommand;
 import net.me.command.commands.ScriptCommand;
 import net.me.console.ConsoleManager;
 import net.me.screen.screens.AllScriptsScreen;
@@ -23,7 +24,8 @@ public class MQSCommand extends Command {
         return ClientCommandManager.literal("mqs")
                 .requires(source -> source.hasPermissionLevel(0))
                 .executes(this::openMenu)
-                .then(new ScriptCommand(scriptingService).buildCommand());
+                .then(new ScriptCommand(scriptingService).buildCommand())
+                .then(new ScreenCommand(scriptingService, consoleManager).buildCommand());
     }
 
     private int openMenu(CommandContext<FabricClientCommandSource> context) {

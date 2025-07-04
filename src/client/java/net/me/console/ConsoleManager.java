@@ -1,6 +1,7 @@
 package net.me.console;
 
 import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.console.commands.*;
 import net.me.console.log.ConsoleManagerAppender;
 import net.me.scripting.ScriptingService;
@@ -22,9 +23,11 @@ public class ConsoleManager {
     private final PrintStream originalErr = System.err;
     private ConsoleManagerAppender slf4jAppender;
     private ScriptingService scriptingService;
+    private GlobalConfigManager globalConfigManager;
 
-    public void init(ScriptingService scriptingService) {
+    public void init(ScriptingService scriptingService, GlobalConfigManager globalConfigManager) {
         this.scriptingService = scriptingService;
+        this.globalConfigManager = globalConfigManager;
         registerCommands();
         logSuccess("Console initialized. Type 'help' for a list of commands.");
     }
@@ -38,7 +41,7 @@ public class ConsoleManager {
         addCommand(new ScriptCommands.RefreshScriptsCommand(this, scriptingService));
         addCommand(new ScriptCommands.RefreshAndReenableCommand(this, scriptingService));
         addCommand(new ScriptCommands.DisableAllCommand(this, scriptingService));
-        addCommand(new LogRedirectCommand(this));
+        addCommand(new LogRedirectCommand(this, globalConfigManager));
         addCommand(new CopyTailCommand(this));
         addCommand(new SaveConfigCommand(this, scriptingService));
         addCommand(new SaveAllConfigsCommand(this, scriptingService));
@@ -150,8 +153,6 @@ public class ConsoleManager {
             logInfo("Log redirection is already " + (enable ? "enabled." : "disabled."));
             return;
         }
-
-        Main.getGlobalConfigManager().setLogRedirectEnabled(enable);
 
         applyLogRedirectState(enable);
     }

@@ -21,7 +21,7 @@ public class MoreOptionsScreen extends MQSScreen {
     private static Boolean isVSCodeInstalledCache = null;
 
     public MoreOptionsScreen(MQSScreen parent) {
-        super("More Options", 210, 200, parent);
+        super("More Options", 210, 230, parent);
     }
 
     private static synchronized boolean isVSCodeInstalled() {
@@ -63,6 +63,10 @@ public class MoreOptionsScreen extends MQSScreen {
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
+        MQSButtonWidget createScriptButton = MQSButtonWidget.builder("Create Script", button -> new CreateScriptScreen(this).open())
+                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .build();
+
         MQSButtonWidget openVSCodeButton = MQSButtonWidget.builder("Open in VS Code", button -> {
             Main.LOGGER.info("Opening in VS Code");
             if (isVSCodeInstalled()) {
@@ -82,16 +86,18 @@ public class MoreOptionsScreen extends MQSScreen {
 
         this.addDrawableChild(settingsButton);
         this.addDrawableChild(keybindsButton);
+        this.addDrawableChild(createScriptButton);
         this.addDrawableChild(openVSCodeButton);
         this.addDrawableChild(openConfigsButton);
         this.addDrawableChild(openScriptsButton);
 
         WidgetLayoutHelper.layoutVertically(
                 getMiddlePoint().x() - BUTTON_WIDTH / 2,
-                getMiddlePoint().y() - 50,
+                getMiddlePoint().y() - 65,
                 BUTTON_SPACING,
                 settingsButton,
                 keybindsButton,
+                createScriptButton,
                 openVSCodeButton,
                 openConfigsButton,
                 openScriptsButton

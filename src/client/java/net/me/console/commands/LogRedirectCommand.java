@@ -1,12 +1,16 @@
 package net.me.console.commands;
 
+import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 
 public class LogRedirectCommand extends ConsoleCommand {
+    private final GlobalConfigManager globalConfigManager;
 
-    public LogRedirectCommand(ConsoleManager consoleManager) {
+
+    public LogRedirectCommand(ConsoleManager consoleManager, GlobalConfigManager globalConfigManager) {
         super(consoleManager, "logredirect", "Redirects System.out, System.err, and SLF4J logs to this console.", "logredirect <true|false>");
+        this.globalConfigManager = globalConfigManager;
     }
 
     @Override
@@ -27,7 +31,7 @@ public class LogRedirectCommand extends ConsoleCommand {
             return;
         }
 
-        cm.setLogRedirect(enable);
+        globalConfigManager.setLogRedirectEnabled(enable);
         cm.logSuccess("Log redirection " + (enable ? "enabled" : "disabled") + ".");
     }
 }

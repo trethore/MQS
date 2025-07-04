@@ -32,6 +32,8 @@ public class GlobalConfigManager {
             this.data = GSON.fromJson(reader, ConfigData.class);
             if (this.data == null) {
                 this.data = new ConfigData();
+            } else {
+                manager.setLogRedirect(this.data.logRedirect);
             }
         } catch (Exception e) {
             Main.LOGGER.error("Failed to load global MQS config, using defaults.", e);
@@ -53,8 +55,8 @@ public class GlobalConfigManager {
 
     public void setLogRedirectEnabled(boolean enabled) {
         if (data.logRedirect != enabled) {
-            data.logRedirect = enabled;
             manager.setLogRedirect(enabled);
+            data.logRedirect = enabled;
             save();
         }
     }

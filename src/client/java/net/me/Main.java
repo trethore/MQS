@@ -71,7 +71,6 @@ public class Main implements ClientModInitializer {
 
         Main.scriptEngine = Engine.create();
 
-        globalConfigManager.init(consoleManager);
         mappingsManager.init();
         configManager.init(scriptEngine);
 
@@ -83,9 +82,9 @@ public class Main implements ClientModInitializer {
 
         scriptingService.init(scriptManager, configManager);
 
-        consoleManager.init(scriptingService);
+        consoleManager.init(scriptingService, globalConfigManager);
         commandManager.init(scriptingService, consoleManager);
-        commandManager.init(scriptingService, consoleManager);
+        globalConfigManager.init(consoleManager);
 
         // and finally, enable all scripts !
         scriptManager.loadAndEnableScriptsFromConfig();
