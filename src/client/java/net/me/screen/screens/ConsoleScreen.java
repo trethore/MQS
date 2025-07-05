@@ -66,11 +66,7 @@ public class ConsoleScreen extends MQSScreen {
         rebuildDisplayLines();
     }
 
-    private void rebuildDisplayLines() {
-        this.displayLines.clear();
-        List<ConsoleMessage> messages = consoleManager.getMessages();
-        this.lastMessageCount = messages.size();
-
+    private void appendDisplayLines(List<ConsoleMessage> messages) {
         int renderAreaWidth = getWindowWidth() - (UIConstants.PADDING_M * 2);
         if (renderAreaWidth <= 0) return;
 
@@ -89,6 +85,13 @@ public class ConsoleScreen extends MQSScreen {
         }
     }
 
+    private void rebuildDisplayLines() {
+        this.displayLines.clear();
+        List<ConsoleMessage> messages = consoleManager.getMessages();
+        appendDisplayLines(messages);
+        this.lastMessageCount = messages.size();
+    }
+
     private void onInputChanged(String text) {
         if (!navigatingHistory) {
             this.historyIndex = consoleManager.getCommandHistory().size();
@@ -96,13 +99,28 @@ public class ConsoleScreen extends MQSScreen {
         }
     }
 
+    private void checkForNewMessages() {
+        List<ConsoleMessage> allMessages = consoleManager.getMessages();
+        if (allMessages.size() == lastMessageCount) {
+            return;
+        }
+
+        // A clear operation results in fewer messages than lastMessageCount.
+        if (allMessages.size() < lastMessageCount) {
+            rebuildDisplayLines();
+            return;
+        }
+
+        List<ConsoleMessage> newMessages = allMessages.subList(lastMessageCount, allMessages.size());
+        appendDisplayLines(newMessages);
+        lastMessageCount = allMessages.size();
+    }
+
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
 
-        if (consoleManager.getMessages().size() != lastMessageCount) {
-            rebuildDisplayLines();
-        }
+        checkForNewMessages();
 
         renderMessages(context, this.displayLines);
 

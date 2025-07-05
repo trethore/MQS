@@ -61,7 +61,6 @@ public class HookInterceptor {
             return false;
         }
 
-        // --- REFACTORED: Replaced lambda with an explicit inner class instance ---
         ProxyExecutable nextInChain = CHAIN_CACHE.computeIfAbsent(hookId, new ChainBuilder(method, hookList));
 
         try {
@@ -159,7 +158,6 @@ public class HookInterceptor {
 
         @Override
         public ProxyExecutable apply(String hookId) {
-            // The logic from the lambda is now in this public method
             return buildChain(method, hookList);
         }
     }
