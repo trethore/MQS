@@ -30,10 +30,6 @@ public class ScriptingService {
 
     public void enable(String scriptId) {
         scriptManager.enableScript(scriptId);
-        if (scriptManager.isRunning(scriptId)) {
-            configManager.setEnabledState(scriptId, true);
-            configManager.saveConfig(scriptId);
-        }
     }
 
     public void disable(String scriptId) {

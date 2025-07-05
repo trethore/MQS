@@ -227,12 +227,16 @@ public class ScriptManager {
 
             runningScripts.put(scriptId, runningScript);
 
+            configManager.setEnabledState(scriptId, true);
+
             setCurrentScript(runningScript);
             try {
                 runningScript.onEnable();
             } finally {
                 clearCurrentScript();
             }
+
+            configManager.saveConfig(runningScript);
 
         } catch (Exception e) {
             returnContextToPool(scriptContext);

@@ -39,14 +39,25 @@ public class CopyTailCommand extends ConsoleCommand {
             return;
         }
 
-        List<ConsoleMessage> messages = cm.getMessages();
-        if (messages.isEmpty()) {
+
+        List<ConsoleMessage> allMessages = cm.getMessages();
+
+        if (allMessages.size() <= 1) {
+            cm.logInfo("No previous messages to copy.");
+            return;
+        }
+
+        List<ConsoleMessage> messagesToCopy = allMessages.subList(0, allMessages.size() - 1);
+
+        int startIndex = Math.max(0, messagesToCopy.size() - numberOfLines);
+
+        List<ConsoleMessage> tail = messagesToCopy.subList(startIndex, messagesToCopy.size());
+
+
+        if (tail.isEmpty()) {
             cm.logInfo("Console is empty, nothing to copy.");
             return;
         }
-        int lastMessageIndex = messages.size() - 1;
-        int startIndex = Math.max(0, messages.size() - numberOfLines - 1);
-        List<ConsoleMessage> tail = messages.subList(startIndex, lastMessageIndex);
 
         String textToCopy = tail.stream()
                 .map(msg -> String.format("[%s] %s", msg.timestamp(), msg.text()))
