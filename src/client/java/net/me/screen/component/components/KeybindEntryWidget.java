@@ -5,6 +5,7 @@ import net.me.screen.component.IResizableWidget;
 import net.me.utils.GUIColors;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRenderUtils;
+import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.ClickableWidget;
@@ -17,9 +18,6 @@ import java.util.function.Consumer;
 @SuppressWarnings("unused")
 public class KeybindEntryWidget extends ClickableWidget implements IResizableWidget {
 
-    private static final int REBIND_BUTTON_WIDTH = 90;
-    private static final int REBIND_BUTTON_HEIGHT = 20;
-    private static final int REBIND_BUTTON_MARGIN_RIGHT = 5;
     private final KeyBinding keyBinding;
     private final MQSButtonWidget rebindButton;
     private boolean isListening = false;
@@ -32,7 +30,7 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
                     this.setListening(true);
                     onRebindClick.accept(this.keyBinding);
                 })
-                .size(REBIND_BUTTON_WIDTH, REBIND_BUTTON_HEIGHT)
+                .size(UIConstants.BUTTON_WIDTH_MEDIUM, UIConstants.BUTTON_HEIGHT)
                 .backgroundColors(GUIColors.DARK_L3.getRGB(), GUIColors.DARK_L4.getRGB())
                 .build();
 
@@ -44,8 +42,8 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
     }
 
     private void updateButtonBounds() {
-        int buttonX = this.getX() + this.getWidth() - REBIND_BUTTON_WIDTH - REBIND_BUTTON_MARGIN_RIGHT;
-        int buttonY = this.getY() + (this.getHeight() - REBIND_BUTTON_HEIGHT) / 2;
+        int buttonX = this.getX() + this.getWidth() - UIConstants.BUTTON_WIDTH_MEDIUM - UIConstants.PADDING_S;
+        int buttonY = this.getY() + (this.getHeight() - UIConstants.BUTTON_HEIGHT) / 2;
         this.rebindButton.setPos(buttonX, buttonY);
     }
 

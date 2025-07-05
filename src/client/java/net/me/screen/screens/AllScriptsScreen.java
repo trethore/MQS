@@ -12,6 +12,7 @@ import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.me.utils.GUIColors;
 import net.me.utils.TextRenderUtils;
+import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -28,10 +29,8 @@ public class AllScriptsScreen extends MQSScreen {
 
     private static final int ITEMS_PER_PAGE = 4;
     private static final int SCRIPT_ROW_HEIGHT = 35;
-    private static final int PADDING = 100;
+    private static final int WINDOW_HORIZONTAL_MARGIN = 100;
     private static final int SEARCH_BAR_WIDTH = 175;
-    private static final int SEARCH_BAR_HEIGHT = 20;
-    private static final int BUTTON_HEIGHT = 20;
 
     private final ScriptingService scriptingService;
     private final ConsoleManager consoleManager;
@@ -71,7 +70,7 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void addScriptListWidgets() {
-        int listStartX = this.getMiddlePoint().x() - PADDING;
+        int listStartX = this.getMiddlePoint().x() - WINDOW_HORIZONTAL_MARGIN;
         int listStartY = this.getMiddlePoint().y() - 70;
 
         for (int i = 0; i < ITEMS_PER_PAGE; i++) {
@@ -92,11 +91,11 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void addSearch() {
-        int searchX = this.getMiddlePoint().x() - PADDING;
-        int searchY = this.getMiddlePoint().y() - PADDING;
+        int searchX = this.getMiddlePoint().x() - WINDOW_HORIZONTAL_MARGIN;
+        int searchY = this.getMiddlePoint().y() - WINDOW_HORIZONTAL_MARGIN;
 
         this.searchTextField = MQSTextFieldWidget.builder()
-                .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, SEARCH_BAR_HEIGHT)
+                .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, UIConstants.BUTTON_HEIGHT)
                 .placeholder("Search...")
                 .build();
 
@@ -104,7 +103,7 @@ public class AllScriptsScreen extends MQSScreen {
 
         this.addSelectableChild(this.searchTextField);
         MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/close.png"), button -> this.searchTextField.clearText())
-                .dimensions(searchX + SEARCH_BAR_WIDTH + 5, searchY, SEARCH_BAR_HEIGHT, SEARCH_BAR_HEIGHT)
+                .dimensions(searchX + SEARCH_BAR_WIDTH + 5, searchY, UIConstants.BUTTON_HEIGHT, UIConstants.BUTTON_HEIGHT)
                 .build();
         this.addDrawableChild(clearTextFieldButton);
     }
@@ -153,14 +152,14 @@ public class AllScriptsScreen extends MQSScreen {
                 this.currentPage--;
                 updateScriptList();
             }
-        }).dimensions(navX - PADDING, navY, 80, BUTTON_HEIGHT).build();
+        }).dimensions(navX - WINDOW_HORIZONTAL_MARGIN, navY, 80, UIConstants.BUTTON_HEIGHT).build();
 
         this.nextButton = MQSButtonWidget.builder("Next", button -> {
             if (this.currentPage < this.totalPages - 1) {
                 this.currentPage++;
                 updateScriptList();
             }
-        }).dimensions(navX + 20, navY, 80, BUTTON_HEIGHT).build();
+        }).dimensions(navX + 20, navY, 80, UIConstants.BUTTON_HEIGHT).build();
 
         this.addDrawableChild(this.prevButton);
         this.addDrawableChild(this.nextButton);
@@ -168,16 +167,16 @@ public class AllScriptsScreen extends MQSScreen {
         int actionY = navY + 25;
 
         this.refreshButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"), "Refresh", button -> refreshScripts())
-                .dimensions(navX - PADDING, actionY, 65, BUTTON_HEIGHT).build();
+                .dimensions(navX - WINDOW_HORIZONTAL_MARGIN, actionY, 65, UIConstants.BUTTON_HEIGHT).build();
 
         MQSButtonWidget consoleButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/square-terminal.png"), "Console", button -> new ConsoleScreen(this, consoleManager).open())
-                .dimensions(navX - 30, actionY, 65, BUTTON_HEIGHT).build();
+                .dimensions(navX - 30, actionY, 65, UIConstants.BUTTON_HEIGHT).build();
 
         MQSButtonWidget offButton = MQSButtonWidget.builder(MessageFormat.format("All{0} Off", Formatting.RED), button -> disableAllScripts())
-                .dimensions(navX + 40, actionY, 40, BUTTON_HEIGHT).build();
+                .dimensions(navX + 40, actionY, 40, UIConstants.BUTTON_HEIGHT).build();
 
         MQSButtonWidget moreButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/ellipsis-vertical.png"), button -> new MoreOptionsScreen(this).open())
-                .dimensions(navX + 85, actionY, 15, BUTTON_HEIGHT)
+                .dimensions(navX + 85, actionY, 15, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         this.addDrawableChild(this.refreshButton);

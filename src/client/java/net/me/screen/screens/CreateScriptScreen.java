@@ -7,6 +7,7 @@ import net.me.screen.component.components.MQSButtonWidget;
 import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.utils.GUIColors;
 import net.me.utils.TextRenderUtils;
+import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import org.jetbrains.annotations.NotNull;
 
@@ -15,10 +16,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class CreateScriptScreen extends MQSScreen {
-
-    private static final int WIDGET_WIDTH = 200;
-    private static final int WIDGET_HEIGHT = 20;
-    private static final int WIDGET_SPACING = 5;
 
     private MQSTextFieldWidget mainClassField;
     private MQSTextFieldWidget nameField;
@@ -59,21 +56,21 @@ public class CreateScriptScreen extends MQSScreen {
 
         this.mainClassField = MQSTextFieldWidget.builder()
                 .placeholder("Main Class Name (e.g., MyScript)")
-                .size(WIDGET_WIDTH, WIDGET_HEIGHT)
+                .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         this.nameField = MQSTextFieldWidget.builder()
                 .placeholder("Module Name (e.g., My Awesome Script)")
-                .size(WIDGET_WIDTH, WIDGET_HEIGHT)
+                .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         this.versionField = MQSTextFieldWidget.builder()
                 .placeholder("Version (e.g., 1.0.0)")
-                .size(WIDGET_WIDTH, WIDGET_HEIGHT)
+                .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         MQSButtonWidget createButton = MQSButtonWidget.builder("Create Script", button -> createScript())
-                .size(WIDGET_WIDTH, WIDGET_HEIGHT)
+                .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         this.addSelectableChild(mainClassField);
@@ -82,15 +79,15 @@ public class CreateScriptScreen extends MQSScreen {
         this.addDrawableChild(createButton);
 
         WidgetLayoutHelper.layoutVertically(
-                getMiddlePoint().x() - WIDGET_WIDTH / 2,
+                getMiddlePoint().x() - UIConstants.WIDGET_WIDTH_STANDARD / 2,
                 getMiddlePoint().y() - 60,
-                WIDGET_SPACING,
+                UIConstants.WIDGET_SPACING,
                 mainClassField,
                 nameField,
                 versionField,
                 createButton
         );
-        createButton.setPos(versionField.getX(), versionField.getY() + WIDGET_HEIGHT * 2);
+        createButton.setPos(versionField.getX(), versionField.getY() + UIConstants.BUTTON_HEIGHT * 2);
     }
 
     @Override

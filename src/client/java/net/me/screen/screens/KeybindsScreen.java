@@ -7,6 +7,7 @@ import net.me.screen.component.components.KeybindEntryWidget;
 import net.me.scripting.module.RunningScript;
 import net.me.utils.GUIColors;
 import net.me.utils.TextRenderUtils;
+import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 
@@ -15,7 +16,6 @@ import java.util.stream.Collectors;
 
 public class KeybindsScreen extends MQSScreen {
     private static final int PADDING = 30;
-    private static final int ENTRY_HEIGHT = 30;
     private static final int HEADER_HEIGHT = 20;
     private static final int LIST_TOP_MARGIN = 55;
     private static final int LIST_BOTTOM_MARGIN = 70;
@@ -61,13 +61,13 @@ public class KeybindsScreen extends MQSScreen {
                                 windowStartX + PADDING,
                                 currentY,
                                 getWindowWidth() - (PADDING * 2),
-                                ENTRY_HEIGHT
+                                UIConstants.ENTRY_HEIGHT
                         )
                         .build();
 
                 this.keybindEntryWidgets.add(widget);
-                currentY += ENTRY_HEIGHT;
-                this.totalContentHeight += ENTRY_HEIGHT;
+                currentY += UIConstants.ENTRY_HEIGHT;
+                this.totalContentHeight += UIConstants.ENTRY_HEIGHT;
             }
         }
         this.keybindEntryWidgets.forEach(this::addSelectableChild);
@@ -97,7 +97,7 @@ public class KeybindsScreen extends MQSScreen {
                 if (widget.getKeyBinding().getOwner().equals(script)) {
                     widget.setY(currentY);
                     widget.render(context, mouseX, mouseY, delta);
-                    currentY += ENTRY_HEIGHT;
+                    currentY += UIConstants.ENTRY_HEIGHT;
                 }
             }
         }

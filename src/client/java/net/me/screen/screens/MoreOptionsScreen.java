@@ -5,6 +5,7 @@ import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
 import net.me.screen.component.components.MQSImageButtonWidget;
 import net.me.utils.ChatUtils;
+import net.me.utils.UIConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
@@ -14,10 +15,6 @@ import java.net.URI;
 import java.nio.file.Path;
 
 public class MoreOptionsScreen extends MQSScreen {
-
-    private static final int BUTTON_WIDTH = 150;
-    private static final int BUTTON_HEIGHT = 20;
-    private static final int BUTTON_SPACING = 5;
 
     private static Boolean isVSCodeInstalledCache = null;
 
@@ -57,11 +54,11 @@ public class MoreOptionsScreen extends MQSScreen {
     protected void init() {
         super.init();
         MQSImageButtonWidget settingsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/settings.png"), "Settings", button -> new SettingsScreen(this, Main.getInstance().getGlobalConfigManager()).open())
-                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         MQSImageButtonWidget keybindsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/keyboard.png"), "Keybinds", button -> new KeybindsScreen(this, Main.getInstance().getKeybindManager()).open())
-                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         MQSImageButtonWidget openVSCodeButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/app-window.png"), "Open in VS Code", button -> {
@@ -71,18 +68,18 @@ public class MoreOptionsScreen extends MQSScreen {
             } else {
                 openScriptsInVSCodeWeb();
             }
-        }).size(BUTTON_WIDTH, BUTTON_HEIGHT).build();
+        }).size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT).build();
 
         MQSImageButtonWidget createScriptButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-code.png"), "Create Script", button -> new CreateScriptScreen(this).open())
-                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         MQSImageButtonWidget openConfigsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-sliders.png"), "Open Configs Folder", button -> openFolder("configs"))
-                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         MQSImageButtonWidget openScriptsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/binary.png"), "Open Scripts Folder", button -> openFolder("scripts"))
-                .size(BUTTON_WIDTH, BUTTON_HEIGHT)
+                .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
         this.addDrawableChild(settingsButton);
@@ -93,9 +90,9 @@ public class MoreOptionsScreen extends MQSScreen {
         this.addDrawableChild(openScriptsButton);
 
         WidgetLayoutHelper.layoutVertically(
-                getMiddlePoint().x() - BUTTON_WIDTH / 2,
+                getMiddlePoint().x() - UIConstants.BUTTON_WIDTH_LARGE / 2,
                 getMiddlePoint().y() - 65,
-                BUTTON_SPACING,
+                UIConstants.WIDGET_SPACING,
                 settingsButton,
                 keybindsButton,
                 openVSCodeButton,

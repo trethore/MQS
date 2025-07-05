@@ -4,6 +4,7 @@ import net.me.screen.component.IResizableWidget;
 import net.me.utils.GUIColors;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRendererUtils;
+import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Style;
@@ -11,10 +12,6 @@ import net.minecraft.text.Text;
 
 @SuppressWarnings("unused")
 public class MQSTextFieldWidget extends TextFieldWidget implements IResizableWidget {
-
-    private static final int TEXT_PADDING_X = 5;
-    private static final int TEXT_PADDING_Y = 6;
-
     private int defaultBackgroundColor;
     private int hoveredBackgroundColor;
     private int focusedBackgroundColor;
@@ -61,7 +58,7 @@ public class MQSTextFieldWidget extends TextFieldWidget implements IResizableWid
         renderCustomBackground(context);
 
         context.getMatrices().push();
-        context.getMatrices().translate(TEXT_PADDING_X, TEXT_PADDING_Y, 0);
+        context.getMatrices().translate(UIConstants.PADDING_S, UIConstants.PADDING_S + 1, 0);
 
         super.renderWidget(context, mouseX, mouseY, delta);
 

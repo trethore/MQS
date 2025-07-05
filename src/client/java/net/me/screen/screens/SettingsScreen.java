@@ -4,6 +4,7 @@ import net.me.config.GlobalConfigManager;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
 import net.me.screen.component.components.BooleanSettingEntryWidget;
+import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 
 import java.util.ArrayList;
@@ -12,8 +13,6 @@ import java.util.List;
 public class SettingsScreen extends MQSScreen {
 
     private static final int WIDGET_WIDTH = 250;
-    private static final int WIDGET_HEIGHT = 30;
-    private static final int WIDGET_SPACING = 5;
 
     private final GlobalConfigManager globalConfigManager;
     private final List<BooleanSettingEntryWidget> settingWidgets = new ArrayList<>();
@@ -33,7 +32,7 @@ public class SettingsScreen extends MQSScreen {
                 .description("Redirects logs to the MQS console.")
                 .getter(globalConfigManager::isLogRedirectEnabled)
                 .setter(globalConfigManager::setLogRedirectEnabled)
-                .size(WIDGET_WIDTH, WIDGET_HEIGHT)
+                .size(WIDGET_WIDTH, UIConstants.ENTRY_HEIGHT)
                 .build();
 
         this.settingWidgets.add(logRedirectWidget);
@@ -44,7 +43,7 @@ public class SettingsScreen extends MQSScreen {
                 .description("Allows scripts to access any Java class.")
                 .getter(globalConfigManager::areAllClassesAllowed)
                 .setter(globalConfigManager::setAllClassesAllowed)
-                .size(WIDGET_WIDTH, WIDGET_HEIGHT)
+                .size(WIDGET_WIDTH, UIConstants.ENTRY_HEIGHT)
                 .build();
 
         this.settingWidgets.add(allowAllClassesWidget);
@@ -53,7 +52,7 @@ public class SettingsScreen extends MQSScreen {
         WidgetLayoutHelper.layoutVertically(
                 getMiddlePoint().x() - WIDGET_WIDTH / 2,
                 getMiddlePoint().y() - 80,
-                WIDGET_SPACING,
+                UIConstants.WIDGET_SPACING,
                 this.settingWidgets.toArray(new BooleanSettingEntryWidget[0])
         );
     }

@@ -4,6 +4,7 @@ import net.me.screen.component.IResizableWidget;
 import net.me.utils.GUIColors;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRenderUtils;
+import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.PressableWidget;
@@ -15,12 +16,6 @@ import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
 public class BooleanSettingEntryWidget extends PressableWidget implements IResizableWidget {
-
-    private static final int PADDING = 5;
-    private static final int TOGGLE_BG_SIZE = 20;
-    private static final int TOGGLE_INDICATOR_SIZE = 16;
-    private static final float TITLE_SCALE = 1.0f;
-    private static final float DESC_SCALE = 0.8f;
 
     private final String name;
     private final String description;
@@ -60,25 +55,25 @@ public class BooleanSettingEntryWidget extends PressableWidget implements IResiz
         int bgColor = isHovered ? GUIColors.DARK_L3.getRGB() : GUIColors.DARK_L2.getRGB();
         Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, bgColor);
 
-        TextRenderUtils.drawCustomText(context, this.name, this.getX() + PADDING, this.getY() + PADDING, GUIColors.TEXT.getRGB(), true, TITLE_SCALE);
+        TextRenderUtils.drawCustomText(context, this.name, this.getX() + UIConstants.PADDING_S, this.getY() + UIConstants.PADDING_S, GUIColors.TEXT.getRGB(), true, UIConstants.TEXT_SCALE);
         if (this.description != null && !this.description.isEmpty()) {
-            TextRenderUtils.drawCustomText(context, this.description, this.getX() + PADDING, this.getY() + PADDING + 12, GUIColors.TEXT_DISABLED.getRGB(), true, DESC_SCALE);
+            TextRenderUtils.drawCustomText(context, this.description, this.getX() + UIConstants.PADDING_S, this.getY() + UIConstants.PADDING_S + 12, GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
         }
         renderToggle(context, isHovered);
     }
 
     private void renderToggle(DrawContext context, boolean isHovered) {
         int toggleBgColor = isHovered ? GUIColors.DARK_L3.lighter(10).getRGB() : GUIColors.DARK_L3.getRGB();
-        int toggleBgX = this.getX() + this.getWidth() - TOGGLE_BG_SIZE - PADDING;
-        int toggleBgY = this.getY() + (this.getHeight() - TOGGLE_BG_SIZE) / 2;
-        Render2DUtils.drawRoundedRect(context, toggleBgX, toggleBgY, TOGGLE_BG_SIZE, TOGGLE_BG_SIZE, 2, 5, toggleBgColor);
+        int toggleBgX = this.getX() + this.getWidth() - UIConstants.TOGGLE_BG_SIZE - UIConstants.PADDING_S;
+        int toggleBgY = this.getY() + (this.getHeight() - UIConstants.TOGGLE_BG_SIZE) / 2;
+        Render2DUtils.drawRoundedRect(context, toggleBgX, toggleBgY, UIConstants.TOGGLE_BG_SIZE, UIConstants.TOGGLE_BG_SIZE, 2, 5, toggleBgColor);
 
         int stateColor = this.getter.get()
                 ? GUIColors.SUCCESS.getRGB()
                 : GUIColors.ERROR.getRGB();
-        int indicatorX = toggleBgX + (TOGGLE_BG_SIZE - TOGGLE_INDICATOR_SIZE) / 2;
-        int indicatorY = toggleBgY + (TOGGLE_BG_SIZE - TOGGLE_INDICATOR_SIZE) / 2;
-        Render2DUtils.drawRoundedRect(context, indicatorX, indicatorY, TOGGLE_INDICATOR_SIZE, TOGGLE_INDICATOR_SIZE, 2, 10, stateColor);
+        int indicatorX = toggleBgX + (UIConstants.TOGGLE_BG_SIZE - UIConstants.TOGGLE_INDICATOR_SIZE) / 2;
+        int indicatorY = toggleBgY + (UIConstants.TOGGLE_BG_SIZE - UIConstants.TOGGLE_INDICATOR_SIZE) / 2;
+        Render2DUtils.drawRoundedRect(context, indicatorX, indicatorY, UIConstants.TOGGLE_INDICATOR_SIZE, UIConstants.TOGGLE_INDICATOR_SIZE, 2, 10, stateColor);
     }
 
     @Override

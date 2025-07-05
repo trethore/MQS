@@ -6,6 +6,7 @@ import net.me.screen.MQSScreen;
 import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.utils.TextRenderUtils;
 import net.me.utils.TextRendererUtils;
+import net.me.utils.UIConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.OrderedText;
@@ -17,11 +18,10 @@ import java.util.List;
 
 public class ConsoleScreen extends MQSScreen {
 
+    private final static int HEADER_MARGIN = 55;
+    private final static int FOOTER_MARGIN = 15;
+
     private final ConsoleManager consoleManager;
-    private final int PADDING = 10;
-    private final int INPUT_HEIGHT = 20;
-    private final int HEADER_MARGIN = 55;
-    private final int FOOTER_MARGIN = 15;
     private final List<DisplayLine> displayLines = new ArrayList<>();
     private MQSTextFieldWidget inputField;
     private double scrollY = 0;
@@ -42,12 +42,12 @@ public class ConsoleScreen extends MQSScreen {
         int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
         int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
 
-        int inputX = windowStartX + PADDING;
-        int inputY = windowStartY + getWindowHeight() - INPUT_HEIGHT - PADDING;
-        int inputWidth = getWindowWidth() - (PADDING * 2);
+        int inputX = windowStartX + UIConstants.PADDING_M;
+        int inputY = windowStartY + getWindowHeight() - UIConstants.INPUT_HEIGHT - UIConstants.PADDING_M;
+        int inputWidth = getWindowWidth() - (UIConstants.PADDING_M * 2);
 
         this.inputField = MQSTextFieldWidget.builder()
-                .dimensions(inputX, inputY, inputWidth, INPUT_HEIGHT)
+                .dimensions(inputX, inputY, inputWidth, UIConstants.INPUT_HEIGHT)
                 .placeholder("> Enter a command... (Type 'help')")
                 .build();
 
@@ -71,7 +71,7 @@ public class ConsoleScreen extends MQSScreen {
         List<ConsoleMessage> messages = consoleManager.getMessages();
         this.lastMessageCount = messages.size();
 
-        int renderAreaWidth = getWindowWidth() - (PADDING * 2);
+        int renderAreaWidth = getWindowWidth() - (UIConstants.PADDING_M * 2);
         if (renderAreaWidth <= 0) return;
 
         for (ConsoleMessage msg : messages) {
@@ -119,9 +119,9 @@ public class ConsoleScreen extends MQSScreen {
         int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
         int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
 
-        int renderAreaX = windowStartX + PADDING;
+        int renderAreaX = windowStartX + UIConstants.PADDING_M;
         int renderAreaY = windowStartY + HEADER_MARGIN;
-        int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - INPUT_HEIGHT - FOOTER_MARGIN;
+        int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - UIConstants.INPUT_HEIGHT - FOOTER_MARGIN;
         int maxLinesVisible = renderAreaHeight / fontHeight;
 
         if (autoScroll) {
@@ -130,7 +130,7 @@ public class ConsoleScreen extends MQSScreen {
 
         int firstLineIndex = (int) Math.max(0, scrollY);
 
-        context.enableScissor(renderAreaX, renderAreaY - 2, renderAreaX + getWindowWidth() - (PADDING * 2), renderAreaY + renderAreaHeight + 2);
+        context.enableScissor(renderAreaX, renderAreaY - 2, renderAreaX + getWindowWidth() - (UIConstants.PADDING_M * 2), renderAreaY + renderAreaHeight + 2);
 
         for (int i = 0; i < maxLinesVisible && (firstLineIndex + i) < linesToRender.size(); i++) {
             int currentLineIndex = firstLineIndex + i;
@@ -147,7 +147,7 @@ public class ConsoleScreen extends MQSScreen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         int fontHeight = getLineHeight();
-        int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - INPUT_HEIGHT - FOOTER_MARGIN;
+        int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - UIConstants.INPUT_HEIGHT - FOOTER_MARGIN;
         if (renderAreaHeight <= 0) {
             return false;
         }

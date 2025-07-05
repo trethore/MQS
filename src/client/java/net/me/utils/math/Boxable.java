@@ -1,4 +1,4 @@
-package net.me.utils.records;
+package net.me.utils.math;
 
 @SuppressWarnings("unused")
 public interface Boxable<T> extends Cloneable {
