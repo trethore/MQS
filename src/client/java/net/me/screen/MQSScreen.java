@@ -4,7 +4,6 @@ import net.me.Main;
 import net.me.screen.component.components.MQSToast;
 import net.me.utils.*;
 import net.me.utils.math.Position;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
@@ -48,14 +47,15 @@ public abstract class MQSScreen extends Screen {
 
     @Override
     public void close() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (this.parent != null) {
-            mc.setScreen(this.parent);
-        } else {
-            Main.getInstance().getGlobalConfigManager().save();
-            Main.getInstance().getConfigManager().saveAllConfigs();
-            super.close();
-        }
+        McUtils.getMc().ifPresent(mc -> {
+            if (this.parent != null) {
+                mc.setScreen(this.parent);
+            } else {
+                Main.getInstance().getGlobalConfigManager().save();
+                Main.getInstance().getConfigManager().saveAllConfigs();
+                super.close();
+            }
+        });
     }
 
 

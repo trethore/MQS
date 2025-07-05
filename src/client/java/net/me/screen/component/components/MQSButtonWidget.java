@@ -2,9 +2,9 @@ package net.me.screen.component.components;
 
 import net.me.screen.component.IResizableWidget;
 import net.me.utils.GUIColors;
+import net.me.utils.McUtils;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRendererUtils;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -60,21 +60,22 @@ public class MQSButtonWidget extends ButtonWidget implements IResizableWidget {
 
     @Override
     public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        MinecraftClient minecraftClient = MinecraftClient.getInstance();
-        TextRenderer textRenderer = TextRendererUtils.getCustomTextRenderer();
+        McUtils.getMc().ifPresent(mc -> {
+            TextRenderer textRenderer = TextRendererUtils.getCustomTextRenderer();
 
-        boolean isHovered = this.isHovered() && this.active;
-        int bgColor = isHovered ? this.hoveredBackgroundColor : this.nonHoveredBackgroundColor;
-        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.width, this.height, 3, 5, bgColor);
+            boolean isHovered = this.isHovered() && this.active;
+            int bgColor = isHovered ? this.hoveredBackgroundColor : this.nonHoveredBackgroundColor;
+            Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.width, this.height, 3, 5, bgColor);
 
-        int textColor = this.active ? this.activeTextColor : this.inactiveTextColor;
-        context.drawCenteredTextWithShadow(
-                textRenderer,
-                this.getMessage(),
-                this.getX() + this.width / 2,
-                this.getY() + (this.height - 8) / 2,
-                textColor
-        );
+            int textColor = this.active ? this.activeTextColor : this.inactiveTextColor;
+            context.drawCenteredTextWithShadow(
+                    textRenderer,
+                    this.getMessage(),
+                    this.getX() + this.width / 2,
+                    this.getY() + (this.height - 8) / 2,
+                    textColor
+            );
+        });
     }
 
     public static class Builder {

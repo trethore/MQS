@@ -3,7 +3,7 @@ package net.me.console.commands;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 import net.me.console.ConsoleMessage;
-import net.minecraft.client.MinecraftClient;
+import net.me.utils.McUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -63,7 +63,7 @@ public class CopyTailCommand extends ConsoleCommand {
                 .map(msg -> String.format("[%s] %s", msg.timestamp(), msg.text()))
                 .collect(Collectors.joining(System.lineSeparator()));
 
-        MinecraftClient.getInstance().keyboard.setClipboard(textToCopy);
+        McUtils.getMc().ifPresent(mc -> mc.keyboard.setClipboard(textToCopy));
         cm.logSuccess("Copied " + tail.size() + " lines to clipboard.");
     }
 }
