@@ -120,7 +120,8 @@ public class UpdateUtils {
                 for (var asset : assets) {
                     var assetObj = asset.getAsJsonObject();
                     String fileName = assetObj.get("name").getAsString();
-                    if (fileName.endsWith(".jar")) {
+
+                    if (fileName.endsWith(".jar") && !fileName.endsWith("-sources.jar") && !fileName.endsWith("-dev.jar")) {
                         downloadUrl = assetObj.get("browser_download_url").getAsString();
                         break;
                     }
@@ -128,7 +129,7 @@ public class UpdateUtils {
             }
 
             if (downloadUrl == null) {
-                Main.LOGGER.error("No .jar file asset found in latest release on GitHub.");
+                Main.LOGGER.error("No suitable .jar file asset found in latest release on GitHub.");
                 return null;
             }
 
