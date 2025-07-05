@@ -17,10 +17,12 @@ public class MQSCommand extends Command {
     private final ConsoleManager consoleManager;
     private final ScriptCommand scriptCommand;
     private final ScreenCommand screenCommand;
+    private final GlobalConfigManager globalConfigManager;
 
     public MQSCommand(ScriptingService scriptingService, ConsoleManager consoleManager, GlobalConfigManager globalConfigManager, KeybindManager keybindManager) {
         this.scriptingService = scriptingService;
         this.consoleManager = consoleManager;
+        this.globalConfigManager = globalConfigManager;
         this.scriptCommand = new ScriptCommand(scriptingService);
         this.screenCommand = new ScreenCommand(scriptingService, consoleManager, globalConfigManager, keybindManager);
     }
@@ -35,7 +37,7 @@ public class MQSCommand extends Command {
     }
 
     private int openMenu(CommandContext<FabricClientCommandSource> context) {
-        new AllScriptsScreen(scriptingService, consoleManager).open();
+        new AllScriptsScreen(scriptingService, consoleManager, globalConfigManager).open();
         return CommandManager.COMMAND_SUCCESS;
     }
 }

@@ -1,5 +1,6 @@
 package net.me.screen.component.components;
 
+import net.me.config.GlobalConfigManager;
 import net.me.screen.component.IResizableWidget;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
@@ -12,21 +13,24 @@ import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.PressableWidget;
 import net.minecraft.client.sound.SoundManager;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("unused")
 public class ScriptDescriptorToggleWidget extends PressableWidget implements IResizableWidget {
     private final ScriptingService scriptingService;
+    private final GlobalConfigManager globalConfigManager;
     private ScriptDescriptor descriptor;
 
-    protected ScriptDescriptorToggleWidget(int x, int y, int width, int height, @Nullable ScriptDescriptor descriptor, ScriptingService scriptingService) {
+    protected ScriptDescriptorToggleWidget(int x, int y, int width, int height, @Nullable ScriptDescriptor descriptor, ScriptingService scriptingService, GlobalConfigManager globalConfigManager) {
         super(x, y, width, height, Text.empty());
         this.scriptingService = scriptingService;
+        this.globalConfigManager = globalConfigManager;
         this.update(descriptor);
     }
 
-    public static Builder builder(ScriptingService scriptingService) {
-        return new Builder(scriptingService);
+    public static Builder builder(ScriptingService scriptingService, GlobalConfigManager globalConfigManager) {
+        return new Builder(scriptingService, globalConfigManager);
     }
 
     @Override
@@ -42,11 +46,15 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
     @Override
     public void onPress() {
         if (descriptor == null) return;
-
-        if (scriptingService.isRunning(descriptor.getId())) {
+        boolean isRunning = scriptingService.isRunning(descriptor.getId());
+        if (isRunning) {
             scriptingService.disable(descriptor.getId());
         } else {
             scriptingService.enable(descriptor.getId());
+        }
+        if (this.globalConfigManager.isEnableDisableToastEnabled()) {
+            String state = (isRunning ? Formatting.RED + "disabled" : Formatting.GREEN + "enabled") + Formatting.RESET;
+            MQSToast.show(descriptor.moduleName() + " " + state, "This script has been successfully " + (isRunning ? "disabled" : "enabled"), 1500, MQSToast.Corner.TOP_LEFT);
         }
     }
 
@@ -105,17 +113,20 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
 
     public static class Builder {
         private final ScriptingService scriptingService;
+        private final GlobalConfigManager globalConfigManager;
+
         private ScriptDescriptor descriptor = null;
         private int x = 0;
         private int y = 0;
         private int width = 200;
         private int height = 30;
 
-        public Builder(ScriptingService scriptingService) {
+        public Builder(ScriptingService scriptingService, GlobalConfigManager globalConfigManager) {
             this.scriptingService = scriptingService;
+            this.globalConfigManager = globalConfigManager;
         }
 
-        public Builder descriptor(@Nullable ScriptDescriptor descriptor) {
+        public Builder descriptor(ScriptDescriptor descriptor) {
             this.descriptor = descriptor;
             return this;
         }
@@ -141,7 +152,7 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
         }
 
         public ScriptDescriptorToggleWidget build() {
-            return new ScriptDescriptorToggleWidget(this.x, this.y, this.width, this.height, this.descriptor, this.scriptingService);
+            return new ScriptDescriptorToggleWidget(this.x, this.y, this.width, this.height, this.descriptor, this.scriptingService, this.globalConfigManager);
         }
     }
 }

@@ -11,7 +11,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class MQSToast {
     private static final List<MQSToast> toasts = new CopyOnWriteArrayList<>();
     private static final int TOAST_WIDTH = 180;
-    private static final int TOAST_HEIGHT = 40;
+    private static final int TOAST_HEIGHT = 36;
     private static final int PADDING = 5;
     private static final float ANIMATION_SPEED = 0.15f;
 

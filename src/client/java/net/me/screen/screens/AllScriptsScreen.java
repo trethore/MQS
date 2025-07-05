@@ -1,6 +1,7 @@
 package net.me.screen.screens;
 
 import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleManager;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
@@ -34,6 +35,7 @@ public class AllScriptsScreen extends MQSScreen {
 
     private final ScriptingService scriptingService;
     private final ConsoleManager consoleManager;
+    private final GlobalConfigManager globalConfigManager;
 
     private final List<ScriptDescriptor> allScripts;
     private final List<ScriptDescriptorToggleWidget> scriptEntryWidgets = new ArrayList<>();
@@ -48,9 +50,10 @@ public class AllScriptsScreen extends MQSScreen {
     private long refreshFinishTime = -1L;
 
 
-    public AllScriptsScreen(ScriptingService scriptingService, ConsoleManager consoleManager) {
+    public AllScriptsScreen(ScriptingService scriptingService, ConsoleManager consoleManager, GlobalConfigManager globalConfigManager) {
         super("My QOL Scripts", 260, 280);
         this.scriptingService = scriptingService;
+        this.globalConfigManager = globalConfigManager;
         this.consoleManager = consoleManager;
         this.allScripts = new ArrayList<>(scriptingService.listAvailable());
         this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
@@ -74,7 +77,7 @@ public class AllScriptsScreen extends MQSScreen {
         int listStartY = this.getMiddlePoint().y() - 70;
 
         for (int i = 0; i < ITEMS_PER_PAGE; i++) {
-            ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(scriptingService)
+            ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(scriptingService, globalConfigManager)
                     .size(200, SCRIPT_ROW_HEIGHT - 5)
                     .build();
             toggleWidget.visible = false;

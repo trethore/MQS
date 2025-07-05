@@ -42,7 +42,7 @@ public class ScreenCommand extends Command {
     }
 
     private int openAllScriptsScreen(CommandContext<FabricClientCommandSource> context) {
-        new AllScriptsScreen(scriptingService, consoleManager).open();
+        new AllScriptsScreen(scriptingService, consoleManager, globalConfigManager).open();
         return CommandManager.COMMAND_SUCCESS;
     }
 

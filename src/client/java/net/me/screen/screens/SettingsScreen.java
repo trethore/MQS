@@ -49,6 +49,17 @@ public class SettingsScreen extends MQSScreen {
         this.settingWidgets.add(allowAllClassesWidget);
         this.addDrawableChild(allowAllClassesWidget);
 
+        BooleanSettingEntryWidget enableDisableToastWidget = BooleanSettingEntryWidget.builder()
+                .name("Enable/Disable Toasts")
+                .description("Show a toast on script state change.")
+                .getter(globalConfigManager::isEnableDisableToastEnabled)
+                .setter(globalConfigManager::setEnableDisableToastEnabled)
+                .size(WIDGET_WIDTH, UIConstants.ENTRY_HEIGHT)
+                .build();
+
+        this.settingWidgets.add(enableDisableToastWidget);
+        this.addDrawableChild(enableDisableToastWidget);
+
         WidgetLayoutHelper.layoutVertically(
                 getMiddlePoint().x() - WIDGET_WIDTH / 2,
                 getMiddlePoint().y() - 80,
