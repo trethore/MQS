@@ -3,8 +3,10 @@ package net.me;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
+import net.me.command.MQSCommand;
 import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleManager;
+import net.me.console.commands.*;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
@@ -27,17 +29,17 @@ public class Main implements ClientModInitializer {
 
     private static Main instance;
 
-    private static ConfigManager configManager;
-    private static MappingsManager mappingsManager;
-    private static ScriptManager scriptManager;
-    private static HookManager hookManager;
-    private static EventManager eventManager;
-    private static CommandManager commandManager;
-    private static ConsoleManager consoleManager;
-    private static ScriptingService scriptingService;
-    private static GlobalConfigManager globalConfigManager;
-    private static KeybindManager keybindManager;
-    private static Engine scriptEngine;
+    private ConfigManager configManager;
+    private MappingsManager mappingsManager;
+    private ScriptManager scriptManager;
+    private HookManager hookManager;
+    private EventManager eventManager;
+    private CommandManager commandManager;
+    private ConsoleManager consoleManager;
+    private ScriptingService scriptingService;
+    private GlobalConfigManager globalConfigManager;
+    private KeybindManager keybindManager;
+    private Engine scriptEngine;
 
     public static Main getInstance() {
         return instance;
@@ -67,19 +69,23 @@ public class Main implements ClientModInitializer {
     public void onInitializeClient() {
         instance = this;
 
-        Main.mappingsManager = new MappingsManager();
-        Main.configManager = new ConfigManager();
-        Main.scriptManager = new ScriptManager();
-        Main.hookManager = new HookManager();
-        Main.eventManager = new EventManager();
-        Main.commandManager = new CommandManager();
-        Main.consoleManager = new ConsoleManager();
-        Main.scriptingService = new ScriptingService();
-        Main.globalConfigManager = new GlobalConfigManager();
-        Main.keybindManager = new KeybindManager();
-        Main.scriptEngine = Engine.create();
+        this.mappingsManager = new MappingsManager();
+        this.configManager = new ConfigManager();
+        this.scriptManager = new ScriptManager();
+        this.hookManager = new HookManager();
+        this.eventManager = new EventManager();
+        this.commandManager = new CommandManager();
+        this.consoleManager = new ConsoleManager();
+        this.scriptingService = new ScriptingService();
+        this.globalConfigManager = new GlobalConfigManager();
+        this.keybindManager = new KeybindManager();
+        this.scriptEngine = Engine.create();
 
         configManager.init(scriptEngine);
+        consoleManager.init();
+        this.registerConsoleCommands();
+        commandManager.init();
+        this.registerClientCommands();
 
         mappingsManager.init();
 
@@ -89,13 +95,30 @@ public class Main implements ClientModInitializer {
             hookManager.init(scriptManager, mappingsManager);
             keybindManager.init(scriptManager, configManager);
             scriptingService.init(scriptManager, configManager);
-            consoleManager.init(scriptingService, globalConfigManager);
-            commandManager.init(scriptingService, consoleManager, globalConfigManager, keybindManager);
             globalConfigManager.init(consoleManager);
-
             // and finally, enable all scripts !
             scriptManager.loadAndEnableScriptsFromConfig();
             LOGGER.info("MyQOLScripts initialization complete! Hello !");
         })));
+    }
+
+    private void registerClientCommands() {
+        this.commandManager.addCommand(new MQSCommand(this.scriptingService, this.consoleManager, this.globalConfigManager, this.keybindManager));
+    }
+
+    private void registerConsoleCommands() {
+        this.consoleManager.addCommand(new HelpCommand(this.consoleManager));
+        this.consoleManager.addCommand(new ClearCommand(this.consoleManager));
+        this.consoleManager.addCommand(new ScriptCommands.ListScriptsCommand(this.consoleManager, this.scriptingService));
+        this.consoleManager.addCommand(new ScriptCommands.EnableScriptCommand(this.consoleManager, this.scriptingService));
+        this.consoleManager.addCommand(new ScriptCommands.DisableScriptCommand(this.consoleManager, this.scriptingService));
+        this.consoleManager.addCommand(new ScriptCommands.RefreshScriptsCommand(this.consoleManager, this.scriptingService));
+        this.consoleManager.addCommand(new ScriptCommands.RefreshAndReenableCommand(this.consoleManager, this.scriptingService));
+        this.consoleManager.addCommand(new ScriptCommands.DisableAllCommand(this.consoleManager, this.scriptingService));
+        this.consoleManager.addCommand(new LogRedirectCommand(this.consoleManager, this.globalConfigManager));
+        this.consoleManager.addCommand(new CopyTailCommand(this.consoleManager));
+        this.consoleManager.addCommand(new SaveConfigCommand(this.consoleManager, this.scriptingService));
+        this.consoleManager.addCommand(new SaveAllConfigsCommand(this.consoleManager, this.scriptingService));
+        this.consoleManager.addCommand(new AllowAllClassesCommand(this.consoleManager, this.globalConfigManager));
     }
 }

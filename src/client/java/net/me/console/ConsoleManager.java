@@ -1,9 +1,6 @@
 package net.me.console;
 
-import net.me.config.GlobalConfigManager;
-import net.me.console.commands.*;
 import net.me.console.log.ConsoleManagerAppender;
-import net.me.scripting.ScriptingService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 
@@ -21,33 +18,12 @@ public class ConsoleManager {
     private final PrintStream originalOut = System.out;
     private final PrintStream originalErr = System.err;
     private ConsoleManagerAppender slf4jAppender;
-    private ScriptingService scriptingService;
-    private GlobalConfigManager globalConfigManager;
 
-    public void init(ScriptingService scriptingService, GlobalConfigManager globalConfigManager) {
-        this.scriptingService = scriptingService;
-        this.globalConfigManager = globalConfigManager;
-        registerCommands();
+    public void init() {
         logSuccess("Console initialized. Type 'help' for a list of commands.");
     }
 
-    private void registerCommands() {
-        addCommand(new HelpCommand(this));
-        addCommand(new ClearCommand(this));
-        addCommand(new ScriptCommands.ListScriptsCommand(this, scriptingService));
-        addCommand(new ScriptCommands.EnableScriptCommand(this, scriptingService));
-        addCommand(new ScriptCommands.DisableScriptCommand(this, scriptingService));
-        addCommand(new ScriptCommands.RefreshScriptsCommand(this, scriptingService));
-        addCommand(new ScriptCommands.RefreshAndReenableCommand(this, scriptingService));
-        addCommand(new ScriptCommands.DisableAllCommand(this, scriptingService));
-        addCommand(new LogRedirectCommand(this, globalConfigManager));
-        addCommand(new CopyTailCommand(this));
-        addCommand(new SaveConfigCommand(this, scriptingService));
-        addCommand(new SaveAllConfigsCommand(this, scriptingService));
-        addCommand(new AllowAllClassesCommand(this, globalConfigManager));
-    }
-
-    private void addCommand(ConsoleCommand command) {
+    public void addCommand(ConsoleCommand command) {
         commands.put(command.getName().toLowerCase(), command);
     }
 
