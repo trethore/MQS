@@ -1,6 +1,7 @@
 package net.me;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
 import net.me.command.MQSCommand;
@@ -10,6 +11,7 @@ import net.me.console.commands.*;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
+import net.me.screen.component.components.MQSToast;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
@@ -68,6 +70,7 @@ public class Main implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         instance = this;
+        initToastTick();
 
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
@@ -96,6 +99,10 @@ public class Main implements ClientModInitializer {
             scriptManager.loadAndEnableScriptsFromConfig();
             LOGGER.info("MyQOLScripts initialization complete! Hello !");
         })));
+    }
+
+    private void initToastTick() {
+        ClientTickEvents.END_CLIENT_TICK.register(client -> MQSToast.updateAll());
     }
 
     private void registerClientCommands() {

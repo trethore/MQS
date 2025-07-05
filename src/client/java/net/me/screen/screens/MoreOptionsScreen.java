@@ -4,6 +4,7 @@ import net.me.Main;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
 import net.me.screen.component.components.MQSImageButtonWidget;
+import net.me.screen.component.components.MQSToast;
 import net.me.utils.ChatUtils;
 import net.me.utils.UIConstants;
 import net.minecraft.client.MinecraftClient;
@@ -68,6 +69,7 @@ public class MoreOptionsScreen extends MQSScreen {
             } else {
                 openScriptsInVSCodeWeb();
             }
+            MQSToast.show("VS Code", "Opening in VS Code", 2000, MQSToast.Corner.TOP_LEFT);
         }).size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT).build();
 
         MQSImageButtonWidget createScriptButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-code.png"), "Create Script", button -> new CreateScriptScreen(this).open())

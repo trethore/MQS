@@ -1,6 +1,7 @@
 package net.me.screen;
 
 import net.me.Main;
+import net.me.screen.component.components.MQSToast;
 import net.me.utils.*;
 import net.me.utils.math.Position;
 import net.minecraft.client.MinecraftClient;
@@ -42,6 +43,7 @@ public abstract class MQSScreen extends Screen {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
         drawTitle(context);
+        MQSToast.renderAll(context);
     }
 
     @Override
@@ -60,7 +62,7 @@ public abstract class MQSScreen extends Screen {
     private void drawTitle(DrawContext context) {
         int x = getMiddlePoint().x();
         int y = getMiddlePoint().y() - this.windowHeight / 2 + 22;
-        int color = ColorUtils.getRainbowColor(2000, 0.8f, 1.0f);
+        int color = ColorUtils.getRainbowColor(4000, 0.9f, 0.9f);
         TextRenderUtils.drawCustomCenteredText(context, this.getStringTitle(), x, y, color, true, UIConstants.TITLE_SCALE);
     }
 

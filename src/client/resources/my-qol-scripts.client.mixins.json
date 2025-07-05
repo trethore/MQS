@@ -4,6 +4,7 @@
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
 		"client.mixins.MQSMinecraftClientMixin",
+		"client.mixins.MQSHudMixin",
 		"fabric.event.ArrayBackedEventAccessor",
 		"fabric.event.EventPhaseDataAccessor",
 		"keybinds.MQSKeyboardMixin",

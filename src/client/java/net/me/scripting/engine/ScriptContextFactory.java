@@ -15,6 +15,7 @@ import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.LazyJsClassHolder;
 import net.me.scripting.wrappers.LazyPackageProxy;
+import net.me.utils.*;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -23,6 +24,7 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -89,6 +91,8 @@ public class ScriptContextFactory {
         addApiMember(bindings, "KeybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
         addApiMember(bindings, "CommandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
         addApiMember(bindings, "HookManager", createHookManagerProxy());
+        addApiMember(bindings, "MQSUtils", createMqsUtilsProxy());
+
         addApiMember(bindings, "println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);
             return null;
@@ -97,6 +101,44 @@ public class ScriptContextFactory {
             for (Value arg : args) System.out.print(arg);
             return null;
         });
+    }
+
+    private ProxyObject createMqsUtilsProxy() {
+        final Map<String, Class<?>> utilsMap = new HashMap<>();
+        utilsMap.put("Render2D", Render2DUtils.class);
+        utilsMap.put("Render3D", Render3DUtils.class);
+        utilsMap.put("TextRender", TextRenderUtils.class);
+        utilsMap.put("TextRenderer", TextRendererUtils.class);
+        utilsMap.put("Chat", ChatUtils.class);
+        utilsMap.put("Color", ColorUtils.class);
+        utilsMap.put("Camera", CameraUtils.class);
+        utilsMap.put("Mc", McUtils.class);
+
+        return new ProxyObject() {
+            @Override
+            public Object getMember(String key) {
+                Class<?> utilClass = utilsMap.get(key);
+                if (utilClass != null) {
+                    return classResolver.getOrCreateWrapper(utilClass.getName());
+                }
+                return null;
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return utilsMap.keySet().toArray(new String[0]);
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return utilsMap.containsKey(key);
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify the MQSUtils object.");
+            }
+        };
     }
 
     private ProxyObject createHookManagerProxy() {
