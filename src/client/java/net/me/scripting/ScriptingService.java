@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ScriptingService {
-    private ScriptManager scriptManager;
-    private ConfigManager configManager;
+    private final ScriptManager scriptManager;
+    private final ConfigManager configManager;
 
-    public void init(ScriptManager scriptManager, ConfigManager configManager) {
+    public ScriptingService(ScriptManager scriptManager, ConfigManager configManager) {
         this.scriptManager = scriptManager;
         this.configManager = configManager;
     }

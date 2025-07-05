@@ -15,14 +15,14 @@ import net.me.scripting.ScriptingService;
 public class MQSCommand extends Command {
     private final ScriptingService scriptingService;
     private final ConsoleManager consoleManager;
-    private final GlobalConfigManager globalConfigManager;
-    private final KeybindManager keybindManager;
+    private final ScriptCommand scriptCommand;
+    private final ScreenCommand screenCommand;
 
     public MQSCommand(ScriptingService scriptingService, ConsoleManager consoleManager, GlobalConfigManager globalConfigManager, KeybindManager keybindManager) {
         this.scriptingService = scriptingService;
         this.consoleManager = consoleManager;
-        this.globalConfigManager = globalConfigManager;
-        this.keybindManager = keybindManager;
+        this.scriptCommand = new ScriptCommand(scriptingService);
+        this.screenCommand = new ScreenCommand(scriptingService, consoleManager, globalConfigManager, keybindManager);
     }
 
     @Override
@@ -30,8 +30,8 @@ public class MQSCommand extends Command {
         return ClientCommandManager.literal("mqs")
                 .requires(source -> source.hasPermissionLevel(0))
                 .executes(this::openMenu)
-                .then(new ScriptCommand(scriptingService).buildCommand())
-                .then(new ScreenCommand(scriptingService, consoleManager, globalConfigManager, keybindManager).buildCommand());
+                .then(scriptCommand.buildCommand())
+                .then(screenCommand.buildCommand());
     }
 
     private int openMenu(CommandContext<FabricClientCommandSource> context) {

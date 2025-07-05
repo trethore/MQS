@@ -19,10 +19,10 @@ public class KeybindManager {
     private final Map<String, KeyBinding> keybindsByName = new ConcurrentHashMap<>();
     private final Map<Integer, List<KeyBinding>> keybindsByKeycode = new ConcurrentHashMap<>();
     private final Set<Integer> heldKeys = ConcurrentHashMap.newKeySet();
-    private ScriptManager scriptManager;
-    private ConfigManager configManager;
+    private final ScriptManager scriptManager;
+    private final ConfigManager configManager;
 
-    public void init(ScriptManager scriptManager, ConfigManager configManager) {
+    public KeybindManager(ScriptManager scriptManager, ConfigManager configManager) {
         this.scriptManager = scriptManager;
         this.configManager = configManager;
         ClientTickEvents.END_CLIENT_TICK.register(client -> onTick());

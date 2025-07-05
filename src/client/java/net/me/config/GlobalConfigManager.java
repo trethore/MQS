@@ -14,12 +14,15 @@ import java.nio.file.Path;
 public class GlobalConfigManager {
     private static final Path CONFIG_FILE = Main.MOD_DIR.resolve("mqs_config.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-
+    private final ConsoleManager consoleManager;
     private ConfigData data = new ConfigData();
-    private ConsoleManager manager;
 
-    public void init(ConsoleManager manager) {
-        this.manager = manager;
+    public GlobalConfigManager(ConsoleManager consoleManager) {
+        this.consoleManager = consoleManager;
+    }
+
+
+    public void init() {
         load();
     }
 
@@ -33,7 +36,7 @@ public class GlobalConfigManager {
             if (this.data == null) {
                 this.data = new ConfigData();
             } else {
-                manager.setLogRedirect(this.data.logRedirect);
+                consoleManager.setLogRedirect(this.data.logRedirect);
             }
         } catch (Exception e) {
             Main.LOGGER.error("Failed to load global MQS config, using defaults.", e);
@@ -55,7 +58,7 @@ public class GlobalConfigManager {
 
     public void setLogRedirectEnabled(boolean enabled) {
         if (data.logRedirect != enabled) {
-            manager.setLogRedirect(enabled);
+            consoleManager.setLogRedirect(enabled);
             data.logRedirect = enabled;
         }
     }

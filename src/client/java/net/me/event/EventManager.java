@@ -22,7 +22,13 @@ public class EventManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(EventManager.class);
     private final Map<Class<? extends Event>, List<Listener>> listeners = new ConcurrentHashMap<>();
     private final Map<RunningScript, List<FabricListener>> fabricListeners = new ConcurrentHashMap<>();
-    private ScriptManager scriptManager;
+    private final ScriptManager scriptManager;
+
+    public EventManager(ScriptManager scriptManager) {
+        this.scriptManager = scriptManager;
+        ClientTickEvents.START_CLIENT_TICK.register(client -> this.post(new StartClientTickEvent(client)));
+        ClientTickEvents.END_CLIENT_TICK.register(client -> this.post(new EndClientTickEvent(client)));
+    }
 
     private static Class<?> findListenerType(net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
         if (!fabricEvent.getClass().getName().equals("net.fabricmc.fabric.impl.base.event.ArrayBackedEvent")) {
@@ -57,12 +63,6 @@ public class EventManager {
         return null;
     }
 
-    public void init(ScriptManager scriptManager) {
-        this.scriptManager = scriptManager;
-        ClientTickEvents.START_CLIENT_TICK.register(client -> this.post(new StartClientTickEvent(client)));
-        ClientTickEvents.END_CLIENT_TICK.register(client -> this.post(new EndClientTickEvent(client)));
-
-    }
 
     public void post(Event event) {
         List<Listener> eventListeners = listeners.get(event.getClass());
@@ -177,6 +177,13 @@ public class EventManager {
         }
     }
 
+    /**
+     * [WARNING]
+     * I hate fabric bc of that why cant we just unregister ??
+     * This method uses reflection and mixin accessors to manually remove a listener.
+     * This will break for sure in future fabric versions :(
+     * But for now this is the best I can do ...
+     */
     private void unregisterFabricListener(net.fabricmc.fabric.api.event.Event<?> event, Object listener) {
         if (!event.getClass().getName().equals("net.fabricmc.fabric.impl.base.event.ArrayBackedEvent")) {
             LOGGER.warn("Cannot unregister from an event that is not an ArrayBackedEvent: {}", event.getClass().getName());

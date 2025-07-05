@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class HookManager {
@@ -29,18 +28,16 @@ public class HookManager {
     private final Map<RunningScript, Set<HookIdentifier>> scriptOwnedHooks = new ConcurrentHashMap<>();
     private final Map<String, Class<?>> nameToClassMap = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<String>> hookedMethods = new ConcurrentHashMap<>();
-    private ScriptManager scriptManager;
-    private MappingsManager mappingsManager;
+    private final ScriptManager scriptManager;
+    private final MappingsManager mappingsManager;
 
-    public HookManager() {
+    public HookManager(ScriptManager scriptManager, MappingsManager mappingsManager) {
         this.instrumentation = ByteBuddyAgent.install();
+        this.scriptManager = scriptManager;
+        this.mappingsManager = mappingsManager;
         installAgent();
     }
 
-    public void init(ScriptManager scriptManager, MappingsManager mappingsManager) {
-        this.scriptManager = scriptManager;
-        this.mappingsManager = mappingsManager;
-    }
 
     private void installAgent() {
         ByteBuddy byteBuddy = new ByteBuddy().with(TypeValidation.DISABLED);
@@ -63,10 +60,7 @@ public class HookManager {
                     List<String> runtimeMethodNames = yarnMethodNames.stream()
                             .flatMap(yarn -> Stream.of(resolveRuntimeMethodNames(type, yarn)))
                             .distinct()
-                            .collect(Collectors.toList());
-
-
-                    Main.LOGGER.info("Agent is advising {} for methods: {}", type.getSimpleName(), String.join(", ", runtimeMethodNames));
+                            .toList();
 
                     return builder.visit(Advice.to(HookInterceptor.class)
                             .on(ElementMatchers.namedOneOf(runtimeMethodNames.toArray(new String[0]))));
@@ -158,7 +152,6 @@ public class HookManager {
                 if (methodsOnClass.isEmpty()) {
                     hookedMethods.remove(targetClass);
                     nameToClassMap.remove(targetClass.getName());
-                    Main.LOGGER.info("All hooks for class '{}' have been removed. It will be restored to its original state.", targetClass.getSimpleName());
                 } else {
                     Main.LOGGER.info("Successfully unregistered hook for '{}' on class '{}'. Other hooks remain.",
                             yarnMethodName, targetClass.getSimpleName());
@@ -182,7 +175,6 @@ public class HookManager {
             return;
         }
 
-        Main.LOGGER.info("Unhooking all {} hooks for script '{}'.", owned.size(), owner.getName());
         Set<HookIdentifier> hooksToProcess = new HashSet<>(owned);
 
         for (HookIdentifier id : hooksToProcess) {

@@ -72,16 +72,16 @@ public class Main implements ClientModInitializer {
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
         this.scriptManager = new ScriptManager();
-        this.hookManager = new HookManager();
-        this.eventManager = new EventManager();
+        this.hookManager = new HookManager(scriptManager, mappingsManager);
+        this.eventManager = new EventManager(scriptManager);
         this.commandManager = new CommandManager();
         this.consoleManager = new ConsoleManager();
-        this.scriptingService = new ScriptingService();
-        this.globalConfigManager = new GlobalConfigManager();
-        this.keybindManager = new KeybindManager();
+        this.scriptingService = new ScriptingService(scriptManager, configManager);
+        this.globalConfigManager = new GlobalConfigManager(consoleManager);
+        this.keybindManager = new KeybindManager(scriptManager, configManager);
         this.scriptEngine = Engine.create();
 
-        configManager.init(scriptEngine);
+        configManager.init();
         consoleManager.init();
         this.registerConsoleCommands();
         commandManager.init();
@@ -91,11 +91,7 @@ public class Main implements ClientModInitializer {
 
         mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
             scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager);
-            eventManager.init(scriptManager);
-            hookManager.init(scriptManager, mappingsManager);
-            keybindManager.init(scriptManager, configManager);
-            scriptingService.init(scriptManager, configManager);
-            globalConfigManager.init(consoleManager);
+            globalConfigManager.init();
             // and finally, enable all scripts !
             scriptManager.loadAndEnableScriptsFromConfig();
             LOGGER.info("MyQOLScripts initialization complete! Hello !");

@@ -19,6 +19,7 @@ public class UIConstants {
     // --- Widget Specific ---
     public static final int TOGGLE_BG_SIZE = 20;
     public static final int TOGGLE_INDICATOR_SIZE = 16;
+
     private UIConstants() {
     }
 }
