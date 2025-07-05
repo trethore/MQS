@@ -155,8 +155,8 @@ public class ConsoleManager {
         Logger rootLogger = (Logger) LogManager.getRootLogger();
 
         if (enable) {
-            System.setOut(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.INFO), true));
-            System.setErr(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.ERROR), true));
+            System.setOut(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.INFO, originalOut), true));
+            System.setErr(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.ERROR, originalErr), true));
 
             if (this.slf4jAppender == null) {
                 this.slf4jAppender = ConsoleManagerAppender.createAppender(this);
@@ -178,10 +178,12 @@ public class ConsoleManager {
         private final ConsoleManager consoleManager;
         private final ConsoleMessage.MessageType messageType;
         private final String lineSeparator = System.lineSeparator();
+        private final PrintStream originalStream;
 
-        public ConsoleOutputStream(ConsoleManager consoleManager, ConsoleMessage.MessageType messageType) {
+        public ConsoleOutputStream(ConsoleManager consoleManager, ConsoleMessage.MessageType messageType, PrintStream originalStream) {
             this.consoleManager = consoleManager;
             this.messageType = messageType;
+            this.originalStream = originalStream;
         }
 
         @Override
@@ -200,6 +202,7 @@ public class ConsoleManager {
                 }
 
                 consoleManager.log(record, messageType);
+                originalStream.println(record);
             }
         }
     }

@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class KeybindManager {
-
+    public static final int UNBOUND_KEY = -1;
     private final Map<String, KeyBinding> keybindsByName = new ConcurrentHashMap<>();
     private final Map<Integer, List<KeyBinding>> keybindsByKeycode = new ConcurrentHashMap<>();
     private final Set<Integer> heldKeys = ConcurrentHashMap.newKeySet();
@@ -136,10 +136,8 @@ public class KeybindManager {
         if (newKeyCode >= 0) {
             keybindsByKeycode.computeIfAbsent(newKeyCode, k -> new CopyOnWriteArrayList<>()).add(binding);
         }
-        Main.LOGGER.info("Rebound '{}' to key code {}", binding.getName(), newKeyCode);
 
         configManager.setKeybind(binding.getOwner().getId(), binding.getName(), newKeyCode);
-        configManager.saveConfig(binding.getOwner().getId());
     }
 
     public Map<RunningScript, List<KeyBinding>> getGroupedKeybinds() {

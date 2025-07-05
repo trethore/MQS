@@ -154,7 +154,6 @@ public class ConfigManager {
         int count = inMemoryConfigs.size();
         if (count == 0) return 0;
 
-        Main.LOGGER.info("Saving all modified script configurations...");
         for (String scriptId : inMemoryConfigs.keySet()) {
             saveConfig(scriptId);
         }

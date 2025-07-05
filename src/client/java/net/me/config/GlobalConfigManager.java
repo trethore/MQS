@@ -57,7 +57,6 @@ public class GlobalConfigManager {
         if (data.logRedirect != enabled) {
             manager.setLogRedirect(enabled);
             data.logRedirect = enabled;
-            save();
         }
     }
 
@@ -68,7 +67,6 @@ public class GlobalConfigManager {
     public void setAllClassesAllowed(boolean allowed) {
         if (data.allowAllClasses != allowed) {
             data.allowAllClasses = allowed;
-            save();
         }
     }
 

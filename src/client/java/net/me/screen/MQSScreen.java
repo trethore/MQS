@@ -1,5 +1,6 @@
 package net.me.screen;
 
+import net.me.Main;
 import net.me.utils.ColorUtils;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRenderUtils;
@@ -51,6 +52,8 @@ public abstract class MQSScreen extends Screen {
         if (this.parent != null) {
             mc.setScreen(this.parent);
         } else {
+            Main.getGlobalConfigManager().save();
+            Main.getConfigManager().saveAllConfigs();
             super.close();
         }
     }

@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class MappingsManager {
@@ -25,27 +26,40 @@ public class MappingsManager {
     private Map<String, Map<String, String>> fieldMap = Collections.emptyMap();
     private Map<String, String> runtimeToYarnClassMap = Collections.emptyMap();
 
-    private boolean initialized = false;
+    private CompletableFuture<Void> initFuture;
 
     public void init() {
-        if (this.initialized) {
-            LOGGER.debug("Mappings already initialized.");
+        if (this.initFuture != null) {
+            LOGGER.debug("Mappings initialization already started.");
             return;
         }
 
-        LOGGER.info("Starting synchronous mappings initialization...");
-        try {
-            MemoryMappingTree mappingsTree = parseMappings();
-            buildLookupTables(mappingsTree);
-            this.initialized = true;
-            LOGGER.info("Mappings initialization successful.");
-        } catch (Exception e) {
-            LOGGER.error("Failed to initialize mappings", e);
-        }
+        LOGGER.info("Starting asynchronous mappings initialization...");
+        this.initFuture = CompletableFuture.runAsync(() -> {
+            try {
+                MemoryMappingTree mappingsTree = parseMappings();
+                buildLookupTables(mappingsTree);
+                LOGGER.info("Asynchronous mappings initialization successful.");
+            } catch (Exception e) {
+                LOGGER.error("Failed to initialize mappings asynchronously", e);
+                throw new RuntimeException("Failed to load mappings", e);
+            }
+        });
     }
 
     public boolean isReady() {
-        return this.initialized;
+        return this.initFuture != null && this.initFuture.isDone() && !this.initFuture.isCompletedExceptionally();
+    }
+
+    public void whenReady(Runnable task) {
+        if (initFuture == null) {
+            LOGGER.error("whenReady called before init. This should not happen.");
+            return;
+        }
+        this.initFuture.thenRunAsync(task).exceptionally(e -> {
+            LOGGER.error("A task scheduled to run after mappings loaded has failed.", e);
+            return null;
+        });
     }
 
     private MemoryMappingTree parseMappings() throws IOException {
@@ -94,7 +108,7 @@ public class MappingsManager {
             // Fields
             Map<String, String> fieldLookup = cls.getFields().stream()
                     .filter(f -> f.getName(namedId) != null)
-                    .collect(Collectors.toMap(f -> f.getName(namedId), f -> f.getName(runtimeId), (a, b) -> b)); // handle duplicates
+                    .collect(Collectors.toMap(f -> f.getName(namedId), f -> f.getName(runtimeId), (a, b) -> b));
             fields.put(yarnName, fieldLookup);
         }
 

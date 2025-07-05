@@ -11,10 +11,7 @@ import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class KeybindsScreen extends MQSScreen {
@@ -28,6 +25,7 @@ public class KeybindsScreen extends MQSScreen {
     private KeybindEntryWidget listeningWidget = null;
     private double scrollY = 0;
     private int totalContentHeight = 0;
+    private Map<RunningScript, List<KeyBinding>> sortedKeybindsCache;
 
     public KeybindsScreen(MQSScreen parent) {
         super("Keybinds", 300, 280, parent);
@@ -37,7 +35,7 @@ public class KeybindsScreen extends MQSScreen {
     private Map<RunningScript, List<KeyBinding>> getSortedScriptGroups() {
         return keybindManager.getGroupedKeybinds().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey(Comparator.comparing(RunningScript::getName, String.CASE_INSENSITIVE_ORDER)))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, java.util.LinkedHashMap::new));
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     }
 
     @Override
@@ -46,12 +44,12 @@ public class KeybindsScreen extends MQSScreen {
         this.keybindEntryWidgets.clear();
         this.totalContentHeight = 0;
 
+        this.sortedKeybindsCache = getSortedScriptGroups();
+
         int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
         int currentY = getMiddlePoint().y() - getWindowHeight() / 2 + LIST_TOP_MARGIN;
 
-        Map<RunningScript, List<KeyBinding>> groupedKeybinds = getSortedScriptGroups();
-
-        for (Map.Entry<RunningScript, List<KeyBinding>> entry : groupedKeybinds.entrySet()) {
+        for (Map.Entry<RunningScript, List<KeyBinding>> entry : this.sortedKeybindsCache.entrySet()) {
             currentY += HEADER_HEIGHT;
             this.totalContentHeight += HEADER_HEIGHT;
 
@@ -88,7 +86,7 @@ public class KeybindsScreen extends MQSScreen {
         context.enableScissor(windowStartX, listStartY, windowStartX + getWindowWidth(), listStartY + listHeight);
 
         int currentY = (int) (listStartY - scrollY);
-        Map<RunningScript, List<KeyBinding>> groupedKeybinds = getSortedScriptGroups();
+        Map<RunningScript, List<KeyBinding>> groupedKeybinds = this.sortedKeybindsCache;
 
         for (Map.Entry<RunningScript, List<KeyBinding>> entry : groupedKeybinds.entrySet()) {
             RunningScript script = entry.getKey();
@@ -158,7 +156,7 @@ public class KeybindsScreen extends MQSScreen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (listeningWidget != null) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-                stopListening(-1); // Use -1 to signify unbinding
+                stopListening(KeybindManager.UNBOUND_KEY);
             } else {
                 stopListening(keyCode);
             }

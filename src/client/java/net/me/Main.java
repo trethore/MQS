@@ -12,6 +12,7 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
+import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,26 +69,25 @@ public class Main implements ClientModInitializer {
         Main.scriptingService = new ScriptingService();
         Main.globalConfigManager = new GlobalConfigManager();
         Main.keybindManager = new KeybindManager();
-
         Main.scriptEngine = Engine.create();
 
-        mappingsManager.init();
         configManager.init(scriptEngine);
 
-        scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager);
+        mappingsManager.init();
 
-        eventManager.init(scriptManager);
-        hookManager.init(scriptManager, mappingsManager);
-        keybindManager.init(scriptManager, configManager);
+        mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
+            scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager);
+            eventManager.init(scriptManager);
+            hookManager.init(scriptManager, mappingsManager);
+            keybindManager.init(scriptManager, configManager);
+            scriptingService.init(scriptManager, configManager);
+            consoleManager.init(scriptingService, globalConfigManager);
+            commandManager.init(scriptingService, consoleManager);
+            globalConfigManager.init(consoleManager);
 
-        scriptingService.init(scriptManager, configManager);
-
-        consoleManager.init(scriptingService, globalConfigManager);
-        commandManager.init(scriptingService, consoleManager);
-        globalConfigManager.init(consoleManager);
-
-        // and finally, enable all scripts !
-        scriptManager.loadAndEnableScriptsFromConfig();
-        LOGGER.info("Hello from MyQOLScripts!");
+            // and finally, enable all scripts !
+            scriptManager.loadAndEnableScriptsFromConfig();
+            LOGGER.info("MyQOLScripts initialization complete! Hello !");
+        })));
     }
 }
