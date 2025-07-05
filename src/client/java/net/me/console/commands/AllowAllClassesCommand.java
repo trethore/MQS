@@ -3,6 +3,9 @@ package net.me.console.commands;
 import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
+import net.me.console.ConsoleUtils;
+
+import java.util.Optional;
 
 public class AllowAllClassesCommand extends ConsoleCommand {
     private final GlobalConfigManager globalConfigManager;
@@ -20,16 +23,14 @@ public class AllowAllClassesCommand extends ConsoleCommand {
             return;
         }
 
-        boolean enable;
-        if ("true".equalsIgnoreCase(args[0])) {
-            enable = true;
-        } else if ("false".equalsIgnoreCase(args[0])) {
-            enable = false;
-        } else {
+        Optional<Boolean> enableOpt = ConsoleUtils.parseBooleanArg(args[0]);
+
+        if (enableOpt.isEmpty()) {
             cm.logError("Invalid argument '" + args[0] + "'. Must be 'true' or 'false'.");
             return;
         }
 
+        boolean enable = enableOpt.get();
         globalConfigManager.setAllClassesAllowed(enable);
         cm.logSuccess("Allowing all classes set to " + enable + ". A script reload is required for this to take full effect.");
         if (enable) {
