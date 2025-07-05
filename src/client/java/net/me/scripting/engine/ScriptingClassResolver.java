@@ -84,7 +84,7 @@ public class ScriptingClassResolver {
     }
 
     public boolean isClassAllowed(String name) {
-        if (Main.getGlobalConfigManager().areAllClassesAllowed()) {
+        if (Main.getInstance().getGlobalConfigManager().areAllClassesAllowed()) {
             return true;
         }
 

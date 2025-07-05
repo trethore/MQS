@@ -1,6 +1,5 @@
 package net.me.screen.screens;
 
-import net.me.Main;
 import net.me.config.GlobalConfigManager;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
@@ -19,9 +18,9 @@ public class SettingsScreen extends MQSScreen {
     private final GlobalConfigManager globalConfigManager;
     private final List<BooleanSettingEntryWidget> settingWidgets = new ArrayList<>();
 
-    public SettingsScreen(MQSScreen parent) {
+    public SettingsScreen(MQSScreen parent, GlobalConfigManager globalConfigManager) {
         super("Settings", 300, 280, parent);
-        this.globalConfigManager = Main.getGlobalConfigManager();
+        this.globalConfigManager = globalConfigManager;
     }
 
     @Override

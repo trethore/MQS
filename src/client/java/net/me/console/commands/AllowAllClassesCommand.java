@@ -1,13 +1,15 @@
 package net.me.console.commands;
 
-import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 
 public class AllowAllClassesCommand extends ConsoleCommand {
+    private final GlobalConfigManager globalConfigManager;
 
-    public AllowAllClassesCommand(ConsoleManager consoleManager) {
+    public AllowAllClassesCommand(ConsoleManager consoleManager, GlobalConfigManager globalConfigManager) {
         super(consoleManager, "allowallclasses", "Allows scripts to access all Java classes. VERY DANGEROUS.", "allowallclasses <true|false>");
+        this.globalConfigManager = globalConfigManager;
     }
 
     @Override
@@ -28,7 +30,7 @@ public class AllowAllClassesCommand extends ConsoleCommand {
             return;
         }
 
-        Main.getGlobalConfigManager().setAllClassesAllowed(enable);
+        globalConfigManager.setAllClassesAllowed(enable);
         cm.logSuccess("Allowing all classes set to " + enable + ". A script reload is required for this to take full effect.");
         if (enable) {
             cm.logError("WARNING: This is a dangerous setting. Only use scripts from trusted sources.");

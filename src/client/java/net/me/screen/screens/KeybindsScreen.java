@@ -1,6 +1,5 @@
 package net.me.screen.screens;
 
-import net.me.Main;
 import net.me.keybinds.KeyBinding;
 import net.me.keybinds.KeybindManager;
 import net.me.screen.MQSScreen;
@@ -27,9 +26,9 @@ public class KeybindsScreen extends MQSScreen {
     private int totalContentHeight = 0;
     private Map<RunningScript, List<KeyBinding>> sortedKeybindsCache;
 
-    public KeybindsScreen(MQSScreen parent) {
+    public KeybindsScreen(MQSScreen parent, KeybindManager keybindManager) {
         super("Keybinds", 300, 280, parent);
-        this.keybindManager = Main.getKeybindManager();
+        this.keybindManager = keybindManager;
     }
 
     private Map<RunningScript, List<KeyBinding>> getSortedScriptGroups() {

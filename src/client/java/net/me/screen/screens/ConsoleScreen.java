@@ -6,6 +6,7 @@ import net.me.screen.MQSScreen;
 import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.utils.TextRenderUtils;
 import net.me.utils.TextRendererUtils;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
@@ -56,9 +57,36 @@ public class ConsoleScreen extends MQSScreen {
         this.addSelectableChild(this.inputField);
         this.setFocused(this.inputField);
 
+        rebuildDisplayLines();
+    }
+
+    @Override
+    public void resize(MinecraftClient client, int width, int height) {
+        super.resize(client, width, height);
+        rebuildDisplayLines();
+    }
+
+    private void rebuildDisplayLines() {
         this.displayLines.clear();
-        this.lastMessageCount = 0;
-        updateDisplayLines();
+        List<ConsoleMessage> messages = consoleManager.getMessages();
+        this.lastMessageCount = messages.size();
+
+        int renderAreaWidth = getWindowWidth() - (PADDING * 2);
+        if (renderAreaWidth <= 0) return;
+
+        for (ConsoleMessage msg : messages) {
+            String textToWrap = String.format("[%s] %s", msg.timestamp(), msg.text());
+            List<OrderedText> wrapped = TextRendererUtils.getCustomTextRenderer().wrapLines(Text.literal(textToWrap), renderAreaWidth);
+
+            for (OrderedText line : wrapped) {
+                final StringBuilder sb = new StringBuilder();
+                line.accept((index, style, codePoint) -> {
+                    sb.appendCodePoint(codePoint);
+                    return true;
+                });
+                this.displayLines.add(new DisplayLine(sb.toString(), msg.type().getColor()));
+            }
+        }
     }
 
     private void onInputChanged(String text) {
@@ -73,42 +101,12 @@ public class ConsoleScreen extends MQSScreen {
         super.render(context, mouseX, mouseY, delta);
 
         if (consoleManager.getMessages().size() != lastMessageCount) {
-            updateDisplayLines();
+            rebuildDisplayLines();
         }
 
         renderMessages(context, this.displayLines);
 
         this.inputField.render(context, mouseX, mouseY, delta);
-    }
-
-    private void updateDisplayLines() {
-        List<ConsoleMessage> messages = consoleManager.getMessages();
-        int currentMessageCount = messages.size();
-
-        if (currentMessageCount < lastMessageCount) {
-            displayLines.clear();
-            lastMessageCount = 0;
-        }
-
-        int renderAreaWidth = getWindowWidth() - (PADDING * 2);
-        if (renderAreaWidth <= 0) return;
-
-        for (int i = lastMessageCount; i < currentMessageCount; i++) {
-            ConsoleMessage msg = messages.get(i);
-            String textToWrap = String.format("[%s] %s", msg.timestamp(), msg.text());
-            List<OrderedText> wrapped = TextRendererUtils.getCustomTextRenderer().wrapLines(Text.literal(textToWrap), renderAreaWidth);
-
-            for (OrderedText line : wrapped) {
-                final StringBuilder sb = new StringBuilder();
-                line.accept((index, style, codePoint) -> {
-                    sb.appendCodePoint(codePoint);
-                    return true;
-                });
-                this.displayLines.add(new DisplayLine(sb.toString(), msg.type().getColor()));
-            }
-        }
-
-        this.lastMessageCount = currentMessageCount;
     }
 
     private int getLineHeight() {

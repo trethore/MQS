@@ -11,6 +11,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MQSMouseMixin {
     @Inject(at = @At("HEAD"), method = "onMouseButton")
     private void onMouseButton(long window, int button, int action, int mods, CallbackInfo ci) {
-        Main.getKeybindManager().onMouseClick(button, action);
+        Main.getInstance().getKeybindManager().onMouseClick(button, action);
     }
 }

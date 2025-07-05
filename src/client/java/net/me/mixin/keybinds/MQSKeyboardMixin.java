@@ -11,6 +11,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MQSKeyboardMixin {
     @Inject(at = @At("HEAD"), method = "onKey(JIIII)V")
     private void onOnKey(long windowHandle, int key, int scancode, int action, int modifiers, CallbackInfo ci) {
-        Main.getKeybindManager().onKey(key, action);
+        Main.getInstance().getKeybindManager().onKey(key, action);
     }
 }

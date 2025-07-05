@@ -87,7 +87,7 @@ public final class ScriptUtils {
     public static Object wrapReturn(Object o) {
         if (o == null || o instanceof String || o instanceof Number || o instanceof Boolean) return o;
 
-        MappingsManager mappingsManager = Main.getMappingsManager();
+        MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
 
         if (mappingsManager == null || !mappingsManager.isReady()) {
             return Value.asValue(o);

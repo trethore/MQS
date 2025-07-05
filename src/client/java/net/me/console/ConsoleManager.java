@@ -44,7 +44,7 @@ public class ConsoleManager {
         addCommand(new CopyTailCommand(this));
         addCommand(new SaveConfigCommand(this, scriptingService));
         addCommand(new SaveAllConfigsCommand(this, scriptingService));
-        addCommand(new AllowAllClassesCommand(this));
+        addCommand(new AllowAllClassesCommand(this, globalConfigManager));
     }
 
     private void addCommand(ConsoleCommand command) {

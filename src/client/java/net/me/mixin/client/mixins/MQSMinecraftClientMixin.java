@@ -17,8 +17,9 @@ public class MQSMinecraftClientMixin {
 
     @Inject(at = @At("HEAD"), method = "stop()V")
     private void onStop(CallbackInfo ci) {
-        Main.getGlobalConfigManager().save();
-        Main.getConfigManager().saveAllConfigs();
-        Main.getEventManager().post(new MinecraftClientStopEvent());
+        Main main = Main.getInstance();
+        main.getGlobalConfigManager().save();
+        main.getConfigManager().saveAllConfigs();
+        main.getEventManager().post(new MinecraftClientStopEvent());
     }
 }

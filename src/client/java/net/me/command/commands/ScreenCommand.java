@@ -6,17 +6,23 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.command.Command;
 import net.me.command.CommandManager;
+import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleManager;
+import net.me.keybinds.KeybindManager;
 import net.me.screen.screens.*;
 import net.me.scripting.ScriptingService;
 
 public class ScreenCommand extends Command {
     private final ScriptingService scriptingService;
     private final ConsoleManager consoleManager;
+    private final GlobalConfigManager globalConfigManager;
+    private final KeybindManager keybindManager;
 
-    public ScreenCommand(ScriptingService scriptingService, ConsoleManager consoleManager) {
+    public ScreenCommand(ScriptingService scriptingService, ConsoleManager consoleManager, GlobalConfigManager globalConfigManager, KeybindManager keybindManager) {
         this.scriptingService = scriptingService;
         this.consoleManager = consoleManager;
+        this.globalConfigManager = globalConfigManager;
+        this.keybindManager = keybindManager;
     }
 
     @Override
@@ -46,12 +52,12 @@ public class ScreenCommand extends Command {
     }
 
     private int openKeybindsScreen(CommandContext<FabricClientCommandSource> context) {
-        new KeybindsScreen(null).open();
+        new KeybindsScreen(null, keybindManager).open();
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private int openSettingsScreen(CommandContext<FabricClientCommandSource> context) {
-        new SettingsScreen(null).open();
+        new SettingsScreen(null, globalConfigManager).open();
         return CommandManager.COMMAND_SUCCESS;
     }
 

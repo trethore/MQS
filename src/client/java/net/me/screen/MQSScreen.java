@@ -2,6 +2,7 @@ package net.me.screen;
 
 import net.me.Main;
 import net.me.utils.ColorUtils;
+import net.me.utils.McUtils;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRenderUtils;
 import net.me.utils.records.Position;
@@ -13,9 +14,9 @@ import org.jetbrains.annotations.Nullable;
 
 public abstract class MQSScreen extends Screen {
     private final String title;
+    private final MQSScreen parent;
     private int windowWidth;
     private int windowHeight;
-    private MQSScreen parent;
 
     protected MQSScreen(String title, int windowWidth, int windowHeight) {
         this(title, windowWidth, windowHeight, null);
@@ -52,8 +53,8 @@ public abstract class MQSScreen extends Screen {
         if (this.parent != null) {
             mc.setScreen(this.parent);
         } else {
-            Main.getGlobalConfigManager().save();
-            Main.getConfigManager().saveAllConfigs();
+            Main.getInstance().getGlobalConfigManager().save();
+            Main.getInstance().getConfigManager().saveAllConfigs();
             super.close();
         }
     }
@@ -67,11 +68,7 @@ public abstract class MQSScreen extends Screen {
     }
 
     public void open() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        mc.send(() -> mc.setScreen(this));
-        if (MinecraftClient.getInstance().currentScreen instanceof MQSScreen) {
-            this.parent = (MQSScreen) MinecraftClient.getInstance().currentScreen;
-        }
+        McUtils.getMc().ifPresent(mc -> mc.send(() -> mc.setScreen(this)));
     }
 
     protected Position getMiddlePoint() {

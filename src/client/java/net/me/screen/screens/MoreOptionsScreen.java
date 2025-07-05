@@ -56,11 +56,11 @@ public class MoreOptionsScreen extends MQSScreen {
     @Override
     protected void init() {
         super.init();
-        MQSImageButtonWidget settingsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/settings.png"), "Settings", button -> new SettingsScreen(this).open())
+        MQSImageButtonWidget settingsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/settings.png"), "Settings", button -> new SettingsScreen(this, Main.getInstance().getGlobalConfigManager()).open())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget keybindsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/keyboard.png"), "Keybinds", button -> new KeybindsScreen(this).open())
+        MQSImageButtonWidget keybindsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/keyboard.png"), "Keybinds", button -> new KeybindsScreen(this, Main.getInstance().getKeybindManager()).open())
                 .size(BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
 

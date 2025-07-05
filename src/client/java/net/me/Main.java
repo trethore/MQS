@@ -25,6 +25,8 @@ public class Main implements ClientModInitializer {
     public static final String MC_VERSION = "1.21.4";
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
 
+    private static Main instance;
+
     private static ConfigManager configManager;
     private static MappingsManager mappingsManager;
     private static ScriptManager scriptManager;
@@ -37,28 +39,34 @@ public class Main implements ClientModInitializer {
     private static KeybindManager keybindManager;
     private static Engine scriptEngine;
 
-    public static ConfigManager getConfigManager() {
+    public static Main getInstance() {
+        return instance;
+    }
+
+    public ConfigManager getConfigManager() {
         return configManager;
     }
 
-    public static MappingsManager getMappingsManager() {
+    public MappingsManager getMappingsManager() {
         return mappingsManager;
     }
 
-    public static EventManager getEventManager() {
+    public EventManager getEventManager() {
         return eventManager;
     }
 
-    public static GlobalConfigManager getGlobalConfigManager() {
+    public GlobalConfigManager getGlobalConfigManager() {
         return globalConfigManager;
     }
 
-    public static KeybindManager getKeybindManager() {
+    public KeybindManager getKeybindManager() {
         return keybindManager;
     }
 
     @Override
     public void onInitializeClient() {
+        instance = this;
+
         Main.mappingsManager = new MappingsManager();
         Main.configManager = new ConfigManager();
         Main.scriptManager = new ScriptManager();
@@ -82,7 +90,7 @@ public class Main implements ClientModInitializer {
             keybindManager.init(scriptManager, configManager);
             scriptingService.init(scriptManager, configManager);
             consoleManager.init(scriptingService, globalConfigManager);
-            commandManager.init(scriptingService, consoleManager);
+            commandManager.init(scriptingService, consoleManager, globalConfigManager, keybindManager);
             globalConfigManager.init(consoleManager);
 
             // and finally, enable all scripts !
