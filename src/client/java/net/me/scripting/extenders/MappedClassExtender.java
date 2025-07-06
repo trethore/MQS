@@ -132,10 +132,13 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         Map<String, Object> wrapperProperties = wrapper.getPropertiesForModification();
         Value wrapperVal = context.asValue(wrapper);
 
-        wrapperProperties.put("instance", new MappedInstanceProxy(baseInstance,
+        MappedInstanceProxy javaProxy = new MappedInstanceProxy(baseInstance,
                 resolver.getRuntimeToYarnMap(),
                 resolver.getMethodMap(),
-                resolver.getFieldMap()));
+                resolver.getFieldMap());
+
+        wrapper.setJavaInstanceProxy(javaProxy);
+
         wrapperProperties.put("_self", baseInstance);
 
         Value actualGrandParentSuper = (this.parentSuper != null) ? this.parentSuper : context.eval("js", "Java.super").execute(baseInstance);
