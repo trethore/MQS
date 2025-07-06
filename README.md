@@ -34,17 +34,17 @@ For detailed instructions, see the **[[Installation Guide|wiki/user/Installation
 
 The official wiki is the central resource for all users and developers.
 
-- **[[User Guide|User-Guide]]**
+- **[User Guide](https://github.com/trethore/MQS/wiki/User-Guide)**
   <br>A complete guide for users on how to install the mod, find and manage scripts, and use all the in-game features.
 
-- **[[Developer API Reference|API-Reference]]**
+- **[Developer API Reference](https://github.com/trethore/MQS/wiki/API-Reference)**
   <br>The complete technical documentation for the MQS scripting APIs, with tutorials and examples to get you started.
 
 ## Performance Tuning
 
 For the best experience, it is **highly recommended** that all users add a few JVM arguments to their Minecraft installation. This allows the GraalJS engine to use its high-speed JIT compiler, resulting in a massive performance boost for scripts.
 
-**➡️ [[Learn how to tune performance here|Performance-Tuning]]**
+**➡️ [Learn how to tune performance here](https://github.com/trethore/MQS/wiki/Performance-Tuning)**
 
 ## License
 
