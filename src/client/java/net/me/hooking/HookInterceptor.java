@@ -82,10 +82,11 @@ public class HookInterceptor {
             if (context != null && context.shouldExecuteOriginal()) {
                 Value[] newArgs = context.modifiedArgs();
                 if (newArgs != null && newArgs.length == args.length) {
+                    Class<?>[] paramTypes = method.getParameterTypes();
                     for (int i = 0; i < args.length; i++) {
                         args[i] = ScriptUtils.unwrapArgs(
                                 new Value[]{newArgs[i]},
-                                new Class<?>[]{args[i] != null ? args[i].getClass() : Object.class}
+                                new Class<?>[]{paramTypes[i]}
                         )[0];
                     }
                 }

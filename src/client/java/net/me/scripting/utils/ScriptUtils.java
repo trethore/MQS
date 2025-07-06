@@ -53,6 +53,7 @@ public final class ScriptUtils {
 
         Object current = o;
         if (current instanceof Value val) {
+            if (val.isNull()) return null;
             if (val.isHostObject()) return val.asHostObject();
             if (val.isProxyObject()) current = val.asProxyObject();
             else return o;
