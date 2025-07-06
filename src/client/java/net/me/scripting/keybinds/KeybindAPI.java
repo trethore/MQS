@@ -31,7 +31,7 @@ public class KeybindAPI implements ProxyObject {
             switch (key) {
                 case "register": {
                     if (args.length < 3 || !args[0].isString() || !args[1].isNumber() || !args[2].canExecute()) {
-                        throw new IllegalArgumentException("Usage: Keybinds.register('name', keyCode, action, isRepeatable = false, debounceMs = 100)");
+                        throw new IllegalArgumentException("Usage: KeybindManager.register('name', keyCode, action, isRepeatable = false, debounceMs = 100)");
                     }
                     String name = args[0].asString();
                     int keyCode = args[1].asInt();

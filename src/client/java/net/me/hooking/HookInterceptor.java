@@ -48,7 +48,8 @@ public class HookInterceptor {
     @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
     public static boolean onEnter(
             @Advice.Origin Method method,
-            @Advice.AllArguments(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object[] args
+            @Advice.AllArguments(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object[] args,
+            @Advice.This(optional = true) Object thiz
     ) {
         String hookId = method.getDeclaringClass().getName() + "::" + method.getName();
         CopyOnWriteArrayList<HookData> allHooksForName = HOOKS.get(hookId);
@@ -68,7 +69,7 @@ public class HookInterceptor {
             return false;
         }
 
-        ProxyExecutable nextInChain = buildChain(method, filteredHooks);
+        ProxyExecutable nextInChain = buildChain(method, thiz, filteredHooks);
 
         try {
             Value[] initialChainArgs = new Value[args.length];
@@ -115,7 +116,7 @@ public class HookInterceptor {
         }
     }
 
-    public static @NotNull ProxyExecutable buildChain(Method method, CopyOnWriteArrayList<HookData> hookList) {
+    public static @NotNull ProxyExecutable buildChain(Method method, Object thiz, CopyOnWriteArrayList<HookData> hookList) {
         ProxyExecutable nextInChain = passedArgs -> {
             adviceContext.set(new AdviceContext(true, null, passedArgs));
             return null;
@@ -135,6 +136,7 @@ public class HookInterceptor {
                     }
 
                     return data.jsCallback().execute(
+                            ScriptUtils.wrapReturn(thiz),
                             ScriptUtils.wrapReturn(method),
                             jsArgsArray,
                             data.owner().getContext().asValue(finalNextInChain)

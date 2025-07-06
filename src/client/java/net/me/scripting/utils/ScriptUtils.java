@@ -1,3 +1,4 @@
+// In net/me/scripting/utils/ScriptUtils.java
 package net.me.scripting.utils;
 
 import net.me.Main;
@@ -26,6 +27,10 @@ public final class ScriptUtils {
             return null;
         }
 
+        if (v.isNumber() && Object.class.equals(expected)) {
+            return v.asDouble();
+        }
+
         Object potentialUnwrapped = unwrapReceiver(v);
 
         if (potentialUnwrapped != v && !(potentialUnwrapped instanceof Value)) {
@@ -36,6 +41,7 @@ public final class ScriptUtils {
             try {
                 return v.as(expected);
             } catch (Exception ignored) {
+
             }
         }
 
@@ -79,9 +85,19 @@ public final class ScriptUtils {
     }
 
     private static Object convertNumber(Value v, Class<?> expected) {
-        if (expected == int.class || expected == Integer.class) return v.asInt();
-        if (expected == long.class || expected == Long.class) return v.asLong();
-        if (expected == float.class || expected == Float.class) return v.asFloat();
+        if (double.class.equals(expected)) {
+            return v.asDouble();
+        }
+        if (int.class.equals(expected)) {
+            return v.asInt();
+        }
+        if (long.class.equals(expected)) {
+            return v.asLong();
+        }
+        if (float.class.equals(expected)) {
+            return v.asFloat();
+        }
+
         return v.asDouble();
     }
 

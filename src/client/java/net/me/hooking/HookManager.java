@@ -59,7 +59,10 @@ public class HookManager {
                             .distinct()
                             .toList();
 
-                    return builder.visit(Advice.to(HookInterceptor.class)
+                    Advice advice = Advice.withCustomMapping()
+                            .to(HookInterceptor.class);
+
+                    return builder.visit(advice
                             .on(ElementMatchers.namedOneOf(runtimeMethodNames.toArray(new String[0]))));
                 })
                 .installOn(instrumentation);
@@ -191,6 +194,13 @@ public class HookManager {
         if (runtimeNames != null && !runtimeNames.isEmpty()) {
             return runtimeNames.toArray(new String[0]);
         } else {
+            boolean hasUnmappedMethod = Arrays.stream(targetClass.getMethods())
+                    .anyMatch(m -> m.getName().equals(yarnMethodName));
+
+            if (hasUnmappedMethod) {
+                return new String[]{yarnMethodName};
+            }
+
             if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
                 return new String[]{yarnMethodName};
             } else {

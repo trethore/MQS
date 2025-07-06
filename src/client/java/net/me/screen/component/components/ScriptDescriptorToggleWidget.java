@@ -54,7 +54,7 @@ public class ScriptDescriptorToggleWidget extends PressableWidget implements IRe
         }
         if (this.globalConfigManager.isEnableDisableToastEnabled()) {
             String state = (isRunning ? Formatting.RED + "disabled" : Formatting.GREEN + "enabled") + Formatting.RESET;
-            MQSToast.show(descriptor.moduleName() + " " + state, "This script has been successfully " + (isRunning ? "disabled" : "enabled"), 1500, MQSToast.Corner.TOP_LEFT);
+            MQSToast.show(descriptor.moduleName() + " " + state, "This script has been " + (isRunning ? "disabled" : "enabled"), 1500, MQSToast.Corner.TOP_LEFT);
         }
     }
 

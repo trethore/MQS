@@ -154,7 +154,7 @@ public class CreateScriptScreen extends MQSScreen {
             Files.createDirectories(scriptsDir);
             Files.writeString(scriptPath, content);
 
-            MQSToast.show("Script Created!", "The script '" + name + "' has been created !", 4000, MQSToast.Corner.TOP_LEFT);
+            MQSToast.show("Script Created!", "You can now find it in the 'scripts' folder.", 4000, MQSToast.Corner.TOP_LEFT);
 
             AllScriptsScreen allScriptsScreen = findAllScriptsScreen();
             if (allScriptsScreen != null) {

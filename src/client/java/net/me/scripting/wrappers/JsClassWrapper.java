@@ -58,12 +58,17 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
             if (yarnToRuntimeFields.containsKey(fieldName)) {
                 return readStaticField(fieldName);
             }
-            return null;
         }
 
         if (yarnToRuntimeMethods.containsKey(key)) {
-            return createStaticMethodProxy(key);
+            return createStaticMethodProxyFromYarnKey(key);
         }
+
+        List<Method> directMethods = ReflectionUtils.findMethods(targetClass, List.of(key), true);
+        if (!directMethods.isEmpty()) {
+            return createStaticMethodProxyFromMethods(directMethods, key);
+        }
+
         if (yarnToRuntimeFields.containsKey(key)) {
             return readStaticField(key);
         }
@@ -77,7 +82,9 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         if (key.endsWith("$")) {
             return yarnToRuntimeFields.containsKey(key.substring(0, key.length() - 1));
         }
-        return yarnToRuntimeMethods.containsKey(key) || yarnToRuntimeFields.containsKey(key);
+        return yarnToRuntimeMethods.containsKey(key)
+                || yarnToRuntimeFields.containsKey(key)
+                || !ReflectionUtils.findMethods(targetClass, List.of(key), true).isEmpty();
     }
 
     @Override
@@ -87,6 +94,11 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         keys.addAll(yarnToRuntimeMethods.keySet());
         keys.addAll(yarnToRuntimeFields.keySet());
         yarnToRuntimeFields.keySet().forEach(field -> keys.add(field + "$"));
+        for (Method m : targetClass.getMethods()) {
+            if (Modifier.isStatic(m.getModifiers())) {
+                keys.add(m.getName());
+            }
+        }
         return keys.toArray(new String[0]);
     }
 
@@ -137,9 +149,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                         targetClassName, argCount, available));
     }
 
-    private ProxyExecutable createStaticMethodProxy(String yarnKey) {
-        List<String> runtimeNames = yarnToRuntimeMethods.get(yarnKey);
-        List<Method> methods = ReflectionUtils.findMethods(targetClass, runtimeNames, true);
+    private ProxyExecutable createStaticMethodProxyFromMethods(List<Method> methods, String methodNameForErrors) {
         return polyglotArgs -> {
             int argCount = polyglotArgs.length;
             for (Method m : methods) {
@@ -151,15 +161,21 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                         return ScriptUtils.wrapReturn(result);
                     } catch (Throwable e) {
                         if (e.getCause() != null) {
-                            throw new RuntimeException(String.format("Static method %s.%s threw an exception: %s", targetClassName, yarnKey, e.getCause().getMessage()), e.getCause());
+                            throw new RuntimeException(String.format("Static method %s.%s threw an exception: %s", targetClassName, methodNameForErrors, e.getCause().getMessage()), e.getCause());
                         }
-                        throw new RuntimeException(String.format("Method invocation failed for static method %s.%s. See logs for details.", targetClassName, yarnKey), e);
+                        throw new RuntimeException(String.format("Method invocation failed for static method %s.%s. See logs for details.", targetClassName, methodNameForErrors), e);
                     }
                 }
             }
             throw new RuntimeException(
-                    String.format("No static overload for %s.%s with %d args", targetClassName, yarnKey, argCount));
+                    String.format("No static overload for %s.%s with %d args", targetClassName, methodNameForErrors, argCount));
         };
+    }
+
+    private ProxyExecutable createStaticMethodProxyFromYarnKey(String yarnKey) {
+        List<String> runtimeNames = yarnToRuntimeMethods.get(yarnKey);
+        List<Method> methods = ReflectionUtils.findMethods(targetClass, runtimeNames, true);
+        return createStaticMethodProxyFromMethods(methods, yarnKey);
     }
 
     private Object readStaticField(String yarnKey) {
