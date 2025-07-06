@@ -29,27 +29,6 @@ public class EventManager {
     private final Map<RunningScript, List<FabricListener>> fabricListeners = new ConcurrentHashMap<>();
     private final ScriptManager scriptManager;
 
-    @SuppressWarnings("unused")
-    public enum Events {
-        StartClientTickEvent(StartClientTickEvent.class),
-        EndClientTickEvent(EndClientTickEvent.class),
-        MinecraftClientStopEvent(MinecraftClientStopEvent.class),
-        ClientPacketOutputEvent(ClientPacketOutputEvent.class),
-        ClientPacketInputEvent(ClientPacketInputEvent.class),
-        TitleEvent(TitleEvent.class),
-        SubtitleEvent(SubTitleEvent.class);
-
-        private final Class<? extends Event> eventClass;
-
-        Events(Class<? extends Event> eventClass) {
-            this.eventClass = eventClass;
-        }
-
-        public Class<? extends Event> getEventClass() {
-            return eventClass;
-        }
-    }
-
     public EventManager(ScriptManager scriptManager) {
         this.scriptManager = scriptManager;
         ClientTickEvents.START_CLIENT_TICK.register(client -> this.post(new StartClientTickEvent(client)));
@@ -88,7 +67,6 @@ public class EventManager {
         if (clazz.isPrimitive()) return 0;
         return null;
     }
-
 
     public void post(Event event) {
         List<Listener> eventListeners = listeners.get(event.getClass());
@@ -251,6 +229,27 @@ public class EventManager {
             }
         } catch (Exception e) {
             LOGGER.error("Failed to unregister fabric listener", e);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public enum Events {
+        StartClientTickEvent(StartClientTickEvent.class),
+        EndClientTickEvent(EndClientTickEvent.class),
+        MinecraftClientStopEvent(MinecraftClientStopEvent.class),
+        ClientPacketOutputEvent(ClientPacketOutputEvent.class),
+        ClientPacketInputEvent(ClientPacketInputEvent.class),
+        TitleEvent(TitleEvent.class),
+        SubtitleEvent(SubTitleEvent.class);
+
+        private final Class<? extends Event> eventClass;
+
+        Events(Class<? extends Event> eventClass) {
+            this.eventClass = eventClass;
+        }
+
+        public Class<? extends Event> getEventClass() {
+            return eventClass;
         }
     }
 

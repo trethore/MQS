@@ -76,11 +76,11 @@ public class MoreOptionsScreen extends MQSScreen {
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget openConfigsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-sliders.png"), "Open Configs Folder", button -> openFolder("configs"))
+        MQSImageButtonWidget openModFolderButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-sliders.png"), "Open Mod Folder", button -> openFolder())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget openScriptsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/binary.png"), "Open Scripts Folder", button -> openFolder("scripts"))
+        MQSImageButtonWidget openWikiButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/cog.png"), "Open Wiki", button -> openWiki())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
@@ -88,8 +88,8 @@ public class MoreOptionsScreen extends MQSScreen {
         this.addDrawableChild(keybindsButton);
         this.addDrawableChild(openVSCodeButton);
         this.addDrawableChild(createScriptButton);
-        this.addDrawableChild(openConfigsButton);
-        this.addDrawableChild(openScriptsButton);
+        this.addDrawableChild(openModFolderButton);
+        this.addDrawableChild(openWikiButton);
 
         WidgetLayoutHelper.layoutVertically(
                 getMiddlePoint().x() - UIConstants.BUTTON_WIDTH_LARGE / 2,
@@ -99,9 +99,21 @@ public class MoreOptionsScreen extends MQSScreen {
                 keybindsButton,
                 openVSCodeButton,
                 createScriptButton,
-                openConfigsButton,
-                openScriptsButton
+                openModFolderButton,
+                openWikiButton
         );
+    }
+
+    private void openWiki() {
+        try {
+            Util.getOperatingSystem().open("https://github.com/trethore/MQS/wiki");
+            MQSToast.show("Wiki", "Opening in your browser", 2000, MQSToast.Corner.TOP_LEFT);
+        } catch (Exception e) {
+            Main.LOGGER.error("Could not open the wiki URL", e);
+            if (this.client != null && this.client.player != null) {
+                ChatUtils.addErrorChatMessage("Failed to open the wiki in your browser.", true);
+            }
+        }
     }
 
     private void openScriptsInVSCodeDesktop() {
@@ -158,9 +170,9 @@ public class MoreOptionsScreen extends MQSScreen {
         }
     }
 
-    private void openFolder(String folder) {
+    private void openFolder() {
         try {
-            Path configsDir = Main.MOD_DIR.resolve(folder);
+            Path configsDir = Main.MOD_DIR;
             if (!java.nio.file.Files.exists(configsDir)) {
                 java.nio.file.Files.createDirectories(configsDir);
             }

@@ -14,6 +14,7 @@ public class EndClientTickEvent extends Event {
     public MinecraftClient getClient() {
         return this.client;
     }
+
     public EventManager.Events getType() {
         return EventManager.Events.StartClientTickEvent;
     }

@@ -93,5 +93,7 @@ public abstract class MQSScreen extends Screen {
         return this.title;
     }
 
-
+    public MQSScreen getParent() {
+        return this.parent;
+    }
 }

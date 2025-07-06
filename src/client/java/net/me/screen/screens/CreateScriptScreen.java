@@ -5,11 +5,13 @@ import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
 import net.me.screen.component.components.MQSButtonWidget;
 import net.me.screen.component.components.MQSTextFieldWidget;
+import net.me.screen.component.components.MQSToast;
+import net.me.utils.ChatUtils;
 import net.me.utils.GUIColors;
-import net.me.utils.TextRenderUtils;
 import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,9 +22,7 @@ public class CreateScriptScreen extends MQSScreen {
     private MQSTextFieldWidget mainClassField;
     private MQSTextFieldWidget nameField;
     private MQSTextFieldWidget versionField;
-
-    private String statusMessage = "";
-    private int statusMessageColor = GUIColors.TEXT.getRGB();
+    private MQSTextFieldWidget errorField;
 
     public CreateScriptScreen(MQSScreen parent) {
         super("Create New Script", 250, 220, parent);
@@ -69,6 +69,12 @@ public class CreateScriptScreen extends MQSScreen {
                 .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
                 .build();
 
+        this.errorField = MQSTextFieldWidget.builder()
+                .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
+                .build();
+        errorField.setEditable(false);
+        errorField.setVisible(false);
+
         MQSButtonWidget createButton = MQSButtonWidget.builder("Create Script", button -> createScript())
                 .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
                 .build();
@@ -77,6 +83,7 @@ public class CreateScriptScreen extends MQSScreen {
         this.addSelectableChild(nameField);
         this.addSelectableChild(versionField);
         this.addDrawableChild(createButton);
+        this.addDrawableChild(errorField);
 
         WidgetLayoutHelper.layoutVertically(
                 getMiddlePoint().x() - UIConstants.WIDGET_WIDTH_STANDARD / 2,
@@ -87,27 +94,34 @@ public class CreateScriptScreen extends MQSScreen {
                 versionField,
                 createButton
         );
-        createButton.setPos(versionField.getX(), versionField.getY() + UIConstants.BUTTON_HEIGHT * 2);
+        int errorY = createButton.getY() + createButton.getHeight() + UIConstants.WIDGET_SPACING;
+        errorField.setPos(createButton.getX(), errorY);
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
-
-        if (!statusMessage.isEmpty()) {
-            TextRenderUtils.drawCustomCenteredText(
-                    context,
-                    statusMessage,
-                    getMiddlePoint().x(),
-                    getMiddlePoint().y() + 70,
-                    statusMessageColor,
-                    true,
-                    1.0f
-            );
-        }
         mainClassField.render(context, mouseX, mouseY, delta);
         nameField.render(context, mouseX, mouseY, delta);
         versionField.render(context, mouseX, mouseY, delta);
+    }
+
+    @Nullable
+    private AllScriptsScreen findAllScriptsScreen() {
+        MQSScreen current = this.getParent();
+        while (current != null) {
+            if (current instanceof AllScriptsScreen allScriptsScreen) {
+                return allScriptsScreen;
+            }
+            current = current.getParent();
+        }
+        return null;
+    }
+
+    private void setError(String message) {
+        this.errorField.setText(message);
+        this.errorField.setEditableColor(GUIColors.ERROR.getRGB());
+        this.errorField.setVisible(true);
     }
 
     private void createScript() {
@@ -116,14 +130,12 @@ public class CreateScriptScreen extends MQSScreen {
         String version = versionField.getText().trim();
 
         if (mainClass.isEmpty() || name.isEmpty() || version.isEmpty()) {
-            this.statusMessage = "All fields are required.";
-            this.statusMessageColor = GUIColors.ERROR.getRGB();
+            setError("All fields are required.");
             return;
         }
 
         if (!mainClass.matches("^[a-zA-Z_$][a-zA-Z0-9_$]*$")) {
-            this.statusMessage = "Invalid Main Class Name. Use standard JS class naming.";
-            this.statusMessageColor = GUIColors.ERROR.getRGB();
+            setError("Invalid Main Class Name.");
             return;
         }
 
@@ -132,8 +144,7 @@ public class CreateScriptScreen extends MQSScreen {
         Path scriptPath = scriptsDir.resolve(safeFileName);
 
         if (Files.exists(scriptPath)) {
-            this.statusMessage = "A script with this name already exists.";
-            this.statusMessageColor = GUIColors.ERROR.getRGB();
+            setError("A script with this name already exists.");
             return;
         }
 
@@ -142,11 +153,20 @@ public class CreateScriptScreen extends MQSScreen {
         try {
             Files.createDirectories(scriptsDir);
             Files.writeString(scriptPath, content);
-            this.statusMessage = "Script '" + safeFileName + "' created successfully!";
-            this.statusMessageColor = GUIColors.SUCCESS.getRGB();
+
+            MQSToast.show("Script Created!", "The script '" + name + "' has been created !", 4000, MQSToast.Corner.TOP_LEFT);
+
+            AllScriptsScreen allScriptsScreen = findAllScriptsScreen();
+            if (allScriptsScreen != null) {
+                assert this.client != null;
+                this.client.setScreen(allScriptsScreen);
+                allScriptsScreen.forceRefresh();
+            } else {
+                ChatUtils.addChatMessage("The script '" + name + "' has been created !", ChatUtils.Level.SUCCESS, true);
+            }
+
         } catch (IOException e) {
-            this.statusMessage = "Error: Failed to create script file.";
-            this.statusMessageColor = GUIColors.ERROR.getRGB();
+            setError("Error: Failed to create script file.");
             Main.LOGGER.error("Failed to create script file", e);
         }
     }

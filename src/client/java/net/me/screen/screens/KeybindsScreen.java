@@ -77,31 +77,42 @@ public class KeybindsScreen extends MQSScreen {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
 
-        int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
-        int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
-        int listStartY = windowStartY + LIST_TOP_MARGIN;
-        int listHeight = getWindowHeight() - LIST_BOTTOM_MARGIN;
+        if (this.sortedKeybindsCache.isEmpty()) {
+            TextRenderUtils.drawCustomCenteredText(context, "No custom keybinds registered :(",
+                    this.getMiddlePoint().x(),
+                    this.getMiddlePoint().y() - 25,
+                    GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
+            TextRenderUtils.drawCustomCenteredText(context, "Try enabling some modules.",
+                    this.getMiddlePoint().x(),
+                    this.getMiddlePoint().y() - 10,
+                    GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
+        } else {
+            int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
+            int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
+            int listStartY = windowStartY + LIST_TOP_MARGIN;
+            int listHeight = getWindowHeight() - LIST_BOTTOM_MARGIN;
 
-        context.enableScissor(windowStartX, listStartY, windowStartX + getWindowWidth(), listStartY + listHeight);
+            context.enableScissor(windowStartX, listStartY, windowStartX + getWindowWidth(), listStartY + listHeight);
 
-        int currentY = (int) (listStartY - scrollY);
-        Map<RunningScript, List<KeyBinding>> groupedKeybinds = this.sortedKeybindsCache;
+            int currentY = (int) (listStartY - scrollY);
+            Map<RunningScript, List<KeyBinding>> groupedKeybinds = this.sortedKeybindsCache;
 
-        for (Map.Entry<RunningScript, List<KeyBinding>> entry : groupedKeybinds.entrySet()) {
-            RunningScript script = entry.getKey();
-            String header = script.getName() + " v" + script.getVersion();
-            TextRenderUtils.drawCustomCenteredText(context, header, this.getMiddlePoint().x(), currentY + 8, GUIColors.TEXT.getRGB(), true, 1.1f);
-            currentY += HEADER_HEIGHT;
+            for (Map.Entry<RunningScript, List<KeyBinding>> entry : groupedKeybinds.entrySet()) {
+                RunningScript script = entry.getKey();
+                String header = script.getName() + " v" + script.getVersion();
+                TextRenderUtils.drawCustomCenteredText(context, header, this.getMiddlePoint().x(), currentY + 8, GUIColors.TEXT.getRGB(), true, 1.1f);
+                currentY += HEADER_HEIGHT;
 
-            for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
-                if (widget.getKeyBinding().getOwner().equals(script)) {
-                    widget.setY(currentY);
-                    widget.render(context, mouseX, mouseY, delta);
-                    currentY += UIConstants.ENTRY_HEIGHT;
+                for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
+                    if (widget.getKeyBinding().getOwner().equals(script)) {
+                        widget.setY(currentY);
+                        widget.render(context, mouseX, mouseY, delta);
+                        currentY += UIConstants.ENTRY_HEIGHT;
+                    }
                 }
             }
+            context.disableScissor();
         }
-        context.disableScissor();
     }
 
     @Override

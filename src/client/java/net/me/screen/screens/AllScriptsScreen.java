@@ -225,6 +225,14 @@ public class AllScriptsScreen extends MQSScreen {
         });
     }
 
+    public void forceRefresh() {
+        scriptingService.refreshAndReenable();
+        this.allScripts.clear();
+        this.allScripts.addAll(scriptingService.listAvailable());
+        this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
+        onSearchTextChanged(this.searchTextField.getText());
+    }
+
     private void disableAllScripts() {
         scriptingService.disableAll();
         updateScriptList();
@@ -245,10 +253,14 @@ public class AllScriptsScreen extends MQSScreen {
         this.searchTextField.render(context, mouseX, mouseY, delta);
 
         if (filteredScripts.isEmpty()) {
-            TextRenderUtils.drawCustomCenteredText(context, "No modules found.",
+            TextRenderUtils.drawCustomCenteredText(context, "No modules found :(",
+                    this.getMiddlePoint().x(),
+                    this.getMiddlePoint().y() - 25,
+                    GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
+            TextRenderUtils.drawCustomCenteredText(context, "Maybe try refreshing.",
                     this.getMiddlePoint().x(),
                     this.getMiddlePoint().y() - 10,
-                    GUIColors.TEXT_DISABLED.getRGB(), true, 1.1f);
+                    GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
         }
         drawPageNumber(context);
 
