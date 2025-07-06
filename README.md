@@ -34,10 +34,10 @@ For detailed instructions, see the **[[Installation Guide|wiki/user/Installation
 
 The official wiki is the central resource for all users and developers.
 
-- **[[User Guide|wiki/user/User-Guide]]**
+- **[[User Guide|User-Guide]]**
   <br>A complete guide for users on how to install the mod, find and manage scripts, and use all the in-game features.
 
-- **[[Developer API Reference|wiki/dev/API-Reference]]**
+- **[[Developer API Reference|API-Reference]]**
   <br>The complete technical documentation for the MQS scripting APIs, with tutorials and examples to get you started.
 
 ## Performance Tuning
