@@ -85,7 +85,7 @@ public class HookInterceptor {
                     for (int i = 0; i < args.length; i++) {
                         args[i] = ScriptUtils.unwrapArgs(
                                 new Value[]{newArgs[i]},
-                                new Class<?>[]{args[i].getClass()}
+                                new Class<?>[]{args[i] != null ? args[i].getClass() : Object.class}
                         )[0];
                     }
                 }
@@ -126,9 +126,16 @@ public class HookInterceptor {
             nextInChain = passedArgs -> {
                 data.scriptManager().setCurrentScript(data.owner());
                 try {
+                    Value jsArgsArray = data.owner().getContext().eval("js", "[]");
+                    for (Value arg : passedArgs) {
+                        Object javaObject = ScriptUtils.unwrapReceiver(arg);
+                        Object customProxy = ScriptUtils.wrapReturn(javaObject);
+                        jsArgsArray.invokeMember("push", customProxy);
+                    }
+
                     return data.jsCallback().execute(
                             ScriptUtils.wrapReturn(method),
-                            data.owner().getContext().asValue(ScriptUtils.unwrapArgs(passedArgs, null)),
+                            jsArgsArray,
                             data.owner().getContext().asValue(finalNextInChain)
                     );
                 } finally {
