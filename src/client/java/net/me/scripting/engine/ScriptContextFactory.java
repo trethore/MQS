@@ -406,6 +406,39 @@ public class ScriptContextFactory {
         };
     }
 
+    private static Object toSerializableObject(Value value) {
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (value.isString()) {
+            return value.asString();
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isNumber()) {
+            return value.as(Number.class);
+        }
+        if (value.hasArrayElements()) {
+            List<Object> javaList = new ArrayList<>();
+            for (int i = 0; i < value.getArraySize(); i++) {
+                javaList.add(toSerializableObject(value.getArrayElement(i)));
+            }
+            return javaList;
+        }
+        if (value.isHostObject()) {
+            return value.asHostObject();
+        }
+        if (value.hasMembers() || value.isProxyObject()) {
+            Map<String, Object> javaMap = new LinkedHashMap<>();
+            for (String k : value.getMemberKeys()) {
+                javaMap.put(k, toSerializableObject(value.getMember(k)));
+            }
+            return javaMap;
+        }
+        return value;
+    }
+
     private ProxyObject createConfigProxy() {
         final ConfigManager cm = configManager;
 
@@ -426,26 +459,26 @@ public class ScriptContextFactory {
                         case "get": {
                             if (args.length == 0)
                                 throw new IllegalArgumentException("Config.get requires at least one argument (key).");
-                            Value config = cm.getConfigForScript(script);
                             String configKey = args[0].asString();
-                            Value result = config.getMember(configKey);
-                            if (result == null || result.isNull()) {
+                            Object result = cm.get(script.getId(), configKey);
+                            if (result == null) {
                                 return args.length > 1 ? args[1] : script.getContext().eval("js", "null");
                             }
-                            return result;
+                            return script.getContext().asValue(result);
                         }
                         case "set": {
                             if (args.length != 2)
                                 throw new IllegalArgumentException("Config.set requires two arguments (key, value).");
-                            Value config = cm.getConfigForScript(script);
-                            config.putMember(args[0].asString(), args[1]);
+                            String configKey = args[0].asString();
+                            Object value = toSerializableObject(args[1]);
+                            cm.set(script.getId(), configKey, value);
                             return null;
                         }
                         case "has": {
                             if (args.length != 1)
                                 throw new IllegalArgumentException("Config.has requires one argument (key).");
-                            Value config = cm.getConfigForScript(script);
-                            return config.hasMember(args[0].asString());
+                            String configKey = args[0].asString();
+                            return cm.get(script.getId(), configKey) != null;
                         }
                         case "save": {
                             if (args.length != 0)

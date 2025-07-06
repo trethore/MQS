@@ -76,9 +76,12 @@ public class ConfigManager {
     }
 
     public boolean getEnabledState(String scriptId) {
-        Map<String, Object> config = getConfig(scriptId);
-        Object enabled = config.get("enabled");
+        Object enabled = getConfig(scriptId).get("enabled");
         return enabled instanceof Boolean && (Boolean) enabled;
+    }
+
+    public Object get(String scriptId, String key) {
+        return getConfig(scriptId).get(key);
     }
 
     @SuppressWarnings("unchecked")
@@ -102,6 +105,10 @@ public class ConfigManager {
         Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(KEYBINDS_KEY, k -> new ConcurrentHashMap<>());
 
         keybinds.put(keybindName, keyCode);
+    }
+
+    public void set(String scriptId, String key, Object value) {
+        getConfig(scriptId).put(key, value);
     }
 
     public void saveConfig(RunningScript script) {
