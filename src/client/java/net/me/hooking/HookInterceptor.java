@@ -14,20 +14,17 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
 
 @SuppressWarnings("unused")
 public class HookInterceptor {
 
     public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
     public static final ThreadLocal<AdviceContext> adviceContext = new ThreadLocal<>();
-    public static final Map<String, ProxyExecutable> CHAIN_CACHE = new ConcurrentHashMap<>();
 
-    public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager) {
+    public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
         HOOKS.computeIfAbsent(hookId, k -> new CopyOnWriteArrayList<>())
-                .addFirst(new HookData(jsCallback, owner, scriptManager));
-        CHAIN_CACHE.remove(hookId);
-        Main.LOGGER.info("Registered hook: {}", hookId);
+                .addFirst(new HookData(jsCallback, owner, scriptManager, argCount));
+        Main.LOGGER.info("Registered hook: {} (argCount: {})", hookId, argCount == null ? "any" : argCount);
     }
 
     public static void unregister(String hookId, RunningScript owner) {
@@ -35,7 +32,6 @@ public class HookInterceptor {
         if (hookList != null) {
             boolean removed = hookList.removeIf(data -> data.owner().equals(owner));
             if (removed) {
-                CHAIN_CACHE.remove(hookId);
                 Main.LOGGER.info("Unregistered hook owned by '{}': {}", owner.getName(), hookId);
             }
             if (hookList.isEmpty()) {
@@ -55,13 +51,24 @@ public class HookInterceptor {
             @Advice.AllArguments(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object[] args
     ) {
         String hookId = method.getDeclaringClass().getName() + "::" + method.getName();
-        CopyOnWriteArrayList<HookData> hookList = HOOKS.get(hookId);
+        CopyOnWriteArrayList<HookData> allHooksForName = HOOKS.get(hookId);
 
-        if (hookList == null || hookList.isEmpty()) {
+        if (allHooksForName == null || allHooksForName.isEmpty()) {
             return false;
         }
 
-        ProxyExecutable nextInChain = CHAIN_CACHE.computeIfAbsent(hookId, new ChainBuilder(method, hookList));
+        CopyOnWriteArrayList<HookData> filteredHooks = new CopyOnWriteArrayList<>();
+        for (HookData hookData : allHooksForName) {
+            if (hookData.argCount() == null || hookData.argCount().equals(args.length)) {
+                filteredHooks.add(hookData);
+            }
+        }
+
+        if (filteredHooks.isEmpty()) {
+            return false;
+        }
+
+        ProxyExecutable nextInChain = buildChain(method, filteredHooks);
 
         try {
             Value[] initialChainArgs = new Value[args.length];
@@ -147,22 +154,7 @@ public class HookInterceptor {
         adviceContext.remove();
     }
 
-    public static class ChainBuilder implements Function<String, ProxyExecutable> {
-        private final Method method;
-        private final CopyOnWriteArrayList<HookData> hookList;
-
-        public ChainBuilder(Method method, CopyOnWriteArrayList<HookData> hookList) {
-            this.method = method;
-            this.hookList = hookList;
-        }
-
-        @Override
-        public ProxyExecutable apply(String hookId) {
-            return buildChain(method, hookList);
-        }
-    }
-
-    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager) {
+    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
     }
 
     public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue, Value[] modifiedArgs) {

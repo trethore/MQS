@@ -15,10 +15,7 @@ import net.me.scripting.utils.MappingUtils;
 import org.graalvm.polyglot.Value;
 
 import java.lang.instrument.Instrumentation;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
@@ -68,16 +65,16 @@ public class HookManager {
                 .installOn(instrumentation);
     }
 
-    public void hook(RunningScript owner, Class<?> targetClass, String yarnMethodName, Value jsCallback) {
+    public void hook(RunningScript owner, Class<?> targetClass, String yarnMethodName, Value jsCallback, Integer argCount) {
         String yarnHookId = generateHookId(targetClass, yarnMethodName);
 
         boolean alreadyHookedByThisScript = HookInterceptor.HOOKS
                 .getOrDefault(yarnHookId, new CopyOnWriteArrayList<>())
                 .stream()
-                .anyMatch(data -> data.owner().equals(owner));
+                .anyMatch(data -> data.owner().equals(owner) && Objects.equals(data.argCount(), argCount));
 
         if (alreadyHookedByThisScript) {
-            Main.LOGGER.warn("Script '{}' has already hooked '{}'. Unhook it first if you wish to replace it.", owner.getName(), yarnHookId);
+            Main.LOGGER.warn("Script '{}' has already hooked '{}' with argCount {}. Unhook it first if you wish to replace it.", owner.getName(), yarnHookId, argCount);
             return;
         }
 
@@ -86,7 +83,7 @@ public class HookManager {
             nameToClassMap.put(targetClass.getName(), targetClass);
         }
 
-        HookInterceptor.register(yarnHookId, jsCallback, owner, scriptManager);
+        HookInterceptor.register(yarnHookId, jsCallback, owner, scriptManager, argCount);
 
         String[] runtimeNames = resolveRuntimeMethodNames(targetClass, yarnMethodName);
         if (runtimeNames.length == 0) {
@@ -99,7 +96,7 @@ public class HookManager {
 
         for (String runtimeName : runtimeNames) {
             if (!runtimeName.equals(yarnMethodName)) {
-                HookInterceptor.register(generateHookId(targetClass, runtimeName), jsCallback, owner, scriptManager);
+                HookInterceptor.register(generateHookId(targetClass, runtimeName), jsCallback, owner, scriptManager, argCount);
             }
         }
 
@@ -108,8 +105,8 @@ public class HookManager {
 
         try {
             instrumentation.retransformClasses(targetClass);
-            Main.LOGGER.info("Successfully requested hook for method '{}' in class '{}' for script '{}'.",
-                    yarnMethodName, targetClass.getSimpleName(), owner.getName());
+            Main.LOGGER.info("Successfully requested hook for method '{}' (argCount: {}) in class '{}' for script '{}'.",
+                    yarnMethodName, (argCount == null ? "any" : argCount), targetClass.getSimpleName(), owner.getName());
         } catch (Throwable e) {
             Main.LOGGER.error("Failed to trigger hook for method '{}' in class '{}' for script '{}'. Cleaning up...",
                     yarnMethodName, targetClass.getName(), owner.getName(), e);

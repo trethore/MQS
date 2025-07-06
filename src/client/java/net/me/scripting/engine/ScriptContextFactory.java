@@ -154,10 +154,31 @@ public class ScriptContextFactory {
                     RunningScript owner = getCurrentScript();
 
                     if ("hook".equals(key)) {
-                        if (args.length != 3 || !args[1].isString() || !args[2].canExecute()) {
-                            throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction)");
+                        Value targetClassValue;
+                        String yarnMethodName;
+                        Integer argCount = null;
+                        Value callback;
+
+                        if (args.length == 3) {
+                            if (!args[1].isString() || !args[2].canExecute()) {
+                                throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction)");
+                            }
+                            targetClassValue = args[0];
+                            yarnMethodName = args[1].asString();
+                            callback = args[2];
+                        } else if (args.length == 4) {
+                            if (!args[1].isString() || !args[2].isNumber() || !args[3].canExecute()) {
+                                throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', argCount, callbackFunction)");
+                            }
+                            targetClassValue = args[0];
+                            yarnMethodName = args[1].asString();
+                            argCount = args[2].asInt();
+                            callback = args[3];
+                        } else {
+                            throw new IllegalArgumentException("HookManager.hook requires 3 or 4 arguments.");
                         }
-                        Object unwrappedArg = ScriptUtils.unwrapReceiver(args[0]);
+
+                        Object unwrappedArg = ScriptUtils.unwrapReceiver(targetClassValue);
                         Class<?> targetClass = switch (unwrappedArg) {
                             case JsClassWrapper wrapper -> wrapper.getTargetClass();
                             case LazyJsClassHolder holder -> holder.getWrapper().getTargetClass();
@@ -165,9 +186,8 @@ public class ScriptContextFactory {
                             case null, default ->
                                     throw new IllegalArgumentException("First argument must be a class (e.g. from importClass).");
                         };
-                        String yarnMethodName = args[1].asString();
-                        Value callback = args[2];
-                        hookManager.hook(owner, targetClass, yarnMethodName, callback);
+
+                        hookManager.hook(owner, targetClass, yarnMethodName, callback, argCount);
                         return null;
                     }
 
