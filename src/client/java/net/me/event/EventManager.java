@@ -1,8 +1,13 @@
 package net.me.event;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.me.event.events.MinecraftClientStopEvent;
+import net.me.event.events.packet.ClientPacketInputEvent;
+import net.me.event.events.packet.ClientPacketOutputEvent;
 import net.me.event.events.tick.EndClientTickEvent;
 import net.me.event.events.tick.StartClientTickEvent;
+import net.me.event.events.title.SubTitleEvent;
+import net.me.event.events.title.TitleEvent;
 import net.me.mixin.fabric.event.ArrayBackedEventAccessor;
 import net.me.mixin.fabric.event.EventPhaseDataAccessor;
 import net.me.scripting.ScriptManager;
@@ -23,6 +28,27 @@ public class EventManager {
     private final Map<Class<? extends Event>, List<Listener>> listeners = new ConcurrentHashMap<>();
     private final Map<RunningScript, List<FabricListener>> fabricListeners = new ConcurrentHashMap<>();
     private final ScriptManager scriptManager;
+
+    @SuppressWarnings("unused")
+    public enum Events {
+        StartClientTickEvent(StartClientTickEvent.class),
+        EndClientTickEvent(EndClientTickEvent.class),
+        MinecraftClientStopEvent(MinecraftClientStopEvent.class),
+        ClientPacketOutputEvent(ClientPacketOutputEvent.class),
+        ClientPacketInputEvent(ClientPacketInputEvent.class),
+        TitleEvent(TitleEvent.class),
+        SubtitleEvent(SubTitleEvent.class);
+
+        private final Class<? extends Event> eventClass;
+
+        Events(Class<? extends Event> eventClass) {
+            this.eventClass = eventClass;
+        }
+
+        public Class<? extends Event> getEventClass() {
+            return eventClass;
+        }
+    }
 
     public EventManager(ScriptManager scriptManager) {
         this.scriptManager = scriptManager;
@@ -86,6 +112,10 @@ public class EventManager {
                 .add(new Listener(owner, callback));
     }
 
+    public void register(RunningScript owner, Events eventEnum, Value callback) {
+        register(owner, eventEnum.getEventClass(), callback);
+    }
+
     public void registerFabric(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent, Value jsCallback) {
         Class<?> listenerType = findListenerType(fabricEvent);
         Method sam = findSingleAbstractMethod(listenerType);
@@ -144,11 +174,19 @@ public class EventManager {
         }
     }
 
+    public void unregister(RunningScript owner, Events eventEnum) {
+        unregister(owner, eventEnum.getEventClass());
+    }
+
     public void unregister(RunningScript owner, Class<? extends Event> eventType, Value callback) {
         List<Listener> eventListeners = listeners.get(eventType);
         if (eventListeners != null) {
             eventListeners.remove(new Listener(owner, callback));
         }
+    }
+
+    public void unregister(RunningScript owner, Events eventEnum, Value callback) {
+        unregister(owner, eventEnum.getEventClass(), callback);
     }
 
     public void unregister(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent) {

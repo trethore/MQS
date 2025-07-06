@@ -24,6 +24,7 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -248,8 +249,14 @@ public class ScriptContextFactory {
 
     private ProxyObject createEventManagerProxy() {
         return new ProxyObject() {
+            private final ProxyObject eventsEnumProxy = createEventsEnumProxy();
+
             @Override
             public Object getMember(String key) {
+                if ("Events".equals(key)) {
+                    return eventsEnumProxy;
+                }
+
                 return (ProxyExecutable) args -> {
                     RunningScript owner = scriptManager.getCurrentScript();
                     if (owner == null) {
@@ -263,13 +270,15 @@ public class ScriptContextFactory {
                         Object eventTarget = resolveEventTarget(args[0]);
                         Value callback = args[1];
 
-                        if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
-                            //noinspection unchecked
-                            eventManager.register(owner, (Class<? extends Event>) cls, callback);
-                        } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-                            eventManager.registerFabric(owner, fabricEvent, callback);
-                        } else {
-                            throw new IllegalArgumentException("First argument to EventManager.register must be a MQS event class or a Fabric Event object.");
+                        switch (eventTarget) {
+                            case EventManager.Events eventEnum -> eventManager.register(owner, eventEnum, callback);
+                            case Class<?> cls when Event.class.isAssignableFrom(cls) ->
+                                //noinspection unchecked
+                                    eventManager.register(owner, (Class<? extends Event>) cls, callback);
+                            case net.fabricmc.fabric.api.event.Event<?> fabricEvent ->
+                                    eventManager.registerFabric(owner, fabricEvent, callback);
+                            case null, default ->
+                                    throw new IllegalArgumentException("First argument to EventManager.register must be a MQS event class, a Fabric Event object, or an MQS Event from EventManager.Events.");
                         }
                         return null;
                     }
@@ -279,24 +288,29 @@ public class ScriptContextFactory {
                             eventManager.unregister(owner);
                         } else if (args.length == 1) {
                             Object eventTarget = resolveEventTarget(args[0]);
-                            if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
-                                //noinspection unchecked
-                                eventManager.unregister(owner, (Class<? extends Event>) cls);
-                            } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-                                eventManager.unregister(owner, fabricEvent);
-                            } else {
-                                throw new IllegalArgumentException("Argument to EventManager.unregister must be a MQS event class or a Fabric Event object.");
+                            switch (eventTarget) {
+                                case EventManager.Events eventEnum -> eventManager.unregister(owner, eventEnum);
+                                case Class<?> cls when Event.class.isAssignableFrom(cls) ->
+                                    //noinspection unchecked
+                                        eventManager.unregister(owner, (Class<? extends Event>) cls);
+                                case net.fabricmc.fabric.api.event.Event<?> fabricEvent ->
+                                        eventManager.unregister(owner, fabricEvent);
+                                case null, default ->
+                                        throw new IllegalArgumentException("Argument to EventManager.unregister must be a MQS event class, a Fabric Event object, or an MQS Event from EventManager.Events.");
                             }
                         } else if (args.length == 2 && args[1].canExecute()) {
                             Object eventTarget = resolveEventTarget(args[0]);
                             Value callback = args[1];
-                            if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
-                                //noinspection unchecked
-                                eventManager.unregister(owner, (Class<? extends Event>) cls, callback);
-                            } else if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-                                eventManager.unregister(owner, fabricEvent, callback);
-                            } else {
-                                throw new IllegalArgumentException("First argument to EventManager.unregister must be a MQS event class or a Fabric Event object.");
+                            switch (eventTarget) {
+                                case EventManager.Events eventEnum ->
+                                        eventManager.unregister(owner, eventEnum, callback);
+                                case Class<?> cls when Event.class.isAssignableFrom(cls) ->
+                                    //noinspection unchecked
+                                        eventManager.unregister(owner, (Class<? extends Event>) cls, callback);
+                                case net.fabricmc.fabric.api.event.Event<?> fabricEvent ->
+                                        eventManager.unregister(owner, fabricEvent, callback);
+                                case null, default ->
+                                        throw new IllegalArgumentException("First argument to EventManager.unregister must be a MQS event class, a Fabric Event object, or an MQS Event from EventManager.Events.");
                             }
                         } else {
                             throw new IllegalArgumentException("Invalid arguments for EventManager.unregister");
@@ -321,26 +335,57 @@ public class ScriptContextFactory {
 
                 if (eventTypeArg.isHostObject()) {
                     Object hostObject = eventTypeArg.asHostObject();
+                    if (hostObject instanceof EventManager.Events) {
+                        return hostObject;
+                    }
                     if (hostObject instanceof Class) return hostObject;
                     if (hostObject instanceof net.fabricmc.fabric.api.event.Event) return hostObject;
                 }
 
-                throw new IllegalArgumentException("Event target must be a class imported via importClass() or a direct Fabric Event object.");
+                throw new IllegalArgumentException("Event target must be a class imported via importClass(), a direct Fabric Event object, or an MQS Event from EventManager.Events.");
             }
 
             @Override
             public Object getMemberKeys() {
-                return new String[]{"register", "unregister"};
+                return new String[]{"register", "unregister", "Events"};
             }
 
             @Override
             public boolean hasMember(String key) {
-                return "register".equals(key) || "unregister".equals(key);
+                return "register".equals(key) || "unregister".equals(key) || "Events".equals(key);
             }
 
             @Override
             public void putMember(String key, Value value) {
                 throw new UnsupportedOperationException("Cannot modify the EventManager object.");
+            }
+        };
+    }
+
+    private ProxyObject createEventsEnumProxy() {
+        return new ProxyObject() {
+            @Override
+            public Object getMember(String key) {
+                try {
+                    return EventManager.Events.valueOf(key);
+                } catch (IllegalArgumentException e) {
+                    return null;
+                }
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return Arrays.stream(EventManager.Events.values()).map(Enum::name).toArray(String[]::new);
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return Arrays.stream(EventManager.Events.values()).anyMatch(e -> e.name().equals(key));
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify the Events enum object.");
             }
         };
     }

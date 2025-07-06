@@ -3,15 +3,18 @@
 	"package": "net.me.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
-		"client.mixins.MQSMinecraftClientMixin",
+		"client.mixins.MQSClientCommonNetworkHandlerMixin",
+		"client.mixins.MQSClientConnectionMixin",
 		"client.mixins.MQSHudMixin",
+		"client.mixins.MQSMinecraftClientMixin",
 		"fabric.event.ArrayBackedEventAccessor",
 		"fabric.event.EventPhaseDataAccessor",
 		"keybinds.MQSKeyboardMixin",
 		"keybinds.MQSMouseMixin"
 	],
 	"client": [
-		"client.accessors.CommandNodeAccessor"
+		"client.accessors.CommandNodeAccessor",
+		"client.mixins.MQSClientPlayNetworkHandlerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

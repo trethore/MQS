@@ -1,6 +1,7 @@
 package net.me.event.events.tick;
 
 import net.me.event.Event;
+import net.me.event.EventManager;
 import net.minecraft.client.MinecraftClient;
 
 public class StartClientTickEvent extends Event {
@@ -12,5 +13,9 @@ public class StartClientTickEvent extends Event {
 
     public MinecraftClient getClient() {
         return this.client;
+    }
+
+    public EventManager.Events getType() {
+        return EventManager.Events.StartClientTickEvent;
     }
 }
