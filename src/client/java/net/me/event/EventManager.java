@@ -1,13 +1,8 @@
 package net.me.event;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.me.event.events.MinecraftClientStopEvent;
-import net.me.event.events.packet.ClientPacketInputEvent;
-import net.me.event.events.packet.ClientPacketOutputEvent;
 import net.me.event.events.tick.EndClientTickEvent;
 import net.me.event.events.tick.StartClientTickEvent;
-import net.me.event.events.title.SubTitleEvent;
-import net.me.event.events.title.TitleEvent;
 import net.me.mixin.fabric.event.ArrayBackedEventAccessor;
 import net.me.mixin.fabric.event.EventPhaseDataAccessor;
 import net.me.scripting.ScriptManager;
@@ -231,27 +226,6 @@ public class EventManager {
             }
         } catch (Exception e) {
             LOGGER.error("Failed to unregister fabric listener", e);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public enum Events {
-        StartClientTickEvent(StartClientTickEvent.class),
-        EndClientTickEvent(EndClientTickEvent.class),
-        MinecraftClientStopEvent(MinecraftClientStopEvent.class),
-        ClientPacketOutputEvent(ClientPacketOutputEvent.class),
-        ClientPacketInputEvent(ClientPacketInputEvent.class),
-        TitleEvent(TitleEvent.class),
-        SubtitleEvent(SubTitleEvent.class);
-
-        private final Class<? extends Event> eventClass;
-
-        Events(Class<? extends Event> eventClass) {
-            this.eventClass = eventClass;
-        }
-
-        public Class<? extends Event> getEventClass() {
-            return eventClass;
         }
     }
 

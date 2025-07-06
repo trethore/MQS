@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class KeybindManager {
-    public static final int UNBOUND_KEY = -1;
     private final Map<String, KeyBinding> keybindsByName = new ConcurrentHashMap<>();
     private final Map<Integer, List<KeyBinding>> keybindsByKeycode = new ConcurrentHashMap<>();
     private final Set<Integer> heldKeys = ConcurrentHashMap.newKeySet();

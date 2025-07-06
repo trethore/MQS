@@ -3,7 +3,6 @@ package net.me.keybinds;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
-import net.minecraft.client.util.InputUtil;
 import org.graalvm.polyglot.Value;
 import org.lwjgl.glfw.GLFW;
 
@@ -61,7 +60,7 @@ public class KeyBinding {
         } else if (key < 7) {
             return "BUTTON_" + key;
         }
-        return InputUtil.fromKeyCode(key, 0).getLocalizedText().getString();
+        return Keys.fromCode(this.key).map(Keys::toString).orElse("Unknown");
     }
 
     public String getName() {

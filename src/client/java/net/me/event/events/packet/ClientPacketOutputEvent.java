@@ -1,22 +1,17 @@
 package net.me.event.events.packet;
 
-import net.me.event.Event;
-import net.me.event.EventManager;
+import net.me.event.Events;
+import net.me.event.PacketEvent;
 import net.minecraft.network.packet.Packet;
 
-public class ClientPacketOutputEvent extends Event {
-    private final Packet<?> packet;
+public class ClientPacketOutputEvent extends PacketEvent<Packet<?>> {
 
     public ClientPacketOutputEvent(Packet<?> packet) {
-        this.packet = packet;
-    }
-
-    public Packet<?> getPacket() {
-        return this.packet;
+        super(packet);
     }
 
     @Override
-    public EventManager.Events getType() {
-        return EventManager.Events.ClientPacketOutputEvent;
+    public Events getType() {
+        return Events.ClientPacketOutputEvent;
     }
 }

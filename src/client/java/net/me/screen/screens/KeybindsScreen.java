@@ -2,6 +2,7 @@ package net.me.screen.screens;
 
 import net.me.keybinds.KeyBinding;
 import net.me.keybinds.KeybindManager;
+import net.me.keybinds.Keys;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.components.KeybindEntryWidget;
 import net.me.scripting.module.RunningScript;
@@ -166,7 +167,7 @@ public class KeybindsScreen extends MQSScreen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (listeningWidget != null) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-                stopListening(KeybindManager.UNBOUND_KEY);
+                stopListening(Keys.UNBOUND.getCode());
             } else {
                 stopListening(keyCode);
             }

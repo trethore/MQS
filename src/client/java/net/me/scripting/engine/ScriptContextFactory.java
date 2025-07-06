@@ -3,6 +3,7 @@ package net.me.scripting.engine;
 import net.me.Main;
 import net.me.event.Event;
 import net.me.event.EventManager;
+import net.me.event.Events;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
 import net.me.scripting.ConfigManager;
@@ -320,7 +321,7 @@ public class ScriptContextFactory {
                         Value callback = args[1];
 
                         switch (eventTarget) {
-                            case EventManager.Events eventEnum -> eventManager.register(owner, eventEnum, callback);
+                            case Events eventEnum -> eventManager.register(owner, eventEnum, callback);
                             case Class<?> cls when Event.class.isAssignableFrom(cls) ->
                                 //noinspection unchecked
                                     eventManager.register(owner, (Class<? extends Event>) cls, callback);
@@ -338,7 +339,7 @@ public class ScriptContextFactory {
                         } else if (args.length == 1) {
                             Object eventTarget = resolveEventTarget(args[0]);
                             switch (eventTarget) {
-                                case EventManager.Events eventEnum -> eventManager.unregister(owner, eventEnum);
+                                case Events eventEnum -> eventManager.unregister(owner, eventEnum);
                                 case Class<?> cls when Event.class.isAssignableFrom(cls) ->
                                     //noinspection unchecked
                                         eventManager.unregister(owner, (Class<? extends Event>) cls);
@@ -351,8 +352,7 @@ public class ScriptContextFactory {
                             Object eventTarget = resolveEventTarget(args[0]);
                             Value callback = args[1];
                             switch (eventTarget) {
-                                case EventManager.Events eventEnum ->
-                                        eventManager.unregister(owner, eventEnum, callback);
+                                case Events eventEnum -> eventManager.unregister(owner, eventEnum, callback);
                                 case Class<?> cls when Event.class.isAssignableFrom(cls) ->
                                     //noinspection unchecked
                                         eventManager.unregister(owner, (Class<? extends Event>) cls, callback);
@@ -384,7 +384,7 @@ public class ScriptContextFactory {
 
                 if (eventTypeArg.isHostObject()) {
                     Object hostObject = eventTypeArg.asHostObject();
-                    if (hostObject instanceof EventManager.Events) {
+                    if (hostObject instanceof Events) {
                         return hostObject;
                     }
                     if (hostObject instanceof Class) return hostObject;
@@ -416,7 +416,7 @@ public class ScriptContextFactory {
             @Override
             public Object getMember(String key) {
                 try {
-                    return EventManager.Events.valueOf(key);
+                    return Events.valueOf(key);
                 } catch (IllegalArgumentException e) {
                     return null;
                 }
@@ -424,12 +424,12 @@ public class ScriptContextFactory {
 
             @Override
             public Object getMemberKeys() {
-                return Arrays.stream(EventManager.Events.values()).map(Enum::name).toArray(String[]::new);
+                return Arrays.stream(Events.values()).map(Enum::name).toArray(String[]::new);
             }
 
             @Override
             public boolean hasMember(String key) {
-                return Arrays.stream(EventManager.Events.values()).anyMatch(e -> e.name().equals(key));
+                return Arrays.stream(Events.values()).anyMatch(e -> e.name().equals(key));
             }
 
             @Override

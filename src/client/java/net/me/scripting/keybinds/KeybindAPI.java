@@ -1,13 +1,43 @@
 package net.me.scripting.keybinds;
 
 import net.me.keybinds.KeybindManager;
+import net.me.keybinds.Keys;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.Arrays;
+
 public class KeybindAPI implements ProxyObject {
+
+    private static final ProxyObject KEYS_PROXY = new ProxyObject() {
+        @Override
+        public Object getMember(String key) {
+            return Arrays.stream(Keys.values())
+                    .filter(k -> k.name().equalsIgnoreCase(key))
+                    .findFirst()
+                    .map(k -> (Object) k.getCode())
+                    .orElse(null);
+        }
+
+        @Override
+        public Object getMemberKeys() {
+            return Arrays.stream(Keys.values()).map(Enum::name).toArray(String[]::new);
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            return Arrays.stream(Keys.values()).anyMatch(k -> k.name().equalsIgnoreCase(key));
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            throw new UnsupportedOperationException("Cannot modify the Keys enum object.");
+        }
+    };
+
     private final KeybindManager keybindManager;
     private final ScriptManager scriptManager;
 
@@ -26,6 +56,10 @@ public class KeybindAPI implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
+        if ("Keys".equalsIgnoreCase(key)) {
+            return KEYS_PROXY;
+        }
+
         return (ProxyExecutable) args -> {
             RunningScript owner = getCurrentScript();
             switch (key) {
@@ -58,12 +92,12 @@ public class KeybindAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{"register", "unregister"};
+        return new String[]{"register", "unregister", "Keys"};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "register".equals(key) || "unregister".equals(key);
+        return "register".equals(key) || "unregister".equals(key) || "Keys".equalsIgnoreCase(key);
     }
 
     @Override
