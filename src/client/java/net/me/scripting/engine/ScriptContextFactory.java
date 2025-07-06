@@ -50,6 +50,39 @@ public class ScriptContextFactory {
 
     }
 
+    private static Object toSerializableObject(Value value) {
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (value.isString()) {
+            return value.asString();
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isNumber()) {
+            return value.as(Number.class);
+        }
+        if (value.hasArrayElements()) {
+            List<Object> javaList = new ArrayList<>();
+            for (int i = 0; i < value.getArraySize(); i++) {
+                javaList.add(toSerializableObject(value.getArrayElement(i)));
+            }
+            return javaList;
+        }
+        if (value.isHostObject()) {
+            return value.asHostObject();
+        }
+        if (value.hasMembers() || value.isProxyObject()) {
+            Map<String, Object> javaMap = new LinkedHashMap<>();
+            for (String k : value.getMemberKeys()) {
+                javaMap.put(k, toSerializableObject(value.getMember(k)));
+            }
+            return javaMap;
+        }
+        return value;
+    }
+
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
         Main.LOGGER.info("Creating new script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
@@ -404,39 +437,6 @@ public class ScriptContextFactory {
                 throw new UnsupportedOperationException("Cannot modify the Events enum object.");
             }
         };
-    }
-
-    private static Object toSerializableObject(Value value) {
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        if (value.isString()) {
-            return value.asString();
-        }
-        if (value.isBoolean()) {
-            return value.asBoolean();
-        }
-        if (value.isNumber()) {
-            return value.as(Number.class);
-        }
-        if (value.hasArrayElements()) {
-            List<Object> javaList = new ArrayList<>();
-            for (int i = 0; i < value.getArraySize(); i++) {
-                javaList.add(toSerializableObject(value.getArrayElement(i)));
-            }
-            return javaList;
-        }
-        if (value.isHostObject()) {
-            return value.asHostObject();
-        }
-        if (value.hasMembers() || value.isProxyObject()) {
-            Map<String, Object> javaMap = new LinkedHashMap<>();
-            for (String k : value.getMemberKeys()) {
-                javaMap.put(k, toSerializableObject(value.getMember(k)));
-            }
-            return javaMap;
-        }
-        return value;
     }
 
     private ProxyObject createConfigProxy() {

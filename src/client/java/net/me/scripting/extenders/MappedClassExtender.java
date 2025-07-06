@@ -26,14 +26,17 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     private final ScriptingClassResolver resolver;
     private final Map<String, MappedClassInfo> unambiguousMethodTargets = new HashMap<>();
 
+    private final Value jsImplementation;
 
-    public MappedClassExtender(ExtensionConfig config, Context context, Value parentOverrides, Value parentAddons, Value parentSuper, ScriptingClassResolver resolver) {
+
+    public MappedClassExtender(ExtensionConfig config, Context context, Value parentOverrides, Value parentAddons, Value parentSuper, ScriptingClassResolver resolver, Value jsImplementation) {
         this.config = config;
         this.context = context;
         this.parentOverrides = parentOverrides;
         this.parentAddons = parentAddons;
         this.parentSuper = parentSuper;
         this.resolver = resolver;
+        this.jsImplementation = jsImplementation;
         this.baseAdapterConstructor = createBaseAdapter();
         precomputeOverrideTargets();
     }
@@ -61,11 +64,22 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     }
 
     @Override
-    public Object newInstance(Value... args) {
-        validateArguments(args);
-        ArgumentParser parser = parseArguments(args);
+    public Object newInstance(Value... constructorArgs) {
+        Value overridesValue = context.eval("js", "({})");
+        Value addonsValue = context.eval("js", "({})");
 
-        Map<String, Object> childRuntimeOverrides = buildRuntimeOverrides(parser.overridesValue);
+        if (this.jsImplementation != null && this.jsImplementation.hasMembers()) {
+            for (String key : this.jsImplementation.getMemberKeys()) {
+                Value member = this.jsImplementation.getMember(key);
+                if (member.canExecute() && isMethodAnOverride(key)) {
+                    overridesValue.putMember(key, member);
+                } else {
+                    addonsValue.putMember(key, member);
+                }
+            }
+        }
+
+        Map<String, Object> childRuntimeOverrides = buildRuntimeOverrides(overridesValue);
 
         Map<String, Object> parentRuntimeOverrides = new HashMap<>();
         if (this.parentOverrides != null && this.parentOverrides.hasMembers()) {
@@ -77,16 +91,28 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
         RuntimeBinderProxy mergedBinder = new RuntimeBinderProxy(mergedRuntimeOverrides);
 
-        Object baseInstance = createBaseJavaInstanceWithBinder(parser.constructorArgs, mergedBinder);
+        Object baseInstance = createBaseJavaInstanceWithBinder(constructorArgs, mergedBinder);
 
         Map<String, Object> wrapperProperties = new HashMap<>();
-        Value finalMergedOverrides = mergeJSObjects(this.parentOverrides, parser.overridesValue);
-        Value finalMergedAddons = mergeJSObjects(this.parentAddons, parser.addonsValue);
+        Value finalMergedOverrides = mergeJSObjects(this.parentOverrides, overridesValue);
+        Value finalMergedAddons = mergeJSObjects(this.parentAddons, addonsValue);
         ExtendedInstanceProxy wrapper = new ExtendedInstanceProxy(wrapperProperties, baseInstance, this.config, finalMergedOverrides, finalMergedAddons);
 
         mergedBinder.setBindingTarget(wrapper);
-        populateWrapper(wrapper, baseInstance, parser.addonsValue);
+        populateWrapper(wrapper, baseInstance, addonsValue);
         return wrapper;
+    }
+
+    private boolean isMethodAnOverride(String methodName) {
+        if (config.extendsClass().methodMappings().containsKey(methodName)) {
+            return true;
+        }
+        for (MappedClassInfo interfaceInfo : config.implementsClasses()) {
+            if (interfaceInfo.methodMappings().containsKey(methodName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Object createBaseJavaInstanceWithBinder(Value[] constructorArgs, RuntimeBinderProxy binder) {
@@ -119,52 +145,16 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         if (this.parentAddons != null) {
             for (String key : this.parentAddons.getMemberKeys()) {
                 Value member = this.parentAddons.getMember(key);
-                if (member.canExecute()) {
-                    wrapperProperties.put(key, member.invokeMember("bind", wrapperVal));
-                } else {
-                    wrapperProperties.put(key, member);
-                }
+                wrapperProperties.put(key, member.canExecute() ? member.invokeMember("bind", wrapperVal) : member);
             }
         }
 
         if (childAddons != null) {
             for (String key : childAddons.getMemberKeys()) {
                 Value member = childAddons.getMember(key);
-                if (member.canExecute()) {
-                    wrapperProperties.put(key, member.invokeMember("bind", wrapperVal));
-                } else {
-                    wrapperProperties.put(key, member);
-                }
+                wrapperProperties.put(key, member.canExecute() ? member.invokeMember("bind", wrapperVal) : member);
             }
         }
-    }
-
-    private void validateArguments(Value[] args) {
-        if (args.length == 0) {
-            throw new RuntimeException("Cannot extend with mapped names without a configuration object. Pass at least an object with 'overrides' and/or 'addons'.");
-        }
-    }
-
-    private ArgumentParser parseArguments(Value[] args) {
-        Value lastArg = args[args.length - 1];
-        if (!isObjectLike(lastArg)) {
-            throw new RuntimeException("The last argument must be a configuration object with 'overrides' and/or 'addons' keys.");
-        }
-        Value[] constructorArgs = new Value[args.length - 1];
-        System.arraycopy(args, 0, constructorArgs, 0, args.length - 1);
-
-        Value overridesValue = lastArg.getMember("overrides");
-        Value addonsValue = lastArg.getMember("addons");
-
-        if ((overridesValue == null || overridesValue.isNull()) && (addonsValue == null || addonsValue.isNull())) {
-            throw new RuntimeException("Configuration object must contain either an 'overrides' or 'addons' key.");
-        }
-
-        return new ArgumentParser(overridesValue, addonsValue, constructorArgs);
-    }
-
-    private boolean isObjectLike(Value value) {
-        return value != null && (value.hasMembers() || value.isProxyObject());
     }
 
     private Map<String, Object> buildRuntimeOverrides(Value overridesArg) {
@@ -197,15 +187,14 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         if (unambiguousTarget != null) {
             addOverride(runtimeOverrides, jsMethodName, jsFunction, unambiguousTarget);
         } else {
-            // It's either ambiguous or a new method, check for ambiguity
             List<MappedClassInfo> targets = findTargetsForMethod(jsMethodName);
             if (targets.size() > 1) {
                 List<String> targetNames = targets.stream().map(MappedClassInfo::yarnName).toList();
                 throw new RuntimeException("Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " + targetNames + ". Please specify the target: { overrides: { '" + jsMethodName + "': { '" + targetNames.getFirst() + "': fn } } }");
             }
-            if (targets.isEmpty()) { // New method added to the class
+            if (targets.isEmpty()) {
                 runtimeOverrides.put(jsMethodName, jsFunction);
-            } else { // Should have been caught by unambiguous check, but for safety
+            } else {
                 addOverride(runtimeOverrides, jsMethodName, jsFunction, targets.getFirst());
             }
         }
@@ -247,19 +236,11 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     }
 
     private Value mergeJSObjects(Value parent, Value child) {
-        if (parent == null || parent.isNull()) {
-            return child;
-        }
-        if (child == null || child.isNull()) {
-            return parent;
-        }
+        if (parent == null || parent.isNull()) return child;
+        if (child == null || child.isNull()) return parent;
         Value merged = context.eval("js", "({})");
-        for (String key : parent.getMemberKeys()) {
-            merged.putMember(key, parent.getMember(key));
-        }
-        for (String key : child.getMemberKeys()) {
-            merged.putMember(key, child.getMember(key));
-        }
+        for (String key : parent.getMemberKeys()) merged.putMember(key, parent.getMember(key));
+        for (String key : child.getMemberKeys()) merged.putMember(key, child.getMember(key));
         return merged;
     }
 
@@ -288,8 +269,5 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     @Override
     public void putMember(String key, Value value) {
         throw new UnsupportedOperationException("Cannot set members on MappedClassExtender function object.");
-    }
-
-    private record ArgumentParser(Value overridesValue, Value addonsValue, Value[] constructorArgs) {
     }
 }

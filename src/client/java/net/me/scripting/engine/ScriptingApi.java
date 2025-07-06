@@ -60,12 +60,17 @@ public class ScriptingApi {
 
     public static ProxyExecutable createExtendMappedProxy(ScriptingClassResolver resolver, Context context) {
         return args -> {
-            if (args.length != 1) {
-                throw new RuntimeException("extendMapped() requires exactly one configuration object argument.");
+            if (args.length != 2) {
+                throw new RuntimeException("extendMapped() requires exactly two arguments: extendMapped(config, implementation)");
             }
             Value configArg = args[0];
+            Value implementationArg = args[1];
+
             if (!configArg.hasMembers() || !configArg.hasMember("extends")) {
-                throw new RuntimeException("Configuration argument must be an object with an 'extends' property.");
+                throw new RuntimeException("First argument must be a configuration object with an 'extends' property.");
+            }
+            if (!implementationArg.hasMembers() && !implementationArg.isProxyObject()) {
+                throw new RuntimeException("Second argument must be an implementation object containing methods and properties.");
             }
 
             Value extendsValue = configArg.getMember("extends");
@@ -100,7 +105,7 @@ public class ScriptingApi {
                 config = parseExtensionConfig(configArg, context, resolver, extendsValue);
             }
 
-            return new MappedClassExtender(config, context, parentOverrides, parentAddons, parentSuper, resolver);
+            return new MappedClassExtender(config, context, parentOverrides, parentAddons, parentSuper, resolver, implementationArg);
         };
     }
 
