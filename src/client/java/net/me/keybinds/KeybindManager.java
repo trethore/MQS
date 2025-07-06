@@ -42,7 +42,7 @@ public class KeybindManager {
         List<KeyBinding> bindings = keybindsByKeycode.get(keyCode);
         if (bindings != null) {
             for (KeyBinding keyBinding : bindings) {
-                keyBinding.execute(action, scriptManager);
+                keyBinding.execute(action);
             }
         }
     }
@@ -57,7 +57,6 @@ public class KeybindManager {
         } else if (action == GLFW.GLFW_RELEASE) {
             heldKeys.remove(key);
         }
-
     }
 
     public void onMouseClick(int button, int action) {
@@ -77,8 +76,7 @@ public class KeybindManager {
         }
 
         int finalKey = configManager.getKeybind(owner.getId(), name).orElse(defaultKey);
-
-        KeyBinding keyBinding = new KeyBinding(name, finalKey, repeatable, owner, action, debounceTime);
+        KeyBinding keyBinding = new KeyBinding(name, finalKey, repeatable, owner, action, debounceTime, scriptManager);
         keybindsByName.put(uniqueName, keyBinding);
         if (finalKey >= 0) {
             keybindsByKeycode.computeIfAbsent(finalKey, k -> new CopyOnWriteArrayList<>()).add(keyBinding);

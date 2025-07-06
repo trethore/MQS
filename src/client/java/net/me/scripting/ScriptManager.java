@@ -30,7 +30,7 @@ public class ScriptManager {
     private final Map<String, RunningScript> runningScripts = new HashMap<>();
     private final CommandAPIService commandApiService;
     private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
-    private final ThreadLocal<RunningScript> currentScriptContext = new ThreadLocal<>();
+    private final ThreadLocal<RunningScript> currentScriptContext = new InheritableThreadLocal<>();
     private final Queue<Context> contextPool = new ConcurrentLinkedQueue<>();
     private ScriptContextFactory contextFactory;
     private ScriptLoader scriptLoader;

@@ -72,6 +72,7 @@ public class EventManager {
         List<Listener> eventListeners = listeners.get(event.getClass());
         if (eventListeners != null) {
             for (Listener listener : eventListeners) {
+                RunningScript previousScript = scriptManager.getCurrentScript();
                 scriptManager.setCurrentScript(listener.owner());
                 try {
                     listener.callback().execute(event);
@@ -79,7 +80,7 @@ public class EventManager {
                     LOGGER.error("Error executing event listener for {} in script '{}'",
                             event.getClass().getSimpleName(), listener.owner().getName(), e);
                 } finally {
-                    scriptManager.clearCurrentScript();
+                    scriptManager.setCurrentScript(previousScript);
                 }
             }
         }
@@ -106,6 +107,7 @@ public class EventManager {
                         return InvocationHandler.invokeDefault(proxy, method, args);
                     }
                     if (method.equals(sam)) {
+                        RunningScript previousScript = scriptManager.getCurrentScript();
                         scriptManager.setCurrentScript(owner);
                         try {
                             Object[] wrappedArgs = new Object[args.length];
@@ -117,7 +119,7 @@ public class EventManager {
                             LOGGER.error("Error executing Fabric event listener for {} in script '{}'",
                                     listenerType.getSimpleName(), owner.getName(), e);
                         } finally {
-                            scriptManager.clearCurrentScript();
+                            scriptManager.setCurrentScript(previousScript);
                         }
                         return getReturnValueFor(sam.getReturnType());
                     }

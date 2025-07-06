@@ -24,7 +24,6 @@ public class HookInterceptor {
     public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
         HOOKS.computeIfAbsent(hookId, k -> new CopyOnWriteArrayList<>())
                 .addFirst(new HookData(jsCallback, owner, scriptManager, argCount));
-        Main.LOGGER.info("Registered hook: {} (argCount: {})", hookId, argCount == null ? "any" : argCount);
     }
 
     public static void unregister(String hookId, RunningScript owner) {
@@ -126,6 +125,7 @@ public class HookInterceptor {
             final HookData data = hookList.get(i);
             final ProxyExecutable finalNextInChain = nextInChain;
             nextInChain = passedArgs -> {
+                RunningScript previousScript = data.scriptManager().getCurrentScript();
                 data.scriptManager().setCurrentScript(data.owner());
                 try {
                     Value jsArgsArray = data.owner().getContext().eval("js", "[]");
@@ -142,7 +142,7 @@ public class HookInterceptor {
                             data.owner().getContext().asValue(finalNextInChain)
                     );
                 } finally {
-                    data.scriptManager().clearCurrentScript();
+                    data.scriptManager().setCurrentScript(previousScript);
                 }
             };
         }
