@@ -20,7 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EventManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(EventManager.class);
-    private final Map<Class<? extends Event>, List<Listener>> listeners = new ConcurrentHashMap<>();
+    private final Map<Class<? extends Event>, Map<EventPhase, List<Listener>>> listeners = new ConcurrentHashMap<>();
     private final Map<RunningScript, List<FabricListener>> fabricListeners = new ConcurrentHashMap<>();
     private final ScriptManager scriptManager;
 
@@ -64,30 +64,50 @@ public class EventManager {
     }
 
     public void post(Event event) {
-        List<Listener> eventListeners = listeners.get(event.getClass());
-        if (eventListeners != null) {
-            for (Listener listener : eventListeners) {
-                RunningScript previousScript = scriptManager.getCurrentScript();
-                scriptManager.setCurrentScript(listener.owner());
-                try {
-                    listener.callback().execute(event);
-                } catch (Exception e) {
-                    LOGGER.error("Error executing event listener for {} in script '{}'",
-                            event.getClass().getSimpleName(), listener.owner().getName(), e);
-                } finally {
-                    scriptManager.setCurrentScript(previousScript);
+        Map<EventPhase, List<Listener>> phaseListeners = listeners.get(event.getClass());
+        if (phaseListeners == null) {
+            return;
+        }
+
+        for (EventPhase phase : EventPhase.values()) {
+            List<Listener> eventListeners = phaseListeners.get(phase);
+            if (eventListeners != null) {
+                for (Listener listener : eventListeners) {
+                    RunningScript previousScript = scriptManager.getCurrentScript();
+                    scriptManager.setCurrentScript(listener.owner());
+                    try {
+                        listener.callback().execute(event);
+                    } catch (Exception e) {
+                        LOGGER.error("Error executing event listener for {} in script '{}' during phase {}",
+                                event.getClass().getSimpleName(), listener.owner().getName(), phase, e);
+                    } finally {
+                        scriptManager.setCurrentScript(previousScript);
+                    }
                 }
+            }
+
+            if (phase == EventPhase.PRE && event instanceof CancellableEvent && ((CancellableEvent) event).isCancelled()) {
+                return;
             }
         }
     }
 
     public void register(RunningScript owner, Class<? extends Event> eventType, Value callback) {
-        listeners.computeIfAbsent(eventType, k -> new CopyOnWriteArrayList<>())
+        register(owner, eventType, EventPhase.POST, callback);
+    }
+
+    public void register(RunningScript owner, Class<? extends Event> eventType, EventPhase phase, Value callback) {
+        listeners.computeIfAbsent(eventType, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(phase, k -> new CopyOnWriteArrayList<>())
                 .add(new Listener(owner, callback));
     }
 
     public void register(RunningScript owner, Events eventEnum, Value callback) {
-        register(owner, eventEnum.getEventClass(), callback);
+        register(owner, eventEnum.getEventClass(), EventPhase.POST, callback);
+    }
+
+    public void register(RunningScript owner, Events eventEnum, EventPhase phase, Value callback) {
+        register(owner, eventEnum.getEventClass(), phase, callback);
     }
 
     public void registerFabric(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent, Value jsCallback) {
@@ -132,8 +152,14 @@ public class EventManager {
     }
 
     public void unregister(RunningScript owner) {
-        listeners.values().forEach(list -> list.removeIf(listener -> listener.owner().equals(owner)));
+        // Unregister MQS events
+        listeners.values().forEach(phaseMap ->
+                phaseMap.values().forEach(list ->
+                        list.removeIf(listener -> listener.owner().equals(owner))
+                )
+        );
 
+        // Unregister Fabric events
         List<FabricListener> ownedListeners = fabricListeners.remove(owner);
         if (ownedListeners != null) {
             for (FabricListener fl : ownedListeners) {
@@ -143,9 +169,9 @@ public class EventManager {
     }
 
     public void unregister(RunningScript owner, Class<? extends Event> eventType) {
-        List<Listener> eventListeners = listeners.get(eventType);
-        if (eventListeners != null) {
-            eventListeners.removeIf(listener -> listener.owner().equals(owner));
+        Map<EventPhase, List<Listener>> phaseMap = listeners.get(eventType);
+        if (phaseMap != null) {
+            phaseMap.values().forEach(list -> list.removeIf(listener -> listener.owner().equals(owner)));
         }
     }
 
@@ -154,9 +180,10 @@ public class EventManager {
     }
 
     public void unregister(RunningScript owner, Class<? extends Event> eventType, Value callback) {
-        List<Listener> eventListeners = listeners.get(eventType);
-        if (eventListeners != null) {
-            eventListeners.remove(new Listener(owner, callback));
+        Map<EventPhase, List<Listener>> phaseMap = listeners.get(eventType);
+        if (phaseMap != null) {
+            Listener toRemove = new Listener(owner, callback);
+            phaseMap.values().forEach(list -> list.remove(toRemove));
         }
     }
 

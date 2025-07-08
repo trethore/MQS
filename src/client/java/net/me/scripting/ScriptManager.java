@@ -38,6 +38,7 @@ public class ScriptManager {
     private ConfigManager configManager;
     private HookManager hookManager;
     private KeybindManager keybindManager;
+    private ScriptingClassResolver classResolver;
 
     public ScriptManager() {
         this.commandApiService = new CommandAPIService();
@@ -50,7 +51,7 @@ public class ScriptManager {
         this.keybindManager = keybindManager;
 
         ensureScriptDirectory();
-        ScriptingClassResolver classResolver = new ScriptingClassResolver();
+        this.classResolver = new ScriptingClassResolver();
         classResolver.init(mappingsManager);
         this.commandApiService.init();
         this.contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, this.eventManager, this.configManager, this.commandApiService, hookManager, keybindManager);
@@ -288,4 +289,9 @@ public class ScriptManager {
     public void clearCurrentScript() {
         currentScriptContext.remove();
     }
+
+    public ScriptingClassResolver getClassResolver() {
+        return classResolver;
+    }
+
 }

@@ -3,6 +3,7 @@ package net.me.scripting.engine;
 import net.me.Main;
 import net.me.event.Event;
 import net.me.event.EventManager;
+import net.me.event.EventPhase;
 import net.me.event.Events;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
@@ -297,14 +298,46 @@ public class ScriptContextFactory {
         }
     }
 
+    private ProxyObject createEventPhaseEnumProxy() {
+        return new ProxyObject() {
+            @Override
+            public Object getMember(String key) {
+                try {
+                    return EventPhase.valueOf(key);
+                } catch (IllegalArgumentException e) {
+                    return null;
+                }
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return Arrays.stream(EventPhase.values()).map(Enum::name).toArray(String[]::new);
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return Arrays.stream(EventPhase.values()).anyMatch(e -> e.name().equals(key));
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify the EventPhase enum object.");
+            }
+        };
+    }
+
     private ProxyObject createEventManagerProxy() {
         return new ProxyObject() {
             private final ProxyObject eventsEnumProxy = createEventsEnumProxy();
+            private final ProxyObject eventPhaseEnumProxy = createEventPhaseEnumProxy();
 
             @Override
             public Object getMember(String key) {
                 if ("Events".equals(key)) {
                     return eventsEnumProxy;
+                }
+                if ("Phase".equals(key)) {
+                    return eventPhaseEnumProxy;
                 }
 
                 return (ProxyExecutable) args -> {
@@ -314,17 +347,37 @@ public class ScriptContextFactory {
                     }
 
                     if ("register".equals(key)) {
-                        if (args.length != 2 || !args[1].canExecute()) {
-                            throw new IllegalArgumentException("Usage: EventManager.register(EventType, callbackFunction)");
+                        if (args.length < 2 || args.length > 3) {
+                            throw new IllegalArgumentException("Usage: EventManager.register(EventType, [Phase], callbackFunction)");
                         }
-                        Object eventTarget = resolveEventTarget(args[0]);
-                        Value callback = args[1];
+
+                        Object eventTarget;
+                        EventPhase phase;
+                        Value callback;
+
+                        if (args.length == 2) {
+                            eventTarget = resolveEventTarget(args[0]);
+                            phase = EventPhase.POST;
+                            callback = args[1];
+                            if (!callback.canExecute())
+                                throw new IllegalArgumentException("Callback must be a function.");
+                        } else {
+                            eventTarget = resolveEventTarget(args[0]);
+                            Object phaseObj = args[1].isHostObject() ? args[1].asHostObject() : null;
+                            if (!(phaseObj instanceof EventPhase)) {
+                                throw new IllegalArgumentException("Second argument must be a valid phase from EventManager.Phase (e.g., PRE, MODIFY, POST).");
+                            }
+                            phase = (EventPhase) phaseObj;
+                            callback = args[2];
+                            if (!callback.canExecute())
+                                throw new IllegalArgumentException("Callback must be a function.");
+                        }
 
                         switch (eventTarget) {
-                            case Events eventEnum -> eventManager.register(owner, eventEnum, callback);
+                            case Events eventEnum -> eventManager.register(owner, eventEnum, phase, callback);
                             case Class<?> cls when Event.class.isAssignableFrom(cls) ->
                                 //noinspection unchecked
-                                    eventManager.register(owner, (Class<? extends Event>) cls, callback);
+                                    eventManager.register(owner, (Class<? extends Event>) cls, phase, callback);
                             case net.fabricmc.fabric.api.event.Event<?> fabricEvent ->
                                     eventManager.registerFabric(owner, fabricEvent, callback);
                             case null, default ->
@@ -396,12 +449,12 @@ public class ScriptContextFactory {
 
             @Override
             public Object getMemberKeys() {
-                return new String[]{"register", "unregister", "Events"};
+                return new String[]{"register", "unregister", "Events", "Phase"};
             }
 
             @Override
             public boolean hasMember(String key) {
-                return "register".equals(key) || "unregister".equals(key) || "Events".equals(key);
+                return "register".equals(key) || "unregister".equals(key) || "Events".equals(key) || "Phase".equals(key);
             }
 
             @Override

@@ -67,6 +67,10 @@ public class Main implements ClientModInitializer {
         return keybindManager;
     }
 
+    public ScriptManager getScriptManager() {
+        return scriptManager;
+    }
+
     @Override
     public void onInitializeClient() {
         instance = this;

@@ -16,6 +16,6 @@ public class EndClientTickEvent extends Event {
     }
 
     public Events getType() {
-        return Events.StartClientTickEvent;
+        return Events.EndClientTickEvent;
     }
 }

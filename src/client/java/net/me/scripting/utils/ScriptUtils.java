@@ -2,6 +2,7 @@
 package net.me.scripting.utils;
 
 import net.me.Main;
+import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
@@ -102,20 +103,27 @@ public final class ScriptUtils {
     }
 
     public static Object wrapReturn(Object o) {
-        if (o == null || o instanceof String || o instanceof Number || o instanceof Boolean) return o;
-
-        MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
-
-        if (mappingsManager == null || !mappingsManager.isReady()) {
-            return Value.asValue(o);
+        if (o == null || o instanceof String || o instanceof Number || o instanceof Boolean) {
+            return o;
         }
 
+        MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
+        if (mappingsManager == null || !mappingsManager.isReady()) {
+            return o;
+        }
+
+        ScriptingClassResolver classResolver = Main.getInstance().getScriptManager().getClassResolver();
         Class<?> c = o.getClass();
+
+        if (!classResolver.isClassInMc(c.getName())) {
+            return o;
+        }
 
         MappingUtils.ClassMappings cm = MappingUtils.combineMappings(c,
                 mappingsManager.getRuntimeToYarnClassMap(),
                 mappingsManager.getMethodMap(),
                 mappingsManager.getFieldMap());
+
         return new JsObjectWrapper(o, c, cm.methods(), cm.fields());
     }
 }
