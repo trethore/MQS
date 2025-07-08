@@ -28,7 +28,7 @@
 3.  **Place** both `.jar` files into your `.minecraft/mods` folder.
 4.  **Launch** the game!
 
-For detailed instructions, see the **[[Installation Guide|wiki/user/Installation]]** in our wiki.
+For detailed instructions, see the **[Installation Guide](https://github.com/trethore/MQS/wiki/Installation)** in our wiki.
 
 ## Documentation
 
