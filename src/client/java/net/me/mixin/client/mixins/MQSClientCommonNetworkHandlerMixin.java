@@ -27,6 +27,7 @@ public class MQSClientCommonNetworkHandlerMixin {
         } else {
             currentPacketEvent.set(event);
         }
+        ci.
     }
 
     @ModifyVariable(method = "sendPacket", at = @At("HEAD"), argsOnly = true)

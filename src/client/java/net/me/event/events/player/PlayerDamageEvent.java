@@ -3,22 +3,15 @@ package net.me.event.events.player;
 import net.me.event.Event;
 import net.me.event.Events;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.server.world.ServerWorld;
 
 @SuppressWarnings("unused")
 public class PlayerDamageEvent extends Event {
-    private final ServerWorld wold;
     private DamageSource source;
     private float amount;
 
-    public PlayerDamageEvent(ServerWorld wold, DamageSource source, float amount) {
-        this.wold = wold;
+    public PlayerDamageEvent( DamageSource source, float amount) {
         this.source = source;
         this.amount = amount;
-    }
-
-    public ServerWorld getWorld() {
-        return wold;
     }
 
     public DamageSource getSource() {

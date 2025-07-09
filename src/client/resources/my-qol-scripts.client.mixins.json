@@ -2,17 +2,6 @@
   "required": true,
   "package": "net.me.mixin",
   "compatibilityLevel": "JAVA_17",
-  "mixins": [
-    "client.mixins.MQSClientCommonNetworkHandlerMixin",
-    "client.mixins.MQSClientConnectionMixin",
-    "client.mixins.MQSHudMixin",
-    "client.mixins.MQSLivingEnityMixin",
-    "client.mixins.MQSMinecraftClientMixin",
-    "fabric.event.ArrayBackedEventAccessor",
-    "fabric.event.EventPhaseDataAccessor",
-    "keybinds.MQSKeyboardMixin",
-    "keybinds.MQSMouseMixin"
-  ],
   "client": [
     "client.accessors.CommandNodeAccessor",
     "client.mixins.MQSChatHudMixin",
@@ -22,7 +11,16 @@
     "client.mixins.MQSEntityRendererMixin",
     "client.mixins.MQSGameRendererMixin",
     "client.mixins.MQSScreenMixin",
-    "client.mixins.MQSSoundSystemMixin"
+    "client.mixins.MQSSoundSystemMixin",
+    "client.mixins.MQSClientCommonNetworkHandlerMixin",
+    "client.mixins.MQSClientConnectionMixin",
+    "client.mixins.MQSDamageTrackerMixin",
+    "client.mixins.MQSHudMixin",
+    "client.mixins.MQSMinecraftClientMixin",
+    "fabric.event.ArrayBackedEventAccessor",
+    "fabric.event.EventPhaseDataAccessor",
+    "keybinds.MQSKeyboardMixin",
+    "keybinds.MQSMouseMixin"
   ],
   "injectors": {
     "defaultRequire": 1

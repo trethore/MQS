@@ -11,10 +11,13 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.commands.CommandsAPI;
+import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
+import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.keybinds.KeybindAPI;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
+import net.me.scripting.wrappers.JsObjectWrapper;
 import net.me.scripting.wrappers.LazyJsClassHolder;
 import net.me.scripting.wrappers.LazyPackageProxy;
 import net.me.utils.*;
@@ -88,10 +91,29 @@ public class ScriptContextFactory {
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
         Main.LOGGER.info("Creating new script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
-
+        HostAccess hostAccess = HostAccess.newBuilder(HostAccess.ALL)
+                .targetTypeMapping(
+                        JsObjectWrapper.class,
+                        Object.class,
+                        (v) -> v.getJavaInstance() != null,
+                        JsObjectWrapper::getJavaInstance
+                )
+                .targetTypeMapping(
+                        ExtendedInstanceProxy.class,
+                        Object.class,
+                        (v) -> v.getBaseInstance() != null,
+                        ExtendedInstanceProxy::getBaseInstance
+                )
+                .targetTypeMapping(
+                        MappedInstanceProxy.class,
+                        Object.class,
+                        (v) -> v.getInstance() != null,
+                        MappedInstanceProxy::getInstance
+                )
+                .build();
         Context newContext = Context.newBuilder("js")
                 .engine(sharedEngine)
-                .allowHostAccess(HostAccess.ALL)
+                .allowHostAccess(hostAccess)
                 .allowHostClassLookup(classResolver::isClassAllowed)
                 .option("js.ecmascript-version", "2024")
                 .option("js.esm-eval-returns-exports", "true")
