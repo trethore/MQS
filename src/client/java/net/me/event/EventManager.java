@@ -65,29 +65,43 @@ public class EventManager {
 
     public void post(Event event) {
         Map<EventPhase, List<Listener>> phaseListeners = listeners.get(event.getClass());
-        if (phaseListeners == null) {
+        if (phaseListeners == null || phaseListeners.isEmpty()) {
             return;
         }
 
-        for (EventPhase phase : EventPhase.values()) {
-            List<Listener> eventListeners = phaseListeners.get(phase);
-            if (eventListeners != null) {
-                for (Listener listener : eventListeners) {
-                    RunningScript previousScript = scriptManager.getCurrentScript();
-                    scriptManager.setCurrentScript(listener.owner());
-                    try {
-                        listener.callback().execute(event);
-                    } catch (Exception e) {
-                        LOGGER.error("Error executing event listener for {} in script '{}' during phase {}",
-                                event.getClass().getSimpleName(), listener.owner().getName(), phase, e);
-                    } finally {
-                        scriptManager.setCurrentScript(previousScript);
-                    }
+        List<Listener> preListeners = phaseListeners.get(EventPhase.PRE);
+        if (preListeners != null) {
+            for (Listener listener : preListeners) {
+                RunningScript previousScript = scriptManager.getCurrentScript();
+                scriptManager.setCurrentScript(listener.owner());
+                try {
+                    listener.callback().execute(event);
+                } catch (Exception e) {
+                    LOGGER.error("Error executing event listener for {} in script '{}' during phase {}",
+                            event.getClass().getSimpleName(), listener.owner().getName(), EventPhase.PRE, e);
+                } finally {
+                    scriptManager.setCurrentScript(previousScript);
                 }
             }
+        }
 
-            if (phase == EventPhase.PRE && event instanceof CancellableEvent && ((CancellableEvent) event).isCancelled()) {
-                return;
+        if (event instanceof CancellableEvent && ((CancellableEvent) event).isCancelled()) {
+            return;
+        }
+
+        List<Listener> postListeners = phaseListeners.get(EventPhase.POST);
+        if (postListeners != null) {
+            for (Listener listener : postListeners) {
+                RunningScript previousScript = scriptManager.getCurrentScript();
+                scriptManager.setCurrentScript(listener.owner());
+                try {
+                    listener.callback().execute(event);
+                } catch (Exception e) {
+                    LOGGER.error("Error executing event listener for {} in script '{}' during phase {}",
+                            event.getClass().getSimpleName(), listener.owner().getName(), EventPhase.POST, e);
+                } finally {
+                    scriptManager.setCurrentScript(previousScript);
+                }
             }
         }
     }

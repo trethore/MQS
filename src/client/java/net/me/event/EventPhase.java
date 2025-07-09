@@ -2,21 +2,15 @@ package net.me.event;
 
 public enum EventPhase {
     /**
-     * The first phase to run. Primarily used for cancellation checks. Listeners in this
-     * phase should not modify the event's data. If the event is cancelled here,
-     * subsequent phases will not run.
+     * The first phase to run. This phase is primarily intended for cancelling
+     * cancellable events. For non-cancellable events, this phase serves as an
+     * early notification point, running before all POST listeners.
      */
     PRE,
 
     /**
-     * The second phase to run. This is the primary phase for modifying the event's
-     * data, such as changing a packet.
-     */
-    MODIFY,
-
-    /**
-     * The final phase to run. Listeners here can react to the final state of the event
-     * after all cancellations and modifications have occurred.
+     * The final phase to run. Listeners here can react to the final state of an event
+     * after all PRE-phase listeners have run and cancellation checks have occurred.
      */
     POST
 }

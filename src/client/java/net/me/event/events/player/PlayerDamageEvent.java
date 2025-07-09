@@ -9,7 +9,7 @@ public class PlayerDamageEvent extends Event {
     private DamageSource source;
     private float amount;
 
-    public PlayerDamageEvent( DamageSource source, float amount) {
+    public PlayerDamageEvent(DamageSource source, float amount) {
         this.source = source;
         this.amount = amount;
     }
