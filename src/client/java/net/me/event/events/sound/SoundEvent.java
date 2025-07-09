@@ -5,7 +5,7 @@ import net.minecraft.client.sound.SoundInstance;
 
 @SuppressWarnings("unused")
 public abstract class SoundEvent extends CancellableEvent {
-    private SoundInstance soundInstance;
+    private final SoundInstance soundInstance;
 
     public SoundEvent(SoundInstance soundInstance) {
         this.soundInstance = soundInstance;
@@ -15,7 +15,4 @@ public abstract class SoundEvent extends CancellableEvent {
         return soundInstance;
     }
 
-    public void setSoundInstance(SoundInstance soundInstance) {
-        this.soundInstance = soundInstance;
-    }
 }

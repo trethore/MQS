@@ -3,7 +3,7 @@ package net.me.event;
 import net.minecraft.network.packet.Packet;
 
 public abstract class PacketEvent<T extends Packet<?>> extends CancellableEvent {
-    private T packet;
+    private final T packet;
 
     public PacketEvent(T packet) {
         this.packet = packet;
@@ -11,9 +11,5 @@ public abstract class PacketEvent<T extends Packet<?>> extends CancellableEvent 
 
     public T getPacket() {
         return this.packet;
-    }
-
-    public void setPacket(T packet) {
-        this.packet = packet;
     }
 }

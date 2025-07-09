@@ -11,9 +11,9 @@ import org.jetbrains.annotations.Nullable;
 public class ChatMessageReceivedEvent extends CancellableEvent {
     private final MessageSignatureData signature;
     private final MessageIndicator indicator;
-    private Text message;
+    private final Text message;
 
-    public ChatMessageReceivedEvent(Text message, @Nullable MessageSignatureData signature, @Nullable MessageIndicator indicator) {
+    public ChatMessageReceivedEvent(Text message, MessageSignatureData signature, MessageIndicator indicator) {
         this.message = message;
         this.signature = signature;
         this.indicator = indicator;
@@ -21,10 +21,6 @@ public class ChatMessageReceivedEvent extends CancellableEvent {
 
     public Text getMessage() {
         return message;
-    }
-
-    public void setMessage(Text message) {
-        this.message = message;
     }
 
     @Nullable

@@ -9,8 +9,8 @@ import net.minecraft.util.hit.BlockHitResult;
 @SuppressWarnings("unused")
 public class BlockInteractEvent extends CancellableEvent {
     private final PlayerEntity player;
-    private Hand hand;
-    private BlockHitResult hitResult;
+    private final Hand hand;
+    private final BlockHitResult hitResult;
 
     public BlockInteractEvent(PlayerEntity player, Hand hand, BlockHitResult hitResult) {
         this.player = player;
@@ -26,16 +26,8 @@ public class BlockInteractEvent extends CancellableEvent {
         return hand;
     }
 
-    public void setHand(Hand hand) {
-        this.hand = hand;
-    }
-
     public BlockHitResult getHitResult() {
         return hitResult;
-    }
-
-    public void setHitResult(BlockHitResult hitResult) {
-        this.hitResult = hitResult;
     }
 
     @Override

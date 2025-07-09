@@ -9,8 +9,8 @@ import net.minecraft.util.Hand;
 @SuppressWarnings("unused")
 public class ItemUseEvent extends CancellableEvent {
     private final PlayerEntity player;
-    private Hand hand;
-    private ItemStack itemStack;
+    private final Hand hand;
+    private final ItemStack itemStack;
 
     public ItemUseEvent(PlayerEntity player, Hand hand) {
         this.player = player;
@@ -26,16 +26,8 @@ public class ItemUseEvent extends CancellableEvent {
         return hand;
     }
 
-    public void setHand(Hand hand) {
-        this.hand = hand;
-    }
-
     public ItemStack getItemStack() {
         return itemStack;
-    }
-
-    public void setItemStack(ItemStack itemStack) {
-        this.itemStack = itemStack;
     }
 
     @Override

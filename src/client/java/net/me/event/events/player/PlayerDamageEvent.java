@@ -6,8 +6,8 @@ import net.minecraft.entity.damage.DamageSource;
 
 @SuppressWarnings("unused")
 public class PlayerDamageEvent extends Event {
-    private DamageSource source;
-    private float amount;
+    private final DamageSource source;
+    private final float amount;
 
     public PlayerDamageEvent(DamageSource source, float amount) {
         this.source = source;
@@ -18,16 +18,8 @@ public class PlayerDamageEvent extends Event {
         return source;
     }
 
-    public void setSource(DamageSource source) {
-        this.source = source;
-    }
-
     public float getAmount() {
         return amount;
-    }
-
-    public void setAmount(float amount) {
-        this.amount = amount;
     }
 
     @Override

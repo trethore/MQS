@@ -14,10 +14,7 @@ import net.me.event.events.render.EntityRenderEvent;
 import net.me.event.events.render.HudRenderEvent;
 import net.me.event.events.render.NameTagRenderEvent;
 import net.me.event.events.render.WorldRenderEvent;
-import net.me.event.events.screen.ScreenCloseEvent;
-import net.me.event.events.screen.ScreenDisplayedEvent;
-import net.me.event.events.screen.ScreenInitEvent;
-import net.me.event.events.screen.ScreenRemovedEvent;
+import net.me.event.events.screen.*;
 import net.me.event.events.sound.PlaySoundEvent;
 import net.me.event.events.tick.ClientPlayerTickEvent;
 import net.me.event.events.tick.EndClientTickEvent;
@@ -51,6 +48,8 @@ public enum Events {
     ScreenDisplayedEvent(ScreenDisplayedEvent.class),
     ScreenRemovedEvent(ScreenRemovedEvent.class),
     ScreenCloseEvent(ScreenCloseEvent.class),
+    TitleScreenInitEvent(TitleScreenInitEvent.class),
+    DeathScreenInitEvent(DeathScreenInitEvent.class),
 
     // Sound Events
     PlaySoundEvent(PlaySoundEvent.class),

@@ -9,11 +9,11 @@ import net.minecraft.text.Text;
 
 @SuppressWarnings("unused")
 public class NameTagRenderEvent<S extends EntityRenderState> extends CancellableEvent {
-    private S entityState;
-    private MatrixStack matrices;
-    private VertexConsumerProvider vertexConsumers;
-    private int light;
-    private Text text;
+    private final S entityState;
+    private final MatrixStack matrices;
+    private final VertexConsumerProvider vertexConsumers;
+    private final int light;
+    private final Text text;
 
     public NameTagRenderEvent(S entityState, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
         this.entityState = entityState;
@@ -27,40 +27,20 @@ public class NameTagRenderEvent<S extends EntityRenderState> extends Cancellable
         return entityState;
     }
 
-    public void setEntityState(S entityState) {
-        this.entityState = entityState;
-    }
-
     public Text getText() {
         return text;
-    }
-
-    public void setText(Text text) {
-        this.text = text;
     }
 
     public MatrixStack getMatrices() {
         return matrices;
     }
 
-    public void setMatrices(MatrixStack matrices) {
-        this.matrices = matrices;
-    }
-
     public VertexConsumerProvider getVertexConsumers() {
         return vertexConsumers;
     }
 
-    public void setVertexConsumers(VertexConsumerProvider vertexConsumers) {
-        this.vertexConsumers = vertexConsumers;
-    }
-
     public int getLight() {
         return light;
-    }
-
-    public void setLight(int light) {
-        this.light = light;
     }
 
     @Override

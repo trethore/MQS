@@ -9,8 +9,8 @@ import net.minecraft.util.Hand;
 @SuppressWarnings("unused")
 public class PlayerInteractEntityEvent extends CancellableEvent {
     private final PlayerEntity player;
-    private Entity target;
-    private Hand hand;
+    private final Entity target;
+    private final Hand hand;
 
     public PlayerInteractEntityEvent(PlayerEntity player, Entity target, Hand hand) {
         this.player = player;
@@ -26,16 +26,8 @@ public class PlayerInteractEntityEvent extends CancellableEvent {
         return target;
     }
 
-    public void setTarget(Entity target) {
-        this.target = target;
-    }
-
     public Hand getHand() {
         return hand;
-    }
-
-    public void setHand(Hand hand) {
-        this.hand = hand;
     }
 
     @Override
