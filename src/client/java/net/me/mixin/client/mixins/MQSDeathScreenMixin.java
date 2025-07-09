@@ -1,7 +1,7 @@
 package net.me.mixin.client.mixins;
 
 import net.me.Main;
-import net.me.event.events.screen.DeathScreenInitEvent;
+import net.me.event.events.screen.deathscreen.DeathScreenInitEvent;
 import net.minecraft.client.gui.screen.DeathScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,6 +14,6 @@ public class MQSDeathScreenMixin {
 
     @Inject(at = @At("TAIL"), method = "init()V")
     private void onInit(CallbackInfo ci) {
-        Main.getInstance().getEventManager().post(new DeathScreenInitEvent((DeathScreen)(Object)this));
+        Main.getInstance().getEventManager().post(new DeathScreenInitEvent((DeathScreen) (Object) this));
     }
 }

@@ -5,7 +5,7 @@ import net.minecraft.util.Formatting;
 
 @SuppressWarnings("unused")
 public final class ChatUtils {
-    public static String TAG = Formatting.GRAY + "[" + Formatting.GREEN + "MQS" + Formatting.GRAY + "] " + Formatting.RESET;
+    public final static String TAG = Formatting.GRAY + "[" + Formatting.GREEN + "MQS" + Formatting.GRAY + "] " + Formatting.RESET;
 
     private ChatUtils() {
     }

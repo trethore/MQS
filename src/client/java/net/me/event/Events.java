@@ -15,6 +15,8 @@ import net.me.event.events.render.HudRenderEvent;
 import net.me.event.events.render.NameTagRenderEvent;
 import net.me.event.events.render.WorldRenderEvent;
 import net.me.event.events.screen.*;
+import net.me.event.events.screen.deathscreen.DeathScreenInitEvent;
+import net.me.event.events.screen.titlescreen.TitleScreenInitEvent;
 import net.me.event.events.sound.PlaySoundEvent;
 import net.me.event.events.tick.ClientPlayerTickEvent;
 import net.me.event.events.tick.EndClientTickEvent;
@@ -44,11 +46,14 @@ public enum Events {
     ChatMessageReceivedEvent(ChatMessageReceivedEvent.class),
 
     // Screen Events
+    ScreenFirstInitEvent(ScreenFirstInitEvent.class),
     ScreenInitEvent(ScreenInitEvent.class),
     ScreenDisplayedEvent(ScreenDisplayedEvent.class),
     ScreenRemovedEvent(ScreenRemovedEvent.class),
     ScreenCloseEvent(ScreenCloseEvent.class),
+    // Title Screen Events
     TitleScreenInitEvent(TitleScreenInitEvent.class),
+    // Death Screen Events
     DeathScreenInitEvent(DeathScreenInitEvent.class),
 
     // Sound Events

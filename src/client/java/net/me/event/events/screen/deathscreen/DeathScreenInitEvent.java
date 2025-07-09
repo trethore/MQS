@@ -1,6 +1,7 @@
-package net.me.event.events.screen;
+package net.me.event.events.screen.deathscreen;
 
 import net.me.event.Events;
+import net.me.event.events.screen.ScreenInitEvent;
 import net.minecraft.client.gui.screen.DeathScreen;
 
 public class DeathScreenInitEvent extends ScreenInitEvent {

@@ -11,6 +11,8 @@
     "client.mixins.MQSEntityRendererMixin",
     "client.mixins.MQSGameRendererMixin",
     "client.mixins.MQSScreenMixin",
+    "client.mixins.MQSTitleScreenMixin",
+    "client.mixins.MQSDeathScreenMixin",
     "client.mixins.MQSSoundSystemMixin",
     "client.mixins.MQSClientCommonNetworkHandlerMixin",
     "client.mixins.MQSClientConnectionMixin",
