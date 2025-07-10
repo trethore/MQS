@@ -182,7 +182,7 @@ public class EventManager {
                 .add(new ScriptedFabricListener(owner, jsCallback));
     }
 
-    public void unregister(RunningScript owner) {
+    public void unregisterAll(RunningScript owner) {
         listeners.values().forEach(phaseMap ->
                 phaseMap.values().forEach(list ->
                         list.removeIf(listener -> listener.owner().equals(owner))
@@ -194,27 +194,32 @@ public class EventManager {
         );
     }
 
-    public void unregister(RunningScript owner, Class<? extends Event> eventType) {
+    public void unregister(RunningScript owner, Class<? extends Event> eventType, EventPhase phase) {
         Map<EventPhase, List<Listener>> phaseMap = listeners.get(eventType);
         if (phaseMap != null) {
-            phaseMap.values().forEach(list -> list.removeIf(listener -> listener.owner().equals(owner)));
+            List<Listener> list = phaseMap.get(phase);
+            if (list != null) {
+                list.removeIf(listener -> listener.owner().equals(owner));
+            }
         }
     }
 
-    public void unregister(RunningScript owner, Events eventEnum) {
-        unregister(owner, eventEnum.getEventClass());
+    public void unregister(RunningScript owner, Events eventEnum, EventPhase phase) {
+        unregister(owner, eventEnum.getEventClass(), phase);
     }
 
-    public void unregister(RunningScript owner, Class<? extends Event> eventType, Value callback) {
+    public void unregister(RunningScript owner, Class<? extends Event> eventType, EventPhase phase, Value callback) {
         Map<EventPhase, List<Listener>> phaseMap = listeners.get(eventType);
         if (phaseMap != null) {
-            Listener toRemove = new Listener(owner, callback);
-            phaseMap.values().forEach(list -> list.remove(toRemove));
+            List<Listener> list = phaseMap.get(phase);
+            if (list != null) {
+                list.removeIf(listener -> listener.owner().equals(owner) && listener.callback().equals(callback));
+            }
         }
     }
 
-    public void unregister(RunningScript owner, Events eventEnum, Value callback) {
-        unregister(owner, eventEnum.getEventClass(), callback);
+    public void unregister(RunningScript owner, Events eventEnum, EventPhase phase, Value callback) {
+        unregister(owner, eventEnum.getEventClass(), phase, callback);
     }
 
     public void unregister(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
@@ -229,6 +234,27 @@ public class EventManager {
         if (listeners != null) {
             listeners.removeIf(listener -> listener.owner().equals(owner) && listener.jsCallback().equals(callback));
         }
+    }
+    public void unregister(RunningScript owner, Class<? extends Event> eventType) {
+        Map<EventPhase, List<Listener>> phaseMap = listeners.get(eventType);
+        if (phaseMap != null) {
+            phaseMap.values().forEach(list -> list.removeIf(listener -> listener.owner().equals(owner)));
+        }
+    }
+
+    public void unregister(RunningScript owner, Events eventEnum) {
+        unregister(owner, eventEnum.getEventClass());
+    }
+
+    public void unregister(RunningScript owner, Class<? extends Event> eventType, Value callback) {
+        Map<EventPhase, List<Listener>> phaseMap = listeners.get(eventType);
+        if (phaseMap != null) {
+            phaseMap.values().forEach(list -> list.removeIf(listener -> listener.owner().equals(owner) && listener.callback().equals(callback)));
+        }
+    }
+
+    public void unregister(RunningScript owner, Events eventEnum, Value callback) {
+        unregister(owner, eventEnum.getEventClass(), callback);
     }
 
     private record Listener(RunningScript owner, Value callback) {

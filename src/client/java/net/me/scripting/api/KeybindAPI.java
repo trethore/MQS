@@ -1,4 +1,4 @@
-package net.me.scripting.keybinds;
+package net.me.scripting.api;
 
 import net.me.keybinds.KeybindManager;
 import net.me.keybinds.Keys;

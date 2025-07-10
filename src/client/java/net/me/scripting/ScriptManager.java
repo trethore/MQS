@@ -253,9 +253,9 @@ public class ScriptManager {
                 script.onDisable();
                 configManager.setEnabledState(scriptId, false);
             } finally {
-                eventManager.unregister(script);
+                eventManager.unregisterAll(script);
                 commandApiService.unregisterAllFor(script);
-                hookManager.unhookAll(script);
+                hookManager.unhookAllForScript(script);
                 configManager.saveConfig(script);
                 configManager.unloadConfig(script);
                 keybindManager.unregister(script);

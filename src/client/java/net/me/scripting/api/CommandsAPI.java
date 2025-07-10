@@ -1,7 +1,10 @@
-package net.me.scripting.commands;
+package net.me.scripting.api;
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.commands.CommandAPIService;
+import net.me.scripting.commands.CommandBuilder;
+import net.me.scripting.commands.ScriptArgumentType;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
