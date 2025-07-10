@@ -166,14 +166,12 @@ public class EventManager {
     }
 
     public void unregister(RunningScript owner) {
-        // Unregister MQS events
         listeners.values().forEach(phaseMap ->
                 phaseMap.values().forEach(list ->
                         list.removeIf(listener -> listener.owner().equals(owner))
                 )
         );
 
-        // Unregister Fabric events
         List<FabricListener> ownedListeners = fabricListeners.remove(owner);
         if (ownedListeners != null) {
             for (FabricListener fl : ownedListeners) {

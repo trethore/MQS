@@ -105,7 +105,6 @@ public class ConsoleScreen extends MQSScreen {
             return;
         }
 
-        // A clear operation results in fewer messages than lastMessageCount.
         if (allMessages.size() < lastMessageCount) {
             rebuildDisplayLines();
             return;

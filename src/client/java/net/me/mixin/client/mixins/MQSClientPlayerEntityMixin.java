@@ -1,8 +1,11 @@
 package net.me.mixin.client.mixins;
 
 import net.me.Main;
+import net.me.event.events.player.PlayerMoveEvent;
 import net.me.event.events.tick.ClientPlayerTickEvent;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.MovementType;
+import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,5 +19,16 @@ public abstract class MQSClientPlayerEntityMixin {
         ClientPlayerEntity player = (ClientPlayerEntity) (Object) this;
         ClientPlayerTickEvent event = new ClientPlayerTickEvent(player);
         Main.getInstance().getEventManager().post(event);
+    }
+
+    @Inject(method = "move", at = @At("HEAD"), cancellable = true)
+    private void onMove(MovementType type, Vec3d movement, CallbackInfo ci) {
+        ClientPlayerEntity player = (ClientPlayerEntity) (Object) this;
+        PlayerMoveEvent event = new PlayerMoveEvent(player, type, movement);
+        Main.getInstance().getEventManager().post(event);
+
+        if (event.isCancelled()) {
+            ci.cancel();
+        }
     }
 }

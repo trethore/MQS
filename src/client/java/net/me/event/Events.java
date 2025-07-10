@@ -6,10 +6,7 @@ import net.me.event.events.interact.BlockInteractEvent;
 import net.me.event.events.interact.ItemUseEvent;
 import net.me.event.events.packet.ClientPacketInputEvent;
 import net.me.event.events.packet.ClientPacketOutputEvent;
-import net.me.event.events.player.PlayerAttackEntityEvent;
-import net.me.event.events.player.PlayerDamageEvent;
-import net.me.event.events.player.PlayerInteractEntityEvent;
-import net.me.event.events.player.PlayerRespawnEvent;
+import net.me.event.events.player.*;
 import net.me.event.events.render.EntityRenderEvent;
 import net.me.event.events.render.HudRenderEvent;
 import net.me.event.events.render.NameTagRenderEvent;
@@ -23,6 +20,8 @@ import net.me.event.events.tick.EndClientTickEvent;
 import net.me.event.events.tick.StartClientTickEvent;
 import net.me.event.events.title.SubTitleEvent;
 import net.me.event.events.title.TitleEvent;
+import net.me.event.events.world.EntityAddedEvent;
+import net.me.event.events.world.EntityRemovedEvent;
 import net.me.event.events.world.WorldChangeEvent;
 
 public enum Events {
@@ -38,13 +37,15 @@ public enum Events {
     PlayerInteractEntityEvent(PlayerInteractEntityEvent.class),
     PlayerDamageEvent(PlayerDamageEvent.class),
     PlayerRespawnEvent(PlayerRespawnEvent.class),
+    PlayerMoveEvent(PlayerMoveEvent.class),
 
     // World Interaction Events
     BlockInteractEvent(BlockInteractEvent.class),
     ItemUseEvent(ItemUseEvent.class),
     WorldChangeEvent(WorldChangeEvent.class),
     ChatMessageReceivedEvent(ChatMessageReceivedEvent.class),
-
+    EntityAddedEvent(EntityAddedEvent.class),            // <-- ADD THIS
+    EntityRemovedEvent(EntityRemovedEvent.class),
     // Screen Events
     ScreenFirstInitEvent(ScreenFirstInitEvent.class),
     ScreenInitEvent(ScreenInitEvent.class),

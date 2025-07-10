@@ -5,6 +5,7 @@
   "client": [
     "client.accessors.CommandNodeAccessor",
     "client.mixins.MQSChatHudMixin",
+    "client.mixins.MQSClientWorldMixin",
     "client.mixins.MQSClientPlayerEntityMixin",
     "client.mixins.MQSClientPlayerInteractionManagerMixin",
     "client.mixins.MQSClientPlayNetworkHandlerMixin",

@@ -39,7 +39,9 @@ public class MQSClientPlayNetworkHandlerMixin {
 
     @Inject(method = "onPlayerRespawn", at = @At("HEAD"))
     private void onPlayerRespawn(PlayerRespawnS2CPacket packet, CallbackInfo ci) {
-        PlayerRespawnEvent event = new PlayerRespawnEvent(packet, McUtils.getPlayer().orElse(null));
-        Main.getInstance().getEventManager().post(event);
+        McUtils.getPlayer().ifPresent(player -> {
+            PlayerRespawnEvent event = new PlayerRespawnEvent(packet, player);
+            Main.getInstance().getEventManager().post(event);
+        });
     }
 }

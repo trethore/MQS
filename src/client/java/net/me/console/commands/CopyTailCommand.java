@@ -46,7 +46,7 @@ public class CopyTailCommand extends ConsoleCommand {
             cm.logInfo("No previous messages to copy.");
             return;
         }
-        // ignore the command itself
+
         List<ConsoleMessage> messagesToCopy = allMessages.subList(0, allMessages.size() - 1);
 
         int startIndex = Math.max(0, messagesToCopy.size() - numberOfLines);
