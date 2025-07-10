@@ -249,9 +249,10 @@ public class ScriptContextFactory {
                     }
 
                     if ("unhook".equals(key)) {
-                        if (args.length != 2 || !args[1].isString()) {
-                            throw new IllegalArgumentException("Usage: HookManager.unhook(TargetClass, 'methodName')");
+                        if (args.length < 2 || args.length > 3 || !args[1].isString()) {
+                            throw new IllegalArgumentException("Usage: HookManager.unhook(TargetClass, 'methodName', [options])");
                         }
+
                         Object unwrappedArg = ScriptUtils.unwrapReceiver(args[0]);
                         Class<?> targetClass = switch (unwrappedArg) {
                             case JsClassWrapper wrapper -> wrapper.getTargetClass();
@@ -261,7 +262,16 @@ public class ScriptContextFactory {
                                     throw new IllegalArgumentException("First argument must be a class (e.g. from importClass).");
                         };
                         String yarnMethodName = args[1].asString();
-                        hookManager.unhook(owner, targetClass, yarnMethodName);
+
+                        Integer argCount = null;
+                        if (args.length == 3 && args[2] != null && args[2].hasMembers()) {
+                            Value optionsValue = args[2];
+                            if (optionsValue.hasMember("args") && optionsValue.getMember("args").isNumber()) {
+                                argCount = optionsValue.getMember("args").asInt();
+                            }
+                        }
+
+                        hookManager.unhook(owner, targetClass, yarnMethodName, argCount);
                         return null;
                     }
 
@@ -387,7 +397,7 @@ public class ScriptContextFactory {
                             eventTarget = resolveEventTarget(args[0]);
                             Object phaseObj = args[1].isHostObject() ? args[1].asHostObject() : null;
                             if (!(phaseObj instanceof EventPhase)) {
-                                throw new IllegalArgumentException("Second argument must be a valid phase from EventManager.Phase (e.g., PRE, MODIFY, POST).");
+                                throw new IllegalArgumentException("Second argument must be a valid phase from EventManager.Phase (e.g., PRE, POST).");
                             }
                             phase = (EventPhase) phaseObj;
                             callback = args[2];

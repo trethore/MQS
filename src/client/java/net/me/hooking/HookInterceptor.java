@@ -13,7 +13,10 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Method;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -21,18 +24,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class HookInterceptor {
 
     public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
-    public static final ThreadLocal<AdviceContext> adviceContext = new ThreadLocal<>();
-    private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+    public static final ThreadLocal<Deque<AdviceContext>> adviceContextStack = ThreadLocal.withInitial(ArrayDeque::new);
+    public static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
 
     public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
         HOOKS.computeIfAbsent(hookId, k -> new CopyOnWriteArrayList<>())
                 .addFirst(new HookData(jsCallback, owner, scriptManager, argCount));
     }
 
-    public static void unregister(String hookId, RunningScript owner) {
+    public static void unregister(String hookId, RunningScript owner, Integer argCount) {
         CopyOnWriteArrayList<HookData> hookList = HOOKS.get(hookId);
         if (hookList != null) {
-            boolean removed = hookList.removeIf(data -> data.owner().equals(owner));
+            boolean removed = hookList.removeIf(data -> data.owner().equals(owner) && Objects.equals(data.argCount(), argCount));
             if (removed) {
                 Main.LOGGER.info("Unregistered hook owned by '{}': {}", owner.getName(), hookId);
             }
@@ -71,6 +74,8 @@ public class HookInterceptor {
             return false;
         }
 
+        adviceContextStack.get().push(new AdviceContext());
+
         MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
         HookContext hookContext = new HookContext(thiz, method, STACK_WALKER, mappingsManager);
 
@@ -81,11 +86,15 @@ public class HookInterceptor {
             for (int i = 0; i < args.length; i++) {
                 initialChainArgs[i] = Value.asValue(args[i]);
             }
-            Object raw = nextInChain.execute(initialChainArgs);
-            Value result = (Value) raw;
+            Value result = (Value) nextInChain.execute(initialChainArgs);
 
-            AdviceContext context = adviceContext.get();
-            if (context != null && context.shouldExecuteOriginal()) {
+            AdviceContext context = adviceContextStack.get().peek();
+            if (context == null) {
+                return false;
+            }
+            context.setScriptReturnValue(result);
+
+            if (context.shouldExecuteOriginal()) {
                 Value[] newArgs = context.modifiedArgs();
                 if (newArgs != null && newArgs.length == args.length) {
                     Class<?>[] paramTypes = method.getParameterTypes();
@@ -96,34 +105,32 @@ public class HookInterceptor {
                         )[0];
                     }
                 }
-                adviceContext.set(new AdviceContext(true, null, null));
-                return false;
-            } else {
-                boolean hasReturnValue = method.getReturnType() != void.class
-                        && method.getReturnType() != Void.class;
-                if (hasReturnValue) {
-                    Object unwrapped = ScriptUtils.unwrapArgs(
-                            new Value[]{result},
-                            new Class<?>[]{method.getReturnType()}
-                    )[0];
-                    adviceContext.set(new AdviceContext(false, unwrapped, null));
-                } else {
-                    adviceContext.set(new AdviceContext(false, null, null));
-                }
-                return true;
             }
+
+            return !context.shouldExecuteOriginal();
+
         } catch (Exception e) {
             Main.LOGGER.error("JS hook chain error in {}#{}",
                     method.getDeclaringClass().getSimpleName(),
                     method.getName(), e);
-            adviceContext.set(new AdviceContext(true, null, null));
+            AdviceContext context = adviceContextStack.get().peek();
+            if (context != null) {
+                context.setShouldExecuteOriginal(true);
+            }
             return false;
         }
     }
 
     public static @NotNull ProxyExecutable buildChain(HookContext hookContext, CopyOnWriteArrayList<HookData> hookList) {
-        ProxyExecutable nextInChain = passedArgs -> {
-            adviceContext.set(new AdviceContext(true, null, passedArgs));
+
+        ProxyExecutable nextInChain = passedArgs1 -> {
+            Deque<AdviceContext> stack = adviceContextStack.get();
+            if (stack != null && !stack.isEmpty()) {
+                AdviceContext context = stack.peek();
+                context.setShouldExecuteOriginal(true);
+                context.setModifiedArgs(passedArgs1);
+                context.setNextCalled(true);
+            }
             return null;
         };
 
@@ -157,21 +164,67 @@ public class HookInterceptor {
     @SuppressWarnings({"UnusedAssignment", "ParameterCanBeLocal"})
     @Advice.OnMethodExit
     public static void onExit(
+            @Advice.Origin Method method,
             @Advice.Return(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object returnValue
     ) {
-        AdviceContext context = adviceContext.get();
-        if (context == null) {
+        Deque<AdviceContext> stack = adviceContextStack.get();
+        if (stack.isEmpty()) {
             return;
         }
-        if (!context.shouldExecuteOriginal()) {
-            returnValue = context.overriddenReturnValue();
+
+        AdviceContext context = stack.pop();
+
+        if (context.hasScriptReturnValue()) {
+            returnValue = ScriptUtils.unwrapArgs(
+                    new Value[]{context.getScriptReturnValue()},
+                    new Class<?>[]{method.getReturnType()}
+            )[0];
         }
-        adviceContext.remove();
     }
 
     public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
     }
 
-    public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue, Value[] modifiedArgs) {
+    public static class AdviceContext {
+        private boolean shouldExecuteOriginal = false;
+        private boolean isNextCalled = false; // Add this flag
+        private Value scriptReturnValue = null;
+        private Value[] modifiedArgs = null;
+
+        public boolean isNextCalled() {
+            return isNextCalled;
+        }
+
+        public void setNextCalled(boolean nextCalled) {
+            isNextCalled = nextCalled;
+        }
+
+        public boolean shouldExecuteOriginal() {
+            return shouldExecuteOriginal;
+        }
+
+        public void setShouldExecuteOriginal(boolean shouldExecuteOriginal) {
+            this.shouldExecuteOriginal = shouldExecuteOriginal;
+        }
+
+        public boolean hasScriptReturnValue() {
+            return scriptReturnValue != null && !scriptReturnValue.isNull();
+        }
+
+        public Value getScriptReturnValue() {
+            return scriptReturnValue;
+        }
+
+        public void setScriptReturnValue(Value scriptReturnValue) {
+            this.scriptReturnValue = scriptReturnValue;
+        }
+
+        public Value[] modifiedArgs() {
+            return modifiedArgs;
+        }
+
+        public void setModifiedArgs(Value[] modifiedArgs) {
+            this.modifiedArgs = modifiedArgs;
+        }
     }
 }
