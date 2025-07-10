@@ -3,7 +3,10 @@ package net.me.hooking;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.me.Main;
+import net.me.hooking.context.CallerInfo;
+import net.me.hooking.context.HookContext;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Value;
@@ -21,9 +24,9 @@ public class HookInterceptor {
     public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
     public static final ThreadLocal<AdviceContext> adviceContext = new ThreadLocal<>();
 
-    public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
+    public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount, boolean withStackTrace) {
         HOOKS.computeIfAbsent(hookId, k -> new CopyOnWriteArrayList<>())
-                .addFirst(new HookData(jsCallback, owner, scriptManager, argCount));
+                .addFirst(new HookData(jsCallback, owner, scriptManager, argCount, withStackTrace));
     }
 
     public static void unregister(String hookId, RunningScript owner) {
@@ -58,9 +61,13 @@ public class HookInterceptor {
         }
 
         CopyOnWriteArrayList<HookData> filteredHooks = new CopyOnWriteArrayList<>();
+        boolean needsStackTrace = false;
         for (HookData hookData : allHooksForName) {
             if (hookData.argCount() == null || hookData.argCount().equals(args.length)) {
                 filteredHooks.add(hookData);
+                if (hookData.withStackTrace()) {
+                    needsStackTrace = true;
+                }
             }
         }
 
@@ -68,7 +75,18 @@ public class HookInterceptor {
             return false;
         }
 
-        ProxyExecutable nextInChain = buildChain(method, thiz, filteredHooks);
+        CallerInfo caller = null;
+        if (needsStackTrace) {
+            StackTraceElement[] stack = new Throwable().getStackTrace();
+            if (stack.length > 3) {
+                caller = new CallerInfo(stack[3]);
+            }
+        }
+
+        MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
+        HookContext hookContext = new HookContext(thiz, method, caller, mappingsManager);
+
+        ProxyExecutable nextInChain = buildChain(hookContext, filteredHooks);
 
         try {
             Value[] initialChainArgs = new Value[args.length];
@@ -115,7 +133,7 @@ public class HookInterceptor {
         }
     }
 
-    public static @NotNull ProxyExecutable buildChain(Method method, Object thiz, CopyOnWriteArrayList<HookData> hookList) {
+    public static @NotNull ProxyExecutable buildChain(HookContext hookContext, CopyOnWriteArrayList<HookData> hookList) {
         ProxyExecutable nextInChain = passedArgs -> {
             adviceContext.set(new AdviceContext(true, null, passedArgs));
             return null;
@@ -136,8 +154,7 @@ public class HookInterceptor {
                     }
 
                     return data.jsCallback().execute(
-                            ScriptUtils.wrapReturn(thiz),
-                            ScriptUtils.wrapReturn(method),
+                            hookContext,
                             jsArgsArray,
                             data.owner().getContext().asValue(finalNextInChain)
                     );
@@ -164,7 +181,8 @@ public class HookInterceptor {
         adviceContext.remove();
     }
 
-    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
+    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount,
+                           boolean withStackTrace) {
     }
 
     public record AdviceContext(boolean shouldExecuteOriginal, Object overriddenReturnValue, Value[] modifiedArgs) {

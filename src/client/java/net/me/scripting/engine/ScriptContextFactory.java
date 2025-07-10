@@ -213,24 +213,24 @@ public class ScriptContextFactory {
                     if ("hook".equals(key)) {
                         Value targetClassValue;
                         String yarnMethodName;
-                        Integer argCount = null;
                         Value callback;
+                        Value optionsValue = null;
 
                         if (args.length == 3) {
                             if (!args[1].isString() || !args[2].canExecute()) {
-                                throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction)");
+                                throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction, [options])");
                             }
                             targetClassValue = args[0];
                             yarnMethodName = args[1].asString();
                             callback = args[2];
                         } else if (args.length == 4) {
-                            if (!args[1].isString() || !args[2].isNumber() || !args[3].canExecute()) {
-                                throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', argCount, callbackFunction)");
+                            if (!args[1].isString() || !args[2].canExecute()) {
+                                throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction, [options])");
                             }
                             targetClassValue = args[0];
                             yarnMethodName = args[1].asString();
-                            argCount = args[2].asInt();
-                            callback = args[3];
+                            callback = args[2];
+                            optionsValue = args[3];
                         } else {
                             throw new IllegalArgumentException("HookManager.hook requires 3 or 4 arguments.");
                         }
@@ -244,7 +244,7 @@ public class ScriptContextFactory {
                                     throw new IllegalArgumentException("First argument must be a class (e.g. from importClass).");
                         };
 
-                        hookManager.hook(owner, targetClass, yarnMethodName, callback, argCount);
+                        hookManager.hook(owner, targetClass, yarnMethodName, callback, optionsValue);
                         return null;
                     }
 
