@@ -67,7 +67,23 @@ public class KeybindManager {
         processInput(button, action);
     }
 
-    public void register(String name, int defaultKey, boolean repeatable, RunningScript owner, Value action, int debounceTime) {
+    public void register(String name, Value action, RunningScript owner, Value options) {
+        int defaultKey = Keys.UNBOUND.getCode();
+        boolean repeatable = false;
+        int debounceTime = 100;
+
+        if (options != null && options.hasMembers()) {
+            if (options.hasMember("key") && options.getMember("key").isNumber()) {
+                defaultKey = options.getMember("key").asInt();
+            }
+            if (options.hasMember("repeatable") && options.getMember("repeatable").isBoolean()) {
+                repeatable = options.getMember("repeatable").asBoolean();
+            }
+            if (options.hasMember("debounce") && options.getMember("debounce").isNumber()) {
+                debounceTime = options.getMember("debounce").asInt();
+            }
+        }
+
         String uniqueName = owner.getId() + "::" + name;
         if (keybindsByName.containsKey(uniqueName)) {
             Main.LOGGER.warn("Keybind '{}' is already registered for script '{}'. It will be replaced.", name, owner.getName());
@@ -75,7 +91,9 @@ public class KeybindManager {
         }
 
         int finalKey = configManager.getKeybind(owner.getId(), name).orElse(defaultKey);
+
         KeyBinding keyBinding = new KeyBinding(name, finalKey, repeatable, owner, action, debounceTime, scriptManager);
+
         keybindsByName.put(uniqueName, keyBinding);
         if (finalKey >= 0) {
             keybindsByKeycode.computeIfAbsent(finalKey, k -> new CopyOnWriteArrayList<>()).add(keyBinding);

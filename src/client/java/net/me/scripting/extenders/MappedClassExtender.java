@@ -10,6 +10,7 @@ import net.me.scripting.extenders.proxies.SuperProxy;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
@@ -256,17 +257,35 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
     @Override
     public Object getMember(String key) {
-        return "prototype".equals(key) ? baseAdapterConstructor.getMember("prototype") : null;
+        if ("prototype".equals(key)) {
+            return baseAdapterConstructor.getMember("prototype");
+        }
+
+        if ("Symbol(Symbol.hasInstance)".equals(key)) {
+            return (ProxyExecutable) (Value... args) -> {
+                if (args.length != 1) {
+                    return false;
+                }
+                Object instanceToCheck = ScriptUtils.unwrapReceiver(args[0]);
+
+                if (instanceToCheck instanceof ExtendedInstanceProxy proxy) {
+                    return proxy.getOriginalConfig() == this.config;
+                }
+                return false;
+            };
+        }
+
+        return null;
     }
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{"prototype"};
+        return new String[]{"prototype", "Symbol(Symbol.hasInstance)"};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "prototype".equals(key);
+        return "prototype".equals(key) || "Symbol(Symbol.hasInstance)".equals(key);
     }
 
     @Override

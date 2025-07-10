@@ -53,12 +53,21 @@ public class JsObjectWrapper implements ProxyObject {
                 }
             }
             keys.add("_self");
+            keys.add("equals");
             return keys.toArray(new String[0]);
         });
     }
 
     @Override
     public Object getMember(String key) {
+        if ("equals".equals(key)) {
+            return (ProxyExecutable) (Value... args) -> {
+                if (args.length != 1) return false;
+                Object otherRaw = ScriptUtils.unwrapReceiver(args[0]);
+                return this.javaInstance.equals(otherRaw);
+            };
+        }
+
         if ("_self".equals(key)) return this.getJavaInstance();
         if (key.endsWith("$")) return handleField(key.substring(0, key.length() - 1));
         Object mapped = handleMappedMethod(key);
@@ -70,7 +79,7 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public boolean hasMember(String key) {
-        if ("_self".equals(key)) return true;
+        if ("_self".equals(key) || "equals".equals(key)) return true;
         if (key.endsWith("$")) return fields.hasField(instanceClass, key.substring(0, key.length() - 1));
         return methods.hasMapped(key) || MethodLookup.hasDirect(instanceClass, key) || fields.hasField(instanceClass, key);
     }
@@ -82,6 +91,9 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public void putMember(String key, Value value) {
+        if ("equals".equals(key)) {
+            throw new UnsupportedOperationException("Cannot override the built-in 'equals' method.");
+        }
         String fieldName = key;
         boolean isExplicitFieldAccess = false;
         if (key.endsWith("$")) {
@@ -162,5 +174,10 @@ public class JsObjectWrapper implements ProxyObject {
 
     public Object getJavaInstance() {
         return this.javaInstance;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[MQS Wrapper: %s]", this.instanceClass.getName());
     }
 }

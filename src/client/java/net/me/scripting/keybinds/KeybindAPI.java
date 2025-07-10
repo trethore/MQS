@@ -64,16 +64,16 @@ public class KeybindAPI implements ProxyObject {
             RunningScript owner = getCurrentScript();
             switch (key) {
                 case "register": {
-                    if (args.length < 3 || !args[0].isString() || !args[1].isNumber() || !args[2].canExecute()) {
-                        throw new IllegalArgumentException("Usage: KeybindManager.register('name', keyCode, action, isRepeatable = false, debounceMs = 100)");
+                    if (args.length < 2 || !args[0].isString() || !args[1].canExecute()) {
+                        throw new IllegalArgumentException("Usage: KeybindManager.register('name', actionFunction, { key, repeatable, debounce })");
                     }
-                    String name = args[0].asString();
-                    int keyCode = args[1].asInt();
-                    Value action = args[2];
-                    boolean repeatable = args.length > 3 && args[3].isBoolean() && args[3].asBoolean();
-                    int debounceTime = args.length > 4 && args[4].isNumber() ? args[4].asInt() : 100;
 
-                    keybindManager.register(name, keyCode, repeatable, owner, action, debounceTime);
+                    String name = args[0].asString();
+                    Value action = args[1];
+
+                    Value options = (args.length > 2 && args[2] != null && args[2].hasMembers()) ? args[2] : null;
+
+                    keybindManager.register(name, action, owner, options);
                     return null;
                 }
                 case "unregister": {

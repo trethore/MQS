@@ -2,6 +2,7 @@ package net.me.hooking.context;
 
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.HostAccess;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 

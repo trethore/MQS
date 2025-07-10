@@ -49,6 +49,19 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
 
     @Override
     public Object getMember(String key) {
+        if ("Symbol(Symbol.hasInstance)".equals(key)) {
+            return (ProxyExecutable) (Value... args) -> {
+                if (args.length != 1) {
+                    return false;
+                }
+                Object rawInstance = ScriptUtils.unwrapReceiver(args[0]);
+                if (rawInstance == null) {
+                    return false;
+                }
+                return targetClass.isAssignableFrom(rawInstance.getClass());
+            };
+        }
+
         if ("_class".equals(key)) {
             return targetClass;
         }
@@ -78,7 +91,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
 
     @Override
     public boolean hasMember(String key) {
-        if ("_class".equals(key)) return true;
+        if ("_class".equals(key) || "Symbol(Symbol.hasInstance)".equals(key)) return true;
         if (key.endsWith("$")) {
             return yarnToRuntimeFields.containsKey(key.substring(0, key.length() - 1));
         }
@@ -91,6 +104,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     public Object getMemberKeys() {
         Set<String> keys = new LinkedHashSet<>();
         keys.add("_class");
+        keys.add("Symbol(Symbol.hasInstance)");
         keys.addAll(yarnToRuntimeMethods.keySet());
         keys.addAll(yarnToRuntimeFields.keySet());
         yarnToRuntimeFields.keySet().forEach(field -> keys.add(field + "$"));

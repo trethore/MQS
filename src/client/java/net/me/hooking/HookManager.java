@@ -70,14 +70,10 @@ public class HookManager {
 
     public void hook(RunningScript owner, Class<?> targetClass, String yarnMethodName, Value jsCallback, Value options) {
         Integer argCount = null;
-        boolean withStackTrace = false;
 
         if (options != null && options.hasMembers()) {
             if (options.hasMember("args") && options.getMember("args").isNumber()) {
                 argCount = options.getMember("args").asInt();
-            }
-            if (options.hasMember("withStackTrace") && options.getMember("withStackTrace").isBoolean()) {
-                withStackTrace = options.getMember("withStackTrace").asBoolean();
             }
         }
 
@@ -99,7 +95,7 @@ public class HookManager {
             nameToClassMap.put(targetClass.getName(), targetClass);
         }
 
-        HookInterceptor.register(yarnHookId, jsCallback, owner, scriptManager, argCount, withStackTrace);
+        HookInterceptor.register(yarnHookId, jsCallback, owner, scriptManager, argCount);
 
         String[] runtimeNames = resolveRuntimeMethodNames(targetClass, yarnMethodName);
         if (runtimeNames.length == 0) {
@@ -112,7 +108,7 @@ public class HookManager {
 
         for (String runtimeName : runtimeNames) {
             if (!runtimeName.equals(yarnMethodName)) {
-                HookInterceptor.register(generateHookId(targetClass, runtimeName), jsCallback, owner, scriptManager, argCount, withStackTrace);
+                HookInterceptor.register(generateHookId(targetClass, runtimeName), jsCallback, owner, scriptManager, argCount);
             }
         }
 
@@ -121,8 +117,8 @@ public class HookManager {
 
         try {
             instrumentation.retransformClasses(targetClass);
-            Main.LOGGER.info("Successfully requested hook for method '{}' (argCount: {}, withStackTrace: {}) in class '{}' for script '{}'.",
-                    yarnMethodName, (argCount == null ? "any" : argCount), withStackTrace, targetClass.getSimpleName(), owner.getName());
+            Main.LOGGER.info("Successfully requested hook for method '{}' (argCount: {}) in class '{}' for script '{}'.",
+                    yarnMethodName, (argCount == null ? "any" : argCount), targetClass.getSimpleName(), owner.getName());
         } catch (Throwable e) {
             Main.LOGGER.error("Failed to trigger hook for method '{}' in class '{}' for script '{}'. Cleaning up...",
                     yarnMethodName, targetClass.getName(), owner.getName(), e);

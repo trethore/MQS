@@ -19,7 +19,7 @@ public abstract class MQSClientWorldMixin {
 
     @Inject(method = "addEntity", at = @At("TAIL"))
     private void onAddEntity(Entity entity, CallbackInfo info) {
-       Main.getInstance().getEventManager().post(new EntityAddedEvent(entity));
+        Main.getInstance().getEventManager().post(new EntityAddedEvent(entity));
     }
 
     @Inject(method = "removeEntity", at = @At("HEAD"))

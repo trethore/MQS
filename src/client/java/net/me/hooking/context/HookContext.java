@@ -4,24 +4,27 @@ import net.me.Main;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.HostAccess;
+
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
 public class HookContext {
     private final Object instance;
     private final Method method;
-    private final CallerInfo caller;
+    private final StackWalker stackWalker;
     private final MappingsManager mappingsManager;
 
     private String yarnMethodName;
     private String yarnClassName;
 
-    public HookContext(Object instance, Method method, CallerInfo caller, MappingsManager mappingsManager) {
+    public HookContext(Object instance, Method method, StackWalker stackWalker, MappingsManager mappingsManager) {
         this.instance = instance;
         this.method = method;
-        this.caller = caller;
+        this.stackWalker = stackWalker;
         this.mappingsManager = mappingsManager;
     }
 
@@ -31,8 +34,21 @@ public class HookContext {
     }
 
     @HostAccess.Export
+    public List<CallerInfo> getCallers(int depth) {
+        if (depth <= 0) {
+            return Collections.emptyList();
+        }
+        return this.stackWalker.walk(frames -> frames
+                .skip(3)
+                .limit(depth)
+                .map(frame -> new CallerInfo(frame.toStackTraceElement()))
+                .collect(Collectors.toList()));
+    }
+
+    @HostAccess.Export
     public CallerInfo getCaller() {
-        return caller;
+        List<CallerInfo> singleCallerList = getCallers(1);
+        return (singleCallerList != null && !singleCallerList.isEmpty()) ? singleCallerList.getFirst() : null;
     }
 
     @HostAccess.Export

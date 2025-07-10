@@ -4,7 +4,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.event.events.tick.EndClientTickEvent;
 import net.me.event.events.tick.StartClientTickEvent;
 import net.me.mixin.fabric.event.ArrayBackedEventAccessor;
-import net.me.mixin.fabric.event.EventPhaseDataAccessor;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
@@ -13,16 +12,25 @@ import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EventManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(EventManager.class);
     private final Map<Class<? extends Event>, Map<EventPhase, List<Listener>>> listeners = new ConcurrentHashMap<>();
-    private final Map<RunningScript, List<FabricListener>> fabricListeners = new ConcurrentHashMap<>();
     private final ScriptManager scriptManager;
+
+    private final Map<net.fabricmc.fabric.api.event.Event<?>, List<ScriptedFabricListener>> scriptedFabricListeners = new ConcurrentHashMap<>();
+
+    private final Map<net.fabricmc.fabric.api.event.Event<?>, Object> masterFabricListeners = new ConcurrentHashMap<>();
 
     public EventManager(ScriptManager scriptManager) {
         this.scriptManager = scriptManager;
@@ -125,44 +133,53 @@ public class EventManager {
     }
 
     public void registerFabric(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent, Value jsCallback) {
-        Class<?> listenerType = findListenerType(fabricEvent);
-        Method sam = findSingleAbstractMethod(listenerType);
+        masterFabricListeners.computeIfAbsent(fabricEvent, event -> {
+            Class<?> listenerType = findListenerType(event);
+            Method sam = findSingleAbstractMethod(listenerType);
 
-        Object listenerProxy = Proxy.newProxyInstance(
-                EventManager.class.getClassLoader(),
-                new Class<?>[]{listenerType},
-                (proxy, method, args) -> {
-                    if (method.isDefault()) {
-                        return InvocationHandler.invokeDefault(proxy, method, args);
-                    }
-                    if (method.equals(sam)) {
-                        RunningScript previousScript = scriptManager.getCurrentScript();
-                        scriptManager.setCurrentScript(owner);
-                        try {
-                            Object[] wrappedArgs = new Object[args.length];
-                            for (int i = 0; i < args.length; i++) {
-                                wrappedArgs[i] = ScriptUtils.wrapReturn(args[i]);
-                            }
-                            jsCallback.execute(wrappedArgs);
-                        } catch (Exception e) {
-                            LOGGER.error("Error executing Fabric event listener for {} in script '{}'",
-                                    listenerType.getSimpleName(), owner.getName(), e);
-                        } finally {
-                            scriptManager.setCurrentScript(previousScript);
+            Object masterListenerProxy = Proxy.newProxyInstance(
+                    EventManager.class.getClassLoader(),
+                    new Class<?>[]{listenerType},
+                    (proxy, method, args) -> {
+                        if (method.isDefault()) {
+                            return InvocationHandler.invokeDefault(proxy, method, args);
                         }
-                        return getReturnValueFor(sam.getReturnType());
+                        if (method.equals(sam)) {
+                            List<ScriptedFabricListener> listeners = scriptedFabricListeners.get(event);
+                            if (listeners != null) {
+                                for (ScriptedFabricListener scriptedListener : listeners) {
+                                    RunningScript previousScript = scriptManager.getCurrentScript();
+                                    scriptManager.setCurrentScript(scriptedListener.owner());
+                                    try {
+                                        Object[] wrappedArgs = new Object[args.length];
+                                        for (int i = 0; i < args.length; i++) {
+                                            wrappedArgs[i] = ScriptUtils.wrapReturn(args[i]);
+                                        }
+                                        scriptedListener.jsCallback().execute(wrappedArgs);
+                                    } catch (Exception e) {
+                                        LOGGER.error("Error executing Fabric event listener for {} in script '{}'",
+                                                listenerType.getSimpleName(), scriptedListener.owner().getName(), e);
+                                    } finally {
+                                        scriptManager.setCurrentScript(previousScript);
+                                    }
+                                }
+                            }
+                            return getReturnValueFor(sam.getReturnType());
+                        }
+                        if (method.getName().equals("equals")) return proxy == args[0];
+                        if (method.getName().equals("hashCode")) return System.identityHashCode(proxy);
+                        return null;
                     }
-                    if (method.getName().equals("equals")) return proxy == args[0];
-                    if (method.getName().equals("hashCode")) return System.identityHashCode(proxy);
-                    return null;
-                }
-        );
+            );
 
-        //noinspection unchecked,rawtypes
-        ((net.fabricmc.fabric.api.event.Event) fabricEvent).register(listenerProxy);
+            //noinspection unchecked,rawtypes
+            ((net.fabricmc.fabric.api.event.Event) event).register(masterListenerProxy);
+            LOGGER.debug("Registered master listener for Fabric event: {}", listenerType.getName());
+            return masterListenerProxy;
+        });
 
-        fabricListeners.computeIfAbsent(owner, k -> new CopyOnWriteArrayList<>())
-                .add(new FabricListener(fabricEvent, listenerProxy, jsCallback));
+        scriptedFabricListeners.computeIfAbsent(fabricEvent, k -> new CopyOnWriteArrayList<>())
+                .add(new ScriptedFabricListener(owner, jsCallback));
     }
 
     public void unregister(RunningScript owner) {
@@ -172,12 +189,9 @@ public class EventManager {
                 )
         );
 
-        List<FabricListener> ownedListeners = fabricListeners.remove(owner);
-        if (ownedListeners != null) {
-            for (FabricListener fl : ownedListeners) {
-                unregisterFabricListener(fl.event(), fl.listenerProxy());
-            }
-        }
+        scriptedFabricListeners.values().forEach(list ->
+                list.removeIf(listener -> listener.owner().equals(owner))
+        );
     }
 
     public void unregister(RunningScript owner, Class<? extends Event> eventType) {
@@ -204,67 +218,16 @@ public class EventManager {
     }
 
     public void unregister(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-        List<FabricListener> ownedListeners = fabricListeners.get(owner);
-        if (ownedListeners != null) {
-            ownedListeners.removeIf(fl -> {
-                if (fl.event().equals(fabricEvent)) {
-                    unregisterFabricListener(fl.event(), fl.listenerProxy());
-                    return true;
-                }
-                return false;
-            });
+        List<ScriptedFabricListener> listeners = scriptedFabricListeners.get(fabricEvent);
+        if (listeners != null) {
+            listeners.removeIf(listener -> listener.owner().equals(owner));
         }
     }
 
     public void unregister(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent, Value callback) {
-        List<FabricListener> ownedListeners = fabricListeners.get(owner);
-        if (ownedListeners != null) {
-            ownedListeners.removeIf(fl -> {
-                if (fl.event().equals(fabricEvent) && fl.jsCallback().equals(callback)) {
-                    unregisterFabricListener(fl.event(), fl.listenerProxy());
-                    return true;
-                }
-                return false;
-            });
-        }
-    }
-
-    /**
-     * [WARNING]
-     * I hate fabric bc of that why cant we just unregister ??
-     * This method uses reflection and mixin accessors to manually remove a listener.
-     * This will break for sure in future fabric versions :(
-     * But for now this is the best I can do ...
-     */
-    private void unregisterFabricListener(net.fabricmc.fabric.api.event.Event<?> event, Object listener) {
-        if (!event.getClass().getName().equals("net.fabricmc.fabric.impl.base.event.ArrayBackedEvent")) {
-            LOGGER.warn("Cannot unregister from an event that is not an ArrayBackedEvent: {}", event.getClass().getName());
-            return;
-        }
-
-        try {
-            ArrayBackedEventAccessor<?> accessor = (ArrayBackedEventAccessor<?>) event;
-            synchronized (accessor.getLock()) {
-                @SuppressWarnings("unchecked")
-                Map<Identifier, EventPhaseDataAccessor<Object>> phases = (Map<Identifier, EventPhaseDataAccessor<Object>>) accessor.getPhases();
-                EventPhaseDataAccessor<Object> phase = phases.get(net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE);
-
-                if (phase == null || phase.getListeners() == null) return;
-
-                Object[] listeners = phase.getListeners();
-                if (listeners.length == 0) return;
-
-                int initialLength = listeners.length;
-                List<Object> list = new ArrayList<>(Arrays.asList(listeners));
-
-                if (list.remove(listener)) {
-                    Object[] newListeners = list.toArray((Object[]) Array.newInstance(listeners.getClass().getComponentType(), 0));
-                    phase.setListeners(newListeners);
-                    accessor.callRebuildInvoker(initialLength - 1);
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.error("Failed to unregister fabric listener", e);
+        List<ScriptedFabricListener> listeners = scriptedFabricListeners.get(fabricEvent);
+        if (listeners != null) {
+            listeners.removeIf(listener -> listener.owner().equals(owner) && listener.jsCallback().equals(callback));
         }
     }
 
@@ -283,7 +246,6 @@ public class EventManager {
         }
     }
 
-    private record FabricListener(net.fabricmc.fabric.api.event.Event<?> event, Object listenerProxy,
-                                  Value jsCallback) {
+    private record ScriptedFabricListener(RunningScript owner, Value jsCallback) {
     }
 }

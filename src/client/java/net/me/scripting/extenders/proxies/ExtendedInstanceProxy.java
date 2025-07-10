@@ -1,7 +1,9 @@
 package net.me.scripting.extenders.proxies;
 
 import net.me.scripting.config.ExtensionConfig;
+import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.HashSet;
@@ -43,6 +45,14 @@ public class ExtendedInstanceProxy implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
+        if ("equals".equals(key)) {
+            return (ProxyExecutable) (Value... args) -> {
+                if (args.length != 1) return false;
+                Object otherRaw = ScriptUtils.unwrapReceiver(args[0]);
+                return this.baseInstance.equals(otherRaw);
+            };
+        }
+
         if (properties.containsKey(key)) {
             if ("_self".equals(key)) {
                 return baseInstance;
@@ -64,17 +74,20 @@ public class ExtendedInstanceProxy implements ProxyObject {
             String[] javaKeys = (String[]) javaInstanceProxy.getMemberKeys();
             keys.addAll(Set.of(javaKeys));
         }
+        keys.add("equals");
         return keys.toArray(new String[0]);
     }
 
     @Override
     public boolean hasMember(String key) {
-        return properties.containsKey(key) || (javaInstanceProxy != null && javaInstanceProxy.hasMember(key));
+        return properties.containsKey(key)
+                || (javaInstanceProxy != null && javaInstanceProxy.hasMember(key))
+                || "equals".equals(key);
     }
 
     @Override
     public void putMember(String key, Value value) {
-        if ("_self".equals(key) || "_super".equals(key)) {
+        if ("_self".equals(key) || "_super".equals(key) || "equals".equals(key)) {
             throw new UnsupportedOperationException("Cannot modify the " + key + " reference.");
         }
 
@@ -91,5 +104,12 @@ public class ExtendedInstanceProxy implements ProxyObject {
 
     public Map<String, Object> getPropertiesForModification() {
         return this.properties;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[MQS Extended Instance: %s (extends %s)]",
+                this.baseInstance.getClass().getName(),
+                this.getOriginalConfig().extendsClass().yarnName());
     }
 }
