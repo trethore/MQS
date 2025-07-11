@@ -18,6 +18,7 @@
 
 package net.me.scripting.extenders.proxies;
 
+import net.me.scripting.WrapperConstants;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -47,12 +48,12 @@ public class SuperProxy implements ProxyObject {
                 ProxyObject temporaryThis = new ProxyObject() {
                     @Override
                     public Object getMember(String memberKey) {
-                        return "_super".equals(memberKey) ? grandParentSuper : childInstance.getMember(memberKey);
+                        return WrapperConstants.SUPER.equals(memberKey) ? grandParentSuper : childInstance.getMember(memberKey);
                     }
 
                     @Override
                     public boolean hasMember(String memberKey) {
-                        return "_super".equals(memberKey) || childInstance.hasMember(memberKey);
+                        return WrapperConstants.SUPER.equals(memberKey) || childInstance.hasMember(memberKey);
                     }
 
                     @Override

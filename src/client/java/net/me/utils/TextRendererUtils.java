@@ -21,14 +21,12 @@ package net.me.utils;
 import net.me.Main;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.*;
-import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class TextRendererUtils {
-    private final static Identifier FONT_ID = Identifier.of(Main.MOD_ID, "mqsfont.ttf");
     private static TextRenderer customTextRenderer;
 
     public static TextRenderer getCustomTextRenderer() {
@@ -38,12 +36,12 @@ public class TextRendererUtils {
                     float fontSize = 10.0f;
                     float oversample = 8.0f;
 
-                    TrueTypeFontLoader.Loadable loadable = new TrueTypeFontLoader(FONT_ID, fontSize, oversample, TrueTypeFontLoader.Shift.NONE, "").build().orThrow();
+                    TrueTypeFontLoader.Loadable loadable = new TrueTypeFontLoader(AssetIdentifiers.FONT_MQS, fontSize, oversample, TrueTypeFontLoader.Shift.NONE, "").build().orThrow();
                     Font font = loadable.load(mc.getResourceManager());
                     List<Font.FontFilterPair> list = new ArrayList<>();
                     list.add(new Font.FontFilterPair(font, new FontFilterType.FilterMap(Collections.emptyMap())));
 
-                    FontStorage storage = new FontStorage(mc.getTextureManager(), FONT_ID);
+                    FontStorage storage = new FontStorage(mc.getTextureManager(), AssetIdentifiers.FONT_MQS);
                     storage.setFonts(list, Collections.emptySet());
 
                     return new TextRenderer(id -> storage, true);

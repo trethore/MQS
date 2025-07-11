@@ -18,6 +18,7 @@
 
 package net.me.scripting.extenders.proxies;
 
+import net.me.scripting.WrapperConstants;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Value;
@@ -63,7 +64,7 @@ public class ExtendedInstanceProxy implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        if ("_instanceof".equals(key)) {
+        if (WrapperConstants.INSTANCE_OF.equals(key)) {
             return (ProxyExecutable) (Value... args) -> {
                 if (args.length != 1) {
                     throw new IllegalArgumentException("_instanceof(class) requires exactly one argument.");
@@ -92,7 +93,7 @@ public class ExtendedInstanceProxy implements ProxyObject {
                 return rawClass.isInstance(this.baseInstance);
             };
         }
-        if ("equals".equals(key)) {
+        if (WrapperConstants.EQUALS.equals(key)) {
             return (ProxyExecutable) (Value... args) -> {
                 if (args.length != 1) return false;
                 Object otherRaw = ScriptUtils.unwrapReceiver(args[0]);
@@ -101,7 +102,7 @@ public class ExtendedInstanceProxy implements ProxyObject {
         }
 
         if (properties.containsKey(key)) {
-            if ("_self".equals(key)) {
+            if (WrapperConstants.SELF.equals(key)) {
                 return baseInstance;
             }
             return properties.get(key);
@@ -121,8 +122,8 @@ public class ExtendedInstanceProxy implements ProxyObject {
             String[] javaKeys = (String[]) javaInstanceProxy.getMemberKeys();
             keys.addAll(Set.of(javaKeys));
         }
-        keys.add("equals");
-        keys.add("_instanceof");
+        keys.add(WrapperConstants.EQUALS);
+        keys.add(WrapperConstants.INSTANCE_OF);
         return keys.toArray(new String[0]);
     }
 
@@ -130,13 +131,13 @@ public class ExtendedInstanceProxy implements ProxyObject {
     public boolean hasMember(String key) {
         return properties.containsKey(key)
                 || (javaInstanceProxy != null && javaInstanceProxy.hasMember(key))
-                || "equals".equals(key)
-                || "_instanceof".equals(key);
+                || WrapperConstants.EQUALS.equals(key)
+                || WrapperConstants.INSTANCE_OF.equals(key);
     }
 
     @Override
     public void putMember(String key, Value value) {
-        if ("_self".equals(key) || "_super".equals(key) || "equals".equals(key) || "_instanceof".equals(key)) {
+        if (WrapperConstants.SELF.equals(key) || WrapperConstants.SUPER.equals(key) || WrapperConstants.EQUALS.equals(key) || WrapperConstants.INSTANCE_OF.equals(key)) {
             throw new UnsupportedOperationException("Cannot modify the " + key + " reference.");
         }
 

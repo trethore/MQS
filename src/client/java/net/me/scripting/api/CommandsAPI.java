@@ -29,11 +29,13 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Arrays;
+import java.util.Set;
 
 import static net.me.scripting.api.ApiConstants.*;
 
 public class CommandsAPI implements ProxyObject {
 
+    private static final Set<String> MEMBER_KEYS = Set.of(BUILDER, LITERAL, ARGUMENT, REGISTER, UNREGISTER, UNREGISTER_ALL, ARG_TYPE);
     private static final ProxyObject ARG_TYPE_PROXY = createArgTypeProxy();
     private final CommandAPIService service;
     private final ScriptManager scriptManager;
@@ -139,12 +141,12 @@ public class CommandsAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{BUILDER, LITERAL, ARGUMENT, REGISTER, UNREGISTER, UNREGISTER_ALL, ARG_TYPE};
+        return MEMBER_KEYS.toArray(new String[0]);
     }
 
     @Override
     public boolean hasMember(String key) {
-        return BUILDER.equals(key) || LITERAL.equals(key) || ARGUMENT.equals(key) || REGISTER.equals(key) || UNREGISTER.equals(key) || UNREGISTER_ALL.equals(key) || ARG_TYPE.equals(key);
+        return MEMBER_KEYS.contains(key);
     }
 
     @Override

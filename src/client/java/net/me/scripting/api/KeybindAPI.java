@@ -27,11 +27,13 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Arrays;
+import java.util.Set;
 
 import static net.me.scripting.api.ApiConstants.*;
 
 public class KeybindAPI implements ProxyObject {
 
+    private static final Set<String> MEMBER_KEYS = Set.of(REGISTER, UNREGISTER, KEYS);
     private static final ProxyObject KEYS_PROXY = new ProxyObject() {
         @Override
         public Object getMember(String key) {
@@ -112,12 +114,12 @@ public class KeybindAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{REGISTER, UNREGISTER, KEYS};
+        return MEMBER_KEYS.toArray(new String[0]);
     }
 
     @Override
     public boolean hasMember(String key) {
-        return REGISTER.equals(key) || UNREGISTER.equals(key) || KEYS.equalsIgnoreCase(key);
+        return MEMBER_KEYS.contains(key);
     }
 
     @Override

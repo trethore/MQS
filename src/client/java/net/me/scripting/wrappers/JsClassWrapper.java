@@ -20,6 +20,7 @@ package net.me.scripting.wrappers;
 
 import net.me.Main;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.WrapperConstants;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.FastAccessorUtils;
 import net.me.scripting.utils.ReflectionUtils;
@@ -77,11 +78,11 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
 
     @Override
     public Object getMember(String key) {
-        if ("_class".equals(key)) {
+        if (WrapperConstants.CLASS.equals(key)) {
             return targetClass;
         }
 
-        if (key.endsWith("$")) {
+        if (key.endsWith(WrapperConstants.FIELD_SUFFIX)) {
             String fieldName = key.substring(0, key.length() - 1);
             if (yarnToRuntimeFields.containsKey(fieldName)) {
                 return readStaticField(fieldName);
@@ -106,8 +107,8 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
 
     @Override
     public boolean hasMember(String key) {
-        if ("_class".equals(key)) return true;
-        if (key.endsWith("$")) {
+        if (WrapperConstants.CLASS.equals(key)) return true;
+        if (key.endsWith(WrapperConstants.FIELD_SUFFIX)) {
             return yarnToRuntimeFields.containsKey(key.substring(0, key.length() - 1));
         }
         return yarnToRuntimeMethods.containsKey(key)
@@ -118,10 +119,10 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     @Override
     public Object getMemberKeys() {
         Set<String> keys = new LinkedHashSet<>();
-        keys.add("_class");
+        keys.add(WrapperConstants.CLASS);
         keys.addAll(yarnToRuntimeMethods.keySet());
         keys.addAll(yarnToRuntimeFields.keySet());
-        yarnToRuntimeFields.keySet().forEach(field -> keys.add(field + "$"));
+        yarnToRuntimeFields.keySet().forEach(field -> keys.add(field + WrapperConstants.FIELD_SUFFIX));
         for (Method m : targetClass.getMethods()) {
             if (Modifier.isStatic(m.getModifiers())) {
                 keys.add(m.getName());
@@ -134,7 +135,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     public void putMember(String key, Value value) {
         String fieldName = key;
         boolean isExplicitFieldAccess = false;
-        if (key.endsWith("$")) {
+        if (key.endsWith(WrapperConstants.FIELD_SUFFIX)) {
             fieldName = key.substring(0, key.length() - 1);
             isExplicitFieldAccess = true;
         }
@@ -144,7 +145,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
             if (methodConflict && !isExplicitFieldAccess) {
                 throw new UnsupportedOperationException(
                         "Ambiguous write to static member '" + fieldName + "'. A static method with this name exists. " +
-                                "Use the '$' suffix to write to the field directly: " + fieldName + "$"
+                                "Use the '$' suffix to write to the field directly: " + fieldName + WrapperConstants.FIELD_SUFFIX
                 );
             }
             writeStaticField(fieldName, value);

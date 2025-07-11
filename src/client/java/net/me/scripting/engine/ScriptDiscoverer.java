@@ -19,6 +19,7 @@
 package net.me.scripting.engine;
 
 import net.me.Main;
+import net.me.config.ConfigKeys;
 import net.me.scripting.module.ScriptDescriptor;
 
 import java.io.IOException;
@@ -63,15 +64,15 @@ public class ScriptDiscoverer {
                     String content = matcher.group(1);
                     Map<String, String> metadata = parseModuleMetadata(content);
 
-                    String mainClass = metadata.get("main");
-                    String moduleName = metadata.get("name");
+                    String mainClass = metadata.get(ConfigKeys.SCRIPT_META_MAIN);
+                    String moduleName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
 
                     if (mainClass == null || moduleName == null) {
                         Main.LOGGER.warn("Skipping malformed @module in {}: 'main' and 'name' properties are required. Found: {}", path.getFileName(), line);
                         continue;
                     }
 
-                    String version = metadata.getOrDefault("version", "N/A");
+                    String version = metadata.getOrDefault(ConfigKeys.SCRIPT_META_VERSION, "N/A");
                     ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version, mainClass);
 
                     if (availableScripts.containsKey(descriptor.getId())) {

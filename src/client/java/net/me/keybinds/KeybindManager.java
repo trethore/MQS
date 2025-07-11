@@ -20,6 +20,7 @@ package net.me.keybinds;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.Main;
+import net.me.config.ConfigKeys;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
@@ -91,14 +92,14 @@ public class KeybindManager {
         int debounceTime = 100;
 
         if (options != null && options.hasMembers()) {
-            if (options.hasMember("key") && options.getMember("key").isNumber()) {
-                defaultKey = options.getMember("key").asInt();
+            if (options.hasMember(ConfigKeys.KEYBIND_OPT_KEY) && options.getMember(ConfigKeys.KEYBIND_OPT_KEY).isNumber()) {
+                defaultKey = options.getMember(ConfigKeys.KEYBIND_OPT_KEY).asInt();
             }
-            if (options.hasMember("repeatable") && options.getMember("repeatable").isBoolean()) {
-                repeatable = options.getMember("repeatable").asBoolean();
+            if (options.hasMember(ConfigKeys.KEYBIND_OPT_REPEATABLE) && options.getMember(ConfigKeys.KEYBIND_OPT_REPEATABLE).isBoolean()) {
+                repeatable = options.getMember(ConfigKeys.KEYBIND_OPT_REPEATABLE).asBoolean();
             }
-            if (options.hasMember("debounce") && options.getMember("debounce").isNumber()) {
-                debounceTime = options.getMember("debounce").asInt();
+            if (options.hasMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE) && options.getMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE).isNumber()) {
+                debounceTime = options.getMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE).asInt();
             }
         }
 

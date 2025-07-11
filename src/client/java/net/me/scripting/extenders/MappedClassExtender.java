@@ -18,6 +18,7 @@
 
 package net.me.scripting.extenders;
 
+import net.me.scripting.WrapperConstants;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
 import net.me.scripting.engine.ScriptingClassResolver;
@@ -154,11 +155,11 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
         wrapper.setJavaInstanceProxy(javaProxy);
 
-        wrapperProperties.put("_self", baseInstance);
+        wrapperProperties.put(WrapperConstants.SELF, baseInstance);
 
         Value actualGrandParentSuper = (this.parentSuper != null) ? this.parentSuper : context.eval("js", "Java.super").execute(baseInstance);
         Map<String, List<String>> currentMethodMappings = this.config.extendsClass().methodMappings();
-        wrapperProperties.put("_super", new SuperProxy(this.parentOverrides, actualGrandParentSuper, wrapperVal, currentMethodMappings));
+        wrapperProperties.put(WrapperConstants.SUPER, new SuperProxy(this.parentOverrides, actualGrandParentSuper, wrapperVal, currentMethodMappings));
 
         if (this.parentAddons != null) {
             for (String key : this.parentAddons.getMemberKeys()) {
@@ -271,11 +272,11 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
     @Override
     public Object getMember(String key) {
-        if ("prototype".equals(key)) {
-            return baseAdapterConstructor.getMember("prototype");
+        if (WrapperConstants.PROTOTYPE.equals(key)) {
+            return baseAdapterConstructor.getMember(WrapperConstants.PROTOTYPE);
         }
 
-        if ("Symbol(Symbol.hasInstance)".equals(key)) {
+        if (WrapperConstants.HAS_INSTANCE_SYMBOL.equals(key)) {
             return (ProxyExecutable) (Value... args) -> {
                 if (args.length != 1) {
                     return false;
@@ -294,12 +295,12 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{"prototype", "Symbol(Symbol.hasInstance)"};
+        return new String[]{WrapperConstants.PROTOTYPE, WrapperConstants.HAS_INSTANCE_SYMBOL};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "prototype".equals(key) || "Symbol(Symbol.hasInstance)".equals(key);
+        return WrapperConstants.PROTOTYPE.equals(key) || WrapperConstants.HAS_INSTANCE_SYMBOL.equals(key);
     }
 
     @Override

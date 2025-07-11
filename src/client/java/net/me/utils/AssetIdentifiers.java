@@ -1,0 +1,51 @@
+/*
+ * My QOL Scripts - A powerful scripting mod for Minecraft.
+ * Copyright (C) 2025 tytoo
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package net.me.utils;
+
+import net.me.Main;
+import net.minecraft.util.Identifier;
+
+public final class AssetIdentifiers {
+
+    // --- Icons ---
+    public static final Identifier ICON_CLOSE = Identifier.of(Main.MOD_ID, "icons/close.png");
+    public static final Identifier ICON_REFRESH = Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png");
+    public static final Identifier ICON_TERMINAL = Identifier.of(Main.MOD_ID, "icons/square-terminal.png");
+    public static final Identifier ICON_MORE_OPTIONS = Identifier.of(Main.MOD_ID, "icons/ellipsis-vertical.png");
+    public static final Identifier ICON_SETTINGS = Identifier.of(Main.MOD_ID, "icons/settings.png");
+    public static final Identifier ICON_KEYBOARD = Identifier.of(Main.MOD_ID, "icons/keyboard.png");
+    public static final Identifier ICON_VSCODE = Identifier.of(Main.MOD_ID, "icons/app-window.png");
+    public static final Identifier ICON_CREATE_SCRIPT = Identifier.of(Main.MOD_ID, "icons/file-code.png");
+    public static final Identifier ICON_OPEN_FOLDER = Identifier.of(Main.MOD_ID, "icons/file-sliders.png");
+    public static final Identifier ICON_WIKI = Identifier.of(Main.MOD_ID, "icons/cog.png");
+
+
+    // --- Fonts ---
+    public static final Identifier FONT_MQS = Identifier.of(Main.MOD_ID, "mqsfont.ttf");
+
+
+    // --- URLs ---
+    public static final String URL_WIKI = "https://github.com/trethore/MQS/wiki";
+    public static final String URL_GITHUB_API_BASE = "https://api.github.com/repos/";
+    public static final String GITHUB_REPO = "trethore/MQS";
+
+
+    private AssetIdentifiers() {
+    }
+}

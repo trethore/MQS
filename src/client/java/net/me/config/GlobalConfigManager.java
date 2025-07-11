@@ -102,13 +102,13 @@ public class GlobalConfigManager {
     }
 
     private static class ConfigData {
-        @SerializedName("logRedirect")
+        @SerializedName(ConfigKeys.LOG_REDIRECT)
         boolean logRedirect = false;
 
-        @SerializedName("allowAllClasses")
+        @SerializedName(ConfigKeys.ALLOW_ALL_CLASSES)
         boolean allowAllClasses = false;
 
-        @SerializedName("showEnableDisableToast")
+        @SerializedName(ConfigKeys.SHOW_ENABLE_DISABLE_TOAST)
         boolean showEnableDisableToast = true;
     }
 }

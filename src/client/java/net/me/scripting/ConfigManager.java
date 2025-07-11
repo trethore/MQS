@@ -23,6 +23,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import net.me.Main;
+import net.me.config.ConfigKeys;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -39,8 +40,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ConfigManager {
-    private static final String KEYBINDS_KEY = "keybinds";
-    private static final String KEY_ENABLED = "enabled";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
     }.getType();
@@ -91,11 +90,11 @@ public class ConfigManager {
 
     public void setEnabledState(String scriptId, boolean isEnabled) {
         Map<String, Object> config = getConfig(scriptId);
-        config.put(KEY_ENABLED, isEnabled);
+        config.put(ConfigKeys.ENABLED, isEnabled);
     }
 
     public boolean getEnabledState(String scriptId) {
-        Object enabled = getConfig(scriptId).get(KEY_ENABLED);
+        Object enabled = getConfig(scriptId).get(ConfigKeys.ENABLED);
         return enabled instanceof Boolean && (Boolean) enabled;
     }
 
@@ -106,7 +105,7 @@ public class ConfigManager {
     @SuppressWarnings("unchecked")
     public Optional<Integer> getKeybind(String scriptId, String keybindName) {
         Map<String, Object> config = getConfig(scriptId);
-        Object keybindsObj = config.get(KEYBINDS_KEY);
+        Object keybindsObj = config.get(ConfigKeys.KEYBINDS);
 
         if (keybindsObj instanceof Map) {
             Map<String, Object> keybinds = (Map<String, Object>) keybindsObj;
@@ -121,7 +120,7 @@ public class ConfigManager {
     @SuppressWarnings("unchecked")
     public void setKeybind(String scriptId, String keybindName, int keyCode) {
         Map<String, Object> config = getConfig(scriptId);
-        Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(KEYBINDS_KEY, k -> new ConcurrentHashMap<>());
+        Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(ConfigKeys.KEYBINDS, k -> new ConcurrentHashMap<>());
 
         keybinds.put(keybindName, keyCode);
     }
@@ -148,7 +147,7 @@ public class ConfigManager {
         if (isEnabled) {
             shouldBeSaved = true;
         } else {
-            if (configMap.size() > 1 || (configMap.size() == 1 && !configMap.containsKey(KEY_ENABLED))) {
+            if (configMap.size() > 1 || (configMap.size() == 1 && !configMap.containsKey(ConfigKeys.ENABLED))) {
                 shouldBeSaved = true;
             }
         }

@@ -28,10 +28,13 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.Set;
+
 import static net.me.scripting.api.ApiConstants.*;
 
 public class HookAPI implements ProxyObject {
 
+    private static final Set<String> MEMBER_KEYS = Set.of(HOOK, UNHOOK, UNHOOK_ALL);
     private final HookManager hookManager;
     private final ScriptManager scriptManager;
 
@@ -128,6 +131,8 @@ public class HookAPI implements ProxyObject {
                     return null;
                 }
 
+
+
                 default:
                     throw new UnsupportedOperationException("Unsupported HookManager operation: " + key);
             }
@@ -136,12 +141,12 @@ public class HookAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{HOOK, UNHOOK, UNHOOK_ALL};
+        return MEMBER_KEYS.toArray(new String[0]);
     }
 
     @Override
     public boolean hasMember(String key) {
-        return HOOK.equals(key) || UNHOOK.equals(key) || UNHOOK_ALL.equals(key);
+        return MEMBER_KEYS.contains(key);
     }
 
     @Override

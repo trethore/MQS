@@ -18,7 +18,6 @@
 
 package net.me.screen.screens;
 
-import net.me.Main;
 import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleManager;
 import net.me.screen.MQSScreen;
@@ -30,13 +29,13 @@ import net.me.screen.component.components.ScriptDescriptorToggleWidget;
 import net.me.screen.screens.viewmodel.AllScriptsViewModel;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.utils.AssetIdentifiers;
 import net.me.utils.GUIColors;
 import net.me.utils.TextRenderUtils;
 import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
 
 import java.awt.*;
 import java.text.MessageFormat;
@@ -95,7 +94,7 @@ public class AllScriptsScreen extends MQSScreen {
 
         this.addSelectableChild(this.searchTextField);
         MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.builder(
-                Identifier.of(Main.MOD_ID, "icons/close.png"),
+                AssetIdentifiers.ICON_CLOSE,
                 button -> this.searchTextField.setText("")
         ).dimensions(searchX + SEARCH_BAR_WIDTH + 5, searchY, UIConstants.BUTTON_HEIGHT, UIConstants.BUTTON_HEIGHT).build();
         this.addDrawableChild(clearTextFieldButton);
@@ -139,16 +138,16 @@ public class AllScriptsScreen extends MQSScreen {
         int actionY = this.getMiddlePoint().y() + 75 + 25;
         int navX = this.getMiddlePoint().x();
 
-        this.refreshButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"), "Refresh", button -> refreshScripts())
+        this.refreshButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_REFRESH, "Refresh", button -> refreshScripts())
                 .dimensions(navX - WINDOW_HORIZONTAL_MARGIN, actionY, 65, UIConstants.BUTTON_HEIGHT).build();
 
-        MQSButtonWidget consoleButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/square-terminal.png"), "Console", button -> new ConsoleScreen(this, consoleManager).open())
+        MQSButtonWidget consoleButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_TERMINAL, "Console", button -> new ConsoleScreen(this, consoleManager).open())
                 .dimensions(navX - 30, actionY, 65, UIConstants.BUTTON_HEIGHT).build();
 
         MQSButtonWidget offButton = MQSButtonWidget.builder(MessageFormat.format("All{0} Off", Formatting.RED), button -> viewModel.disableAllScripts())
                 .dimensions(navX + 40, actionY, 40, UIConstants.BUTTON_HEIGHT).build();
 
-        MQSButtonWidget moreButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/ellipsis-vertical.png"), button -> new MoreOptionsScreen(this).open())
+        MQSButtonWidget moreButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_MORE_OPTIONS, button -> new MoreOptionsScreen(this).open())
                 .dimensions(navX + 85, actionY, 15, UIConstants.BUTTON_HEIGHT)
                 .build();
 
@@ -208,7 +207,7 @@ public class AllScriptsScreen extends MQSScreen {
         nextButton.active = viewModel.isNextButtonActive();
 
         if (refreshFinishTime != -1L && System.currentTimeMillis() - refreshFinishTime > 1000L) {
-            this.refreshButton.setImage(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"));
+            this.refreshButton.setImage(AssetIdentifiers.ICON_REFRESH);
             this.refreshButton.setMessage(Text.literal("Refresh"));
             refreshFinishTime = -1L;
         }

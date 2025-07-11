@@ -23,10 +23,10 @@ import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
 import net.me.screen.component.components.MQSImageButtonWidget;
 import net.me.screen.component.components.MQSToast;
+import net.me.utils.AssetIdentifiers;
 import net.me.utils.ChatUtils;
 import net.me.utils.UIConstants;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 
 import java.io.IOException;
@@ -72,15 +72,15 @@ public class MoreOptionsScreen extends MQSScreen {
     @Override
     protected void init() {
         super.init();
-        MQSImageButtonWidget settingsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/settings.png"), "Settings", button -> new SettingsScreen(this, Main.getInstance().getGlobalConfigManager()).open())
+        MQSImageButtonWidget settingsButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_SETTINGS, "Settings", button -> new SettingsScreen(this, Main.getInstance().getGlobalConfigManager()).open())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget keybindsButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/keyboard.png"), "Keybinds", button -> new KeybindsScreen(this, Main.getInstance().getKeybindManager()).open())
+        MQSImageButtonWidget keybindsButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_KEYBOARD, "Keybinds", button -> new KeybindsScreen(this, Main.getInstance().getKeybindManager()).open())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget openVSCodeButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/app-window.png"), "Open in VS Code", button -> {
+        MQSImageButtonWidget openVSCodeButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_VSCODE, "Open in VS Code", button -> {
             Main.LOGGER.info("Opening in VS Code");
             if (isVSCodeInstalled()) {
                 openScriptsInVSCodeDesktop();
@@ -90,15 +90,15 @@ public class MoreOptionsScreen extends MQSScreen {
             MQSToast.show("VS Code", "Opening in VS Code", 2000, MQSToast.Corner.TOP_LEFT);
         }).size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT).build();
 
-        MQSImageButtonWidget createScriptButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-code.png"), "Create Script", button -> new CreateScriptScreen(this).open())
+        MQSImageButtonWidget createScriptButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_CREATE_SCRIPT, "Create Script", button -> new CreateScriptScreen(this).open())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget openModFolderButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/file-sliders.png"), "Open Mod Folder", button -> openFolder())
+        MQSImageButtonWidget openModFolderButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_OPEN_FOLDER, "Open Mod Folder", button -> openFolder())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget openWikiButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/cog.png"), "Open Wiki", button -> openWiki())
+        MQSImageButtonWidget openWikiButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_WIKI, "Open Wiki", button -> openWiki())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
@@ -124,7 +124,7 @@ public class MoreOptionsScreen extends MQSScreen {
 
     private void openWiki() {
         try {
-            Util.getOperatingSystem().open("https://github.com/trethore/MQS/wiki");
+            Util.getOperatingSystem().open(AssetIdentifiers.URL_WIKI);
             MQSToast.show("Wiki", "Opening in your browser", 2000, MQSToast.Corner.TOP_LEFT);
         } catch (Exception e) {
             Main.LOGGER.error("Could not open the wiki URL", e);

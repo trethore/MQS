@@ -20,6 +20,7 @@ package net.me.scripting.wrappers;
 
 import net.me.Main;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.WrapperConstants;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.FastAccessorUtils;
 import net.me.scripting.utils.ScriptUtils;
@@ -33,11 +34,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class JsObjectWrapper implements ProxyObject {
@@ -81,16 +78,16 @@ public class JsObjectWrapper implements ProxyObject {
                     keys.add(field.getName());
                 }
             }
-            keys.add("_self");
-            keys.add("equals");
-            keys.add("_instanceof");
+            keys.add(WrapperConstants.SELF);
+            keys.add(WrapperConstants.EQUALS);
+            keys.add(WrapperConstants.INSTANCE_OF);
             return keys.toArray(new String[0]);
         });
     }
 
     @Override
     public Object getMember(String key) {
-        if ("_instanceof".equals(key)) {
+        if (WrapperConstants.INSTANCE_OF.equals(key)) {
             return (ProxyExecutable) (Value... args) -> {
                 if (args.length != 1) {
                     throw new IllegalArgumentException("_instanceof(class) requires exactly one argument.");
@@ -119,7 +116,7 @@ public class JsObjectWrapper implements ProxyObject {
                 return rawClass.isInstance(this.javaInstance);
             };
         }
-        if ("equals".equals(key)) {
+        if (WrapperConstants.EQUALS.equals(key)) {
             return (ProxyExecutable) (Value... args) -> {
                 if (args.length != 1) return false;
                 Object otherRaw = ScriptUtils.unwrapReceiver(args[0]);
@@ -127,8 +124,9 @@ public class JsObjectWrapper implements ProxyObject {
             };
         }
 
-        if ("_self".equals(key)) return this.getJavaInstance();
-        if (key.endsWith("$")) return handleField(key.substring(0, key.length() - 1));
+        if (WrapperConstants.SELF.equals(key)) return this.getJavaInstance();
+        if (key.endsWith(WrapperConstants.FIELD_SUFFIX))
+            return handleField(key.substring(0, key.length() - 1));
         Object mapped = handleMappedMethod(key);
         if (mapped != null) return mapped;
         Object direct = handleDirectMethod(key);
@@ -138,8 +136,10 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public boolean hasMember(String key) {
-        if ("_self".equals(key) || "equals".equals(key) || "_instanceof".equals(key)) return true;
-        if (key.endsWith("$")) return fields.hasField(instanceClass, key.substring(0, key.length() - 1));
+        if (WrapperConstants.SELF.equals(key) || WrapperConstants.EQUALS.equals(key) || WrapperConstants.INSTANCE_OF.equals(key))
+            return true;
+        if (key.endsWith(WrapperConstants.FIELD_SUFFIX))
+            return fields.hasField(instanceClass, key.substring(0, key.length() - 1));
         return methods.hasMapped(key) || MethodLookup.hasDirect(instanceClass, key) || fields.hasField(instanceClass, key);
     }
 
@@ -150,12 +150,12 @@ public class JsObjectWrapper implements ProxyObject {
 
     @Override
     public void putMember(String key, Value value) {
-        if ("equals".equals(key)) {
+        if (WrapperConstants.EQUALS.equals(key)) {
             throw new UnsupportedOperationException("Cannot override the built-in 'equals' method.");
         }
         String fieldName = key;
         boolean isExplicitFieldAccess = false;
-        if (key.endsWith("$")) {
+        if (key.endsWith(WrapperConstants.FIELD_SUFFIX)) {
             fieldName = key.substring(0, key.length() - 1);
             isExplicitFieldAccess = true;
         }
@@ -164,7 +164,7 @@ public class JsObjectWrapper implements ProxyObject {
             if (methodConflict && !isExplicitFieldAccess) {
                 throw new UnsupportedOperationException(
                         "Ambiguous write to '" + fieldName + "'. A method with this name exists. " +
-                                "Use the '$' suffix to write to the field directly: " + fieldName + "$"
+                                "Use the '$' suffix to write to the field directly: " + fieldName + WrapperConstants.FIELD_SUFFIX
                 );
             }
             writeField(fieldName, value);

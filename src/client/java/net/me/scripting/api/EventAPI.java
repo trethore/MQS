@@ -32,11 +32,13 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Arrays;
+import java.util.Set;
 
 import static net.me.scripting.api.ApiConstants.*;
 
 public class EventAPI implements ProxyObject {
 
+    private static final Set<String> MEMBER_KEYS = Set.of(REGISTER, UNREGISTER, UNREGISTER_ALL, EVENTS, PHASE);
     private final EventManager eventManager;
     private final ScriptManager scriptManager;
 
@@ -214,12 +216,12 @@ public class EventAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{REGISTER, UNREGISTER, UNREGISTER_ALL, EVENTS, PHASE};
+        return MEMBER_KEYS.toArray(new String[0]);
     }
 
     @Override
     public boolean hasMember(String key) {
-        return REGISTER.equals(key) || UNREGISTER.equals(key) || UNREGISTER_ALL.equals(key) || EVENTS.equals(key) || PHASE.equals(key);
+        return MEMBER_KEYS.contains(key);
     }
 
     @Override

@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
+import net.me.utils.AssetIdentifiers;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -36,9 +37,14 @@ import java.util.function.Consumer;
 
 public class UpdateUtils {
 
-    private static final String GITHUB_REPO = "trethore/MQS";
     private static final Path UPDATES_FOLDER = Main.MOD_DIR.resolve("updates");
     private static final String UPDATE_FILE_NAME = "my-qol-scripts-update.jar";
+
+    private static final String GITHUB_KEY_TAG_NAME = "tag_name";
+    private static final String GITHUB_KEY_BODY = "body";
+    private static final String GITHUB_KEY_ASSETS = "assets";
+    private static final String GITHUB_KEY_ASSET_NAME = "name";
+    private static final String GITHUB_KEY_DOWNLOAD_URL = "browser_download_url";
 
     private static boolean shutdownHookAdded = false;
 
@@ -107,7 +113,7 @@ public class UpdateUtils {
 
     private static UpdateInfo checkForUpdate() {
         try {
-            URL url = new URI("https://api.github.com/repos/" + GITHUB_REPO + "/releases/latest").toURL();
+            URL url = new URI(AssetIdentifiers.URL_GITHUB_API_BASE + AssetIdentifiers.GITHUB_REPO + "/releases/latest").toURL();
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             connection.setRequestProperty("User-Agent", "MQS-Updater");
@@ -127,20 +133,19 @@ public class UpdateUtils {
                     response.append(line);
                 }
             }
-
             JsonObject release = JsonParser.parseString(response.toString()).getAsJsonObject();
-            String latestVersion = release.get("tag_name").getAsString();
-            String changelog = release.has("body") && !release.get("body").isJsonNull() ? release.get("body").getAsString() : "No changelog available";
+            String latestVersion = release.get(GITHUB_KEY_TAG_NAME).getAsString();
+            String changelog = release.has(GITHUB_KEY_BODY) && !release.get(GITHUB_KEY_BODY).isJsonNull() ? release.get(GITHUB_KEY_BODY).getAsString() : "No changelog available";
 
             String downloadUrl = null;
-            if (release.has("assets") && release.get("assets").isJsonArray()) {
-                var assets = release.get("assets").getAsJsonArray();
+            if (release.has(GITHUB_KEY_ASSETS) && release.get(GITHUB_KEY_ASSETS).isJsonArray()) {
+                var assets = release.get(GITHUB_KEY_ASSETS).getAsJsonArray();
                 for (var asset : assets) {
                     var assetObj = asset.getAsJsonObject();
-                    String fileName = assetObj.get("name").getAsString();
+                    String fileName = assetObj.get(GITHUB_KEY_ASSET_NAME).getAsString();
 
                     if (fileName.endsWith(".jar") && !fileName.endsWith("-sources.jar") && !fileName.endsWith("-dev.jar")) {
-                        downloadUrl = assetObj.get("browser_download_url").getAsString();
+                        downloadUrl = assetObj.get(GITHUB_KEY_DOWNLOAD_URL).getAsString();
                         break;
                     }
                 }
@@ -193,12 +198,13 @@ public class UpdateUtils {
     }
 
     private static void copyFileWithChannel(File source, File dest) throws IOException {
-        try (FileChannel sourceChannel = new FileInputStream(source).getChannel();
-             FileChannel destChannel = new FileOutputStream(dest).getChannel()) {
+        try (FileInputStream fis = new FileInputStream(source);
+             FileOutputStream fos = new FileOutputStream(dest);
+             FileChannel sourceChannel = fis.getChannel();
+             FileChannel destChannel = fos.getChannel()) {
             destChannel.transferFrom(sourceChannel, 0, sourceChannel.size());
         }
     }
-
     private static synchronized void addShutdownHook(File oldJar, File newJar) {
         if (shutdownHookAdded) return;
 

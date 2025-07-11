@@ -25,15 +25,13 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static net.me.scripting.api.ApiConstants.*;
 
 public class ConfigAPI implements ProxyObject {
 
+    private static final Set<String> MEMBER_KEYS = Set.of(GET, SET, HAS, SAVE, LOAD, GET_ALL);
     private final ConfigManager configManager;
     private final ScriptManager scriptManager;
 
@@ -138,12 +136,12 @@ public class ConfigAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{GET, SET, HAS, SAVE, LOAD, GET_ALL};
+        return MEMBER_KEYS.toArray(new String[0]);
     }
 
     @Override
     public boolean hasMember(String key) {
-        return GET.equals(key) || SET.equals(key) || HAS.equals(key) || SAVE.equals(key) || LOAD.equals(key) || GET_ALL.equals(key);
+        return MEMBER_KEYS.contains(key);
     }
 
     @Override
