@@ -1,5 +1,24 @@
+/*
+ * My QOL Scripts - A powerful scripting mod for Minecraft.
+ * Copyright (C) 2025 tytoo
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package net.me.scripting.wrappers;
 
+import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.FastAccessorUtils;
@@ -14,6 +33,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +48,6 @@ public class JsObjectWrapper implements ProxyObject {
     private final FieldLookup fields;
     private final String[] memberKeys;
 
-    // Dependencies
     private final MappingsManager mappingsManager;
     private final ScriptManager scriptManager;
 
@@ -151,21 +170,30 @@ public class JsObjectWrapper implements ProxyObject {
     }
 
     private Object invokeMethods(List<Method> methods, Value[] args, String yarnName) {
+        Main.LOGGER.debug("Attempting to invoke method '{}' on instance of {} with {} args.", yarnName, this.instanceClass.getSimpleName(), args.length);
         for (Method m : methods) {
+            Main.LOGGER.debug("  - Considering candidate method: {}", m.toGenericString());
             if (m.getParameterCount() == args.length) {
+                Main.LOGGER.debug("    - Argument count matches. Proceeding to unwrap and invoke.");
                 try {
                     Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
+                    Main.LOGGER.debug("    - Unwrapped arguments: {}", Arrays.toString(javaArgs));
                     MethodHandle handle = FastAccessorUtils.getMethodHandle(m);
                     Object result = handle.bindTo(this.javaInstance).invokeWithArguments(javaArgs);
+                    Main.LOGGER.debug("    - Invocation successful. Result: {}", result);
                     return ScriptUtils.wrapReturn(result, this.mappingsManager, this.scriptManager);
                 } catch (Throwable e) {
+                    Main.LOGGER.error("    - !! Invocation FAILED for method: {}", m.toGenericString(), e);
                     if (e.getCause() != null) {
                         throw new RuntimeException("Method '" + yarnName + "' threw an exception: " + e.getCause().getMessage(), e.getCause());
                     }
                     throw new RuntimeException("Method invocation failed for '" + yarnName + "'. See logs for details.", e);
                 }
+            } else {
+                Main.LOGGER.debug("    - Argument count mismatch. Expected: {}, Got: {}. Skipping.", m.getParameterCount(), args.length);
             }
         }
+        Main.LOGGER.warn("No suitable overload found for method '{}' on {} with {} arguments.", yarnName, this.instanceClass.getSimpleName(), args.length);
         throw new RuntimeException("No overload for method '" + yarnName + "' with " + args.length + " args");
     }
 

@@ -1,3 +1,21 @@
+/*
+ * My QOL Scripts - A powerful scripting mod for Minecraft.
+ * Copyright (C) 2025 tytoo
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package net.me.hooking;
 
 import net.bytebuddy.asm.Advice;
@@ -15,21 +33,111 @@ import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 @SuppressWarnings("unused")
 public class HookInterceptor {
 
     public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
+    public static final Map<CacheKey, ProxyExecutable> CHAIN_CACHE = new ConcurrentHashMap<>();
     public static final ThreadLocal<Deque<AdviceContext>> adviceContextStack = ThreadLocal.withInitial(ArrayDeque::new);
     public static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+
+    public static class ChainFactory implements Function<CacheKey, ProxyExecutable> {
+        private final CopyOnWriteArrayList<HookData> allHooksForName;
+        private final Object thiz;
+        private final Method method;
+        private final ScriptManager scriptManager;
+        private final MappingsManager mappingsManager;
+
+        public ChainFactory(CopyOnWriteArrayList<HookData> allHooksForName, Object thiz, Method method, ScriptManager scriptManager, MappingsManager mappingsManager) {
+            this.allHooksForName = allHooksForName;
+            this.thiz = thiz;
+            this.method = method;
+            this.scriptManager = scriptManager;
+            this.mappingsManager = mappingsManager;
+        }
+
+        @Override
+        public ProxyExecutable apply(CacheKey key) {
+            List<HookData> filteredHooks = allHooksForName.stream()
+                    .filter(hookData -> hookData.argCount() == null || hookData.argCount() == key.argCount())
+                    .toList();
+
+            if (filteredHooks.isEmpty()) {
+                return createEmptyChainProxy();
+            }
+
+            HookContext hookContext = new HookContext(thiz, method, STACK_WALKER, mappingsManager, scriptManager);
+            return rebuildChain(hookContext, filteredHooks, mappingsManager, scriptManager);
+        }
+    }
+
+    public static class HookExecutor implements ProxyExecutable {
+        private final HookData data;
+        private final ProxyExecutable nextInChain;
+        private final HookContext hookContext;
+        private final MappingsManager mappingsManager;
+        private final ScriptManager scriptManager;
+
+        public HookExecutor(HookData data, ProxyExecutable nextInChain, HookContext hookContext, MappingsManager mappingsManager, ScriptManager scriptManager) {
+            this.data = data;
+            this.nextInChain = nextInChain;
+            this.hookContext = hookContext;
+            this.mappingsManager = mappingsManager;
+            this.scriptManager = scriptManager;
+        }
+
+        @Override
+        public Object execute(Value... passedArgs) {
+            RunningScript previousScript = data.scriptManager().getCurrentScript();
+            data.scriptManager().setCurrentScript(data.owner());
+            try {
+                Value jsArgsArray = data.owner().getContext().eval("js", "[]");
+                for (Value arg : passedArgs) {
+                    Object javaObject = ScriptUtils.unwrapReceiver(arg);
+                    Object customProxy = ScriptUtils.wrapReturn(javaObject, mappingsManager, scriptManager);
+                    jsArgsArray.invokeMember("push", customProxy);
+                }
+
+                return data.jsCallback().execute(
+                        hookContext,
+                        jsArgsArray,
+                        data.owner().getContext().asValue(nextInChain)
+                );
+            } finally {
+                data.scriptManager().setCurrentScript(previousScript);
+            }
+        }
+    }
+
+    public static ProxyExecutable createEmptyChainProxy() {
+        return passedArgs -> {
+            Deque<AdviceContext> stack = adviceContextStack.get();
+            if (stack != null && !stack.isEmpty()) {
+                AdviceContext context = stack.peek();
+                if (context != null) {
+                    context.setShouldExecuteOriginal(true);
+                    context.setModifiedArgs(passedArgs);
+                }
+            }
+            return null;
+        };
+    }
+
+    public record CacheKey(String hookId, int argCount) {
+    }
 
     public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
         HOOKS.computeIfAbsent(hookId, k -> new CopyOnWriteArrayList<>())
                 .addFirst(new HookData(jsCallback, owner, scriptManager, argCount));
+
+        CHAIN_CACHE.clear();
     }
 
     public static void unregister(String hookId, RunningScript owner, Integer argCount) {
@@ -38,6 +146,7 @@ public class HookInterceptor {
             boolean removed = hookList.removeIf(data -> data.owner().equals(owner) && Objects.equals(data.argCount(), argCount));
             if (removed) {
                 Main.LOGGER.info("Unregistered hook owned by '{}': {}", owner.getName(), hookId);
+                CHAIN_CACHE.clear();
             }
             if (hookList.isEmpty()) {
                 HOOKS.remove(hookId);
@@ -63,32 +172,24 @@ public class HookInterceptor {
             return false;
         }
 
-        CopyOnWriteArrayList<HookData> filteredHooks = new CopyOnWriteArrayList<>();
-        for (HookData hookData : allHooksForName) {
-            if (hookData.argCount() == null || hookData.argCount().equals(args.length)) {
-                filteredHooks.add(hookData);
-            }
-        }
-
-        if (filteredHooks.isEmpty()) {
-            return false;
-        }
-
-        adviceContextStack.get().push(new AdviceContext());
+        CacheKey cacheKey = new CacheKey(hookId, args.length);
 
         MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
-        ScriptManager scriptManager = filteredHooks.getFirst().scriptManager();
+        ScriptManager scriptManager = allHooksForName.getFirst().scriptManager();
 
-        HookContext hookContext = new HookContext(thiz, method, STACK_WALKER, mappingsManager, scriptManager);
+        ProxyExecutable chain = CHAIN_CACHE.computeIfAbsent(cacheKey,
+                new ChainFactory(allHooksForName, thiz, method, scriptManager, mappingsManager)
+        );
 
-        ProxyExecutable nextInChain = buildChain(hookContext, filteredHooks, mappingsManager, scriptManager);
+        adviceContextStack.get().push(new AdviceContext());
 
         try {
             Value[] initialChainArgs = new Value[args.length];
             for (int i = 0; i < args.length; i++) {
                 initialChainArgs[i] = Value.asValue(args[i]);
             }
-            Value result = (Value) nextInChain.execute(initialChainArgs);
+
+            Value result = (Value) chain.execute(initialChainArgs);
 
             AdviceContext context = adviceContextStack.get().peek();
             if (context == null) {
@@ -123,42 +224,12 @@ public class HookInterceptor {
         }
     }
 
-    public static @NotNull ProxyExecutable buildChain(HookContext hookContext, CopyOnWriteArrayList<HookData> hookList, MappingsManager mappingsManager, ScriptManager scriptManager) {
+    public static @NotNull ProxyExecutable rebuildChain(HookContext hookContext, List<HookData> filteredHooks, MappingsManager mappingsManager, ScriptManager scriptManager) {
+        ProxyExecutable nextInChain = createEmptyChainProxy();
 
-        ProxyExecutable nextInChain = passedArgs1 -> {
-            Deque<AdviceContext> stack = adviceContextStack.get();
-            if (stack != null && !stack.isEmpty()) {
-                AdviceContext context = stack.peek();
-                context.setShouldExecuteOriginal(true);
-                context.setModifiedArgs(passedArgs1);
-                context.setNextCalled(true);
-            }
-            return null;
-        };
-
-        for (int i = hookList.size() - 1; i >= 0; i--) {
-            final HookData data = hookList.get(i);
-            final ProxyExecutable finalNextInChain = nextInChain;
-            nextInChain = passedArgs -> {
-                RunningScript previousScript = data.scriptManager().getCurrentScript();
-                data.scriptManager().setCurrentScript(data.owner());
-                try {
-                    Value jsArgsArray = data.owner().getContext().eval("js", "[]");
-                    for (Value arg : passedArgs) {
-                        Object javaObject = ScriptUtils.unwrapReceiver(arg);
-                        Object customProxy = ScriptUtils.wrapReturn(javaObject, mappingsManager, scriptManager);
-                        jsArgsArray.invokeMember("push", customProxy);
-                    }
-
-                    return data.jsCallback().execute(
-                            hookContext,
-                            jsArgsArray,
-                            data.owner().getContext().asValue(finalNextInChain)
-                    );
-                } finally {
-                    data.scriptManager().setCurrentScript(previousScript);
-                }
-            };
+        for (int i = filteredHooks.size() - 1; i >= 0; i--) {
+            final HookData data = filteredHooks.get(i);
+            nextInChain = new HookExecutor(data, nextInChain, hookContext, mappingsManager, scriptManager);
         }
         return nextInChain;
     }
