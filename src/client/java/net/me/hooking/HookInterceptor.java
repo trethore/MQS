@@ -84,7 +84,7 @@ public class HookInterceptor {
         return hookList != null && !hookList.isEmpty();
     }
 
-    @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
+    @Advice.OnMethodEnter
     public static boolean onEnter(
             @Advice.Origin Method method,
             @Advice.AllArguments(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object[] args,
@@ -99,12 +99,14 @@ public class HookInterceptor {
 
         CacheKey cacheKey = new CacheKey(hookId, args.length);
 
-        MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
-        ScriptManager scriptManager = allHooksForName.getFirst().scriptManager();
-
-        ProxyExecutable chain = CHAIN_CACHE.computeIfAbsent(cacheKey,
-                new ChainFactory(allHooksForName, thiz, method, scriptManager, mappingsManager)
-        );
+        ProxyExecutable chain = CHAIN_CACHE.get(cacheKey);
+        if (chain == null) {
+            MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
+            ScriptManager scriptManager = allHooksForName.getFirst().scriptManager();
+            ChainFactory factory = new ChainFactory(allHooksForName, thiz, method, scriptManager, mappingsManager);
+            chain = factory.apply(cacheKey);
+            CHAIN_CACHE.put(cacheKey, chain);
+        }
 
         adviceContextStack.get().push(new AdviceContext());
 
