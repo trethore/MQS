@@ -1,7 +1,7 @@
 package net.me.mixin.client.mixins;
 
 import io.netty.channel.ChannelHandlerContext;
-import net.me.Main;
+import net.me.event.MQSEventBus;
 import net.me.event.events.packet.ClientPacketInputEvent;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.packet.Packet;
@@ -19,7 +19,7 @@ public class MQSClientConnectionMixin {
     )
     private void onChannelRead0Head(ChannelHandlerContext context, Packet<?> packet, CallbackInfo ci) {
         ClientPacketInputEvent event = new ClientPacketInputEvent(packet);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             ci.cancel();

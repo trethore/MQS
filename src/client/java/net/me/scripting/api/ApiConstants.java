@@ -26,6 +26,7 @@ public final class ApiConstants {
     public static final String UNHOOK_ALL = "unhookAll";
     // Keybind API
     public static final String KEYS = "Keys";
+
     private ApiConstants() {
     }
 }

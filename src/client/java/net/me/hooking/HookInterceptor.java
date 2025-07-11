@@ -77,9 +77,11 @@ public class HookInterceptor {
         adviceContextStack.get().push(new AdviceContext());
 
         MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
-        HookContext hookContext = new HookContext(thiz, method, STACK_WALKER, mappingsManager);
+        ScriptManager scriptManager = filteredHooks.getFirst().scriptManager();
 
-        ProxyExecutable nextInChain = buildChain(hookContext, filteredHooks);
+        HookContext hookContext = new HookContext(thiz, method, STACK_WALKER, mappingsManager, scriptManager);
+
+        ProxyExecutable nextInChain = buildChain(hookContext, filteredHooks, mappingsManager, scriptManager);
 
         try {
             Value[] initialChainArgs = new Value[args.length];
@@ -121,7 +123,7 @@ public class HookInterceptor {
         }
     }
 
-    public static @NotNull ProxyExecutable buildChain(HookContext hookContext, CopyOnWriteArrayList<HookData> hookList) {
+    public static @NotNull ProxyExecutable buildChain(HookContext hookContext, CopyOnWriteArrayList<HookData> hookList, MappingsManager mappingsManager, ScriptManager scriptManager) {
 
         ProxyExecutable nextInChain = passedArgs1 -> {
             Deque<AdviceContext> stack = adviceContextStack.get();
@@ -144,7 +146,7 @@ public class HookInterceptor {
                     Value jsArgsArray = data.owner().getContext().eval("js", "[]");
                     for (Value arg : passedArgs) {
                         Object javaObject = ScriptUtils.unwrapReceiver(arg);
-                        Object customProxy = ScriptUtils.wrapReturn(javaObject);
+                        Object customProxy = ScriptUtils.wrapReturn(javaObject, mappingsManager, scriptManager);
                         jsArgsArray.invokeMember("push", customProxy);
                     }
 
@@ -187,7 +189,7 @@ public class HookInterceptor {
 
     public static class AdviceContext {
         private boolean shouldExecuteOriginal = false;
-        private boolean isNextCalled = false; // Add this flag
+        private boolean isNextCalled = false;
         private Value scriptReturnValue = null;
         private Value[] modifiedArgs = null;
 

@@ -1,6 +1,6 @@
 package net.me.mixin.client.mixins;
 
-import net.me.Main;
+import net.me.event.MQSEventBus;
 import net.me.event.events.render.HudRenderEvent;
 import net.me.screen.component.components.MQSToast;
 import net.me.utils.McUtils;
@@ -24,6 +24,6 @@ public class MQSHudMixin {
         });
 
         HudRenderEvent event = new HudRenderEvent(context, tickCounter);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
     }
 }

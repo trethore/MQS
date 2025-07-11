@@ -1,6 +1,6 @@
 package net.me.hooking.context;
 
-import net.me.Main;
+import net.me.scripting.ScriptManager;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.HostAccess;
@@ -17,20 +17,22 @@ public class HookContext {
     private final Method method;
     private final StackWalker stackWalker;
     private final MappingsManager mappingsManager;
+    private final ScriptManager scriptManager;
 
     private String yarnMethodName;
     private String yarnClassName;
 
-    public HookContext(Object instance, Method method, StackWalker stackWalker, MappingsManager mappingsManager) {
+    public HookContext(Object instance, Method method, StackWalker stackWalker, MappingsManager mappingsManager, ScriptManager scriptManager) {
         this.instance = instance;
         this.method = method;
         this.stackWalker = stackWalker;
         this.mappingsManager = mappingsManager;
+        this.scriptManager = scriptManager;
     }
 
     @HostAccess.Export
     public Object getInstance() {
-        return ScriptUtils.wrapReturn(instance);
+        return ScriptUtils.wrapReturn(instance, mappingsManager, scriptManager);
     }
 
     @HostAccess.Export
@@ -53,17 +55,17 @@ public class HookContext {
 
     @HostAccess.Export
     public MethodInfo getMethod() {
-        return new MethodInfo(method);
+        return new MethodInfo(method, mappingsManager, scriptManager);
     }
 
     @HostAccess.Export
     public boolean isStatic() {
-        return new MethodInfo(method).isStatic();
+        return new MethodInfo(method, mappingsManager, scriptManager).isStatic();
     }
 
     @HostAccess.Export
     public Object getMethodClass() {
-        return Main.getInstance().getScriptManager().getClassResolver().getOrCreateWrapper(method.getDeclaringClass().getName());
+        return scriptManager.getClassResolver().getOrCreateWrapper(method.getDeclaringClass().getName());
     }
 
     @HostAccess.Export

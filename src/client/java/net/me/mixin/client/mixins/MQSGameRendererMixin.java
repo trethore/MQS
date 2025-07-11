@@ -1,6 +1,6 @@
 package net.me.mixin.client.mixins;
 
-import net.me.Main;
+import net.me.event.MQSEventBus;
 import net.me.event.events.render.WorldRenderEvent;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -29,6 +29,6 @@ public class MQSGameRendererMixin {
     private void onRenderWorld(RenderTickCounter tickCounter, CallbackInfo ci) {
         DrawContext drawContext = new DrawContext(client, client.getBufferBuilders().getEntityVertexConsumers());
         WorldRenderEvent event = new WorldRenderEvent(drawContext, tickCounter, this.camera);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
     }
 }

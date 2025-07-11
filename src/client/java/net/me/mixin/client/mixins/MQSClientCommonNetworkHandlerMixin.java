@@ -1,6 +1,6 @@
 package net.me.mixin.client.mixins;
 
-import net.me.Main;
+import net.me.event.MQSEventBus;
 import net.me.event.events.packet.ClientPacketOutputEvent;
 import net.minecraft.client.network.ClientCommonNetworkHandler;
 import net.minecraft.network.packet.Packet;
@@ -15,7 +15,7 @@ public class MQSClientCommonNetworkHandlerMixin {
     @Inject(method = "sendPacket", at = @At("HEAD"), cancellable = true)
     public void onSendPacketHead(Packet<?> packet, CallbackInfo ci) {
         ClientPacketOutputEvent event = new ClientPacketOutputEvent(packet);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             ci.cancel();

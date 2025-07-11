@@ -133,10 +133,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         Map<String, Object> wrapperProperties = wrapper.getPropertiesForModification();
         Value wrapperVal = context.asValue(wrapper);
 
-        MappedInstanceProxy javaProxy = new MappedInstanceProxy(baseInstance,
-                resolver.getRuntimeToYarnMap(),
-                resolver.getMethodMap(),
-                resolver.getFieldMap());
+        MappedInstanceProxy javaProxy = new MappedInstanceProxy(baseInstance, this.resolver);
 
         wrapper.setJavaInstanceProxy(javaProxy);
 

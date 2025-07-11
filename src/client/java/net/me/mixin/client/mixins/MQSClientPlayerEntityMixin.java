@@ -1,6 +1,6 @@
 package net.me.mixin.client.mixins;
 
-import net.me.Main;
+import net.me.event.MQSEventBus;
 import net.me.event.events.player.PlayerMoveEvent;
 import net.me.event.events.tick.ClientPlayerTickEvent;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -18,14 +18,14 @@ public abstract class MQSClientPlayerEntityMixin {
     private void onTick(CallbackInfo ci) {
         ClientPlayerEntity player = (ClientPlayerEntity) (Object) this;
         ClientPlayerTickEvent event = new ClientPlayerTickEvent(player);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
     }
 
     @Inject(method = "move", at = @At("HEAD"), cancellable = true)
     private void onMove(MovementType type, Vec3d movement, CallbackInfo ci) {
         ClientPlayerEntity player = (ClientPlayerEntity) (Object) this;
         PlayerMoveEvent event = new PlayerMoveEvent(player, type, movement);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             ci.cancel();

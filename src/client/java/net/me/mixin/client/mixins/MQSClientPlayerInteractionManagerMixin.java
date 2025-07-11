@@ -1,6 +1,6 @@
 package net.me.mixin.client.mixins;
 
-import net.me.Main;
+import net.me.event.MQSEventBus;
 import net.me.event.events.interact.BlockInteractEvent;
 import net.me.event.events.interact.ItemUseEvent;
 import net.me.event.events.player.PlayerAttackEntityEvent;
@@ -23,7 +23,7 @@ public class MQSClientPlayerInteractionManagerMixin {
     @Inject(method = "interactBlock", at = @At("HEAD"), cancellable = true)
     private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
         BlockInteractEvent event = new BlockInteractEvent(player, hand, hitResult);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             cir.setReturnValue(ActionResult.FAIL);
@@ -33,7 +33,7 @@ public class MQSClientPlayerInteractionManagerMixin {
     @Inject(method = "interactItem", at = @At("HEAD"), cancellable = true)
     private void onInteractItem(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
         ItemUseEvent event = new ItemUseEvent(player, hand);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             cir.setReturnValue(ActionResult.FAIL);
@@ -43,7 +43,7 @@ public class MQSClientPlayerInteractionManagerMixin {
     @Inject(method = "attackEntity", at = @At("HEAD"), cancellable = true)
     private void onAttackEntity(PlayerEntity player, Entity target, CallbackInfo ci) {
         PlayerAttackEntityEvent event = new PlayerAttackEntityEvent(player, target);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             ci.cancel();
@@ -53,7 +53,7 @@ public class MQSClientPlayerInteractionManagerMixin {
     @Inject(method = "interactEntity", at = @At("HEAD"), cancellable = true)
     private void onInteractEntity(PlayerEntity player, Entity entity, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
         PlayerInteractEntityEvent event = new PlayerInteractEntityEvent(player, entity, hand);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             cir.setReturnValue(ActionResult.FAIL);

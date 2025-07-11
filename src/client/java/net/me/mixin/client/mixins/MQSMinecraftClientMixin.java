@@ -1,6 +1,7 @@
 package net.me.mixin.client.mixins;
 
 import net.me.Main;
+import net.me.event.MQSEventBus;
 import net.me.event.events.MinecraftClientStopEvent;
 import net.me.event.events.world.WorldChangeEvent;
 import net.minecraft.client.MinecraftClient;
@@ -29,12 +30,12 @@ public class MQSMinecraftClientMixin {
         Main main = Main.getInstance();
         main.getGlobalConfigManager().save();
         main.getConfigManager().saveAllConfigs();
-        main.getEventManager().post(new MinecraftClientStopEvent());
+        MQSEventBus.post(new MinecraftClientStopEvent());
     }
 
     @Inject(method = "setWorld", at = @At("HEAD"))
     private void onSetWorld(ClientWorld world, CallbackInfo ci) {
         WorldChangeEvent event = new WorldChangeEvent(world);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
     }
 }

@@ -9,6 +9,7 @@ import net.me.screen.component.components.MQSButtonWidget;
 import net.me.screen.component.components.MQSImageButtonWidget;
 import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.screen.component.components.ScriptDescriptorToggleWidget;
+import net.me.screen.screens.viewmodel.AllScriptsViewModel;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.me.utils.GUIColors;
@@ -22,58 +23,67 @@ import net.minecraft.util.Identifier;
 import java.awt.*;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class AllScriptsScreen extends MQSScreen {
 
-    private static final int ITEMS_PER_PAGE = 4;
-    private static final int SCRIPT_ROW_HEIGHT = 35;
     private static final int WINDOW_HORIZONTAL_MARGIN = 100;
     private static final int SEARCH_BAR_WIDTH = 175;
+    private static final int SCRIPT_ROW_HEIGHT = 35;
+    private static final int ITEMS_PER_PAGE = 4;
 
-    private final ScriptingService scriptingService;
+    private final AllScriptsViewModel viewModel;
     private final ConsoleManager consoleManager;
     private final GlobalConfigManager globalConfigManager;
+    private final ScriptingService scriptingService;
 
-    private final List<ScriptDescriptor> allScripts;
     private final List<ScriptDescriptorToggleWidget> scriptEntryWidgets = new ArrayList<>();
-    private List<ScriptDescriptor> filteredScripts;
-    private int currentPage = 0;
-    private int totalPages = 1;
     private MQSTextFieldWidget searchTextField;
     private MQSButtonWidget prevButton;
     private MQSButtonWidget nextButton;
     private MQSImageButtonWidget refreshButton;
-    private boolean isRefreshing = false;
     private long refreshFinishTime = -1L;
-
 
     public AllScriptsScreen(ScriptingService scriptingService, ConsoleManager consoleManager, GlobalConfigManager globalConfigManager) {
         super("My QOL Scripts", 260, 280);
         this.scriptingService = scriptingService;
-        this.globalConfigManager = globalConfigManager;
         this.consoleManager = consoleManager;
-        this.allScripts = new ArrayList<>(scriptingService.listAvailable());
-        this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
-        this.filteredScripts = new ArrayList<>(this.allScripts);
+        this.globalConfigManager = globalConfigManager;
+        this.viewModel = new AllScriptsViewModel(scriptingService);
     }
 
     @Override
     public void init() {
-        this.scriptEntryWidgets.clear();
         super.init();
+        this.scriptEntryWidgets.clear();
 
-        addSearch();
-        addScriptListWidgets();
+        createSearchWidgets();
+        createScriptListWidgets();
         createPagingWidgets();
         createActionWidgets();
-
-        updateScriptList();
     }
 
-    private void addScriptListWidgets() {
+    private void createSearchWidgets() {
+        int searchX = this.getMiddlePoint().x() - WINDOW_HORIZONTAL_MARGIN;
+        int searchY = this.getMiddlePoint().y() - WINDOW_HORIZONTAL_MARGIN;
+
+        this.searchTextField = MQSTextFieldWidget.builder()
+                .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, UIConstants.BUTTON_HEIGHT)
+                .placeholder("Search...")
+                .text(viewModel.getSearchText())
+                .build();
+
+        this.searchTextField.setChangedListener(viewModel::onSearchTextChanged);
+
+        this.addSelectableChild(this.searchTextField);
+        MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.builder(
+                Identifier.of(Main.MOD_ID, "icons/close.png"),
+                button -> this.searchTextField.setText("")
+        ).dimensions(searchX + SEARCH_BAR_WIDTH + 5, searchY, UIConstants.BUTTON_HEIGHT, UIConstants.BUTTON_HEIGHT).build();
+        this.addDrawableChild(clearTextFieldButton);
+    }
+
+    private void createScriptListWidgets() {
         int listStartX = this.getMiddlePoint().x() - WINDOW_HORIZONTAL_MARGIN;
         int listStartY = this.getMiddlePoint().y() - 70;
 
@@ -81,7 +91,6 @@ public class AllScriptsScreen extends MQSScreen {
             ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(scriptingService, globalConfigManager)
                     .size(200, SCRIPT_ROW_HEIGHT - 5)
                     .build();
-            toggleWidget.visible = false;
             this.addDrawableChild(toggleWidget);
             this.scriptEntryWidgets.add(toggleWidget);
         }
@@ -94,83 +103,22 @@ public class AllScriptsScreen extends MQSScreen {
         );
     }
 
-    private void addSearch() {
-        int searchX = this.getMiddlePoint().x() - WINDOW_HORIZONTAL_MARGIN;
-        int searchY = this.getMiddlePoint().y() - WINDOW_HORIZONTAL_MARGIN;
-
-        this.searchTextField = MQSTextFieldWidget.builder()
-                .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, UIConstants.BUTTON_HEIGHT)
-                .placeholder("Search...")
-                .build();
-
-        this.searchTextField.setChangedListener(this::onSearchTextChanged);
-
-        this.addSelectableChild(this.searchTextField);
-        MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/close.png"), button -> this.searchTextField.clearText())
-                .dimensions(searchX + SEARCH_BAR_WIDTH + 5, searchY, UIConstants.BUTTON_HEIGHT, UIConstants.BUTTON_HEIGHT)
-                .build();
-        this.addDrawableChild(clearTextFieldButton);
-    }
-
-    private void onSearchTextChanged(String text) {
-        String searchText = text.toLowerCase();
-        this.filteredScripts = this.allScripts.stream()
-                .filter(script -> script.moduleName().toLowerCase().contains(searchText))
-                .collect(Collectors.toList());
-
-        this.currentPage = 0;
-
-        updateScriptList();
-    }
-
-    private void updateScriptList() {
-        this.totalPages = (int) Math.ceil((double) this.filteredScripts.size() / ITEMS_PER_PAGE);
-        if (this.totalPages == 0) {
-            this.totalPages = 1;
-        }
-        this.currentPage = Math.max(0, Math.min(this.currentPage, this.totalPages - 1));
-
-        int startIndex = this.currentPage * ITEMS_PER_PAGE;
-
-        for (int i = 0; i < ITEMS_PER_PAGE; i++) {
-            int scriptIndex = startIndex + i;
-            ScriptDescriptorToggleWidget widget = this.scriptEntryWidgets.get(i);
-
-            if (scriptIndex < this.filteredScripts.size()) {
-                ScriptDescriptor descriptor = this.filteredScripts.get(scriptIndex);
-                widget.update(descriptor);
-            } else {
-                widget.update(null);
-            }
-        }
-
-        updateNavigationButtons();
-    }
-
     private void createPagingWidgets() {
         int navY = this.getMiddlePoint().y() + 75;
         int navX = this.getMiddlePoint().x();
 
-        this.prevButton = MQSButtonWidget.builder("Previous", button -> {
-            if (this.currentPage > 0) {
-                this.currentPage--;
-                updateScriptList();
-            }
-        }).dimensions(navX - WINDOW_HORIZONTAL_MARGIN, navY, 80, UIConstants.BUTTON_HEIGHT).build();
+        this.prevButton = MQSButtonWidget.builder("Previous", button -> viewModel.previousPage())
+                .dimensions(navX - WINDOW_HORIZONTAL_MARGIN, navY, 80, UIConstants.BUTTON_HEIGHT).build();
 
-        this.nextButton = MQSButtonWidget.builder("Next", button -> {
-            if (this.currentPage < this.totalPages - 1) {
-                this.currentPage++;
-                updateScriptList();
-            }
-        }).dimensions(navX + 20, navY, 80, UIConstants.BUTTON_HEIGHT).build();
+        this.nextButton = MQSButtonWidget.builder("Next", button -> viewModel.nextPage())
+                .dimensions(navX + 20, navY, 80, UIConstants.BUTTON_HEIGHT).build();
 
         this.addDrawableChild(this.prevButton);
         this.addDrawableChild(this.nextButton);
     }
 
     private void createActionWidgets() {
-        int actionY = this.getMiddlePoint().y() + 75 + 25; // Position below paging buttons
+        int actionY = this.getMiddlePoint().y() + 75 + 25;
         int navX = this.getMiddlePoint().x();
 
         this.refreshButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"), "Refresh", button -> refreshScripts())
@@ -179,7 +127,7 @@ public class AllScriptsScreen extends MQSScreen {
         MQSButtonWidget consoleButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/square-terminal.png"), "Console", button -> new ConsoleScreen(this, consoleManager).open())
                 .dimensions(navX - 30, actionY, 65, UIConstants.BUTTON_HEIGHT).build();
 
-        MQSButtonWidget offButton = MQSButtonWidget.builder(MessageFormat.format("All{0} Off", Formatting.RED), button -> disableAllScripts())
+        MQSButtonWidget offButton = MQSButtonWidget.builder(MessageFormat.format("All{0} Off", Formatting.RED), button -> viewModel.disableAllScripts())
                 .dimensions(navX + 40, actionY, 40, UIConstants.BUTTON_HEIGHT).build();
 
         MQSButtonWidget moreButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/ellipsis-vertical.png"), button -> new MoreOptionsScreen(this).open())
@@ -192,97 +140,77 @@ public class AllScriptsScreen extends MQSScreen {
         this.addDrawableChild(moreButton);
     }
 
-    private void updateNavigationButtons() {
-        if (this.prevButton != null) this.prevButton.active = this.currentPage > 0;
-        if (this.nextButton != null) this.nextButton.active = this.currentPage < this.totalPages - 1;
-    }
-
     private void refreshScripts() {
-        if (isRefreshing) {
-            return;
-        }
-        beginUIRefreshState();
+        if (viewModel.isRefreshing) return;
+
+        this.refreshButton.active = false;
+        this.refreshButton.setMessage(Text.literal("Refreshing..."));
 
         assert this.client != null;
-        this.client.send(this::performAndHandleRefresh);
-    }
-
-    private void beginUIRefreshState() {
-        isRefreshing = true;
-        if (this.refreshButton != null) {
-            this.refreshButton.active = false;
-            this.refreshButton.setMessage(Text.literal("Refreshing..."));
-            this.allScripts.clear();
-            this.filteredScripts.clear();
-        }
-    }
-
-    private void performAndHandleRefresh() {
-        scriptingService.refreshAndReenable();
-
-        this.allScripts.clear();
-        this.allScripts.addAll(scriptingService.listAvailable());
-        this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
-
-        onSearchTextChanged(this.searchTextField.getText());
-
-        finishUIRefreshState();
-    }
-
-    private void finishUIRefreshState() {
-        isRefreshing = false;
-        if (this.refreshButton != null) {
+        this.client.send(() -> {
+            viewModel.refreshAndReenableScripts();
             this.refreshButton.active = true;
             this.refreshButton.setImage(null);
             this.refreshButton.setMessage(Text.literal("Refreshed!"));
             this.refreshFinishTime = System.currentTimeMillis();
-        }
+        });
     }
 
     public void forceRefresh() {
-        scriptingService.refreshAndReenable();
-        this.allScripts.clear();
-        this.allScripts.addAll(scriptingService.listAvailable());
-        this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
-        onSearchTextChanged(this.searchTextField.getText());
-    }
-
-    private void disableAllScripts() {
-        scriptingService.disableAll();
-        updateScriptList();
+        viewModel.forceRefresh();
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        if (refreshFinishTime != -1L && System.currentTimeMillis() - refreshFinishTime > 1000L) {
-            if (this.refreshButton != null) {
-                this.refreshButton.setImage(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"));
-                this.refreshButton.active = true;
-                this.refreshButton.setMessage(Text.literal("Refresh"));
-            }
-            refreshFinishTime = -1L;
-        }
-
         super.render(context, mouseX, mouseY, delta);
+
+        updateWidgetsFromViewModel();
+
         this.searchTextField.render(context, mouseX, mouseY, delta);
 
-        if (filteredScripts.isEmpty()) {
-            TextRenderUtils.drawCustomCenteredText(context, "No modules found :(",
-                    this.getMiddlePoint().x(),
-                    this.getMiddlePoint().y() - 25,
-                    GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
-            TextRenderUtils.drawCustomCenteredText(context, "Maybe try refreshing.",
-                    this.getMiddlePoint().x(),
-                    this.getMiddlePoint().y() - 10,
-                    GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
+        if (viewModel.hasNoFilteredScripts()) {
+            drawEmptyListMessage(context);
         }
+
         drawPageNumber(context);
+    }
+
+    private void updateWidgetsFromViewModel() {
+        List<ScriptDescriptor> pageScripts = viewModel.getScriptsForCurrentPage();
+        for (int i = 0; i < ITEMS_PER_PAGE; i++) {
+            ScriptDescriptorToggleWidget widget = this.scriptEntryWidgets.get(i);
+            if (i < pageScripts.size()) {
+                widget.update(pageScripts.get(i));
+            } else {
+                widget.update(null);
+            }
+        }
+
+        prevButton.active = viewModel.isPreviousButtonActive();
+        nextButton.active = viewModel.isNextButtonActive();
+
+        if (refreshFinishTime != -1L && System.currentTimeMillis() - refreshFinishTime > 1000L) {
+            this.refreshButton.setImage(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"));
+            this.refreshButton.setMessage(Text.literal("Refresh"));
+            refreshFinishTime = -1L;
+        }
+        this.refreshButton.active = !viewModel.isRefreshing;
+    }
+
+    private void drawEmptyListMessage(DrawContext context) {
+        TextRenderUtils.drawCustomCenteredText(context, "No modules found :(",
+                this.getMiddlePoint().x(),
+                this.getMiddlePoint().y() - 25,
+                GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
+        TextRenderUtils.drawCustomCenteredText(context, "Maybe try refreshing.",
+                this.getMiddlePoint().x(),
+                this.getMiddlePoint().y() - 10,
+                GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
     }
 
     private void drawPageNumber(DrawContext context) {
         int navY = this.getMiddlePoint().y() + 86;
         int navCenterX = this.getMiddlePoint().x();
-        String pageText = (currentPage + 1) + " / " + totalPages;
-        TextRenderUtils.drawCustomCenteredText(context, pageText, navCenterX, navY, Color.WHITE.getRGB(), true, 1.0f);
+        TextRenderUtils.drawCustomCenteredText(context, viewModel.getPageNumberText(), navCenterX, navY, Color.WHITE.getRGB(), true, 1.0f);
     }
 }

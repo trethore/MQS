@@ -1,6 +1,6 @@
 package net.me.mixin.client.mixins;
 
-import net.me.Main;
+import net.me.event.MQSEventBus;
 import net.me.event.events.player.PlayerRespawnEvent;
 import net.me.event.events.title.SubTitleEvent;
 import net.me.event.events.title.TitleEvent;
@@ -20,7 +20,7 @@ public class MQSClientPlayNetworkHandlerMixin {
     @Inject(method = "onTitle", at = @At("HEAD"), cancellable = true)
     private void onTitleHead(TitleS2CPacket packet, CallbackInfo ci) {
         TitleEvent event = new TitleEvent(packet);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             ci.cancel();
@@ -30,7 +30,7 @@ public class MQSClientPlayNetworkHandlerMixin {
     @Inject(method = "onSubtitle", at = @At("HEAD"), cancellable = true)
     private void onSubtitleHead(SubtitleS2CPacket packet, CallbackInfo ci) {
         SubTitleEvent event = new SubTitleEvent(packet);
-        Main.getInstance().getEventManager().post(event);
+        MQSEventBus.post(event);
 
         if (event.isCancelled()) {
             ci.cancel();
@@ -41,7 +41,7 @@ public class MQSClientPlayNetworkHandlerMixin {
     private void onPlayerRespawn(PlayerRespawnS2CPacket packet, CallbackInfo ci) {
         McUtils.getPlayer().ifPresent(player -> {
             PlayerRespawnEvent event = new PlayerRespawnEvent(packet, player);
-            Main.getInstance().getEventManager().post(event);
+            MQSEventBus.post(event);
         });
     }
 }

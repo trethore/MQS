@@ -9,6 +9,7 @@ import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleManager;
 import net.me.console.commands.*;
 import net.me.event.EventManager;
+import net.me.event.MQSEventBus;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
 import net.me.screen.component.components.MQSToast;
@@ -55,10 +56,6 @@ public class Main implements ClientModInitializer {
         return mappingsManager;
     }
 
-    public EventManager getEventManager() {
-        return eventManager;
-    }
-
     public GlobalConfigManager getGlobalConfigManager() {
         return globalConfigManager;
     }
@@ -67,31 +64,32 @@ public class Main implements ClientModInitializer {
         return keybindManager;
     }
 
-    public ScriptManager getScriptManager() {
-        return scriptManager;
-    }
-
     @Override
     public void onInitializeClient() {
         instance = this;
         initToastTick();
 
+        this.scriptEngine = Engine.create();
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
         this.scriptManager = new ScriptManager();
-        this.hookManager = new HookManager(scriptManager, mappingsManager);
-        this.eventManager = new EventManager(scriptManager);
+
         this.commandManager = new CommandManager();
         this.consoleManager = new ConsoleManager();
-        this.scriptingService = new ScriptingService(scriptManager, configManager);
         this.globalConfigManager = new GlobalConfigManager(consoleManager);
+
+        this.eventManager = new EventManager(scriptManager);
+        MQSEventBus.setManager(eventManager);
         this.keybindManager = new KeybindManager(scriptManager, configManager);
-        this.scriptEngine = Engine.create();
+
+        this.hookManager = new HookManager(scriptManager, mappingsManager);
+        this.scriptingService = new ScriptingService(scriptManager, configManager);
 
         configManager.init();
         consoleManager.init();
-        this.registerConsoleCommands();
         commandManager.init();
+
+        this.registerConsoleCommands();
         this.registerClientCommands();
 
         mappingsManager.init();
@@ -99,8 +97,8 @@ public class Main implements ClientModInitializer {
         mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
             scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager);
             globalConfigManager.init();
-            // and finally, enable all scripts !
             scriptManager.loadAndEnableScriptsFromConfig();
+
             LOGGER.info("MyQOLScripts initialization complete! Hello !");
         })));
     }

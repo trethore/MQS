@@ -1,6 +1,7 @@
 package net.me.scripting.engine;
 
 import net.me.Main;
+import net.me.scripting.ScriptManager;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
@@ -12,7 +13,12 @@ import java.util.*;
 public class ScriptingClassResolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScriptingClassResolver.class);
     private static final Set<String> EXCLUDED = Set.of();
+
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
+
+    private MappingsManager mappingsManager;
+    private ScriptManager scriptManager;
+
     private Map<String, String> classMap;
     private Map<String, Map<String, List<String>>> methodMap;
     private Map<String, Map<String, String>> fieldMap;
@@ -22,7 +28,9 @@ public class ScriptingClassResolver {
     public ScriptingClassResolver() {
     }
 
-    public void init(MappingsManager mappingsManager) {
+    public void init(MappingsManager mappingsManager, ScriptManager scriptManager) {
+        this.mappingsManager = mappingsManager;
+        this.scriptManager = scriptManager;
         loadMappings(mappingsManager);
         precomputePackagePrefixes();
     }
@@ -112,6 +120,15 @@ public class ScriptingClassResolver {
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
         var cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
-        return new JsClassWrapper(runtime, cm.methods(), cm.fields());
+        return new JsClassWrapper(runtime, cm.methods(), cm.fields(), this.mappingsManager, this.scriptManager);
     }
+
+    public MappingsManager getMappingsManager() {
+        return mappingsManager;
+    }
+
+    public ScriptManager getScriptManager() {
+        return scriptManager;
+    }
+
 }

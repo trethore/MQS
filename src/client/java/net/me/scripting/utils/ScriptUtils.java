@@ -1,7 +1,6 @@
-// In net/me/scripting/utils/ScriptUtils.java
 package net.me.scripting.utils;
 
-import net.me.Main;
+import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
@@ -102,17 +101,16 @@ public final class ScriptUtils {
         return v.asDouble();
     }
 
-    public static Object wrapReturn(Object o) {
+    public static Object wrapReturn(Object o, MappingsManager mappingsManager, ScriptManager scriptManager) {
         if (o == null || o instanceof String || o instanceof Number || o instanceof Boolean) {
             return o;
         }
 
-        MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
         if (mappingsManager == null || !mappingsManager.isReady()) {
             return o;
         }
 
-        ScriptingClassResolver classResolver = Main.getInstance().getScriptManager().getClassResolver();
+        ScriptingClassResolver classResolver = scriptManager.getClassResolver();
         Class<?> c = o.getClass();
 
         if (!classResolver.isClassInMc(c.getName())) {
@@ -124,6 +122,6 @@ public final class ScriptUtils {
                 mappingsManager.getMethodMap(),
                 mappingsManager.getFieldMap());
 
-        return new JsObjectWrapper(o, c, cm.methods(), cm.fields());
+        return new JsObjectWrapper(o, c, cm.methods(), cm.fields(), mappingsManager, scriptManager);
     }
 }

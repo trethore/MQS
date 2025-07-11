@@ -1,5 +1,7 @@
 package net.me.scripting.wrappers;
 
+import net.me.scripting.ScriptManager;
+import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.FastAccessorUtils;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.support.FieldLookup;
@@ -26,10 +28,16 @@ public class JsObjectWrapper implements ProxyObject {
     private final FieldLookup fields;
     private final String[] memberKeys;
 
+    // Dependencies
+    private final MappingsManager mappingsManager;
+    private final ScriptManager scriptManager;
+
     public JsObjectWrapper(Object instance,
                            Class<?> cls,
                            Map<String, List<String>> methodMap,
-                           Map<String, String> fieldMap) {
+                           Map<String, String> fieldMap,
+                           MappingsManager mappingsManager,
+                           ScriptManager scriptManager) {
         if (instance == null) {
             throw new NullPointerException("Java instance cannot be null");
         }
@@ -37,6 +45,8 @@ public class JsObjectWrapper implements ProxyObject {
         this.instanceClass = (cls != null) ? cls : instance.getClass();
         this.methods = new MethodLookup(methodMap);
         this.fields = new FieldLookup(fieldMap);
+        this.mappingsManager = mappingsManager;
+        this.scriptManager = scriptManager;
 
         this.memberKeys = MEMBER_KEYS_CACHE.computeIfAbsent(this.instanceClass, c -> {
             Set<String> keys = new HashSet<>(methods.methodKeys());
@@ -132,7 +142,7 @@ public class JsObjectWrapper implements ProxyObject {
             if (Modifier.isStatic(f.getModifiers())) return null;
             MethodHandle getter = FastAccessorUtils.getFieldGetter(f);
             Object result = getter.bindTo(javaInstance).invoke();
-            return ScriptUtils.wrapReturn(result);
+            return ScriptUtils.wrapReturn(result, this.mappingsManager, this.scriptManager);
         } catch (NoSuchFieldException e) {
             return null;
         } catch (Throwable e) {
@@ -147,7 +157,7 @@ public class JsObjectWrapper implements ProxyObject {
                     Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
                     MethodHandle handle = FastAccessorUtils.getMethodHandle(m);
                     Object result = handle.bindTo(this.javaInstance).invokeWithArguments(javaArgs);
-                    return ScriptUtils.wrapReturn(result);
+                    return ScriptUtils.wrapReturn(result, this.mappingsManager, this.scriptManager);
                 } catch (Throwable e) {
                     if (e.getCause() != null) {
                         throw new RuntimeException("Method '" + yarnName + "' threw an exception: " + e.getCause().getMessage(), e.getCause());

@@ -1,6 +1,8 @@
 package net.me.scripting.wrappers;
 
 import net.me.Main;
+import net.me.scripting.ScriptManager;
+import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.utils.FastAccessorUtils;
 import net.me.scripting.utils.ReflectionUtils;
 import net.me.scripting.utils.ScriptUtils;
@@ -29,9 +31,14 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     private final List<Constructor<?>> constructors;
     private final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
+    private final MappingsManager mappingsManager;
+    private final ScriptManager scriptManager;
+
     public JsClassWrapper(String runtimeFqcn,
                           Map<String, List<String>> methodLookup,
-                          Map<String, String> fieldLookup
+                          Map<String, String> fieldLookup,
+                          MappingsManager mappingsManager,
+                          ScriptManager scriptManager
     ) throws ClassNotFoundException {
         Main.LOGGER.debug("Creating JsClassWrapper for: {}", runtimeFqcn);
         this.targetClass = Class.forName(runtimeFqcn);
@@ -40,6 +47,9 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         this.yarnToRuntimeFields = Map.copyOf(fieldLookup);
         this.constructors = List.of(targetClass.getConstructors());
         this.constructors.forEach(c -> c.setAccessible(true));
+
+        this.mappingsManager = mappingsManager;
+        this.scriptManager = scriptManager;
     }
 
     @Override
@@ -147,7 +157,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                     Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, ctor.getParameterTypes());
                     MethodHandle handle = lookup.unreflectConstructor(ctor);
                     Object instance = handle.invokeWithArguments(javaArgs);
-                    return ScriptUtils.wrapReturn(instance);
+                    return ScriptUtils.wrapReturn(instance, this.mappingsManager, this.scriptManager);
                 } catch (Throwable e) {
                     throw new RuntimeException(
                             String.format("Failed to instantiate %s: %s", targetClassName, e.getMessage()), e);
@@ -172,7 +182,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                         Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, m.getParameterTypes());
                         MethodHandle handle = FastAccessorUtils.getMethodHandle(m);
                         Object result = handle.invokeWithArguments(javaArgs);
-                        return ScriptUtils.wrapReturn(result);
+                        return ScriptUtils.wrapReturn(result, this.mappingsManager, this.scriptManager);
                     } catch (Throwable e) {
                         if (e.getCause() != null) {
                             throw new RuntimeException(String.format("Static method %s.%s threw an exception: %s", targetClassName, methodNameForErrors, e.getCause().getMessage()), e.getCause());
@@ -200,7 +210,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                 throw new RuntimeException(yarnKey + " is not a static field.");
             }
             MethodHandle getter = FastAccessorUtils.getFieldGetter(f);
-            return ScriptUtils.wrapReturn(getter.invoke());
+            return ScriptUtils.wrapReturn(getter.invoke(), this.mappingsManager, this.scriptManager);
         } catch (Throwable e) {
             throw new RuntimeException(
                     String.format("Error accessing static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
