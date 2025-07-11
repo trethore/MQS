@@ -235,6 +235,7 @@ public class EventManager {
             listeners.removeIf(listener -> listener.owner().equals(owner) && listener.jsCallback().equals(callback));
         }
     }
+
     public void unregister(RunningScript owner, Class<? extends Event> eventType) {
         Map<EventPhase, List<Listener>> phaseMap = listeners.get(eventType);
         if (phaseMap != null) {

@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 public class CreateScriptScreen extends MQSScreen {
 
@@ -106,6 +107,75 @@ public class CreateScriptScreen extends MQSScreen {
         versionField.render(context, mouseX, mouseY, delta);
     }
 
+    private void createScript() {
+        Optional<String> validationError = validateInput();
+        if (validationError.isPresent()) {
+            setError(validationError.get());
+            return;
+        }
+
+        String name = nameField.getText().trim();
+        Path scriptPath = generateScriptPath(name);
+
+        if (Files.exists(scriptPath)) {
+            setError("A script with this name already exists.");
+            return;
+        }
+
+        try {
+            generateScriptFile(scriptPath);
+            handleCreationSuccess(name);
+        } catch (IOException e) {
+            handleCreationFailure(e);
+        }
+    }
+
+    private Optional<String> validateInput() {
+        if (mainClassField.getText().trim().isEmpty() || nameField.getText().trim().isEmpty() || versionField.getText().trim().isEmpty()) {
+            return Optional.of("All fields are required.");
+        }
+        if (!mainClassField.getText().trim().matches("^[a-zA-Z_$][a-zA-Z\\d_$]*$")) {
+            return Optional.of("Invalid Main Class Name.");
+        }
+        return Optional.empty();
+    }
+
+    private Path generateScriptPath(String name) {
+        String safeFileName = name.toLowerCase().replaceAll("\\s+", "-").replaceAll("[^a-z0-9-]", "") + ".js";
+        Path scriptsDir = Main.MOD_DIR.resolve("scripts");
+        return scriptsDir.resolve(safeFileName);
+    }
+
+    private void generateScriptFile(Path scriptPath) throws IOException {
+        String mainClass = mainClassField.getText().trim();
+        String name = nameField.getText().trim();
+        String version = versionField.getText().trim();
+        String content = getTemplate(mainClass, name, version);
+
+        Files.createDirectories(scriptPath.getParent());
+        Files.writeString(scriptPath, content);
+    }
+
+    private void handleCreationSuccess(String scriptName) {
+        MQSToast.show("Script Created!", "You can now find it in the 'scripts' folder.", 4000, MQSToast.Corner.TOP_LEFT);
+
+        AllScriptsScreen allScriptsScreen = findAllScriptsScreen();
+        if (allScriptsScreen != null) {
+            assert this.client != null;
+            this.client.setScreen(allScriptsScreen);
+            allScriptsScreen.forceRefresh();
+        } else {
+            // Fallback if the parent screen can't be found
+            close();
+            ChatUtils.addSuccessChatMessage("The script '" + scriptName + "' has been created!", true);
+        }
+    }
+
+    private void handleCreationFailure(IOException e) {
+        setError("Error: Failed to create script file.");
+        Main.LOGGER.error("Failed to create script file", e);
+    }
+
     @Nullable
     private AllScriptsScreen findAllScriptsScreen() {
         MQSScreen current = this.getParent();
@@ -122,52 +192,5 @@ public class CreateScriptScreen extends MQSScreen {
         this.errorField.setText(message);
         this.errorField.setEditableColor(GUIColors.ERROR.getRGB());
         this.errorField.setVisible(true);
-    }
-
-    private void createScript() {
-        String mainClass = mainClassField.getText().trim();
-        String name = nameField.getText().trim();
-        String version = versionField.getText().trim();
-
-        if (mainClass.isEmpty() || name.isEmpty() || version.isEmpty()) {
-            setError("All fields are required.");
-            return;
-        }
-
-        if (!mainClass.matches("^[a-zA-Z_$][a-zA-Z0-9_$]*$")) {
-            setError("Invalid Main Class Name.");
-            return;
-        }
-
-        String safeFileName = name.toLowerCase().replaceAll("\\s+", "-").replaceAll("[^a-z0-9-]", "") + ".js";
-        Path scriptsDir = Main.MOD_DIR.resolve("scripts");
-        Path scriptPath = scriptsDir.resolve(safeFileName);
-
-        if (Files.exists(scriptPath)) {
-            setError("A script with this name already exists.");
-            return;
-        }
-
-        String content = getTemplate(mainClass, name, version);
-
-        try {
-            Files.createDirectories(scriptsDir);
-            Files.writeString(scriptPath, content);
-
-            MQSToast.show("Script Created!", "You can now find it in the 'scripts' folder.", 4000, MQSToast.Corner.TOP_LEFT);
-
-            AllScriptsScreen allScriptsScreen = findAllScriptsScreen();
-            if (allScriptsScreen != null) {
-                assert this.client != null;
-                this.client.setScreen(allScriptsScreen);
-                allScriptsScreen.forceRefresh();
-            } else {
-                ChatUtils.addChatMessage("The script '" + name + "' has been created !", ChatUtils.Level.SUCCESS, true);
-            }
-
-        } catch (IOException e) {
-            setError("Error: Failed to create script file.");
-            Main.LOGGER.error("Failed to create script file", e);
-        }
     }
 }

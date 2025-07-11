@@ -66,8 +66,9 @@ public class AllScriptsScreen extends MQSScreen {
         super.init();
 
         addSearch();
-        addNavigationAndActionButtons();
         addScriptListWidgets();
+        createPagingWidgets();
+        createActionWidgets();
 
         updateScriptList();
     }
@@ -146,7 +147,7 @@ public class AllScriptsScreen extends MQSScreen {
         updateNavigationButtons();
     }
 
-    private void addNavigationAndActionButtons() {
+    private void createPagingWidgets() {
         int navY = this.getMiddlePoint().y() + 75;
         int navX = this.getMiddlePoint().x();
 
@@ -166,8 +167,11 @@ public class AllScriptsScreen extends MQSScreen {
 
         this.addDrawableChild(this.prevButton);
         this.addDrawableChild(this.nextButton);
+    }
 
-        int actionY = navY + 25;
+    private void createActionWidgets() {
+        int actionY = this.getMiddlePoint().y() + 75 + 25; // Position below paging buttons
+        int navX = this.getMiddlePoint().x();
 
         this.refreshButton = MQSImageButtonWidget.builder(Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png"), "Refresh", button -> refreshScripts())
                 .dimensions(navX - WINDOW_HORIZONTAL_MARGIN, actionY, 65, UIConstants.BUTTON_HEIGHT).build();
@@ -197,6 +201,13 @@ public class AllScriptsScreen extends MQSScreen {
         if (isRefreshing) {
             return;
         }
+        beginUIRefreshState();
+
+        assert this.client != null;
+        this.client.send(this::performAndHandleRefresh);
+    }
+
+    private void beginUIRefreshState() {
         isRefreshing = true;
         if (this.refreshButton != null) {
             this.refreshButton.active = false;
@@ -204,25 +215,28 @@ public class AllScriptsScreen extends MQSScreen {
             this.allScripts.clear();
             this.filteredScripts.clear();
         }
+    }
 
-        assert this.client != null;
-        this.client.send(() -> {
-            scriptingService.refreshAndReenable();
+    private void performAndHandleRefresh() {
+        scriptingService.refreshAndReenable();
 
-            this.allScripts.clear();
-            this.allScripts.addAll(scriptingService.listAvailable());
-            this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
+        this.allScripts.clear();
+        this.allScripts.addAll(scriptingService.listAvailable());
+        this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
 
-            onSearchTextChanged(this.searchTextField.getText());
+        onSearchTextChanged(this.searchTextField.getText());
 
-            isRefreshing = false;
-            if (this.refreshButton != null) {
-                this.refreshButton.active = true;
-                this.refreshButton.setImage(null);
-                this.refreshButton.setMessage(Text.literal("Refreshed!"));
-                this.refreshFinishTime = System.currentTimeMillis();
-            }
-        });
+        finishUIRefreshState();
+    }
+
+    private void finishUIRefreshState() {
+        isRefreshing = false;
+        if (this.refreshButton != null) {
+            this.refreshButton.active = true;
+            this.refreshButton.setImage(null);
+            this.refreshButton.setMessage(Text.literal("Refreshed!"));
+            this.refreshFinishTime = System.currentTimeMillis();
+        }
     }
 
     public void forceRefresh() {
@@ -263,7 +277,6 @@ public class AllScriptsScreen extends MQSScreen {
                     GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
         }
         drawPageNumber(context);
-
     }
 
     private void drawPageNumber(DrawContext context) {

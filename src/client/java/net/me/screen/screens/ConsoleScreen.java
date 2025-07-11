@@ -206,29 +206,33 @@ public class ConsoleScreen extends MQSScreen {
         }
 
         if (this.inputField.isFocused()) {
-            if (keyCode == GLFW.GLFW_KEY_UP) {
-                navigateHistory(-1);
-                return true;
-            }
-            if (keyCode == GLFW.GLFW_KEY_DOWN) {
-                navigateHistory(1);
-                return true;
-            }
-            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
-                String command = this.inputField.getText();
-                consoleManager.executeCommand(command);
-
-                navigatingHistory = true;
-                this.inputField.setText("");
-                navigatingHistory = false;
-
-                autoScroll = true;
-                this.historyIndex = consoleManager.getCommandHistory().size();
-                this.unsentInput = "";
-                return true;
+            switch (keyCode) {
+                case GLFW.GLFW_KEY_UP:
+                    navigateHistory(-1);
+                    return true;
+                case GLFW.GLFW_KEY_DOWN:
+                    navigateHistory(1);
+                    return true;
+                case GLFW.GLFW_KEY_ENTER:
+                case GLFW.GLFW_KEY_KP_ENTER:
+                    handleCommandExecution();
+                    return true;
             }
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    private void handleCommandExecution() {
+        String command = this.inputField.getText();
+        consoleManager.executeCommand(command);
+
+        navigatingHistory = true;
+        this.inputField.setText("");
+        navigatingHistory = false;
+
+        this.unsentInput = "";
+        this.historyIndex = consoleManager.getCommandHistory().size();
+        this.autoScroll = true;
     }
 
     private record DisplayLine(String text, int color) {

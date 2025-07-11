@@ -15,6 +15,8 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Arrays;
 
+import static net.me.scripting.api.ApiConstants.*;
+
 public class EventAPI implements ProxyObject {
 
     private final EventManager eventManager;
@@ -28,6 +30,19 @@ public class EventAPI implements ProxyObject {
         this.scriptManager = scriptManager;
     }
 
+    private static Class<? extends Event> getEventClass(Object eventTarget) {
+        Class<? extends Event> eventType;
+        if (eventTarget instanceof Events eventEnum) {
+            eventType = eventEnum.getEventClass();
+        } else if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
+            //noinspection unchecked
+            eventType = (Class<? extends Event>) cls;
+        } else {
+            throw new IllegalArgumentException("First argument to EventManager.unregister must be an MQS event class, a Fabric Event, or an MQS Event from EventManager.Events.");
+        }
+        return eventType;
+    }
+
     private RunningScript getCurrentScript() {
         RunningScript script = scriptManager.getCurrentScript();
         if (script == null) {
@@ -38,17 +53,17 @@ public class EventAPI implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        if ("Events".equals(key)) {
+        if (EVENTS.equals(key)) {
             return eventsEnumProxy;
         }
-        if ("Phase".equals(key)) {
+        if (PHASE.equals(key)) {
             return eventPhaseEnumProxy;
         }
 
         return (ProxyExecutable) args -> {
             RunningScript owner = getCurrentScript();
 
-            if ("register".equals(key)) {
+            if (REGISTER.equals(key)) {
                 if (args.length < 2 || args.length > 3) {
                     throw new IllegalArgumentException("Usage: EventManager.register(EventType, [Phase], callbackFunction)");
                 }
@@ -88,7 +103,7 @@ public class EventAPI implements ProxyObject {
                 return null;
             }
 
-            if ("unregisterAll".equals(key)) {
+            if (UNREGISTER_ALL.equals(key)) {
                 if (args.length != 0) {
                     throw new IllegalArgumentException("Usage: EventManager.unregisterAll()");
                 }
@@ -96,7 +111,7 @@ public class EventAPI implements ProxyObject {
                 return null;
             }
 
-            if ("unregister".equals(key)) {
+            if (UNREGISTER.equals(key)) {
                 if (args.length < 1 || args.length > 3) {
                     throw new IllegalArgumentException("Usage: EventManager.unregister(EventType, [Phase|callback], [callback])");
                 }
@@ -154,19 +169,6 @@ public class EventAPI implements ProxyObject {
         };
     }
 
-    private static Class<? extends Event> getEventClass(Object eventTarget) {
-        Class<? extends Event> eventType;
-        if (eventTarget instanceof Events eventEnum) {
-            eventType = eventEnum.getEventClass();
-        } else if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
-            //noinspection unchecked
-            eventType = (Class<? extends Event>) cls;
-        } else {
-            throw new IllegalArgumentException("First argument to EventManager.unregister must be an MQS event class, a Fabric Event, or an MQS Event from EventManager.Events.");
-        }
-        return eventType;
-    }
-
     private Object resolveEventTarget(Value eventTypeArg) {
         if (eventTypeArg == null) {
             throw new IllegalArgumentException("Event type cannot be null.");
@@ -194,12 +196,12 @@ public class EventAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{"register", "unregister", "unregisterAll", "Events", "Phase"};
+        return new String[]{REGISTER, UNREGISTER, UNREGISTER_ALL, EVENTS, PHASE};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "register".equals(key) || "unregister".equals(key) || "unregisterAll".equals(key) || "Events".equals(key) || "Phase".equals(key);
+        return REGISTER.equals(key) || UNREGISTER.equals(key) || UNREGISTER_ALL.equals(key) || EVENTS.equals(key) || PHASE.equals(key);
     }
 
     @Override

@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class ScriptCommand extends Command {
+    private static final String SCRIPT_ID_ARG = "script_id";
     private final ScriptingService scriptingService;
 
     public ScriptCommand(ScriptingService scriptingService) {
@@ -30,15 +31,15 @@ public class ScriptCommand extends Command {
                 .then(ClientCommandManager.literal("list")
                         .executes(this::listScripts))
                 .then(ClientCommandManager.literal("enable")
-                        .then(ClientCommandManager.argument("script_id", StringArgumentType.greedyString())
+                        .then(ClientCommandManager.argument(SCRIPT_ID_ARG, StringArgumentType.greedyString())
                                 .suggests(this::suggestDisabledScripts)
                                 .executes(this::enableScript)))
                 .then(ClientCommandManager.literal("disable")
-                        .then(ClientCommandManager.argument("script_id", StringArgumentType.greedyString())
+                        .then(ClientCommandManager.argument(SCRIPT_ID_ARG, StringArgumentType.greedyString())
                                 .suggests(this::suggestEnabledScripts)
                                 .executes(this::disableScript)))
                 .then(ClientCommandManager.literal("reload")
-                        .then(ClientCommandManager.argument("script_id", StringArgumentType.greedyString())
+                        .then(ClientCommandManager.argument(SCRIPT_ID_ARG, StringArgumentType.greedyString())
                                 .suggests(this::suggestEnabledScripts)
                                 .executes(this::reloadScript)))
                 .then(ClientCommandManager.literal("refresh")
@@ -46,7 +47,7 @@ public class ScriptCommand extends Command {
                 .then(ClientCommandManager.literal("refreshandreenable")
                         .executes(this::refreshAndReenableScripts))
                 .then(ClientCommandManager.literal("save")
-                        .then(ClientCommandManager.argument("script_id", StringArgumentType.greedyString())
+                        .then(ClientCommandManager.argument(SCRIPT_ID_ARG, StringArgumentType.greedyString())
                                 .suggests(this::suggestEnabledScripts)
                                 .executes(this::saveScriptConfig)))
                 .then(ClientCommandManager.literal("saveall")
@@ -63,21 +64,21 @@ public class ScriptCommand extends Command {
     }
 
     private int enableScript(CommandContext<FabricClientCommandSource> context) {
-        String scriptId = StringArgumentType.getString(context, "script_id");
+        String scriptId = StringArgumentType.getString(context, SCRIPT_ID_ARG);
         scriptingService.enable(scriptId);
         ChatUtils.addInfoChatMessage("Attempting to enable script: " + scriptId, true);
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private int disableScript(CommandContext<FabricClientCommandSource> context) {
-        String scriptId = StringArgumentType.getString(context, "script_id");
+        String scriptId = StringArgumentType.getString(context, SCRIPT_ID_ARG);
         scriptingService.disable(scriptId);
         ChatUtils.addSuccessChatMessage("Disabled script: " + scriptId, true);
         return CommandManager.COMMAND_SUCCESS;
     }
 
     private int reloadScript(CommandContext<FabricClientCommandSource> context) {
-        String scriptId = StringArgumentType.getString(context, "script_id");
+        String scriptId = StringArgumentType.getString(context, SCRIPT_ID_ARG);
         scriptingService.disable(scriptId);
         scriptingService.enable(scriptId);
         ChatUtils.addSuccessChatMessage("Reloaded script: " + scriptId, true);
@@ -97,7 +98,7 @@ public class ScriptCommand extends Command {
     }
 
     private int saveScriptConfig(CommandContext<FabricClientCommandSource> context) {
-        String scriptId = StringArgumentType.getString(context, "script_id");
+        String scriptId = StringArgumentType.getString(context, SCRIPT_ID_ARG);
         boolean success = scriptingService.save(scriptId);
         if (success) {
             ChatUtils.addSuccessChatMessage("Saved config for script: " + scriptId, true);

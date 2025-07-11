@@ -10,6 +10,8 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Arrays;
 
+import static net.me.scripting.api.ApiConstants.*;
+
 public class KeybindAPI implements ProxyObject {
 
     private static final ProxyObject KEYS_PROXY = new ProxyObject() {
@@ -18,7 +20,7 @@ public class KeybindAPI implements ProxyObject {
             return Arrays.stream(Keys.values())
                     .filter(k -> k.name().equalsIgnoreCase(key))
                     .findFirst()
-                    .map(k -> (Object) k.getCode())
+                    .map(Keys::getCode)
                     .orElse(null);
         }
 
@@ -56,14 +58,14 @@ public class KeybindAPI implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        if ("Keys".equalsIgnoreCase(key)) {
+        if (KEYS.equalsIgnoreCase(key)) {
             return KEYS_PROXY;
         }
 
         return (ProxyExecutable) args -> {
             RunningScript owner = getCurrentScript();
             switch (key) {
-                case "register": {
+                case REGISTER: {
                     if (args.length < 2 || !args[0].isString() || !args[1].canExecute()) {
                         throw new IllegalArgumentException("Usage: KeybindManager.register('name', actionFunction, { key, repeatable, debounce })");
                     }
@@ -76,7 +78,7 @@ public class KeybindAPI implements ProxyObject {
                     keybindManager.register(name, action, owner, options);
                     return null;
                 }
-                case "unregister": {
+                case UNREGISTER: {
                     if (args.length != 1 || !args[0].isString()) {
                         throw new IllegalArgumentException("Usage: Keybinds.unregister('name')");
                     }
@@ -92,12 +94,12 @@ public class KeybindAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{"register", "unregister", "Keys"};
+        return new String[]{REGISTER, UNREGISTER, KEYS};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "register".equals(key) || "unregister".equals(key) || "Keys".equalsIgnoreCase(key);
+        return REGISTER.equals(key) || UNREGISTER.equals(key) || KEYS.equalsIgnoreCase(key);
     }
 
     @Override

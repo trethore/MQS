@@ -22,7 +22,7 @@ public class CommandBuilder {
         this(ClientCommandManager.literal(name), owner, scriptManager);
     }
 
-    CommandBuilder(ArgumentBuilder<FabricClientCommandSource, ?> builder, RunningScript owner, ScriptManager scriptManager) {
+    public CommandBuilder(ArgumentBuilder<FabricClientCommandSource, ?> builder, RunningScript owner, ScriptManager scriptManager) {
         this.builder = builder;
         this.owner = owner;
         this.scriptManager = scriptManager;

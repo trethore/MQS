@@ -12,6 +12,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static net.me.scripting.api.ApiConstants.*;
+
 public class ConfigAPI implements ProxyObject {
 
     private final ConfigManager configManager;
@@ -20,14 +22,6 @@ public class ConfigAPI implements ProxyObject {
     public ConfigAPI(ConfigManager configManager, ScriptManager scriptManager) {
         this.configManager = configManager;
         this.scriptManager = scriptManager;
-    }
-
-    private RunningScript getCurrentScript() {
-        RunningScript script = scriptManager.getCurrentScript();
-        if (script == null) {
-            throw new IllegalStateException("Config API can only be used within a running script context (e.g., onEnable, onDisable, or an event).");
-        }
-        return script;
     }
 
     private static Object toSerializableObject(Value value) {
@@ -63,12 +57,20 @@ public class ConfigAPI implements ProxyObject {
         return value;
     }
 
+    private RunningScript getCurrentScript() {
+        RunningScript script = scriptManager.getCurrentScript();
+        if (script == null) {
+            throw new IllegalStateException("Config API can only be used within a running script context (e.g., onEnable, onDisable, or an event).");
+        }
+        return script;
+    }
+
     @Override
     public Object getMember(String key) {
         return (ProxyExecutable) args -> {
             RunningScript script = getCurrentScript();
             switch (key) {
-                case "get": {
+                case GET: {
                     if (args.length == 0)
                         throw new IllegalArgumentException("Config.get requires at least one argument (key).");
                     String configKey = args[0].asString();
@@ -78,7 +80,7 @@ public class ConfigAPI implements ProxyObject {
                     }
                     return script.getContext().asValue(result);
                 }
-                case "set": {
+                case SET: {
                     if (args.length != 2)
                         throw new IllegalArgumentException("Config.set requires two arguments (key, value).");
                     String configKey = args[0].asString();
@@ -86,26 +88,26 @@ public class ConfigAPI implements ProxyObject {
                     configManager.set(script.getId(), configKey, value);
                     return null;
                 }
-                case "has": {
+                case HAS: {
                     if (args.length != 1)
                         throw new IllegalArgumentException("Config.has requires one argument (key).");
                     String configKey = args[0].asString();
                     return configManager.get(script.getId(), configKey) != null;
                 }
-                case "save": {
+                case SAVE: {
                     if (args.length != 0)
                         throw new IllegalArgumentException("Config.save takes no arguments.");
                     configManager.saveConfig(script);
                     return null;
                 }
-                case "load": {
+                case LOAD: {
                     if (args.length != 0)
                         throw new IllegalArgumentException("Config.load takes no arguments.");
                     configManager.unloadConfig(script);
                     configManager.getConfigForScript(script);
                     return null;
                 }
-                case "getAll": {
+                case GET_ALL: {
                     if (args.length != 0)
                         throw new IllegalArgumentException("Config.getAll takes no arguments.");
                     return configManager.getConfigForScript(script);
@@ -118,12 +120,12 @@ public class ConfigAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{"get", "set", "has", "save", "load", "getAll"};
+        return new String[]{GET, SET, HAS, SAVE, LOAD, GET_ALL};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "get".equals(key) || "set".equals(key) || "has".equals(key) || "save".equals(key) || "load".equals(key) || "getAll".equals(key);
+        return GET.equals(key) || SET.equals(key) || HAS.equals(key) || SAVE.equals(key) || LOAD.equals(key) || GET_ALL.equals(key);
     }
 
     @Override

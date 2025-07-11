@@ -26,7 +26,7 @@ public class AllowAllClassesCommand extends ConsoleCommand {
         Optional<Boolean> enableOpt = ConsoleUtils.parseBooleanArg(args[0]);
 
         if (enableOpt.isEmpty()) {
-            cm.logError("Invalid argument '" + args[0] + "'. Must be 'true' or 'false'.");
+            cm.logError("Invalid argument '" + args[0] + "'. Must be '" + ConsoleUtils.TRUE_STRING + "' or '" + ConsoleUtils.FALSE_STRING + "'.");
             return;
         }
 

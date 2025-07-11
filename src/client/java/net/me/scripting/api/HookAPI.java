@@ -10,6 +10,8 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import static net.me.scripting.api.ApiConstants.*;
+
 public class HookAPI implements ProxyObject {
 
     private final HookManager hookManager;
@@ -34,7 +36,7 @@ public class HookAPI implements ProxyObject {
             RunningScript owner = getCurrentScript();
 
             switch (key) {
-                case "hook": {
+                case HOOK: {
                     Value targetClassValue;
                     String yarnMethodName;
                     Value callback;
@@ -72,7 +74,7 @@ public class HookAPI implements ProxyObject {
                     return null;
                 }
 
-                case "unhook": {
+                case UNHOOK: {
                     if (args.length < 2 || args.length > 3 || !args[1].isString()) {
                         throw new IllegalArgumentException("Usage: HookManager.unhook(TargetClass, 'methodName', [options])");
                     }
@@ -100,7 +102,7 @@ public class HookAPI implements ProxyObject {
                     return null;
                 }
 
-                case "unhookAll": {
+                case UNHOOK_ALL: {
                     if (args.length != 0) {
                         throw new IllegalArgumentException("Usage: HookManager.unhookAll()");
                     }
@@ -116,12 +118,12 @@ public class HookAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return new String[]{"hook", "unhook", "unhookAll"};
+        return new String[]{HOOK, UNHOOK, UNHOOK_ALL};
     }
 
     @Override
     public boolean hasMember(String key) {
-        return "hook".equals(key) || "unhook".equals(key) || "unhookAll".equals(key);
+        return HOOK.equals(key) || UNHOOK.equals(key) || UNHOOK_ALL.equals(key);
     }
 
     @Override
