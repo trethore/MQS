@@ -37,6 +37,7 @@ public class HookAPI implements ProxyObject {
     private static final Set<String> MEMBER_KEYS = Set.of(HOOK, UNHOOK, UNHOOK_ALL);
     private final HookManager hookManager;
     private final ScriptManager scriptManager;
+    private static final String ARGS = "args";
 
     public HookAPI(HookManager hookManager, ScriptManager scriptManager) {
         this.hookManager = hookManager;
@@ -113,8 +114,8 @@ public class HookAPI implements ProxyObject {
                     if (args.length == 3 && args[2] != null && args[2].hasMembers()) {
                         Value optionsValue = args[2];
                         Integer argCount = null;
-                        if (optionsValue.hasMember("args") && optionsValue.getMember("args").isNumber()) {
-                            argCount = optionsValue.getMember("args").asInt();
+                        if (optionsValue.hasMember(ARGS) && optionsValue.getMember(ARGS).isNumber()) {
+                            argCount = optionsValue.getMember(ARGS).asInt();
                         }
                         hookManager.unhookSingle(owner, targetClass, yarnMethodName, argCount);
                     } else {

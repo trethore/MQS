@@ -33,7 +33,7 @@ import static net.me.scripting.api.ApiConstants.*;
 
 public class KeybindAPI implements ProxyObject {
 
-    private static final Set<String> MEMBER_KEYS = Set.of(REGISTER, UNREGISTER, KEYS);
+    private static final Set<String> MEMBER_KEYS = Set.of(REGISTER, UNREGISTER,UNREGISTER_ALL, KEYS);
     private static final ProxyObject KEYS_PROXY = new ProxyObject() {
         @Override
         public Object getMember(String key) {
@@ -100,14 +100,21 @@ public class KeybindAPI implements ProxyObject {
                 }
                 case UNREGISTER: {
                     if (args.length != 1 || !args[0].isString()) {
-                        throw new IllegalArgumentException("Usage: Keybinds.unregister('name')");
+                        throw new IllegalArgumentException("Usage: KeybindManager.unregister('name')");
                     }
                     String name = args[0].asString();
                     keybindManager.unregister(owner, name);
                     return null;
                 }
+                case UNREGISTER_ALL: {
+                    if (args.length != 0) {
+                        throw new IllegalArgumentException("Usage: KeybindManager.unregisterAll()");
+                    }
+                    keybindManager.unregister(owner);
+                    return null;
+                }
                 default:
-                    throw new UnsupportedOperationException("Unsupported Keybinds operation: " + key);
+                    throw new UnsupportedOperationException("Unsupported KeybindManager operation: " + key);
             }
         };
     }
@@ -124,6 +131,6 @@ public class KeybindAPI implements ProxyObject {
 
     @Override
     public void putMember(String key, Value value) {
-        throw new UnsupportedOperationException("Cannot modify the Keybinds API object.");
+        throw new UnsupportedOperationException("Cannot modify the KeybindManager API object.");
     }
 }
