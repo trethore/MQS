@@ -157,6 +157,44 @@ public class ScriptingApi {
         };
     }
 
+    private static Class<?> getClassFromValue(Value value) {
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        Object proxy = value.isProxyObject() ? value.asProxyObject() : null;
+        if (proxy instanceof net.me.scripting.wrappers.LazyJsClassHolder holder) {
+            return holder.getWrapper().getTargetClass();
+        }
+        if (proxy instanceof net.me.scripting.wrappers.JsClassWrapper wrapper) {
+            return wrapper.getTargetClass();
+        }
+        Object unwrapped = ScriptUtils.unwrapReceiver(value);
+        if (unwrapped instanceof Class) {
+            return (Class<?>) unwrapped;
+        }
+        return null;
+    }
+
+
+    public static ProxyExecutable createIsInstanceOfProxy() {
+        return args -> {
+            if (args.length != 2) {
+                throw new IllegalArgumentException("isInstanceOf(instance, class) requires exactly two arguments.");
+            }
+            Object rawInstance = ScriptUtils.unwrapReceiver(args[0]);
+            Class<?> rawClass = getClassFromValue(args[1]);
+
+            if (rawClass == null) {
+                throw new IllegalArgumentException("The second argument to isInstanceOf must be a class.");
+            }
+
+            if (rawInstance == null) {
+                return false;
+            }
+            return rawClass.isInstance(rawInstance);
+        };
+    }
+
 
     private static void addModule(Map<String, Value> exportsMap, Value moduleValue) {
         if (moduleValue != null && moduleValue.canInstantiate()) {

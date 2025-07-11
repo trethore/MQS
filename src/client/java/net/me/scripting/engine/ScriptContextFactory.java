@@ -39,6 +39,7 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class ScriptContextFactory {
@@ -71,19 +72,19 @@ public class ScriptContextFactory {
                 .targetTypeMapping(
                         JsObjectWrapper.class,
                         Object.class,
-                        (v) -> v.getJavaInstance() != null,
+                        Objects::nonNull,
                         JsObjectWrapper::getJavaInstance
                 )
                 .targetTypeMapping(
                         ExtendedInstanceProxy.class,
                         Object.class,
-                        (v) -> v.getBaseInstance() != null,
+                        Objects::nonNull,
                         ExtendedInstanceProxy::getBaseInstance
                 )
                 .targetTypeMapping(
                         MappedInstanceProxy.class,
                         Object.class,
-                        (v) -> v.getInstance() != null,
+                        Objects::nonNull,
                         MappedInstanceProxy::getInstance
                 )
                 .build();
@@ -113,6 +114,7 @@ public class ScriptContextFactory {
 
         addApiMember(bindings, "importClass", ScriptingApi.createImportClassProxy(classResolver, context));
         addApiMember(bindings, "extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
+        addApiMember(bindings, "isInstanceOf", ScriptingApi.createIsInstanceOfProxy());
         addApiMember(bindings, "wrap", ScriptingApi.createWrapProxy(classResolver));
         addApiMember(bindings, "exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
 

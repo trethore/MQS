@@ -63,6 +63,35 @@ public class ExtendedInstanceProxy implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
+        if ("_instanceof".equals(key)) {
+            return (ProxyExecutable) (Value... args) -> {
+                if (args.length != 1) {
+                    throw new IllegalArgumentException("_instanceof(class) requires exactly one argument.");
+                }
+
+                Value classValue = args[0];
+                Class<?> rawClass;
+
+                if (classValue == null || classValue.isNull()) {
+                    throw new IllegalArgumentException("The argument to _instanceof cannot be null.");
+                }
+                Object proxy = classValue.isProxyObject() ? classValue.asProxyObject() : null;
+                if (proxy instanceof net.me.scripting.wrappers.LazyJsClassHolder holder) {
+                    rawClass = holder.getWrapper().getTargetClass();
+                } else if (proxy instanceof net.me.scripting.wrappers.JsClassWrapper wrapper) {
+                    rawClass = wrapper.getTargetClass();
+                } else {
+                    Object unwrapped = ScriptUtils.unwrapReceiver(classValue);
+                    if (unwrapped instanceof Class) {
+                        rawClass = (Class<?>) unwrapped;
+                    } else {
+                        throw new IllegalArgumentException("The argument to _instanceof must be a class.");
+                    }
+                }
+
+                return rawClass.isInstance(this.baseInstance);
+            };
+        }
         if ("equals".equals(key)) {
             return (ProxyExecutable) (Value... args) -> {
                 if (args.length != 1) return false;
@@ -93,6 +122,7 @@ public class ExtendedInstanceProxy implements ProxyObject {
             keys.addAll(Set.of(javaKeys));
         }
         keys.add("equals");
+        keys.add("_instanceof");
         return keys.toArray(new String[0]);
     }
 
@@ -100,12 +130,13 @@ public class ExtendedInstanceProxy implements ProxyObject {
     public boolean hasMember(String key) {
         return properties.containsKey(key)
                 || (javaInstanceProxy != null && javaInstanceProxy.hasMember(key))
-                || "equals".equals(key);
+                || "equals".equals(key)
+                || "_instanceof".equals(key);
     }
 
     @Override
     public void putMember(String key, Value value) {
-        if ("_self".equals(key) || "_super".equals(key) || "equals".equals(key)) {
+        if ("_self".equals(key) || "_super".equals(key) || "equals".equals(key) || "_instanceof".equals(key)) {
             throw new UnsupportedOperationException("Cannot modify the " + key + " reference.");
         }
 

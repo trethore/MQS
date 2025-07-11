@@ -75,9 +75,8 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         Value extendFn = context.eval("js", "Java.extend");
         List<Object> extendArgs = new ArrayList<>();
         extendArgs.add(config.extendsClass().targetClass());
-        Value typeFn = context.eval("js", "Java.type");
         for (MappedClassInfo interfaceInfo : config.implementsClasses()) {
-            extendArgs.add(typeFn.execute(interfaceInfo.targetClass().getName()));
+            extendArgs.add(interfaceInfo.targetClass());
         }
         return extendFn.execute(extendArgs.toArray());
     }

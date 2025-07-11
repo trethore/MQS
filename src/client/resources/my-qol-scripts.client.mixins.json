@@ -21,7 +21,6 @@
     "client.mixins.MQSHudMixin",
     "client.mixins.MQSMinecraftClientMixin",
     "fabric.event.ArrayBackedEventAccessor",
-    "fabric.event.EventPhaseDataAccessor",
     "keybinds.MQSKeyboardMixin",
     "keybinds.MQSMouseMixin"
   ],
