@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.utils;
+package net.me.screen.theme;
 
 public class UIConstants {
     // --- Sizing ---
@@ -26,6 +26,7 @@ public class UIConstants {
     public static final int INPUT_HEIGHT = 20;
     public static final int ENTRY_HEIGHT = 30;
     public static final int WIDGET_WIDTH_STANDARD = 200;
+    public static final int SCROLLBAR_WIDTH = 4;
     // --- Padding & Spacing ---
     public static final int PADDING_S = 5;
     public static final int PADDING_M = 10;

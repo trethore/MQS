@@ -18,7 +18,7 @@
 
 package net.me.screen.component.components;
 
-import net.me.utils.GUIColors;
+import net.me.screen.theme.GUIColors;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;

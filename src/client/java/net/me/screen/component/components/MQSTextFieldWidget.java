@@ -20,9 +20,9 @@ package net.me.screen.component.components;
 
 import net.me.screen.component.IResizableWidget;
 import net.me.screen.component.WidgetRendererDelegate;
-import net.me.utils.GUIColors;
+import net.me.screen.theme.GUIColors;
+import net.me.screen.theme.UIConstants;
 import net.me.utils.TextRendererUtils;
-import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Style;

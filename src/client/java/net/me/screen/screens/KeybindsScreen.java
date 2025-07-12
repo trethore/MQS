@@ -23,10 +23,11 @@ import net.me.keybinds.KeybindManager;
 import net.me.keybinds.Keys;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.components.KeybindEntryWidget;
+import net.me.screen.component.components.ScrollbarWidget;
+import net.me.screen.theme.GUIColors;
+import net.me.screen.theme.UIConstants;
 import net.me.scripting.module.RunningScript;
-import net.me.utils.GUIColors;
 import net.me.utils.TextRenderUtils;
-import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 
@@ -40,6 +41,7 @@ public class KeybindsScreen extends MQSScreen {
     private static final int LIST_BOTTOM_MARGIN = 70;
     private final KeybindManager keybindManager;
     private final List<KeybindEntryWidget> keybindEntryWidgets = new ArrayList<>();
+    private ScrollbarWidget scrollbar;
     private KeybindEntryWidget listeningWidget = null;
     private double scrollY = 0;
     private int totalContentHeight = 0;
@@ -65,7 +67,16 @@ public class KeybindsScreen extends MQSScreen {
         this.sortedKeybindsCache = getSortedScriptGroups();
 
         int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
-        int currentY = getMiddlePoint().y() - getWindowHeight() / 2 + LIST_TOP_MARGIN;
+        int listStartY = getMiddlePoint().y() - getWindowHeight() / 2 + LIST_TOP_MARGIN;
+
+        int scrollbarX = windowStartX + getWindowWidth() - PADDING + UIConstants.PADDING_S;
+        int scrollbarHeight = getWindowHeight() - LIST_TOP_MARGIN - LIST_BOTTOM_MARGIN + 15;
+        this.scrollbar = new ScrollbarWidget(scrollbarX, listStartY, UIConstants.SCROLLBAR_WIDTH, scrollbarHeight, (newScroll) -> this.scrollY = newScroll);
+        this.addDrawableChild(this.scrollbar);
+
+
+        int currentY = listStartY;
+        int widgetWidth = getWindowWidth() - (PADDING * 2) - UIConstants.SCROLLBAR_WIDTH - UIConstants.PADDING_S;
 
         for (Map.Entry<RunningScript, List<KeyBinding>> entry : this.sortedKeybindsCache.entrySet()) {
             currentY += HEADER_HEIGHT;
@@ -79,7 +90,7 @@ public class KeybindsScreen extends MQSScreen {
                         .dimensions(
                                 windowStartX + PADDING,
                                 currentY,
-                                getWindowWidth() - (PADDING * 2),
+                                widgetWidth,
                                 UIConstants.ENTRY_HEIGHT
                         )
                         .build();
@@ -90,6 +101,7 @@ public class KeybindsScreen extends MQSScreen {
             }
         }
         this.keybindEntryWidgets.forEach(this::addSelectableChild);
+        this.scrollbar.update(totalContentHeight, scrollbarHeight, scrollY);
     }
 
     @Override
@@ -105,11 +117,16 @@ public class KeybindsScreen extends MQSScreen {
                     this.getMiddlePoint().x(),
                     this.getMiddlePoint().y() - 10,
                     GUIColors.TEXT_DISABLED.getRGB(), true, UIConstants.TEXT_SCALE);
+            this.scrollbar.visible = false;
         } else {
+            this.scrollbar.visible = true;
             int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
             int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
             int listStartY = windowStartY + LIST_TOP_MARGIN;
-            int listHeight = getWindowHeight() - LIST_BOTTOM_MARGIN;
+            int listHeight = getWindowHeight() - LIST_TOP_MARGIN - LIST_BOTTOM_MARGIN + 15;
+
+            this.scrollbar.update(totalContentHeight, listHeight, scrollY);
+
 
             context.enableScissor(windowStartX, listStartY, windowStartX + getWindowWidth(), listStartY + listHeight);
 
@@ -134,16 +151,31 @@ public class KeybindsScreen extends MQSScreen {
         }
     }
 
+    private boolean isMouseInScrollableArea(double mouseX, double mouseY) {
+        int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
+        int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
+        int listStartY = windowStartY + LIST_TOP_MARGIN;
+        int listHeight = getWindowHeight() - LIST_TOP_MARGIN - LIST_BOTTOM_MARGIN + 15;
+        int listWidth = getWindowWidth() - (PADDING * 2);
+
+        return mouseX >= windowStartX + PADDING && mouseX <= windowStartX + PADDING + listWidth &&
+                mouseY >= listStartY && mouseY <= listStartY + listHeight;
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        int viewHeight = getWindowHeight() - LIST_BOTTOM_MARGIN;
-        double maxScroll = Math.max(0, this.totalContentHeight - viewHeight);
+        if (isMouseInScrollableArea(mouseX, mouseY) || this.scrollbar.isMouseOver(mouseX, mouseY)) {
+            int viewHeight = getWindowHeight() - LIST_TOP_MARGIN - LIST_BOTTOM_MARGIN + 15;
+            double maxScroll = Math.max(0, this.totalContentHeight - viewHeight);
 
-        scrollY -= verticalAmount * 10;
-        scrollY = Math.max(0, Math.min(scrollY, maxScroll));
+            scrollY -= verticalAmount * 10;
+            scrollY = Math.max(0, Math.min(scrollY, maxScroll));
+            return true;
+        }
 
-        return true;
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
+
 
     private void startListening(KeyBinding bindingToRebind) {
         if (this.listeningWidget != null) {
@@ -173,6 +205,11 @@ public class KeybindsScreen extends MQSScreen {
             stopListening(button);
             return true;
         }
+
+        if (this.scrollbar.mouseClicked(mouseX, mouseY, button)) {
+            return true;
+        }
+
         for (KeybindEntryWidget widget : this.keybindEntryWidgets) {
             if (widget.mouseClicked(mouseX, mouseY, button)) {
                 return true;
@@ -180,6 +217,15 @@ public class KeybindsScreen extends MQSScreen {
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (this.scrollbar.isMouseOver(mouseX, mouseY)) {
+            return this.scrollbar.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        }
+        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    }
+
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {

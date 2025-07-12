@@ -20,13 +20,18 @@ package net.me.screen;
 
 import net.me.Main;
 import net.me.screen.component.components.MQSToast;
-import net.me.utils.*;
+import net.me.screen.theme.UIConstants;
+import net.me.utils.ColorUtils;
+import net.me.utils.McUtils;
+import net.me.utils.Render2DUtils;
+import net.me.utils.TextRenderUtils;
 import net.me.utils.math.Position;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
+@SuppressWarnings("unused")
 public abstract class MQSScreen extends Screen {
     private final String windowTitle;
     private final MQSScreen parent;

@@ -22,7 +22,7 @@ import net.me.config.GlobalConfigManager;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.WidgetLayoutHelper;
 import net.me.screen.component.components.BooleanSettingEntryWidget;
-import net.me.utils.UIConstants;
+import net.me.screen.theme.UIConstants;
 import net.minecraft.client.gui.DrawContext;
 
 import java.util.ArrayList;

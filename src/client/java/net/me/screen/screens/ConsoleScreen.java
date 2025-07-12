@@ -22,9 +22,10 @@ import net.me.console.ConsoleManager;
 import net.me.console.ConsoleMessage;
 import net.me.screen.MQSScreen;
 import net.me.screen.component.components.MQSTextFieldWidget;
+import net.me.screen.component.components.ScrollbarWidget;
+import net.me.screen.theme.UIConstants;
 import net.me.utils.TextRenderUtils;
 import net.me.utils.TextRendererUtils;
-import net.me.utils.UIConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.OrderedText;
@@ -42,6 +43,7 @@ public class ConsoleScreen extends MQSScreen {
     private final ConsoleManager consoleManager;
     private final List<DisplayLine> displayLines = new ArrayList<>();
     private MQSTextFieldWidget inputField;
+    private ScrollbarWidget scrollbar;
     private double scrollY = 0;
     private boolean autoScroll = true;
     private int historyIndex;
@@ -72,7 +74,18 @@ public class ConsoleScreen extends MQSScreen {
         this.inputField.setChangedListener(this::onInputChanged);
         this.historyIndex = consoleManager.getCommandHistory().size();
 
+        int scrollbarX = windowStartX + getWindowWidth() - UIConstants.PADDING_M - UIConstants.SCROLLBAR_WIDTH;
+        int scrollbarY = windowStartY + HEADER_MARGIN;
+        int scrollbarHeight = getWindowHeight() - HEADER_MARGIN - UIConstants.INPUT_HEIGHT - FOOTER_MARGIN;
+
+        this.scrollbar = new ScrollbarWidget(scrollbarX, scrollbarY, UIConstants.SCROLLBAR_WIDTH, scrollbarHeight, (newScroll) -> {
+            this.scrollY = newScroll;
+            this.autoScroll = false;
+        });
+
+
         this.addSelectableChild(this.inputField);
+        this.addDrawableChild(this.scrollbar);
         this.setFocused(this.inputField);
 
         rebuildDisplayLines();
@@ -84,8 +97,13 @@ public class ConsoleScreen extends MQSScreen {
         rebuildDisplayLines();
     }
 
+    private int getRenderAreaWidth() {
+        return getWindowWidth() - (UIConstants.PADDING_M * 2) - UIConstants.SCROLLBAR_WIDTH - UIConstants.PADDING_S;
+    }
+
+
     private void appendDisplayLines(List<ConsoleMessage> messages) {
-        int renderAreaWidth = getWindowWidth() - (UIConstants.PADDING_M * 2);
+        int renderAreaWidth = getRenderAreaWidth();
         if (renderAreaWidth <= 0) return;
 
         for (ConsoleMessage msg : messages) {
@@ -158,20 +176,25 @@ public class ConsoleScreen extends MQSScreen {
         int renderAreaY = windowStartY + HEADER_MARGIN;
         int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - UIConstants.INPUT_HEIGHT - FOOTER_MARGIN;
         int maxLinesVisible = renderAreaHeight / fontHeight;
+        int totalContentHeight = linesToRender.size() * fontHeight;
+
 
         if (autoScroll) {
-            scrollY = Math.max(0, linesToRender.size() - maxLinesVisible);
+            scrollY = Math.max(0, totalContentHeight - renderAreaHeight);
         }
 
-        int firstLineIndex = (int) Math.max(0, scrollY);
+        scrollbar.update(totalContentHeight, renderAreaHeight, scrollY);
 
-        context.enableScissor(renderAreaX, renderAreaY - 2, renderAreaX + getWindowWidth() - (UIConstants.PADDING_M * 2), renderAreaY + renderAreaHeight + 2);
 
-        for (int i = 0; i < maxLinesVisible && (firstLineIndex + i) < linesToRender.size(); i++) {
+        int firstLineIndex = (int) Math.max(0, scrollY / fontHeight);
+
+        context.enableScissor(renderAreaX, renderAreaY - 2, renderAreaX + getRenderAreaWidth(), renderAreaY + renderAreaHeight + 2);
+
+        for (int i = 0; i < maxLinesVisible + 1 && (firstLineIndex + i) < linesToRender.size(); i++) {
             int currentLineIndex = firstLineIndex + i;
             DisplayLine line = linesToRender.get(currentLineIndex);
 
-            int yPos = renderAreaY + (i * fontHeight);
+            int yPos = renderAreaY + (i * fontHeight) - (int) (scrollY % fontHeight);
 
             TextRenderUtils.drawCustomText(context, line.text(), renderAreaX, yPos, line.color(), true, 1f);
         }
@@ -179,24 +202,34 @@ public class ConsoleScreen extends MQSScreen {
         context.disableScissor();
     }
 
+    private boolean isMouseInScrollableArea(double mouseX, double mouseY) {
+        int windowStartX = getMiddlePoint().x() - getWindowWidth() / 2;
+        int windowStartY = getMiddlePoint().y() - getWindowHeight() / 2;
+        int renderAreaX = windowStartX + UIConstants.PADDING_M;
+        int renderAreaY = windowStartY + HEADER_MARGIN;
+        int renderAreaWidth = getRenderAreaWidth();
+        int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - UIConstants.INPUT_HEIGHT - FOOTER_MARGIN;
+
+        return mouseX >= renderAreaX && mouseX <= renderAreaX + renderAreaWidth &&
+                mouseY >= renderAreaY && mouseY <= renderAreaY + renderAreaHeight;
+    }
+
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        int fontHeight = getLineHeight();
-        int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - UIConstants.INPUT_HEIGHT - FOOTER_MARGIN;
-        if (renderAreaHeight <= 0) {
-            return false;
+        if (isMouseInScrollableArea(mouseX, mouseY) || this.scrollbar.isMouseOver(mouseX, mouseY)) {
+            double newScrollY = this.scrollY - (verticalAmount * getLineHeight() * 2);
+            int renderAreaHeight = getWindowHeight() - HEADER_MARGIN - UIConstants.INPUT_HEIGHT - FOOTER_MARGIN;
+            int totalContentHeight = displayLines.size() * getLineHeight();
+            double maxScroll = Math.max(0, totalContentHeight - renderAreaHeight);
+
+            this.scrollY = Math.max(0, Math.min(newScrollY, maxScroll));
+            autoScroll = this.scrollY >= maxScroll - 0.5;
+            return true;
         }
-
-        int maxLinesVisible = renderAreaHeight / fontHeight;
-        double maxScroll = Math.max(0, this.displayLines.size() - maxLinesVisible);
-
-        double newScrollY = scrollY - verticalAmount;
-        scrollY = Math.max(0, Math.min(newScrollY, maxScroll));
-
-        autoScroll = scrollY >= maxScroll - 0.5;
-
-        return true;
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
+
 
     private void navigateHistory(int direction) {
         List<String> history = consoleManager.getCommandHistory();

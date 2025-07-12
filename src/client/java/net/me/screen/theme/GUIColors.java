@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.utils;
+package net.me.screen.theme;
 
 import java.awt.*;
 
