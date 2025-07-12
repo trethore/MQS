@@ -33,7 +33,7 @@ import static net.me.scripting.api.ApiConstants.*;
 
 public class KeybindAPI implements ProxyObject {
 
-    private static final Set<String> MEMBER_KEYS = Set.of(REGISTER, UNREGISTER,UNREGISTER_ALL, KEYS);
+    private static final Set<String> MEMBER_KEYS = Set.of(REGISTER, UNREGISTER, UNREGISTER_ALL, KEYS);
     private static final ProxyObject KEYS_PROXY = new ProxyObject() {
         @Override
         public Object getMember(String key) {

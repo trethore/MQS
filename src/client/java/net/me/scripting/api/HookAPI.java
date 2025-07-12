@@ -35,9 +35,9 @@ import static net.me.scripting.api.ApiConstants.*;
 public class HookAPI implements ProxyObject {
 
     private static final Set<String> MEMBER_KEYS = Set.of(HOOK, UNHOOK, UNHOOK_ALL);
+    private static final String ARGS = "args";
     private final HookManager hookManager;
     private final ScriptManager scriptManager;
-    private static final String ARGS = "args";
 
     public HookAPI(HookManager hookManager, ScriptManager scriptManager) {
         this.hookManager = hookManager;
@@ -131,7 +131,6 @@ public class HookAPI implements ProxyObject {
                     hookManager.unhookAllForScript(owner);
                     return null;
                 }
-
 
 
                 default:

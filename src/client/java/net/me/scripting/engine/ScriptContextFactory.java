@@ -53,6 +53,7 @@ public class ScriptContextFactory {
     private final Set<String> standardApiMembers = new HashSet<>();
     private final KeybindManager keybindManager;
     private final EventManager eventManager;
+    private final HostAccess hostAccess;
 
     public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager) {
         this.classResolver = classResolver;
@@ -63,12 +64,8 @@ public class ScriptContextFactory {
         this.eventManager = eventManager;
         this.hookManager = hookManager;
         this.keybindManager = keybindManager;
-    }
 
-    public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
-        Main.LOGGER.info("Creating new script context (ECMAScript 2024)...");
-        long startTime = System.currentTimeMillis();
-        HostAccess hostAccess = HostAccess.newBuilder(HostAccess.ALL)
+        this.hostAccess = HostAccess.newBuilder(HostAccess.ALL)
                 .targetTypeMapping(
                         JsObjectWrapper.class,
                         Object.class,
@@ -88,9 +85,15 @@ public class ScriptContextFactory {
                         MappedInstanceProxy::getInstance
                 )
                 .build();
+    }
+
+    public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
+        Main.LOGGER.info("Creating new script context (ECMAScript 2024)...");
+        long startTime = System.currentTimeMillis();
+
         Context newContext = Context.newBuilder("js")
-                .engine(sharedEngine)
-                .allowHostAccess(hostAccess)
+                .engine(this.sharedEngine)
+                .allowHostAccess(this.hostAccess)
                 .allowHostClassLookup(classResolver::isClassAllowed)
                 .option("js.ecmascript-version", "2024")
                 .option("js.esm-eval-returns-exports", "true")

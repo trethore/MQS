@@ -205,6 +205,7 @@ public class UpdateUtils {
             destChannel.transferFrom(sourceChannel, 0, sourceChannel.size());
         }
     }
+
     private static synchronized void addShutdownHook(File oldJar, File newJar) {
         if (shutdownHookAdded) return;
 

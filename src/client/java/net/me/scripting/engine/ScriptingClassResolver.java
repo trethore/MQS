@@ -27,12 +27,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ScriptingClassResolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScriptingClassResolver.class);
     private static final Set<String> EXCLUDED = Set.of();
 
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
+    private final Map<Class<?>, Boolean> mcRelatedCache = new ConcurrentHashMap<>();
 
     private MappingsManager mappingsManager;
     private ScriptManager scriptManager;
@@ -70,6 +72,48 @@ public class ScriptingClassResolver {
                 knownPackagePrefixes.add(fqcn.substring(0, lastDotIndex));
             }
         }
+    }
+
+    public boolean isMcRelated(Class<?> cls) {
+        return mcRelatedCache.computeIfAbsent(cls, c -> {
+            if (c == null || c == Object.class) {
+                return false;
+            }
+
+            Queue<Class<?>> toCheck = new LinkedList<>();
+            Set<Class<?>> visited = new HashSet<>();
+            toCheck.add(c);
+
+            while (!toCheck.isEmpty()) {
+                Class<?> currentClass = toCheck.poll();
+                if (currentClass == null || !visited.add(currentClass)) {
+                    continue;
+                }
+
+                String name = currentClass.getName();
+                if (name.startsWith("net.minecraft.") || name.startsWith("com.mojang.")) {
+                    return true;
+                }
+
+                if (currentClass.getSuperclass() != null) {
+                    Boolean isSuperMcRelated = mcRelatedCache.get(currentClass.getSuperclass());
+                    if (isSuperMcRelated != null && isSuperMcRelated) {
+                        return true;
+                    }
+                    toCheck.add(currentClass.getSuperclass());
+                }
+
+                for (Class<?> iface : currentClass.getInterfaces()) {
+                    Boolean isIfaceMcRelated = mcRelatedCache.get(iface);
+                    if (isIfaceMcRelated != null && isIfaceMcRelated) {
+                        return true;
+                    }
+                    toCheck.add(iface);
+                }
+            }
+
+            return false;
+        });
     }
 
     public boolean isFullClassPath(String path) {

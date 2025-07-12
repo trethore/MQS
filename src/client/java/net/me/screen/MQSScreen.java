@@ -28,7 +28,7 @@ import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class MQSScreen extends Screen {
-    private final String title;
+    private final String windowTitle;
     private final MQSScreen parent;
     private int windowWidth;
     private int windowHeight;
@@ -39,7 +39,7 @@ public abstract class MQSScreen extends Screen {
 
     protected MQSScreen(String title, int windowWidth, int windowHeight, @Nullable MQSScreen parent) {
         super(Text.literal("MQS: " + title));
-        this.title = title;
+        this.windowTitle = title;
         this.windowWidth = windowWidth;
         this.windowHeight = windowHeight;
         this.parent = parent;
@@ -81,7 +81,7 @@ public abstract class MQSScreen extends Screen {
         int x = getMiddlePoint().x();
         int y = getMiddlePoint().y() - this.windowHeight / 2 + 22;
         int color = ColorUtils.getRainbowColor(4000, 0.9f, 0.9f);
-        TextRenderUtils.drawCustomCenteredText(context, this.getStringTitle(), x, y, color, true, UIConstants.TITLE_SCALE);
+        TextRenderUtils.drawCustomCenteredText(context, this.windowTitle, x, y, color, true, UIConstants.TITLE_SCALE);
     }
 
     public void open() {
@@ -107,8 +107,8 @@ public abstract class MQSScreen extends Screen {
         return this.windowHeight;
     }
 
-    public String getStringTitle() {
-        return this.title;
+    public String getWindowTitle() {
+        return this.windowTitle;
     }
 
     public MQSScreen getParent() {

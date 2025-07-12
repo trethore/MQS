@@ -131,7 +131,7 @@ public final class ScriptUtils {
         ScriptingClassResolver classResolver = scriptManager.getClassResolver();
         Class<?> c = o.getClass();
 
-        if (!classResolver.isClassInMc(c.getName())) {
+        if (!classResolver.isMcRelated(c)) {
             return o;
         }
 
