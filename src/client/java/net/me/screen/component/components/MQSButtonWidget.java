@@ -19,9 +19,8 @@
 package net.me.screen.component.components;
 
 import net.me.screen.component.IResizableWidget;
+import net.me.screen.component.WidgetRendererDelegate;
 import net.me.utils.GUIColors;
-import net.me.utils.McUtils;
-import net.me.utils.Render2DUtils;
 import net.me.utils.TextRendererUtils;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -46,22 +45,35 @@ public class MQSButtonWidget extends ButtonWidget implements IResizableWidget {
         this.activeTextColor = activeTextColor;
     }
 
-    public static Builder builder(String message, PressAction onPress) {
+    public static Builder mqsBuilder(String message, PressAction onPress) {
+        return new Builder(Text.literal(message), onPress);
+    }
+
+    public static Builder mqsBuilder(Text message, PressAction onPress) {
         return new Builder(message, onPress);
     }
 
-    public void setBackgroundColors(int nonHoveredColor, int hoveredColor) {
-        this.nonHoveredBackgroundColor = nonHoveredColor;
-        this.hoveredBackgroundColor = hoveredColor;
+    @Override
+    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+        WidgetRendererDelegate.renderMQSBackground(context, this, this.nonHoveredBackgroundColor, this.hoveredBackgroundColor);
+        renderContent(context);
+    }
+
+    protected void renderContent(DrawContext context) {
+        TextRenderer textRenderer = TextRendererUtils.getCustomTextRenderer();
+        int textColor = this.active ? this.activeTextColor : this.inactiveTextColor;
+        context.drawCenteredTextWithShadow(
+                textRenderer,
+                this.getMessage(),
+                this.getX() + this.width / 2,
+                this.getY() + (this.height - 8) / 2,
+                textColor
+        );
     }
 
     @Override
     public void playDownSound(SoundManager soundManager) {
-    }
-
-    public void setTextColors(int inactiveColor, int activeColor) {
-        this.inactiveTextColor = inactiveColor;
-        this.activeTextColor = activeColor;
+        // No sound by default
     }
 
     @Override
@@ -76,42 +88,38 @@ public class MQSButtonWidget extends ButtonWidget implements IResizableWidget {
         this.setHeight(height);
     }
 
-    @Override
-    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        McUtils.getMc().ifPresent(mc -> {
-            TextRenderer textRenderer = TextRendererUtils.getCustomTextRenderer();
+    public void setBackgroundColors(int nonHovered, int hovered) {
+        this.nonHoveredBackgroundColor = nonHovered;
+        this.hoveredBackgroundColor = hovered;
+    }
 
-            boolean isHovered = this.isHovered() && this.active;
-            int bgColor = isHovered ? this.hoveredBackgroundColor : this.nonHoveredBackgroundColor;
-            Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.width, this.height, 3, 5, bgColor);
-
-            int textColor = this.active ? this.activeTextColor : this.inactiveTextColor;
-            context.drawCenteredTextWithShadow(
-                    textRenderer,
-                    this.getMessage(),
-                    this.getX() + this.width / 2,
-                    this.getY() + (this.height - 8) / 2,
-                    textColor
-            );
-        });
+    public void setTextColors(int inactiveColor, int activeColor) {
+        this.inactiveTextColor = inactiveColor;
+        this.activeTextColor = activeColor;
     }
 
     public static class Builder {
-        private final String message;
-        private final PressAction onPress;
-        private int x = 0;
-        private int y = 0;
-        private int width = 200;
-        private int height = 20;
+        // Changed to protected to allow subclass access
+        protected final PressAction onPress;
+        protected Text message;
+        protected int x = 0;
+        protected int y = 0;
+        protected int width = 200;
+        protected int height = 20;
 
-        private int nonHoveredBackgroundColor = GUIColors.DARK_L2.getRGB();
-        private int hoveredBackgroundColor = GUIColors.DARK_L3.getRGB();
-        private int inactiveTextColor = GUIColors.TEXT_DISABLED.getRGB();
-        private int activeTextColor = GUIColors.TEXT.getRGB();
+        protected int nonHoveredBackgroundColor = GUIColors.DARK_L2.getRGB();
+        protected int hoveredBackgroundColor = GUIColors.DARK_L3.getRGB();
+        protected int inactiveTextColor = GUIColors.TEXT_DISABLED.getRGB();
+        protected int activeTextColor = GUIColors.TEXT.getRGB();
 
-        public Builder(String message, PressAction onPress) {
+        public Builder(Text message, PressAction onPress) {
             this.message = message;
             this.onPress = onPress;
+        }
+
+        public Builder message(Text message) {
+            this.message = message;
+            return this;
         }
 
         public Builder backgroundColors(int nonHovered, int hovered) {
@@ -148,7 +156,7 @@ public class MQSButtonWidget extends ButtonWidget implements IResizableWidget {
 
         public MQSButtonWidget build() {
             return new MQSButtonWidget(
-                    this.x, this.y, this.width, this.height, Text.literal(this.message), this.onPress,
+                    this.x, this.y, this.width, this.height, this.message, this.onPress,
                     this.nonHoveredBackgroundColor, this.hoveredBackgroundColor,
                     this.inactiveTextColor, this.activeTextColor
             );

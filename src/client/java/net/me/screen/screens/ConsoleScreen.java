@@ -213,7 +213,7 @@ public class ConsoleScreen extends MQSScreen {
         } else {
             this.inputField.setText(history.get(this.historyIndex));
         }
-        this.inputField.setCursorToEnd();
+        this.inputField.setCursorToEnd(false);
         navigatingHistory = false;
     }
 

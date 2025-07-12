@@ -19,8 +19,8 @@
 package net.me.screen.component.components;
 
 import net.me.screen.component.IResizableWidget;
+import net.me.screen.component.WidgetRendererDelegate;
 import net.me.utils.GUIColors;
-import net.me.utils.Render2DUtils;
 import net.me.utils.TextRendererUtils;
 import net.me.utils.UIConstants;
 import net.minecraft.client.gui.DrawContext;
@@ -51,6 +51,21 @@ public class MQSTextFieldWidget extends TextFieldWidget implements IResizableWid
         return new Builder();
     }
 
+    @Override
+    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+        this.setDrawsBackground(false);
+
+        int currentHoverColor = this.isFocused() ? this.focusedBackgroundColor : this.hoveredBackgroundColor;
+        WidgetRendererDelegate.renderMQSBackground(context, this, this.defaultBackgroundColor, currentHoverColor);
+
+        context.getMatrices().push();
+        context.getMatrices().translate(UIConstants.PADDING_S, UIConstants.PADDING_S + 1, 0);
+
+        super.renderWidget(context, mouseX, mouseY, delta);
+
+        context.getMatrices().pop();
+    }
+
     public void setBackgroundColors(int defaultColor, int hoveredColor, int focusedColor) {
         this.defaultBackgroundColor = defaultColor;
         this.hoveredBackgroundColor = hoveredColor;
@@ -67,41 +82,6 @@ public class MQSTextFieldWidget extends TextFieldWidget implements IResizableWid
     public void setSize(int width, int height) {
         this.setWidth(width);
         this.setHeight(height);
-    }
-
-    @Override
-    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.setDrawsBackground(false);
-
-        renderCustomBackground(context);
-
-        context.getMatrices().push();
-        context.getMatrices().translate(UIConstants.PADDING_S, UIConstants.PADDING_S + 1, 0);
-
-        super.renderWidget(context, mouseX, mouseY, delta);
-
-        context.getMatrices().pop();
-    }
-
-    private void renderCustomBackground(DrawContext context) {
-        int color;
-        if (this.isFocused()) {
-            color = this.focusedBackgroundColor;
-        } else if (this.isHovered()) {
-            color = this.hoveredBackgroundColor;
-        } else {
-            color = this.defaultBackgroundColor;
-        }
-        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, color);
-    }
-
-
-    public void clearText() {
-        this.setText("");
-    }
-
-    public void setCursorToEnd() {
-        this.setCursor(this.getText().length(), false);
     }
 
     public static class Builder {

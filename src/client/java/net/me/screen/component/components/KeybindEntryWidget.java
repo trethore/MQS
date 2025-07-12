@@ -44,7 +44,7 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
         super(x, y, width, height, Text.literal(""));
         this.keyBinding = keyBinding;
 
-        this.rebindButton = MQSButtonWidget.builder(keyBinding.getKeyName(), (btn) -> {
+        this.rebindButton = MQSButtonWidget.mqsBuilder(Text.literal(keyBinding.getKeyName()), (btn) -> {
                     this.setListening(true);
                     onRebindClick.accept(this.keyBinding);
                 })
@@ -74,6 +74,9 @@ public class KeybindEntryWidget extends ClickableWidget implements IResizableWid
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
         int color = GUIColors.DARK_L2.getRGB();
         Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, color);
+        if (this.isFocused()) {
+            Render2DUtils.drawRoundedOutline(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 1, 5, GUIColors.DARK_L4.getRGB());
+        }
         TextRenderUtils.drawCustomText(
                 context,
                 keyBinding.getName(),

@@ -18,7 +18,6 @@
 
 package net.me.screen.component.components;
 
-import net.me.utils.GUIColors;
 import net.me.utils.Render2DUtils;
 import net.me.utils.TextRendererUtils;
 import net.minecraft.client.font.TextRenderer;
@@ -47,42 +46,24 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
         this.imageHeight = imageHeight;
     }
 
-    public static Builder builder(Identifier image, String message, PressAction onPress) {
+    public static Builder mqsBuilder(Identifier image, String message, PressAction onPress) {
+        return new Builder(image, Text.literal(message), onPress);
+    }
+
+    public static Builder mqsBuilder(Identifier image, Text message, PressAction onPress) {
         return new Builder(image, message, onPress);
     }
 
-    public static Builder builder(Identifier image, PressAction onPress) {
-        return new Builder(image, "", onPress);
-    }
-
-    public void setImageColor(Color color) {
-        this.imageColor = color;
-    }
-
-    public void setImagePadding(int padding) {
-        this.imagePadding = padding;
-    }
-
-    public void setImageTextGap(int gap) {
-        this.imageTextGap = gap;
+    public static Builder mqsBuilder(Identifier image, PressAction onPress) {
+        return new Builder(image, Text.empty(), onPress);
     }
 
     public void setImage(Identifier image) {
         this.image = image;
     }
 
-    public void setImageSize(int width, int height) {
-        this.imageWidth = width;
-        this.imageHeight = height;
-    }
-
-
     @Override
-    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        boolean isHovered = this.isHovered() && this.active;
-        int bgColor = isHovered ? this.hoveredBackgroundColor : this.nonHoveredBackgroundColor;
-        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.width, this.height, 3, 5, bgColor);
-
+    protected void renderContent(DrawContext context) {
         TextRenderer textRenderer = TextRendererUtils.getCustomTextRenderer();
         Text message = this.getMessage();
         boolean hasText = !message.getString().isEmpty();
@@ -103,11 +84,10 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
         int imageX = this.getX() + (this.getWidth() - totalContentWidth) / 2;
         int imageY = this.getY() + (this.getHeight() - finalImageHeight) / 2;
 
-        if (this.image == null) {
-            finalImageWidth = Math.round(finalImageWidth / 2f) - this.imagePadding / 2;
-        } else {
+        if (this.image != null) {
             Render2DUtils.drawImage(image, imageX, imageY, imageX + finalImageWidth, imageY + finalImageHeight, 0, false, this.imageColor);
         }
+
         if (hasText) {
             int textColor = this.active ? this.activeTextColor : this.inactiveTextColor;
             int textX = imageX + finalImageWidth + gap;
@@ -122,26 +102,14 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
         }
     }
 
-    public static class Builder {
-        private final String message;
-        private final PressAction onPress;
+    public static class Builder extends MQSButtonWidget.Builder {
         private Identifier image;
-        private int x = 0;
-        private int y = 0;
-        private int width = 200;
-        private int height = 20;
         private int imageWidth = 0;
         private int imageHeight = 0;
 
-        private int nonHoveredBackgroundColor = GUIColors.DARK_L2.getRGB();
-        private int hoveredBackgroundColor = GUIColors.DARK_L3.getRGB();
-        private int inactiveTextColor = GUIColors.TEXT_DISABLED.getRGB();
-        private int activeTextColor = GUIColors.TEXT.getRGB();
-
-        public Builder(Identifier image, String message, PressAction onPress) {
+        public Builder(Identifier image, Text message, PressAction onPress) {
+            super(message, onPress);
             this.image = image;
-            this.message = message;
-            this.onPress = onPress;
         }
 
         public Builder image(Identifier image) {
@@ -155,44 +123,39 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
             return this;
         }
 
-        public Builder backgroundColors(int nonHovered, int hovered) {
-            this.nonHoveredBackgroundColor = nonHovered;
-            this.hoveredBackgroundColor = hovered;
-            return this;
-        }
-
-        public Builder textColors(int inactive, int active) {
-            this.inactiveTextColor = inactive;
-            this.activeTextColor = active;
-            return this;
-        }
-
+        // --- OVERRIDE CHAINING METHODS TO RETURN THE CORRECT BUILDER TYPE ---
+        @Override
         public Builder dimensions(int x, int y, int width, int height) {
-            this.x = x;
-            this.y = y;
-            this.width = width;
-            this.height = height;
+            super.dimensions(x, y, width, height);
             return this;
         }
 
+        @Override
         public Builder position(int x, int y) {
-            this.x = x;
-            this.y = y;
+            super.position(x, y);
             return this;
         }
 
+        @Override
         public Builder size(int width, int height) {
-            this.width = width;
-            this.height = height;
+            super.size(width, height);
             return this;
         }
 
+        @Override
+        public Builder backgroundColors(int nonHovered, int hovered) {
+            super.backgroundColors(nonHovered, hovered);
+            return this;
+        }
+
+        @Override
         public MQSImageButtonWidget build() {
             if (image == null) {
                 throw new IllegalStateException("Image must be set for MQSImageButtonWidget");
             }
             return new MQSImageButtonWidget(
-                    this.x, this.y, this.width, this.height, Text.literal(this.message), this.onPress, this.image,
+                    this.x, this.y, this.width, this.height,
+                    this.message, this.onPress, this.image,
                     this.imageWidth, this.imageHeight,
                     this.nonHoveredBackgroundColor, this.hoveredBackgroundColor,
                     this.inactiveTextColor, this.activeTextColor

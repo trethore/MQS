@@ -94,7 +94,8 @@ public class CreateScriptScreen extends MQSScreen {
         errorField.setEditable(false);
         errorField.setVisible(false);
 
-        MQSButtonWidget createButton = MQSButtonWidget.builder("Create Script", button -> createScript())
+        // --- THIS IS THE CORRECTED LINE ---
+        MQSButtonWidget createButton = MQSButtonWidget.mqsBuilder("Create Script", button -> createScript())
                 .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
                 .build();
 
@@ -183,7 +184,6 @@ public class CreateScriptScreen extends MQSScreen {
             this.client.setScreen(allScriptsScreen);
             allScriptsScreen.forceRefresh();
         } else {
-            // Fallback if the parent screen can't be found
             close();
             ChatUtils.addSuccessChatMessage("The script '" + scriptName + "' has been created!", true);
         }

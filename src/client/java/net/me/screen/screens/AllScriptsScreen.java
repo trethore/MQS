@@ -38,7 +38,6 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.awt.*;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -84,7 +83,7 @@ public class AllScriptsScreen extends MQSScreen {
         int searchX = this.getMiddlePoint().x() - WINDOW_HORIZONTAL_MARGIN;
         int searchY = this.getMiddlePoint().y() - WINDOW_HORIZONTAL_MARGIN;
 
-        this.searchTextField = MQSTextFieldWidget.builder()
+        this.searchTextField = new MQSTextFieldWidget.Builder()
                 .dimensions(searchX, searchY, SEARCH_BAR_WIDTH, UIConstants.BUTTON_HEIGHT)
                 .placeholder("Search...")
                 .text(viewModel.getSearchText())
@@ -93,7 +92,7 @@ public class AllScriptsScreen extends MQSScreen {
         this.searchTextField.setChangedListener(viewModel::onSearchTextChanged);
 
         this.addSelectableChild(this.searchTextField);
-        MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.builder(
+        MQSButtonWidget clearTextFieldButton = MQSImageButtonWidget.mqsBuilder(
                 AssetIdentifiers.ICON_CLOSE,
                 button -> this.searchTextField.setText("")
         ).dimensions(searchX + SEARCH_BAR_WIDTH + 5, searchY, UIConstants.BUTTON_HEIGHT, UIConstants.BUTTON_HEIGHT).build();
@@ -105,7 +104,7 @@ public class AllScriptsScreen extends MQSScreen {
         int listStartY = this.getMiddlePoint().y() - 70;
 
         for (int i = 0; i < ITEMS_PER_PAGE; i++) {
-            ScriptDescriptorToggleWidget toggleWidget = ScriptDescriptorToggleWidget.builder(scriptingService, globalConfigManager)
+            ScriptDescriptorToggleWidget toggleWidget = new ScriptDescriptorToggleWidget.Builder(scriptingService, globalConfigManager)
                     .size(200, SCRIPT_ROW_HEIGHT - 5)
                     .build();
             this.addDrawableChild(toggleWidget);
@@ -124,10 +123,10 @@ public class AllScriptsScreen extends MQSScreen {
         int navY = this.getMiddlePoint().y() + 75;
         int navX = this.getMiddlePoint().x();
 
-        this.prevButton = MQSButtonWidget.builder("Previous", button -> viewModel.previousPage())
+        this.prevButton = MQSButtonWidget.mqsBuilder("Previous", button -> viewModel.previousPage())
                 .dimensions(navX - WINDOW_HORIZONTAL_MARGIN, navY, 80, UIConstants.BUTTON_HEIGHT).build();
 
-        this.nextButton = MQSButtonWidget.builder("Next", button -> viewModel.nextPage())
+        this.nextButton = MQSButtonWidget.mqsBuilder("Next", button -> viewModel.nextPage())
                 .dimensions(navX + 20, navY, 80, UIConstants.BUTTON_HEIGHT).build();
 
         this.addDrawableChild(this.prevButton);
@@ -138,16 +137,17 @@ public class AllScriptsScreen extends MQSScreen {
         int actionY = this.getMiddlePoint().y() + 75 + 25;
         int navX = this.getMiddlePoint().x();
 
-        this.refreshButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_REFRESH, "Refresh", button -> refreshScripts())
+        this.refreshButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_REFRESH, "Refresh", button -> refreshScripts())
                 .dimensions(navX - WINDOW_HORIZONTAL_MARGIN, actionY, 65, UIConstants.BUTTON_HEIGHT).build();
 
-        MQSButtonWidget consoleButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_TERMINAL, "Console", button -> new ConsoleScreen(this, consoleManager).open())
+        MQSButtonWidget consoleButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_TERMINAL, "Console", button -> new ConsoleScreen(this, consoleManager).open())
                 .dimensions(navX - 30, actionY, 65, UIConstants.BUTTON_HEIGHT).build();
 
-        MQSButtonWidget offButton = MQSButtonWidget.builder(MessageFormat.format("All{0} Off", Formatting.RED), button -> viewModel.disableAllScripts())
+        Text offButtonText = Text.literal("All ").append(Text.literal("Off").formatted(Formatting.RED));
+        MQSButtonWidget offButton = MQSButtonWidget.mqsBuilder(offButtonText, button -> viewModel.disableAllScripts())
                 .dimensions(navX + 40, actionY, 40, UIConstants.BUTTON_HEIGHT).build();
 
-        MQSButtonWidget moreButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_MORE_OPTIONS, button -> new MoreOptionsScreen(this).open())
+        MQSButtonWidget moreButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_MORE_OPTIONS, button -> new MoreOptionsScreen(this).open())
                 .dimensions(navX + 85, actionY, 15, UIConstants.BUTTON_HEIGHT)
                 .build();
 

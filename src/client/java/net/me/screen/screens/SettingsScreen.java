@@ -45,7 +45,7 @@ public class SettingsScreen extends MQSScreen {
         super.init();
         this.settingWidgets.clear();
 
-        BooleanSettingEntryWidget logRedirectWidget = BooleanSettingEntryWidget.builder()
+        BooleanSettingEntryWidget logRedirectWidget = new BooleanSettingEntryWidget.Builder()
                 .name("Log Redirection")
                 .description("Redirects logs to the MQS console.")
                 .getter(globalConfigManager::isLogRedirectEnabled)
@@ -56,7 +56,7 @@ public class SettingsScreen extends MQSScreen {
         this.settingWidgets.add(logRedirectWidget);
         this.addDrawableChild(logRedirectWidget);
 
-        BooleanSettingEntryWidget allowAllClassesWidget = BooleanSettingEntryWidget.builder()
+        BooleanSettingEntryWidget allowAllClassesWidget = new BooleanSettingEntryWidget.Builder()
                 .name("Allow All Classes")
                 .description("Allows scripts to access any Java class.")
                 .getter(globalConfigManager::areAllClassesAllowed)
@@ -67,7 +67,7 @@ public class SettingsScreen extends MQSScreen {
         this.settingWidgets.add(allowAllClassesWidget);
         this.addDrawableChild(allowAllClassesWidget);
 
-        BooleanSettingEntryWidget enableDisableToastWidget = BooleanSettingEntryWidget.builder()
+        BooleanSettingEntryWidget enableDisableToastWidget = new BooleanSettingEntryWidget.Builder()
                 .name("Enable/Disable Toasts")
                 .description("Show a toast on script state change.")
                 .getter(globalConfigManager::isEnableDisableToastEnabled)

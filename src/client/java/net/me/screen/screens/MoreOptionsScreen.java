@@ -27,6 +27,7 @@ import net.me.utils.AssetIdentifiers;
 import net.me.utils.ChatUtils;
 import net.me.utils.UIConstants;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
 import java.io.IOException;
@@ -72,15 +73,16 @@ public class MoreOptionsScreen extends MQSScreen {
     @Override
     protected void init() {
         super.init();
-        MQSImageButtonWidget settingsButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_SETTINGS, "Settings", button -> new SettingsScreen(this, Main.getInstance().getGlobalConfigManager()).open())
+
+        MQSImageButtonWidget settingsButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_SETTINGS, Text.literal("Settings"), button -> new SettingsScreen(this, Main.getInstance().getGlobalConfigManager()).open())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget keybindsButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_KEYBOARD, "Keybinds", button -> new KeybindsScreen(this, Main.getInstance().getKeybindManager()).open())
+        MQSImageButtonWidget keybindsButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_KEYBOARD, Text.literal("Keybinds"), button -> new KeybindsScreen(this, Main.getInstance().getKeybindManager()).open())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget openVSCodeButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_VSCODE, "Open in VS Code", button -> {
+        MQSImageButtonWidget openVSCodeButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_VSCODE, Text.literal("Open in VS Code"), button -> {
             Main.LOGGER.info("Opening in VS Code");
             if (isVSCodeInstalled()) {
                 openScriptsInVSCodeDesktop();
@@ -90,15 +92,15 @@ public class MoreOptionsScreen extends MQSScreen {
             MQSToast.show("VS Code", "Opening in VS Code", 2000, MQSToast.Corner.TOP_LEFT);
         }).size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT).build();
 
-        MQSImageButtonWidget createScriptButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_CREATE_SCRIPT, "Create Script", button -> new CreateScriptScreen(this).open())
+        MQSImageButtonWidget createScriptButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_CREATE_SCRIPT, Text.literal("Create Script"), button -> new CreateScriptScreen(this).open())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget openModFolderButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_OPEN_FOLDER, "Open Mod Folder", button -> openFolder())
+        MQSImageButtonWidget openModFolderButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_OPEN_FOLDER, Text.literal("Open Mod Folder"), button -> openFolder())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
-        MQSImageButtonWidget openWikiButton = MQSImageButtonWidget.builder(AssetIdentifiers.ICON_WIKI, "Open Wiki", button -> openWiki())
+        MQSImageButtonWidget openWikiButton = MQSImageButtonWidget.mqsBuilder(AssetIdentifiers.ICON_WIKI, Text.literal("Open Wiki"), button -> openWiki())
                 .size(UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
                 .build();
 
