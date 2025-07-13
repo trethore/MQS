@@ -75,6 +75,7 @@ public class ScrollbarWidget extends ClickableWidget implements IResizableWidget
         if (!this.visible) {
             return;
         }
+        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, GUIColors.DARK_L2.getRGB());
 
         if (contentHeight > viewHeight) {
             int thumbHeight = getThumbHeight();

@@ -65,9 +65,17 @@ public class CategoryEntryWidget extends ClickableWidget implements IResizableWi
 
     @Override
     public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, GUIColors.DARK_L2.getRGB());
+        int entryBgColor = this.isHovered() ? GUIColors.DARK_L3.getRGB() : GUIColors.DARK_L2.getRGB();
+        Render2DUtils.drawRoundedRect(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 10, entryBgColor);
+
         if (this.isFocused()) {
             Render2DUtils.drawRoundedOutline(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), 3, 1, 5, GUIColors.DARK_L4.getRGB());
+        }
+
+        if (this.isHovered()) {
+            this.editButton.setBackgroundColors(GUIColors.DARK_L3.getRGB(), GUIColors.DARK_L4.getRGB());
+        } else {
+            this.editButton.setBackgroundColors(entryBgColor, GUIColors.DARK_L3.getRGB());
         }
 
         TextRenderUtils.drawCustomText(

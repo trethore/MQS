@@ -27,7 +27,6 @@ import net.me.screen.component.components.MQSButtonWidget;
 import net.me.screen.component.components.MQSTextFieldWidget;
 import net.me.screen.theme.GUIColors;
 import net.me.screen.theme.UIConstants;
-import net.me.utils.AssetIdentifiers;
 import net.minecraft.client.gui.DrawContext;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,11 +38,10 @@ public class EditCategoryScreen extends MQSScreen {
     private final Category existingCategory;
 
     private MQSTextFieldWidget nameField;
-    private MQSTextFieldWidget iconField;
     private MQSTextFieldWidget errorField;
 
     public EditCategoryScreen(MQSScreen parent, @Nullable Category existingCategory) {
-        super(existingCategory == null ? "Create Category" : "Edit Category", 250, 180, parent);
+        super(existingCategory == null ? "Create Category" : "Edit Category", 250, 155, parent);
         this.categoryManager = Main.getInstance().getCategoryManager();
         this.existingCategory = existingCategory;
     }
@@ -58,12 +56,6 @@ public class EditCategoryScreen extends MQSScreen {
                 .text(existingCategory != null ? existingCategory.name() : "")
                 .build();
 
-        this.iconField = MQSTextFieldWidget.builder()
-                .placeholder("Icon (e.g., ICON_SETTINGS)")
-                .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
-                .text(existingCategory != null ? existingCategory.iconIdentifier() : "")
-                .build();
-
         this.errorField = MQSTextFieldWidget.builder()
                 .size(UIConstants.WIDGET_WIDTH_STANDARD, UIConstants.BUTTON_HEIGHT)
                 .build();
@@ -75,16 +67,14 @@ public class EditCategoryScreen extends MQSScreen {
                 .build();
 
         this.addSelectableChild(nameField);
-        this.addSelectableChild(iconField);
         this.addDrawableChild(errorField);
         this.addDrawableChild(saveButton);
 
         WidgetLayoutHelper.layoutVertically(
                 getMiddlePoint().x() - UIConstants.WIDGET_WIDTH_STANDARD / 2,
-                getMiddlePoint().y() - 40,
+                getMiddlePoint().y() - 30,
                 UIConstants.WIDGET_SPACING,
                 nameField,
-                iconField,
                 saveButton
         );
 
@@ -99,7 +89,7 @@ public class EditCategoryScreen extends MQSScreen {
         }
 
         UUID id = (existingCategory != null) ? existingCategory.id() : UUID.randomUUID();
-        Category newCategory = new Category(id, nameField.getText().trim(), iconField.getText().trim());
+        Category newCategory = new Category(id, nameField.getText().trim());
         categoryManager.addCategory(newCategory);
 
         if (getParent() instanceof CategoryManagementScreen mgmtScreen) {
@@ -111,12 +101,6 @@ public class EditCategoryScreen extends MQSScreen {
     private Optional<String> validateInput() {
         if (nameField.getText().trim().isEmpty()) {
             return Optional.of("Category name cannot be empty.");
-        }
-        if (iconField.getText().trim().isEmpty()) {
-            return Optional.of("Icon name cannot be empty.");
-        }
-        if (AssetIdentifiers.getIcon(iconField.getText().trim()).isEmpty()) {
-            return Optional.of("Invalid icon name specified.");
         }
         return Optional.empty();
     }
@@ -131,7 +115,6 @@ public class EditCategoryScreen extends MQSScreen {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
         nameField.render(context, mouseX, mouseY, delta);
-        iconField.render(context, mouseX, mouseY, delta);
         errorField.render(context, mouseX, mouseY, delta);
     }
 }

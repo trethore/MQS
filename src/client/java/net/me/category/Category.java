@@ -20,5 +20,5 @@ package net.me.category;
 
 import java.util.UUID;
 
-public record Category(UUID id, String name, String iconIdentifier) {
+public record Category(UUID id, String name) {
 }

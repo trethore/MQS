@@ -56,8 +56,8 @@ public class AllScriptsScreen extends MQSScreen {
     private static final int LIST_HEIGHT_REDUCTION = 87;
     private static final int BUTTON_SPACING = 4;
     private static final int CATEGORY_BUTTON_SPACING = 5;
-    private static final int SEARCH_REFRESH_SPACING = 9;
-    private static final int REFRESH_COOLDOWN_MS = 1500;
+    private static final int SEARCH_REFRESH_SPACING = 6;
+    private static final int REFRESH_BUTTON_GREEN_DURATION_MS = 1000;
     private static final double SCROLL_SPEED_MULTIPLIER = 0.5;
 
     private final AllScriptsViewModel viewModel;
@@ -77,7 +77,7 @@ public class AllScriptsScreen extends MQSScreen {
     private double categoryScrollY = 0;
     private int totalScriptContentHeight = 0;
     private int totalCategoryContentHeight = 0;
-    private long refreshFinishTime = -1L;
+    private long refreshStartTime = -1L;
 
     private int windowStartX, windowStartY, mainContentX, listStartY, listRenderHeight, listWidth;
     private int categoryListStartY, categoryListRenderHeight, separatorY;
@@ -99,14 +99,13 @@ public class AllScriptsScreen extends MQSScreen {
         scriptEntryWidgets.clear();
         scrollableCategoryButtons.clear();
         this.categoryScrollbar = null;
-
         calculateLayoutValues();
+        createHeaderWidgets();
         rebuildUI();
     }
 
     private void rebuildUI() {
         rebuildSidebar();
-        createHeaderWidgets();
         rebuildScriptListWidgets();
         updateCategoryButtonStyles();
     }
@@ -188,7 +187,7 @@ public class AllScriptsScreen extends MQSScreen {
     private void createSearchField(int headerY) {
         searchTextField = MQSTextFieldWidget.builder()
                 .position(mainContentX, headerY)
-                .size(155, UIConstants.BUTTON_HEIGHT)
+                .size(170, UIConstants.BUTTON_HEIGHT)
                 .placeholder("Search..")
                 .text(viewModel.getSearchText())
                 .build();
@@ -278,21 +277,14 @@ public class AllScriptsScreen extends MQSScreen {
     private void refreshScripts() {
         if (viewModel.isRefreshing) return;
 
-        refreshButton.setImageColor(GUIColors.SUCCESS.getColor());
         viewModel.isRefreshing = true;
+        refreshStartTime = System.currentTimeMillis();
         refreshButton.active = false;
+        refreshButton.setImageColor(GUIColors.SUCCESS.getColor());
 
-        if (client != null) {
-            client.send(() -> {
-                try {
-                    viewModel.refreshAndReenableScripts();
-                    rebuildUI();
-                    refreshFinishTime = System.currentTimeMillis();
-                } finally {
-                    viewModel.isRefreshing = false;
-                }
-            });
-        }
+        viewModel.refreshAndReenableScripts();
+        rebuildUI();
+
     }
 
     public void forceRefresh() {
@@ -358,6 +350,7 @@ public class AllScriptsScreen extends MQSScreen {
             renderNoModulesMessage(context);
         }
     }
+
     private boolean isMouseInClickableArea(double mouseX, double mouseY) {
         return mouseX >= mainContentX && mouseX <= mainContentX + listWidth &&
                 mouseY >= listStartY && mouseY <= listStartY + listRenderHeight;
@@ -372,10 +365,14 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private void updateRefreshButtonState() {
-        if (refreshFinishTime != -1L && System.currentTimeMillis() - refreshFinishTime > REFRESH_COOLDOWN_MS) {
-            refreshButton.active = true;
-            refreshButton.setImageColor(Color.WHITE);
-            refreshFinishTime = -1L;
+        if (refreshStartTime != -1L) {
+            long elapsed = System.currentTimeMillis() - refreshStartTime;
+            if (elapsed >= REFRESH_BUTTON_GREEN_DURATION_MS) {
+
+                refreshButton.active = true;
+                refreshButton.setImageColor(Color.WHITE);
+                refreshStartTime = -1L;
+            }
         }
     }
 
@@ -407,10 +404,10 @@ public class AllScriptsScreen extends MQSScreen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (categoryScrollbar != null && categoryScrollbar.isMouseOver(mouseX, mouseY)) {
+        if (isMouseInSidebarScrollableArea(mouseX, mouseY)) {
             return categoryScrollbar.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
         }
-        if (scriptListScrollbar.isMouseOver(mouseX, mouseY)) {
+        if (isMouseInScriptListArea(mouseX, mouseY)) {
             return scriptListScrollbar.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
         }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);

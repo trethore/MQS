@@ -35,7 +35,7 @@ import java.util.List;
 public class CategoryManagementScreen extends MQSScreen {
     private static final int PADDING = 20;
     private static final int HEADER_MARGIN = 55;
-    private static final int FOOTER_MARGIN = 25;
+    private static final int FOOTER_MARGIN = 45; // Changed from 25 to 45
     private static final int ENTRY_HEIGHT = 30;
     private static final int WIDGET_WIDTH = 250;
 
@@ -67,7 +67,7 @@ public class CategoryManagementScreen extends MQSScreen {
         int listHeight = getWindowHeight() - HEADER_MARGIN - FOOTER_MARGIN;
 
         MQSButtonWidget createButton = MQSButtonWidget.mqsBuilder("Create New Category", button -> new EditCategoryScreen(this, null).open())
-                .dimensions(windowStartX + PADDING, windowStartY + getWindowHeight() - FOOTER_MARGIN - 5, WIDGET_WIDTH, UIConstants.BUTTON_HEIGHT)
+                .dimensions(windowStartX + PADDING, windowStartY + getWindowHeight() - FOOTER_MARGIN + 5, WIDGET_WIDTH, UIConstants.BUTTON_HEIGHT)
                 .build();
         addDrawableChild(createButton);
 
