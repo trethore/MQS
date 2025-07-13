@@ -16,6 +16,25 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// java/net/me/screen/component/components/MQSImageButtonWidget.java
+/*
+ * My QOL Scripts - A powerful scripting mod for Minecraft.
+ * Copyright (C) 2025 tytoo
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package net.me.screen.component.components;
 
 import net.me.utils.Render2DUtils;
@@ -32,18 +51,19 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
     protected Identifier image;
     protected int imagePadding = 4;
     protected int imageTextGap = 4;
-    protected Color imageColor = Color.WHITE;
+    protected Color imageColor;
     protected int imageWidth;
     protected int imageHeight;
 
     protected MQSImageButtonWidget(int x, int y, int width, int height, Text message, PressAction onPress, Identifier image,
                                    int imageWidth, int imageHeight,
                                    int nonHoveredBackgroundColor, int hoveredBackgroundColor,
-                                   int inactiveTextColor, int activeTextColor) {
+                                   int inactiveTextColor, int activeTextColor, Color imageColor) {
         super(x, y, width, height, message, onPress, nonHoveredBackgroundColor, hoveredBackgroundColor, inactiveTextColor, activeTextColor);
         this.image = image;
         this.imageWidth = imageWidth;
         this.imageHeight = imageHeight;
+        this.imageColor = imageColor;
     }
 
     public static Builder mqsBuilder(Identifier image, String message, PressAction onPress) {
@@ -60,6 +80,10 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
 
     public void setImage(Identifier image) {
         this.image = image;
+    }
+
+    public void setImageColor(Color imageColor) {
+        this.imageColor = imageColor;
     }
 
     @Override
@@ -106,6 +130,7 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
         private Identifier image;
         private int imageWidth = 0;
         private int imageHeight = 0;
+        private Color imageColor = Color.WHITE;
 
         public Builder(Identifier image, Text message, PressAction onPress) {
             super(message, onPress);
@@ -120,6 +145,11 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
         public Builder imageSize(int width, int height) {
             this.imageWidth = width;
             this.imageHeight = height;
+            return this;
+        }
+
+        public Builder imageColor(Color color) {
+            this.imageColor = color;
             return this;
         }
 
@@ -157,7 +187,8 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
                     this.message, this.onPress, this.image,
                     this.imageWidth, this.imageHeight,
                     this.nonHoveredBackgroundColor, this.hoveredBackgroundColor,
-                    this.inactiveTextColor, this.activeTextColor
+                    this.inactiveTextColor, this.activeTextColor,
+                    this.imageColor
             );
         }
     }

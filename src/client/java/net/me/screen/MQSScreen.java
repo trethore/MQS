@@ -59,7 +59,7 @@ public abstract class MQSScreen extends Screen {
         //Render2DUtils.drawRect(context, 0, 0, this.width, this.height, 0x11333333);
         this.applyBlur();
 
-        Render2DUtils.drawRoundedRectDropShadowOutline(context, startX, startY, this.windowWidth, this.windowHeight, 4, 10, 4, GUIColors.DARK_L1.withAlpha(200).getRGB());
+        Render2DUtils.drawRoundedRectDropShadowOutline(context, startX, startY, this.windowWidth, this.windowHeight, 4, 15, 6, GUIColors.DARK_L1.getRGB());
 
         Render2DUtils.drawRoundedRect(context, startX, startY, this.windowWidth, this.windowHeight, 4, 5, GUIColors.DARK_L1.getRGB());
     }

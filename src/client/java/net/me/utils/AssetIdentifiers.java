@@ -21,6 +21,7 @@ package net.me.utils;
 import net.me.Main;
 import net.minecraft.util.Identifier;
 
+@SuppressWarnings("unused")
 public final class AssetIdentifiers {
 
     // --- Icons ---
@@ -34,6 +35,7 @@ public final class AssetIdentifiers {
     public static final Identifier ICON_CREATE_SCRIPT = Identifier.of(Main.MOD_ID, "icons/file-code.png");
     public static final Identifier ICON_OPEN_FOLDER = Identifier.of(Main.MOD_ID, "icons/file-sliders.png");
     public static final Identifier ICON_WIKI = Identifier.of(Main.MOD_ID, "icons/cog.png");
+    public static final Identifier ICON_STOP = Identifier.of(Main.MOD_ID, "icons/ban.png");
 
 
     // --- Fonts ---

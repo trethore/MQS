@@ -27,6 +27,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import org.lwjgl.glfw.GLFW;
 
 @SuppressWarnings("unused")
 public class MQSTextFieldWidget extends TextFieldWidget implements IResizableWidget {
@@ -64,6 +65,17 @@ public class MQSTextFieldWidget extends TextFieldWidget implements IResizableWid
         super.renderWidget(context, mouseX, mouseY, delta);
 
         context.getMatrices().pop();
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.visible && this.isMouseOver(mouseX, mouseY)) {
+            if (button == GLFW.GLFW_MOUSE_BUTTON_2) { // Right-click
+                this.setText("");
+                return true;
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     public void setBackgroundColors(int defaultColor, int hoveredColor, int focusedColor) {

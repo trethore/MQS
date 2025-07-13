@@ -16,6 +16,25 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// java/net/me/screen/screens/AllScriptsScreen.java
+/*
+ * My QOL Scripts - A powerful scripting mod for Minecraft.
+ * Copyright (C) 2025 tytoo
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package net.me.screen.screens;
 
 import net.me.config.GlobalConfigManager;
@@ -33,6 +52,7 @@ import net.me.utils.TextRenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.Identifier;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -162,8 +182,8 @@ public class AllScriptsScreen extends MQSScreen {
 
         ActionButtonConfig[] buttons = {
                 new ActionButtonConfig(AssetIdentifiers.ICON_REFRESH, this::refreshScripts),
-                new ActionButtonConfig(AssetIdentifiers.ICON_TERMINAL, () -> new ConsoleScreen(this, consoleManager).open()),
-                new ActionButtonConfig(AssetIdentifiers.ICON_CLOSE, viewModel::disableAllScripts),
+                new ActionButtonConfig(AssetIdentifiers.ICON_TERMINAL, () -> new ConsoleScreen(this, consoleManager).open(), GUIColors.PRIMARY.getColor()),
+                new ActionButtonConfig(AssetIdentifiers.ICON_STOP, viewModel::disableAllScripts, GUIColors.ERROR.getColor()),
                 new ActionButtonConfig(AssetIdentifiers.ICON_MORE_OPTIONS, () -> new MoreOptionsScreen(this).open())
         };
 
@@ -171,9 +191,14 @@ public class AllScriptsScreen extends MQSScreen {
             ActionButtonConfig config = buttons[i];
             int x = buttonX + i * (buttonSize + BUTTON_SPACING);
 
-            MQSImageButtonWidget button = MQSImageButtonWidget.mqsBuilder(config.icon, btn -> config.action.run())
-                    .dimensions(x, headerY, buttonSize, buttonSize)
-                    .build();
+            MQSImageButtonWidget.Builder builder = MQSImageButtonWidget.mqsBuilder(config.icon, btn -> config.action.run())
+                    .dimensions(x, headerY, buttonSize, buttonSize);
+
+            if (config.color() != null) {
+                builder.imageColor(config.color());
+            }
+
+            MQSImageButtonWidget button = builder.build();
 
             if (i == 0) {
                 refreshButton = button;
@@ -216,6 +241,8 @@ public class AllScriptsScreen extends MQSScreen {
 
     private void refreshScripts() {
         if (viewModel.isRefreshing) return;
+
+        refreshButton.setImageColor(GUIColors.SUCCESS.getColor());
 
         viewModel.isRefreshing = true;
         refreshButton.active = false;
@@ -305,23 +332,19 @@ public class AllScriptsScreen extends MQSScreen {
     private void updateRefreshButtonState() {
         if (refreshFinishTime != -1L && System.currentTimeMillis() - refreshFinishTime > REFRESH_COOLDOWN_MS) {
             refreshButton.active = true;
+            refreshButton.setImageColor(Color.WHITE);
             refreshFinishTime = -1L;
         }
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (isMouseInScrollArea(mouseY)) {
+        if (isMouseInClickableArea(mouseX, mouseY)) {
             handleScrolling(verticalAmount);
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
-
-    private boolean isMouseInScrollArea(double mouseY) {
-        return mouseY >= listStartY && mouseY <= listStartY + listRenderHeight;
-    }
-
 
     private void handleScrolling(double verticalAmount) {
         double maxScroll = Math.max(0, totalContentHeight - listRenderHeight);
@@ -331,7 +354,7 @@ public class AllScriptsScreen extends MQSScreen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (scrollbar.isMouseOver(mouseX, mouseY)) {
+        if (isMouseInClickableArea(mouseX, mouseY) || scrollbar.isMouseOver(mouseX, mouseY)) {
             return scrollbar.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
         }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
@@ -356,10 +379,13 @@ public class AllScriptsScreen extends MQSScreen {
     }
 
     private boolean isMouseInClickableArea(double mouseX, double mouseY) {
-        return mouseX >= mainContentX && mouseX <= mainContentX + listWidth &&
+        return mouseX >= mainContentX && mouseX <= mainContentX + listWidth + 20 &&
                 mouseY >= listStartY && mouseY <= listStartY + listRenderHeight;
     }
 
-    private record ActionButtonConfig(Identifier icon, Runnable action) {
+    private record ActionButtonConfig(Identifier icon, Runnable action, Color color) {
+        public ActionButtonConfig(Identifier icon, Runnable action) {
+            this(icon, action, null);
+        }
     }
 }
