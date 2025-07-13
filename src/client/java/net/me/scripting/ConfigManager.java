@@ -93,6 +93,19 @@ public class ConfigManager {
         config.put(ConfigKeys.ENABLED, isEnabled);
     }
 
+    public Optional<String> getScriptCategoryId(String scriptId) {
+        Object categoryId = getConfig(scriptId).get(ConfigKeys.CATEGORY_ID);
+        return categoryId instanceof String ? Optional.of((String) categoryId) : Optional.empty();
+    }
+
+    public void setScriptCategoryId(String scriptId, String categoryId) {
+        if (categoryId == null) {
+            getConfig(scriptId).remove(ConfigKeys.CATEGORY_ID);
+        } else {
+            getConfig(scriptId).put(ConfigKeys.CATEGORY_ID, categoryId);
+        }
+    }
+
     public boolean getEnabledState(String scriptId) {
         Object enabled = getConfig(scriptId).get(ConfigKeys.ENABLED);
         return enabled instanceof Boolean && (Boolean) enabled;

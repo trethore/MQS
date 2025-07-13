@@ -38,7 +38,7 @@ public enum GUIColors {
     DARK_L3(new Color(48, 48, 48, 255)),
     DARK_L4(new Color(69, 69, 69, 255)),
     // ui color
-    PRIMARY(new Color(96, 255, 255, 255)),
+    PRIMARY(new Color(96, 196, 255, 255)),
     SECONDARY(new Color(255, 96, 96, 255));
 
     private final Color color;

@@ -21,6 +21,10 @@ package net.me.utils;
 import net.me.Main;
 import net.minecraft.util.Identifier;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Optional;
+
 @SuppressWarnings("unused")
 public final class AssetIdentifiers {
 
@@ -36,7 +40,8 @@ public final class AssetIdentifiers {
     public static final Identifier ICON_OPEN_FOLDER = Identifier.of(Main.MOD_ID, "icons/file-sliders.png");
     public static final Identifier ICON_WIKI = Identifier.of(Main.MOD_ID, "icons/cog.png");
     public static final Identifier ICON_STOP = Identifier.of(Main.MOD_ID, "icons/ban.png");
-
+    public static final Identifier ICON_TAG = Identifier.of(Main.MOD_ID, "icons/tag.png");
+    public static final Identifier ICON_EDIT = Identifier.of(Main.MOD_ID, "icons/pencil.png");
 
     // --- Fonts ---
     public static final Identifier FONT_MQS = Identifier.of(Main.MOD_ID, "mqsfont.ttf");
@@ -49,5 +54,20 @@ public final class AssetIdentifiers {
 
 
     private AssetIdentifiers() {
+    }
+
+    public static Optional<Identifier> getIcon(String name) {
+        if (name == null || name.isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            Field field = AssetIdentifiers.class.getField(name);
+            if (Modifier.isStatic(field.getModifiers()) && field.getType() == Identifier.class) {
+                return Optional.ofNullable((Identifier) field.get(null));
+            }
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            return Optional.empty();
+        }
+        return Optional.empty();
     }
 }

@@ -28,6 +28,7 @@ public final class ConfigKeys {
     // Per-script configs (in /configs/)
     public static final String ENABLED = "enabled";
     public static final String KEYBINDS = "keybinds";
+    public static final String CATEGORY_ID = "categoryId";
 
     // Keybind Options (in scripts)
     public static final String KEYBIND_OPT_KEY = "key";

@@ -21,6 +21,7 @@ package net.me;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.me.category.CategoryManager;
 import net.me.command.CommandManager;
 import net.me.command.MQSCommand;
 import net.me.config.GlobalConfigManager;
@@ -61,6 +62,7 @@ public class Main implements ClientModInitializer {
     private GlobalConfigManager globalConfigManager;
     private KeybindManager keybindManager;
     private Engine scriptEngine;
+    private CategoryManager categoryManager;
 
     public static Main getInstance() {
         return instance;
@@ -82,6 +84,9 @@ public class Main implements ClientModInitializer {
         return keybindManager;
     }
 
+    public CategoryManager getCategoryManager() {
+        return categoryManager;
+    }
     @Override
     public void onInitializeClient() {
         instance = this;
@@ -90,6 +95,7 @@ public class Main implements ClientModInitializer {
         this.scriptEngine = Engine.create();
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
+        this.categoryManager = new CategoryManager();
         this.scriptManager = new ScriptManager();
 
         this.commandManager = new CommandManager();
@@ -104,6 +110,7 @@ public class Main implements ClientModInitializer {
         this.scriptingService = new ScriptingService(scriptManager, configManager);
 
         configManager.init();
+        categoryManager.init();
         consoleManager.init();
         commandManager.init();
 

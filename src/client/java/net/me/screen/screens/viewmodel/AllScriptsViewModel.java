@@ -18,27 +18,37 @@
 
 package net.me.screen.screens.viewmodel;
 
+import net.me.category.Category;
+import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class AllScriptsViewModel {
 
+    public static final String ALL_SCRIPTS_ID = "ALL_SCRIPTS";
+
     private final ScriptingService scriptingService;
+    private final ConfigManager configManager;
     private final List<ScriptDescriptor> allScripts;
     public boolean isRefreshing = false;
     private List<ScriptDescriptor> filteredScripts;
     private String searchText = "";
+    private Object selectedCategory;
 
-    public AllScriptsViewModel(ScriptingService scriptingService) {
+    public AllScriptsViewModel(ScriptingService scriptingService, ConfigManager configManager) {
         this.scriptingService = scriptingService;
+        this.configManager = configManager;
         this.allScripts = new ArrayList<>(scriptingService.listAvailable());
         this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
-        this.filteredScripts = new ArrayList<>(this.allScripts);
+        this.selectedCategory = ALL_SCRIPTS_ID;
+        updateFilteredScripts();
     }
 
     public String getSearchText() {
@@ -53,11 +63,37 @@ public class AllScriptsViewModel {
         return filteredScripts.isEmpty();
     }
 
+    public Object getSelectedCategory() {
+        return selectedCategory;
+    }
+
+    public void setSelectedCategory(Object selectedCategory) {
+        this.selectedCategory = selectedCategory;
+        updateFilteredScripts();
+    }
+
     public void onSearchTextChanged(String newSearchText) {
         this.searchText = newSearchText.toLowerCase();
-        this.filteredScripts = this.allScripts.stream()
-                .filter(script -> script.moduleName().toLowerCase().contains(this.searchText))
-                .collect(Collectors.toList());
+        updateFilteredScripts();
+    }
+
+    private void updateFilteredScripts() {
+        Stream<ScriptDescriptor> stream = this.allScripts.stream();
+
+        if (selectedCategory instanceof Category category) {
+            UUID categoryId = category.id();
+            stream = stream.filter(script ->
+                    configManager.getScriptCategoryId(script.getId())
+                            .map(idStr -> idStr.equals(categoryId.toString()))
+                            .orElse(false)
+            );
+        }
+
+        if (!searchText.isEmpty()) {
+            stream = stream.filter(script -> script.moduleName().toLowerCase().contains(this.searchText));
+        }
+
+        this.filteredScripts = stream.collect(Collectors.toList());
     }
 
     public void refreshAndReenableScripts() {
@@ -68,7 +104,7 @@ public class AllScriptsViewModel {
         this.allScripts.addAll(scriptingService.listAvailable());
         this.allScripts.sort(Comparator.comparing(ScriptDescriptor::moduleName, String.CASE_INSENSITIVE_ORDER));
 
-        onSearchTextChanged(this.searchText);
+        updateFilteredScripts();
         isRefreshing = false;
     }
 
