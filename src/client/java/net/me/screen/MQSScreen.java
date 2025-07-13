@@ -20,6 +20,7 @@ package net.me.screen;
 
 import net.me.Main;
 import net.me.screen.component.components.MQSToast;
+import net.me.screen.theme.GUIColors;
 import net.me.screen.theme.UIConstants;
 import net.me.utils.ColorUtils;
 import net.me.utils.McUtils;
@@ -55,10 +56,12 @@ public abstract class MQSScreen extends Screen {
         int startX = getMiddlePoint().x() - windowWidth / 2;
         int startY = getMiddlePoint().y() - windowHeight / 2;
 
-        Render2DUtils.drawRect(context, 0, 0, this.width, this.height, 0x11333333);
+        //Render2DUtils.drawRect(context, 0, 0, this.width, this.height, 0x11333333);
         this.applyBlur();
-        Render2DUtils.drawRoundedRect(context, startX, startY, this.windowWidth, this.windowHeight, 10, 5, 0xFF181719);
-        Render2DUtils.drawRoundedOutline(context, startX, startY, this.windowWidth, this.windowHeight, 10, 1, 5, 0xFF212121);
+
+        Render2DUtils.drawRoundedRectDropShadowOutline(context, startX, startY, this.windowWidth, this.windowHeight, 4, 10, 4, GUIColors.DARK_L1.withAlpha(200).getRGB());
+
+        Render2DUtils.drawRoundedRect(context, startX, startY, this.windowWidth, this.windowHeight, 4, 5, GUIColors.DARK_L1.getRGB());
     }
 
     @Override

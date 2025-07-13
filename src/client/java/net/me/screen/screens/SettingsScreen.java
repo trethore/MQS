@@ -36,7 +36,7 @@ public class SettingsScreen extends MQSScreen {
     private final List<BooleanSettingEntryWidget> settingWidgets = new ArrayList<>();
 
     public SettingsScreen(MQSScreen parent, GlobalConfigManager globalConfigManager) {
-        super("Settings", 300, 280, parent);
+        super("Settings", 300, 210, parent);
         this.globalConfigManager = globalConfigManager;
     }
 
@@ -80,7 +80,7 @@ public class SettingsScreen extends MQSScreen {
 
         WidgetLayoutHelper.layoutVertically(
                 getMiddlePoint().x() - WIDGET_WIDTH / 2,
-                getMiddlePoint().y() - 80,
+                getMiddlePoint().y() - 60,
                 UIConstants.WIDGET_SPACING,
                 this.settingWidgets.toArray(new BooleanSettingEntryWidget[0])
         );

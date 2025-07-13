@@ -168,7 +168,7 @@ public final class Render2DUtils {
             } else if (i > 270 && i <= 360) {
                 cx = x2 - radius;
                 cy = y + radius;
-            } else { // handle last segment
+            } else {
                 cx = x2 - radius;
                 cy = y2 - radius;
             }
@@ -218,5 +218,63 @@ public final class Render2DUtils {
         endRender(bufferbuilder);
     }
 
+    public static void drawRoundedRectDropShadowOutline(DrawContext context, float x, float y, float width, float height, float radius, int quality, int shadowSize, int shadowColor) {
+        Matrix4f matrix = context.getMatrices().peek().getPositionMatrix();
+        float r = ((shadowColor >> 16) & 0xFF) / 255f;
+        float g = ((shadowColor >> 8) & 0xFF) / 255f;
+        float b = (shadowColor & 0xFF) / 255f;
+        float a = ((shadowColor >> 24) & 0xFF) / 255f;
+
+        BufferBuilder buffer = setupRender(ShaderProgramKeys.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
+
+        float totalSteps = quality * 4;
+        float step = 360 / totalSteps;
+
+        for (int i = 0; i <= totalSteps; i++) {
+            float angle = (float) Math.toRadians(i * step);
+            double cos = Math.cos(angle);
+            double sin = Math.sin(angle);
+
+            float centerX, centerY;
+            if (i * step >= 0 && i * step < 90) {
+                centerX = x + width - radius;
+                centerY = y + height - radius;
+            } else if (i * step >= 90 && i * step < 180) {
+                centerX = x + radius;
+                centerY = y + height - radius;
+            } else if (i * step >= 180 && i * step < 270) {
+                centerX = x + radius;
+                centerY = y + radius;
+            } else {
+                centerX = x + width - radius;
+                centerY = y + radius;
+            }
+
+            float outerX = centerX + (float) (cos * (radius + shadowSize));
+            float outerY = centerY + (float) (sin * (radius + shadowSize));
+            buffer.vertex(matrix, outerX, outerY, 0).color(r, g, b, 0);
+
+            float innerX = centerX + (float) (cos * radius);
+            float innerY = centerY + (float) (sin * radius);
+            buffer.vertex(matrix, innerX, innerY, 0).color(r, g, b, a);
+
+        }
+
+        float startAngle = 0;
+        double startCos = Math.cos(startAngle);
+        double startSin = Math.sin(startAngle);
+        float startCenterX = x + width - radius;
+        float startCenterY = y + height - radius;
+
+        float startOuterX = startCenterX + (float) (startCos * (radius + shadowSize));
+        float startOuterY = startCenterY + (float) (startSin * (radius + shadowSize));
+        buffer.vertex(matrix, startOuterX, startOuterY, 0).color(r, g, b, 0);
+
+        float startInnerX = startCenterX + (float) (startCos * radius);
+        float startInnerY = startCenterY + (float) (startSin * radius);
+        buffer.vertex(matrix, startInnerX, startInnerY, 0).color(r, g, b, a);
+
+        endRender(buffer);
+    }
 
 }

@@ -115,7 +115,7 @@ public class MQSToast {
         }
 
         Render2DUtils.drawRoundedRect(context, x, y, TOAST_WIDTH, TOAST_HEIGHT, 5, 10, GUIColors.DARK_L1.getRGB());
-        Render2DUtils.drawRoundedOutline(context, x, y, TOAST_WIDTH, TOAST_HEIGHT, 5, 1, 10, GUIColors.DARK_L3.getRGB());
+        Render2DUtils.drawRoundedRectDropShadowOutline(context, x, y, TOAST_WIDTH, TOAST_HEIGHT, 5, 10, 2, GUIColors.DARK_L1.withAlpha(128).getRGB());
 
         TextRenderUtils.drawCustomText(context, title, x + PADDING, y + 7, GUIColors.TEXT.getRGB(), true, 1f);
         TextRenderUtils.drawCustomText(context, description, x + PADDING, y + 20, GUIColors.TEXT_DISABLED.getRGB(), true, 0.8f);

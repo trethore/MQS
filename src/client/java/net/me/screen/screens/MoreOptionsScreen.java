@@ -39,7 +39,7 @@ public class MoreOptionsScreen extends MQSScreen {
     private static Boolean isVSCodeInstalledCache = null;
 
     public MoreOptionsScreen(MQSScreen parent) {
-        super("More Options", 210, 230, parent);
+        super("More Options", 210, 220, parent);
     }
 
     private static synchronized boolean isVSCodeInstalled() {

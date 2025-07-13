@@ -30,8 +30,22 @@ import net.minecraft.text.Text;
 
 public abstract class AbstractToggleEntryWidget extends PressableWidget implements IResizableWidget {
 
+    private boolean clickable = true;
+
     public AbstractToggleEntryWidget(int x, int y, int width, int height) {
         super(x, y, width, height, Text.empty());
+    }
+
+    public void setClickable(boolean clickable) {
+        this.clickable = clickable;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!this.clickable) {
+            return false;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     protected abstract boolean isToggled();
@@ -57,7 +71,7 @@ public abstract class AbstractToggleEntryWidget extends PressableWidget implemen
     }
 
     private void renderToggle(DrawContext context) {
-        int toggleBgColor = this.isHovered() ? GUIColors.DARK_L3.lighter(10).getRGB() : GUIColors.DARK_L3.getRGB();
+        int toggleBgColor = this.isHovered() || this.isFocused() ? GUIColors.DARK_L3.lighter(10).getRGB() : GUIColors.DARK_L3.getRGB();
         int toggleBgX = this.getX() + this.getWidth() - UIConstants.TOGGLE_BG_SIZE - UIConstants.PADDING_S;
         int toggleBgY = this.getY() + (this.getHeight() - UIConstants.TOGGLE_BG_SIZE) / 2;
         Render2DUtils.drawRoundedRect(context, toggleBgX, toggleBgY, UIConstants.TOGGLE_BG_SIZE, UIConstants.TOGGLE_BG_SIZE, 2, 5, toggleBgColor);

@@ -123,7 +123,6 @@ public class MQSImageButtonWidget extends MQSButtonWidget {
             return this;
         }
 
-        // --- OVERRIDE CHAINING METHODS TO RETURN THE CORRECT BUILDER TYPE ---
         @Override
         public Builder dimensions(int x, int y, int width, int height) {
             super.dimensions(x, y, width, height);

@@ -81,6 +81,22 @@ public enum GUIColors {
         return new Color(r, g, b, color.getAlpha());
     }
 
+    public Color withAlpha(int alpha) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), clamp(alpha));
+    }
+
+    public Color withRed(int red) {
+        return new Color(clamp(red), color.getGreen(), color.getBlue(), color.getAlpha());
+    }
+
+    public Color withGreen(int green) {
+        return new Color(color.getRed(), clamp(green), color.getBlue(), color.getAlpha());
+    }
+
+    public Color withBlue(int blue) {
+        return new Color(color.getRed(), color.getGreen(), clamp(blue), color.getAlpha());
+    }
+
     private int clamp(int value) {
         return Math.max(0, Math.min(255, value));
     }
