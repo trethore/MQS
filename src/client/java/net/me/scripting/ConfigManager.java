@@ -34,10 +34,9 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class ConfigManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -93,17 +92,23 @@ public class ConfigManager {
         config.put(ConfigKeys.ENABLED, isEnabled);
     }
 
-    public Optional<String> getScriptCategoryId(String scriptId) {
-        Object categoryId = getConfig(scriptId).get(ConfigKeys.CATEGORY_ID);
-        return categoryId instanceof String ? Optional.of((String) categoryId) : Optional.empty();
+    public Set<String> getScriptCategoryIds(String scriptId) {
+        Object categoryIdsObj = getConfig(scriptId).get(ConfigKeys.CATEGORY_IDS);
+        if (categoryIdsObj instanceof List) {
+            return ((List<?>) categoryIdsObj).stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.toSet());
+        }
+        return new HashSet<>();
     }
 
-    public void setScriptCategoryId(String scriptId, String categoryId) {
-        if (categoryId == null) {
-            getConfig(scriptId).remove(ConfigKeys.CATEGORY_ID);
+    public void setScriptCategoryIds(String scriptId, Set<String> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            getConfig(scriptId).remove(ConfigKeys.CATEGORY_IDS);
         } else {
-            getConfig(scriptId).put(ConfigKeys.CATEGORY_ID, categoryId);
+            getConfig(scriptId).put(ConfigKeys.CATEGORY_IDS, new ArrayList<>(categoryIds));
         }
+        saveConfig(scriptId);
     }
 
     public boolean getEnabledState(String scriptId) {

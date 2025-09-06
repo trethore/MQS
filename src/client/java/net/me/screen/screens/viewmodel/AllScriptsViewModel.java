@@ -82,11 +82,7 @@ public class AllScriptsViewModel {
 
         if (selectedCategory instanceof Category category) {
             UUID categoryId = category.id();
-            stream = stream.filter(script ->
-                    configManager.getScriptCategoryId(script.getId())
-                            .map(idStr -> idStr.equals(categoryId.toString()))
-                            .orElse(false)
-            );
+            stream = stream.filter(script -> configManager.getScriptCategoryIds(script.getId()).contains(categoryId.toString()));
         }
 
         if (!searchText.isEmpty()) {

@@ -38,3 +38,11 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+# Agents
+
+AGENTS.md
+GEMINI.md
+
+# Notes
+notes.md

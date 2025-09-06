@@ -20,8 +20,11 @@ package net.me.screen.component.components;
 
 import net.me.config.GlobalConfigManager;
 import net.me.screen.component.AbstractToggleEntryWidget;
+import net.me.screen.screens.AllScriptsScreen;
+import net.me.screen.screens.AssignCategoryScreen;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.utils.McUtils;
 import net.minecraft.util.Formatting;
 import org.jetbrains.annotations.Nullable;
 
@@ -75,6 +78,23 @@ public class ScriptDescriptorToggleWidget extends AbstractToggleEntryWidget {
             String state = (isRunning ? Formatting.RED + "disabled" : Formatting.GREEN + "enabled") + Formatting.RESET;
             MQSToast.show(descriptor.moduleName() + " " + state, "This script has been " + (isRunning ? "disabled" : "enabled"), 1500, MQSToast.Corner.TOP_LEFT);
         }
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.active && this.visible && this.isMouseOver(mouseX, mouseY)) {
+            if (button == 1) { // Right-click
+                if (this.descriptor != null) {
+                    McUtils.getMc().ifPresent(mc -> {
+                        if (mc.currentScreen instanceof AllScriptsScreen parent) {
+                            new AssignCategoryScreen(parent, this.descriptor).open();
+                        }
+                    });
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Nullable
