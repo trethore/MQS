@@ -91,16 +91,6 @@ public class GlobalConfigManager {
         }
     }
 
-    public boolean isEnableDisableToastEnabled() {
-        return data.showEnableDisableToast;
-    }
-
-    public void setEnableDisableToastEnabled(boolean enabled) {
-        if (data.showEnableDisableToast != enabled) {
-            data.showEnableDisableToast = enabled;
-        }
-    }
-
     private static class ConfigData {
         @SerializedName(ConfigKeys.LOG_REDIRECT)
         boolean logRedirect = false;
@@ -108,7 +98,5 @@ public class GlobalConfigManager {
         @SerializedName(ConfigKeys.ALLOW_ALL_CLASSES)
         boolean allowAllClasses = false;
 
-        @SerializedName(ConfigKeys.SHOW_ENABLE_DISABLE_TOAST)
-        boolean showEnableDisableToast = true;
     }
 }

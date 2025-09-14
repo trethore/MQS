@@ -19,9 +19,7 @@
 package net.me;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.me.category.CategoryManager;
 import net.me.command.CommandManager;
 import net.me.command.MQSCommand;
 import net.me.config.GlobalConfigManager;
@@ -31,7 +29,6 @@ import net.me.event.EventManager;
 import net.me.event.MQSEventBus;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
-import net.me.screen.component.components.MQSToast;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
@@ -40,6 +37,7 @@ import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tytoo.weave.WeaveCore;
 
 import java.nio.file.Path;
 
@@ -62,7 +60,6 @@ public class Main implements ClientModInitializer {
     private GlobalConfigManager globalConfigManager;
     private KeybindManager keybindManager;
     private Engine scriptEngine;
-    private CategoryManager categoryManager;
 
     public static Main getInstance() {
         return instance;
@@ -84,18 +81,14 @@ public class Main implements ClientModInitializer {
         return keybindManager;
     }
 
-    public CategoryManager getCategoryManager() {
-        return categoryManager;
-    }
     @Override
     public void onInitializeClient() {
+        WeaveCore.init();
         instance = this;
-        initToastTick();
 
         this.scriptEngine = Engine.create();
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
-        this.categoryManager = new CategoryManager();
         this.scriptManager = new ScriptManager();
 
         this.commandManager = new CommandManager();
@@ -110,7 +103,6 @@ public class Main implements ClientModInitializer {
         this.scriptingService = new ScriptingService(scriptManager, configManager);
 
         configManager.init();
-        categoryManager.init();
         consoleManager.init();
         commandManager.init();
 
@@ -128,12 +120,8 @@ public class Main implements ClientModInitializer {
         })));
     }
 
-    private void initToastTick() {
-        ClientTickEvents.END_CLIENT_TICK.register(client -> MQSToast.updateAll());
-    }
-
     private void registerClientCommands() {
-        this.commandManager.addCommand(new MQSCommand(this.scriptingService, this.consoleManager, this.globalConfigManager, this.keybindManager));
+        this.commandManager.addCommand(new MQSCommand(this.scriptingService));
     }
 
     private void registerConsoleCommands() {

@@ -15,6 +15,16 @@ base {
 
 repositories {
 	mavenCentral()
+
+    maven {
+        url = uri("https://maven.pkg.github.com/trethore/Weave")
+        credentials {
+            username = findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR") ?: System.getenv("GPR_USER")
+            password = findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN") ?: System.getenv("GPR_TOKEN")
+        }
+        content { includeGroup("tytoo.weave") }
+    }
+
 	maven { url = uri("https://packages.graalvm.org/maven") }
 }
 
@@ -32,6 +42,11 @@ project.ext.lwjglVersion  = "3.3.4"
 project.ext.lwjglNatives  = "natives-windows"
 project.ext.graalVersion  = "24.2.1"
 
+// Configuration used to fetch sources of external dependencies for browsing
+configurations {
+    sourceDeps
+}
+
 dependencies {
 	minecraft          "com.mojang:minecraft:${project.minecraft_version}"
 	mappings           "net.fabricmc:yarn:${project.yarn_mappings}:v2"
@@ -44,6 +59,10 @@ dependencies {
 	shadow(implementation "org.graalvm.js:js-scriptengine:${graalVersion}")
 	shadow(implementation "net.bytebuddy:byte-buddy:1.17.6")
 	shadow(implementation "net.bytebuddy:byte-buddy-agent:1.17.6")
+    shadow(modImplementation "tytoo.weave:weave-ui:1.0.1-0.119.4+1.21.4+build.8")
+
+	// Sources for unpack task
+	sourceDeps "tytoo.weave:weave-ui:1.0.1-0.119.4+1.21.4+build.8:sources@jar"
 }
 
 tasks.register('applyLicenseHeaders') {
@@ -124,6 +143,7 @@ shadowJar {
 	mergeServiceFiles()
 	relocate 'org.graalvm', 'net.me.libs.graalvm'
 	relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
+	relocate 'tytoo.weave', 'net.me.libs.weave'
 
 	manifest {
 		attributes(
@@ -136,14 +156,44 @@ shadowJar {
 	}
 }
 
-remapJar {
-	dependsOn(shadowJar)
-	inputFile = tasks.shadowJar.archiveFile
+tasks.register('shadowLibsJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    archiveClassifier.set("libs-only")
+    configurations = [project.configurations.shadow]
+    dependencies {
+        include(dependency("org.graalvm.sdk:graal-sdk"))
+        include(dependency("org.graalvm.truffle:truffle-api"))
+        include(dependency("org.graalvm.js:js-language"))
+        include(dependency("org.graalvm.js:js-scriptengine"))
+        include(dependency("net.bytebuddy:byte-buddy"))
+        include(dependency("net.bytebuddy:byte-buddy-agent"))
+    }
+    from({ files() })
+    mergeServiceFiles()
+    relocate 'org.graalvm', 'net.me.libs.graalvm'
+    relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
+}
 
-	from("LICENSE") {
-		into "META-INF"
-		rename { "${project.archives_base_name}-LICENSE.txt" }
-	}
+tasks.register('shadowWeaveJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    archiveClassifier.set("weave-dev")
+    configurations = [project.configurations.shadow]
+    from sourceSets.client.output
+    dependencies {
+        include(dependency("tytoo.weave:weave-ui"))
+    }
+    mergeServiceFiles()
+    relocate 'tytoo.weave', 'net.me.libs.weave'
+}
+
+remapJar {
+    dependsOn(tasks.named('shadowWeaveJar'), tasks.named('shadowLibsJar'))
+    inputFile = tasks.named('shadowWeaveJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).get().archiveFile
+
+    from({ zipTree(tasks.named('shadowLibsJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).get().archiveFile.get().asFile) })
+
+    from("LICENSE") {
+        into "META-INF"
+        rename { "${project.archives_base_name}-LICENSE.txt" }
+    }
 }
 
 publishing {
@@ -156,4 +206,13 @@ publishing {
 	repositories {
 		// configure your publish repos here
 	}
+}
+
+tasks.register('unpackWeaveSources', Sync) {
+    description = 'Unpacks Weave sources into external-dependencies/weave-ui for browsing'
+    group = 'help'
+    into "$projectDir/external-dependencies/weave-ui"
+    from {
+        configurations.sourceDeps.collect { zipTree(it) }
+    }
 }

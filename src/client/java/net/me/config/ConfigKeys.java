@@ -23,12 +23,11 @@ public final class ConfigKeys {
     // Global Config (mqs_config.json)
     public static final String LOG_REDIRECT = "logRedirect";
     public static final String ALLOW_ALL_CLASSES = "allowAllClasses";
-    public static final String SHOW_ENABLE_DISABLE_TOAST = "showEnableDisableToast";
 
     // Per-script configs (in /configs/)
     public static final String ENABLED = "enabled";
     public static final String KEYBINDS = "keybinds";
-    public static final String CATEGORY_IDS = "categoryIds";
+    // Removed: categoryIds and showEnableDisableToast (legacy GUI)
 
     // Keybind Options (in scripts)
     public static final String KEYBIND_OPT_KEY = "key";
