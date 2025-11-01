@@ -101,19 +101,23 @@ public final class Render2DUtils {
             lastVy = cy;
         }
 
-        for (int i = (int) quality; i <= 360; i += (int) quality) {
-            double angle = Math.toRadians(i);
+        float step = Math.max(1.0f, Math.abs(quality));
+        int iterations = (int) Math.ceil(360.0f / step);
+
+        for (int index = 1; index <= iterations; index++) {
+            float degrees = Math.min(index * step, 360.0f);
+            double angle = Math.toRadians(degrees);
             double sin = Math.sin(angle);
             double cos = Math.cos(angle);
 
             float cx, cy;
-            if (i >= 0 && i <= 90) {
+            if (degrees >= 0 && degrees <= 90) {
                 cx = x2 - radius;
                 cy = y2 - radius;
-            } else if (i > 90 && i <= 180) {
+            } else if (degrees > 90 && degrees <= 180) {
                 cx = x + radius;
                 cy = y2 - radius;
-            } else if (i > 180 && i <= 270) {
+            } else if (degrees > 180 && degrees <= 270) {
                 cx = x + radius;
                 cy = y + radius;
             } else {
@@ -147,8 +151,12 @@ public final class Render2DUtils {
         float x2 = x + width;
         float y2 = y + height;
 
-        for (int i = 0; i <= 450; i += (int) quality) {
-            double angle = Math.toRadians(i);
+        float step = Math.max(1.0f, Math.abs(quality));
+        int iterations = (int) Math.ceil(450.0f / step);
+
+        for (int index = 0; index <= iterations; index++) {
+            float degrees = Math.min(index * step, 450.0f);
+            double angle = Math.toRadians(degrees);
             double sin = Math.sin(angle);
             double cos = Math.cos(angle);
 
@@ -156,16 +164,16 @@ public final class Render2DUtils {
             r_outer = radius;
             r_inner = radius - lineWidth;
 
-            if (i >= 0 && i <= 90) {
+            if (degrees >= 0 && degrees <= 90) {
                 cx = x2 - radius;
                 cy = y2 - radius;
-            } else if (i > 90 && i <= 180) {
+            } else if (degrees > 90 && degrees <= 180) {
                 cx = x + radius;
                 cy = y2 - radius;
-            } else if (i > 180 && i <= 270) {
+            } else if (degrees > 180 && degrees <= 270) {
                 cx = x + radius;
                 cy = y + radius;
-            } else if (i > 270 && i <= 360) {
+            } else if (degrees > 270 && degrees <= 360) {
                 cx = x2 - radius;
                 cy = y + radius;
             } else {

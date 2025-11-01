@@ -39,6 +39,9 @@ public record Vector3f(float x, float y, float z) {
 
     public Vector3f normalize() {
         float length = (float) Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2));
+        if (length <= 0.0f) {
+            return this;
+        }
         return new Vector3f(x / length, y / length, z / length);
     }
 

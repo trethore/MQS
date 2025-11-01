@@ -30,7 +30,8 @@ public final class ColorUtils {
     }
 
     public static int getRainbowColor(long offset, long speed, float saturation, float brightness) {
-        float hue = ((System.currentTimeMillis() + offset) % speed) / (float) speed;
+        long effectiveSpeed = Math.max(1L, speed);
+        float hue = ((System.currentTimeMillis() + offset) % effectiveSpeed) / (float) effectiveSpeed;
         return Color.HSBtoRGB(hue, saturation, brightness);
     }
 }
