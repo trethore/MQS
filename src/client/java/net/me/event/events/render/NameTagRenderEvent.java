@@ -18,6 +18,7 @@
 
 package net.me.event.events.render;
 
+import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -25,6 +26,7 @@ import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 
+@Getter
 @SuppressWarnings("unused")
 public class NameTagRenderEvent<S extends EntityRenderState> extends CancellableEvent {
     private final S entityState;
@@ -39,26 +41,6 @@ public class NameTagRenderEvent<S extends EntityRenderState> extends Cancellable
         this.vertexConsumers = vertexConsumers;
         this.light = light;
         this.text = text;
-    }
-
-    public S getEntityState() {
-        return entityState;
-    }
-
-    public Text getText() {
-        return text;
-    }
-
-    public MatrixStack getMatrices() {
-        return matrices;
-    }
-
-    public VertexConsumerProvider getVertexConsumers() {
-        return vertexConsumers;
-    }
-
-    public int getLight() {
-        return light;
     }
 
     @Override

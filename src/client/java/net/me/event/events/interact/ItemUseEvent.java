@@ -18,12 +18,14 @@
 
 package net.me.event.events.interact;
 
+import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 
+@Getter
 @SuppressWarnings("unused")
 public class ItemUseEvent extends CancellableEvent {
     private final PlayerEntity player;
@@ -34,18 +36,6 @@ public class ItemUseEvent extends CancellableEvent {
         this.player = player;
         this.hand = hand;
         this.itemStack = player.getStackInHand(hand);
-    }
-
-    public PlayerEntity getPlayer() {
-        return player;
-    }
-
-    public Hand getHand() {
-        return hand;
-    }
-
-    public ItemStack getItemStack() {
-        return itemStack;
     }
 
     @Override

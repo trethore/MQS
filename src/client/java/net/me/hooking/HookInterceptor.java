@@ -18,6 +18,8 @@
 
 package net.me.hooking;
 
+import lombok.Getter;
+import lombok.Setter;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.me.Main;
@@ -256,46 +258,26 @@ public class HookInterceptor {
     public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
     }
 
+    @Setter
     public static class AdviceContext {
         private boolean shouldExecuteOriginal = false;
+        @Getter
         private boolean isNextCalled = false;
+        @Getter
         private Value scriptReturnValue = null;
         private Value[] modifiedArgs = null;
 
-        public boolean isNextCalled() {
-            return isNextCalled;
-        }
-
-        public void setNextCalled(boolean nextCalled) {
-            isNextCalled = nextCalled;
-        }
-
         public boolean shouldExecuteOriginal() {
             return shouldExecuteOriginal;
-        }
-
-        public void setShouldExecuteOriginal(boolean shouldExecuteOriginal) {
-            this.shouldExecuteOriginal = shouldExecuteOriginal;
         }
 
         public boolean hasScriptReturnValue() {
             return scriptReturnValue != null && !scriptReturnValue.isNull();
         }
 
-        public Value getScriptReturnValue() {
-            return scriptReturnValue;
-        }
-
-        public void setScriptReturnValue(Value scriptReturnValue) {
-            this.scriptReturnValue = scriptReturnValue;
-        }
-
         public Value[] modifiedArgs() {
             return modifiedArgs;
         }
 
-        public void setModifiedArgs(Value[] modifiedArgs) {
-            this.modifiedArgs = modifiedArgs;
-        }
     }
 }

@@ -18,6 +18,8 @@
 
 package net.me.keybinds;
 
+import lombok.Getter;
+import lombok.Setter;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
@@ -25,12 +27,16 @@ import org.graalvm.polyglot.Value;
 import org.lwjgl.glfw.GLFW;
 
 public class KeyBinding {
+    @Getter
     private final String name;
+    @Getter
     private final RunningScript owner;
     private final Value action;
     private final boolean repeatable;
     private final int debounceTime;
     private final ScriptManager scriptManager;
+    @Setter
+    @Getter
     private int key;
     private long lastReleaseTime = 0;
     private boolean hasBeenPressed = false;
@@ -81,19 +87,4 @@ public class KeyBinding {
         return Keys.fromCode(this.key).map(Keys::toString).orElse("Unknown");
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public int getKey() {
-        return key;
-    }
-
-    public void setKey(int key) {
-        this.key = key;
-    }
-
-    public RunningScript getOwner() {
-        return owner;
-    }
 }

@@ -74,6 +74,11 @@ dependencies {
 	shadow(implementation "net.bytebuddy:byte-buddy-agent:${bytebuddyVersion}")
 	shadow(modImplementation "tytoo.minegui:minegui:${mineguiVersion}")
 
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    clientCompileOnly 'org.projectlombok:lombok:1.18.42'
+    clientAnnotationProcessor 'org.projectlombok:lombok:1.18.42'
+
 	sourceLibCoordinates.values().each { coordinate ->
 		sourceDeps coordinate
 	}

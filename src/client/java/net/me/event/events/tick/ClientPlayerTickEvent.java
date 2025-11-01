@@ -18,20 +18,18 @@
 
 package net.me.event.events.tick;
 
+import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
 import net.minecraft.client.network.ClientPlayerEntity;
 
 
+@Getter
 public class ClientPlayerTickEvent extends Event {
     private final ClientPlayerEntity player;
 
     public ClientPlayerTickEvent(ClientPlayerEntity player) {
         this.player = player;
-    }
-
-    public ClientPlayerEntity getPlayer() {
-        return this.player;
     }
 
     @Override

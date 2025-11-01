@@ -18,6 +18,7 @@
 
 package net.me.event;
 
+import lombok.Getter;
 import net.me.event.events.MinecraftClientStopEvent;
 import net.me.event.events.chat.ChatMessageReceivedEvent;
 import net.me.event.events.interact.BlockInteractEvent;
@@ -42,6 +43,7 @@ import net.me.event.events.world.EntityAddedEvent;
 import net.me.event.events.world.EntityRemovedEvent;
 import net.me.event.events.world.WorldChangeEvent;
 
+@Getter
 public enum Events {
     // Render Events
     WorldRenderEvent(WorldRenderEvent.class),
@@ -98,7 +100,4 @@ public enum Events {
         this.eventClass = eventClass;
     }
 
-    public Class<? extends Event> getEventClass() {
-        return eventClass;
-    }
 }

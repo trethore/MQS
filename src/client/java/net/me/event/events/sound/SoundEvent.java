@@ -18,19 +18,17 @@
 
 package net.me.event.events.sound;
 
+import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.minecraft.client.sound.SoundInstance;
 
+@Getter
 @SuppressWarnings("unused")
 public abstract class SoundEvent extends CancellableEvent {
     private final SoundInstance soundInstance;
 
     public SoundEvent(SoundInstance soundInstance) {
         this.soundInstance = soundInstance;
-    }
-
-    public SoundInstance getSoundInstance() {
-        return soundInstance;
     }
 
 }

@@ -20,6 +20,7 @@ package net.me.utils.update;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import lombok.Getter;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
 import net.me.utils.AssetIdentifiers;
@@ -237,6 +238,7 @@ public class UpdateUtils {
         ERROR
     }
 
+    @Getter
     public enum UpdateResult {
         SUCCESSFUL("Update downloaded! It will be applied when you restart Minecraft."),
         UPDATE_PENDING("An update is already downloaded. It will be applied on restart."),
@@ -248,9 +250,6 @@ public class UpdateUtils {
             this.message = message;
         }
 
-        public String getMessage() {
-            return message;
-        }
     }
 
     public record UpdateInfo(String version, String changelog, String downloadUrl, boolean hasUpdate) {

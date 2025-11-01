@@ -18,6 +18,8 @@
 
 package net.me.console;
 
+import lombok.Getter;
+
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
@@ -29,6 +31,7 @@ public record ConsoleMessage(String text, MessageType type, String timestamp) {
         this(text, type, LocalTime.now().format(TIME_FORMATTER));
     }
 
+    @Getter
     public enum MessageType {
         INFO(0xFFFFFFFF),
         ERROR(0xFFF38BA8),
@@ -41,8 +44,5 @@ public record ConsoleMessage(String text, MessageType type, String timestamp) {
             this.color = color;
         }
 
-        public int getColor() {
-            return color;
-        }
     }
 }

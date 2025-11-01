@@ -18,6 +18,7 @@
 
 package net.me.event.events.render;
 
+import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
 import net.minecraft.client.gui.DrawContext;
@@ -27,8 +28,10 @@ import net.minecraft.client.util.math.MatrixStack;
 
 @SuppressWarnings("unused")
 public class WorldRenderEvent extends Event {
+    @Getter
     private final DrawContext drawContext;
     private final RenderTickCounter tickCounter;
+    @Getter
     private final Camera camera;
 
     public WorldRenderEvent(DrawContext drawContext, RenderTickCounter tickCounter, Camera camera) {
@@ -37,20 +40,12 @@ public class WorldRenderEvent extends Event {
         this.camera = camera;
     }
 
-    public DrawContext getDrawContext() {
-        return drawContext;
-    }
-
     public MatrixStack getMatrices() {
         return drawContext.getMatrices();
     }
 
     public float getPartialTicks() {
         return tickCounter.getTickDelta(true);
-    }
-
-    public Camera getCamera() {
-        return camera;
     }
 
     @Override

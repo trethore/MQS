@@ -18,6 +18,7 @@
 
 package net.me.event.events.player;
 
+import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -26,8 +27,10 @@ import net.minecraft.util.math.Vec3d;
 
 @SuppressWarnings("unused")
 public class PlayerMoveEvent extends CancellableEvent {
+    @Getter
     private final ClientPlayerEntity player;
     private final MovementType type;
+    @Getter
     private final Vec3d movement;
 
     public PlayerMoveEvent(ClientPlayerEntity player, MovementType type, Vec3d movement) {
@@ -36,16 +39,8 @@ public class PlayerMoveEvent extends CancellableEvent {
         this.movement = movement;
     }
 
-    public ClientPlayerEntity getPlayer() {
-        return player;
-    }
-
     public MovementType getMouvementType() {
         return type;
-    }
-
-    public Vec3d getMovement() {
-        return movement;
     }
 
     @Override

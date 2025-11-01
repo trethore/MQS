@@ -18,6 +18,7 @@
 
 package net.me.event.events.chat;
 
+import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
 import net.minecraft.client.gui.hud.MessageIndicator;
@@ -29,16 +30,13 @@ import org.jetbrains.annotations.Nullable;
 public class ChatMessageReceivedEvent extends CancellableEvent {
     private final MessageSignatureData signature;
     private final MessageIndicator indicator;
+    @Getter
     private final Text message;
 
     public ChatMessageReceivedEvent(Text message, MessageSignatureData signature, MessageIndicator indicator) {
         this.message = message;
         this.signature = signature;
         this.indicator = indicator;
-    }
-
-    public Text getMessage() {
-        return message;
     }
 
     @Nullable

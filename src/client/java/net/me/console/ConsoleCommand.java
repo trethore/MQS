@@ -18,6 +18,9 @@
 
 package net.me.console;
 
+import lombok.Getter;
+
+@Getter
 public abstract class ConsoleCommand {
     private final ConsoleManager consoleManager;
     private final String name;
@@ -34,19 +37,4 @@ public abstract class ConsoleCommand {
 
     public abstract void execute(String[] args);
 
-    public String getName() {
-        return name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public String getUsage() {
-        return usage;
-    }
-
-    public ConsoleManager getConsoleManager() {
-        return consoleManager;
-    }
 }

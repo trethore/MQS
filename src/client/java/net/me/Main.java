@@ -18,6 +18,7 @@
 
 package net.me;
 
+import lombok.Getter;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
@@ -46,43 +47,25 @@ public class Main implements ClientModInitializer {
     public static final String MC_VERSION = "1.21.4";
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
 
+    @Getter
     private static Main instance;
 
+    @Getter
     private ConfigManager configManager;
+    @Getter
     private MappingsManager mappingsManager;
+    @Getter
     private ScriptManager scriptManager;
     private HookManager hookManager;
     private EventManager eventManager;
     private CommandManager commandManager;
     private ConsoleManager consoleManager;
     private ScriptingService scriptingService;
+    @Getter
     private GlobalConfigManager globalConfigManager;
+    @Getter
     private KeybindManager keybindManager;
     private Engine scriptEngine;
-
-    public static Main getInstance() {
-        return instance;
-    }
-
-    public ConfigManager getConfigManager() {
-        return configManager;
-    }
-
-    public MappingsManager getMappingsManager() {
-        return mappingsManager;
-    }
-
-    public GlobalConfigManager getGlobalConfigManager() {
-        return globalConfigManager;
-    }
-
-    public KeybindManager getKeybindManager() {
-        return keybindManager;
-    }
-
-    public ScriptManager getScriptManager() {
-        return scriptManager;
-    }
 
     @Override
     public void onInitializeClient() {

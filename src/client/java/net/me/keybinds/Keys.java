@@ -18,6 +18,7 @@
 
 package net.me.keybinds;
 
+import lombok.Getter;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.HashMap;
@@ -172,6 +173,7 @@ public enum Keys {
         }
     }
 
+    @Getter
     private final int code;
     private final String friendlyName;
 
@@ -182,10 +184,6 @@ public enum Keys {
 
     public static Optional<Keys> fromCode(int code) {
         return Optional.ofNullable(LOOKUP.get(code));
-    }
-
-    public int getCode() {
-        return code;
     }
 
     @Override

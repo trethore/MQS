@@ -18,8 +18,10 @@
 
 package net.me.event;
 
+import lombok.Getter;
 import net.minecraft.network.packet.Packet;
 
+@Getter
 public abstract class PacketEvent<T extends Packet<?>> extends CancellableEvent {
     private final T packet;
 
@@ -27,7 +29,4 @@ public abstract class PacketEvent<T extends Packet<?>> extends CancellableEvent 
         this.packet = packet;
     }
 
-    public T getPacket() {
-        return this.packet;
-    }
 }

@@ -18,12 +18,14 @@
 
 package net.me.event.events.player;
 
+import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Hand;
 
+@Getter
 @SuppressWarnings("unused")
 public class PlayerInteractEntityEvent extends CancellableEvent {
     private final PlayerEntity player;
@@ -34,18 +36,6 @@ public class PlayerInteractEntityEvent extends CancellableEvent {
         this.player = player;
         this.target = target;
         this.hand = hand;
-    }
-
-    public PlayerEntity getPlayer() {
-        return player;
-    }
-
-    public Entity getTarget() {
-        return target;
-    }
-
-    public Hand getHand() {
-        return hand;
     }
 
     @Override
