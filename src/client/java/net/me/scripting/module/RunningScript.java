@@ -18,12 +18,15 @@
 
 package net.me.scripting.module;
 
+import lombok.Getter;
 import net.me.Main;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 public class RunningScript {
+    @Getter
     private final ScriptDescriptor descriptor;
+    @Getter
     private final String name;
     private Value jsInstance;
     private Context context;
@@ -81,15 +84,8 @@ public class RunningScript {
         return context;
     }
 
-    public String getName() {
-        return name;
-    }
-
     public String getVersion() {
         return descriptor.version();
     }
 
-    public ScriptDescriptor getDescriptor() {
-        return descriptor;
-    }
 }

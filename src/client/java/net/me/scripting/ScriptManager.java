@@ -18,6 +18,7 @@
 
 package net.me.scripting;
 
+import lombok.Getter;
 import net.me.Main;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
@@ -41,6 +42,7 @@ public class ScriptManager {
     private final ThreadLocal<RunningScript> currentScriptContext = new InheritableThreadLocal<>();
 
     private ConfigManager configManager;
+    @Getter
     private ScriptingClassResolver classResolver;
     private ScriptDiscoverer scriptDiscoverer;
     private ScriptLoader scriptLoader;
@@ -182,7 +184,4 @@ public class ScriptManager {
         currentScriptContext.remove();
     }
 
-    public ScriptingClassResolver getClassResolver() {
-        return classResolver;
-    }
 }

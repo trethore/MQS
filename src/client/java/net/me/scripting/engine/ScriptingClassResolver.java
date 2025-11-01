@@ -18,6 +18,7 @@
 
 package net.me.scripting.engine;
 
+import lombok.Getter;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.mappings.MappingsManager;
@@ -36,11 +37,15 @@ public class ScriptingClassResolver {
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
     private final Map<Class<?>, Boolean> mcRelatedCache = new ConcurrentHashMap<>();
 
+    @Getter
     private MappingsManager mappingsManager;
+    @Getter
     private ScriptManager scriptManager;
 
     private Map<String, String> classMap;
+    @Getter
     private Map<String, Map<String, List<String>>> methodMap;
+    @Getter
     private Map<String, Map<String, String>> fieldMap;
     private Map<String, String> runtimeToYarn;
     private Set<String> knownPackagePrefixes;
@@ -132,14 +137,6 @@ public class ScriptingClassResolver {
         return runtimeToYarn;
     }
 
-    public Map<String, Map<String, List<String>>> getMethodMap() {
-        return methodMap;
-    }
-
-    public Map<String, Map<String, String>> getFieldMap() {
-        return fieldMap;
-    }
-
     public Set<String> getKnownPackagePrefixes() {
         return Collections.unmodifiableSet(knownPackagePrefixes);
     }
@@ -183,14 +180,6 @@ public class ScriptingClassResolver {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
         var cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
         return new JsClassWrapper(runtime, cm.methods(), cm.fields(), this.mappingsManager, this.scriptManager);
-    }
-
-    public MappingsManager getMappingsManager() {
-        return mappingsManager;
-    }
-
-    public ScriptManager getScriptManager() {
-        return scriptManager;
     }
 
 }

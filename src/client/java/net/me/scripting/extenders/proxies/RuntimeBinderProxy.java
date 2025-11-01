@@ -18,6 +18,7 @@
 
 package net.me.scripting.extenders.proxies;
 
+import lombok.Setter;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -26,14 +27,11 @@ import java.util.Map;
 
 public class RuntimeBinderProxy implements ProxyObject {
     private final Map<String, Object> originalOverrides;
+    @Setter
     private ExtendedInstanceProxy bindingTarget;
 
     public RuntimeBinderProxy(Map<String, Object> originalOverrides) {
         this.originalOverrides = originalOverrides;
-    }
-
-    public void setBindingTarget(ExtendedInstanceProxy bindingTarget) {
-        this.bindingTarget = bindingTarget;
     }
 
     @Override

@@ -18,6 +18,7 @@
 
 package net.me.scripting.wrappers;
 
+import lombok.Getter;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.WrapperConstants;
@@ -43,6 +44,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
+    @Getter
     private final Class<?> targetClass;
     private final String targetClassName;
     private final Map<String, List<String>> yarnToRuntimeMethods;
@@ -239,10 +241,6 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
             throw new RuntimeException(
                     String.format("Error setting static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
         }
-    }
-
-    public Class<?> getTargetClass() {
-        return targetClass;
     }
 
     public Map<String, List<String>> getMethodMappings() {

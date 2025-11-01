@@ -18,6 +18,7 @@
 
 package net.me.scripting.mappings;
 
+import lombok.Getter;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.lib.mappingio.format.tiny.Tiny1FileReader;
 import net.fabricmc.loader.impl.lib.mappingio.tree.MemoryMappingTree;
@@ -39,9 +40,13 @@ import java.util.stream.Collectors;
 public class MappingsManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(MappingsManager.class);
 
+    @Getter
     private Map<String, String> classMap = Collections.emptyMap();
+    @Getter
     private Map<String, Map<String, List<String>>> methodMap = Collections.emptyMap();
+    @Getter
     private Map<String, Map<String, String>> fieldMap = Collections.emptyMap();
+    @Getter
     private Map<String, String> runtimeToYarnClassMap = Collections.emptyMap();
 
     private CompletableFuture<Void> initFuture;
@@ -142,19 +147,4 @@ public class MappingsManager {
                 fieldMap.values().stream().mapToInt(Map::size).sum());
     }
 
-    public Map<String, String> getClassMap() {
-        return classMap;
-    }
-
-    public Map<String, Map<String, List<String>>> getMethodMap() {
-        return methodMap;
-    }
-
-    public Map<String, Map<String, String>> getFieldMap() {
-        return fieldMap;
-    }
-
-    public Map<String, String> getRuntimeToYarnClassMap() {
-        return runtimeToYarnClassMap;
-    }
 }

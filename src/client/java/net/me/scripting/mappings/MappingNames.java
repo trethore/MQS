@@ -18,6 +18,9 @@
 
 package net.me.scripting.mappings;
 
+import lombok.Getter;
+
+@Getter
 public enum MappingNames {
     NAMED("named"),
     INTERMEDIARY("intermediary"),
@@ -27,10 +30,6 @@ public enum MappingNames {
 
     MappingNames(String name) {
         this.name = name;
-    }
-
-    public String getName() {
-        return name;
     }
 
 }

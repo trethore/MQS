@@ -18,6 +18,8 @@
 
 package net.me.scripting.extenders.proxies;
 
+import lombok.Getter;
+import lombok.Setter;
 import net.me.scripting.WrapperConstants;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.utils.ScriptUtils;
@@ -31,11 +33,16 @@ import java.util.Set;
 
 public class ExtendedInstanceProxy implements ProxyObject {
     private final Map<String, Object> properties;
+    @Getter
     private final Object baseInstance;
+    @Getter
     private final Value originalOverrides;
+    @Getter
     private final Value originalAddons;
+    @Getter
     private final ExtensionConfig originalConfig;
 
+    @Setter
     private MappedInstanceProxy javaInstanceProxy;
 
     public ExtendedInstanceProxy(Map<String, Object> properties, Object baseInstance, ExtensionConfig originalConfig, Value originalOverrides, Value originalAddons) {
@@ -44,22 +51,6 @@ public class ExtendedInstanceProxy implements ProxyObject {
         this.originalConfig = originalConfig;
         this.originalOverrides = originalOverrides;
         this.originalAddons = originalAddons;
-    }
-
-    public void setJavaInstanceProxy(MappedInstanceProxy javaInstanceProxy) {
-        this.javaInstanceProxy = javaInstanceProxy;
-    }
-
-    public Object getBaseInstance() {
-        return baseInstance;
-    }
-
-    public Value getOriginalOverrides() {
-        return originalOverrides;
-    }
-
-    public Value getOriginalAddons() {
-        return originalAddons;
     }
 
     @Override
@@ -146,10 +137,6 @@ public class ExtendedInstanceProxy implements ProxyObject {
         } else {
             properties.put(key, value);
         }
-    }
-
-    public ExtensionConfig getOriginalConfig() {
-        return originalConfig;
     }
 
     public Map<String, Object> getPropertiesForModification() {

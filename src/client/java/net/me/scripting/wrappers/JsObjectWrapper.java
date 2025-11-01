@@ -18,6 +18,7 @@
 
 package net.me.scripting.wrappers;
 
+import lombok.Getter;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.WrapperConstants;
@@ -39,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class JsObjectWrapper implements ProxyObject {
     private static final Map<Class<?>, String[]> MEMBER_KEYS_CACHE = new ConcurrentHashMap<>();
+    @Getter
     private final Object javaInstance;
     private final Class<?> instanceClass;
     private final MethodLookup methods;
@@ -238,10 +240,6 @@ public class JsObjectWrapper implements ProxyObject {
         } catch (Throwable e) {
             throw new RuntimeException("Field write failed: " + key, e);
         }
-    }
-
-    public Object getJavaInstance() {
-        return this.javaInstance;
     }
 
     @Override
