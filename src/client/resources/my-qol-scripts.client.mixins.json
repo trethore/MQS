@@ -5,26 +5,26 @@
   "client": [
     "client.accessors.CommandNodeAccessor",
     "client.mixins.MQSChatHudMixin",
-    "client.mixins.MQSClientWorldMixin",
+    "client.mixins.MQSClientCommonNetworkHandlerMixin",
+    "client.mixins.MQSClientConnectionMixin",
     "client.mixins.MQSClientPlayerEntityMixin",
     "client.mixins.MQSClientPlayerInteractionManagerMixin",
     "client.mixins.MQSClientPlayNetworkHandlerMixin",
+    "client.mixins.MQSClientWorldMixin",
+    "client.mixins.MQSDamageTrackerMixin",
+    "client.mixins.MQSDeathScreenMixin",
     "client.mixins.MQSEntityRendererMixin",
     "client.mixins.MQSGameRendererMixin",
-    "client.mixins.MQSScreenMixin",
-    "client.mixins.MQSTitleScreenMixin",
-    "client.mixins.MQSDeathScreenMixin",
-    "client.mixins.MQSSoundSystemMixin",
-    "client.mixins.MQSClientCommonNetworkHandlerMixin",
-    "client.mixins.MQSClientConnectionMixin",
-    "client.mixins.MQSDamageTrackerMixin",
     "client.mixins.MQSHudMixin",
     "client.mixins.MQSMinecraftClientMixin",
+    "client.mixins.MQSScreenMixin",
+    "client.mixins.MQSSoundSystemMixin",
+    "client.mixins.MQSTitleScreenMixin",
     "fabric.event.ArrayBackedEventAccessor",
     "keybinds.MQSKeyboardMixin",
     "keybinds.MQSMouseMixin"
   ],
   "injectors": {
     "defaultRequire": 1
-	}
+  }
 }

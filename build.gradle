@@ -22,7 +22,7 @@ repositories {
             username = findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR") ?: System.getenv("GPR_USER")
             password = findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN") ?: System.getenv("GPR_TOKEN")
         }
-        content { includeGroup("tytoo.weave") }
+        content { includeGroup("tytoo.minegui") }
     }
 
 	maven { url = uri("https://packages.graalvm.org/maven") }
@@ -38,13 +38,12 @@ loom {
 	}
 }
 
-project.ext.lwjglVersion  = "3.3.4"
-project.ext.lwjglNatives  = "natives-windows"
-project.ext.graalVersion  = "24.2.1"
+project.ext.graalVersion = "25.0.1"
+def mineguiVersion = "0.0.3-0.119.4+1.21.4+build.8"
 
 // Configuration used to fetch sources of external dependencies for browsing
 configurations {
-    sourceDeps
+    vineflower
 }
 
 dependencies {
@@ -53,16 +52,18 @@ dependencies {
 	modImplementation  "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation  "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
+
+    // graalvm my beloved
 	shadow(implementation "org.graalvm.sdk:graal-sdk:${graalVersion}")
 	shadow(implementation "org.graalvm.truffle:truffle-api:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-language:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-scriptengine:${graalVersion}")
 	shadow(implementation "net.bytebuddy:byte-buddy:1.17.6")
 	shadow(implementation "net.bytebuddy:byte-buddy-agent:1.17.6")
-    shadow(modImplementation "tytoo.weave:weave-ui:1.0.1-0.119.4+1.21.4+build.8")
+    shadow(modImplementation "tytoo.minegui:minegui:${mineguiVersion}")
 
 	// Sources for unpack task
-	sourceDeps "tytoo.weave:weave-ui:1.0.1-0.119.4+1.21.4+build.8:sources@jar"
+    vineflower "org.vineflower:vineflower:1.10.1"
 }
 
 tasks.register('applyLicenseHeaders') {
@@ -143,7 +144,7 @@ shadowJar {
 	mergeServiceFiles()
 	relocate 'org.graalvm', 'net.me.libs.graalvm'
 	relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
-	relocate 'tytoo.weave', 'net.me.libs.weave'
+	relocate 'tytoo.minegui', 'net.me.libs.minegui'
 
 	manifest {
 		attributes(
@@ -178,10 +179,10 @@ tasks.register('shadowWeaveJar', com.github.jengelman.gradle.plugins.shadow.task
     configurations = [project.configurations.shadow]
     from sourceSets.client.output
     dependencies {
-        include(dependency("tytoo.weave:weave-ui"))
+        include(dependency("tytoo.minegui:minegui"))
     }
     mergeServiceFiles()
-    relocate 'tytoo.weave', 'net.me.libs.weave'
+    relocate 'tytoo.minegui', 'net.me.libs.minegui'
 }
 
 remapJar {
@@ -208,11 +209,37 @@ publishing {
 	}
 }
 
-tasks.register('unpackWeaveSources', Sync) {
-    description = 'Unpacks Weave sources into external-dependencies/weave-ui for browsing'
-    group = 'help'
-    into "$projectDir/external-dependencies/weave-ui"
-    from {
-        configurations.sourceDeps.collect { zipTree(it) }
+def findWeaveNamedJar = {
+    def files = sourceSets.client.runtimeClasspath.files
+    def jar = files.find { it.name.endsWith(".jar") && it.name.contains("weave-ui") }
+    if (jar == null) {
+        throw new GradleException("Could not locate weave-ui jar on client runtimeClasspath.")
     }
+    jar
+}
+
+tasks.register('decompileWeave', JavaExec) {
+    group = "help"
+    description = "Decompiles the named Weave jar to readable sources"
+    dependsOn configurations.vineflower
+    classpath = configurations.vineflower
+    mainClass = "org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler"
+    doFirst {
+        def weaveJar = findWeaveNamedJar()
+        args = [
+                "-dgs=true",
+                "-rbr=true",
+                "-lit=true",
+                "-ind=    ",
+                weaveJar.absolutePath,
+                file("$buildDir/decompiled/weave-ui").absolutePath
+        ]
+        println "Decompiling: ${weaveJar}"
+    }
+}
+
+tasks.register('unpackWeaveSources', Sync) {
+    dependsOn 'decompileWeave'
+    from "$buildDir/decompiled/weave-ui"
+    into "$projectDir/external-dependencies/weave-ui"
 }

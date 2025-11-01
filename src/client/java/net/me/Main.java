@@ -37,7 +37,6 @@ import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tytoo.weave.WeaveCore;
 
 import java.nio.file.Path;
 
@@ -81,9 +80,12 @@ public class Main implements ClientModInitializer {
         return keybindManager;
     }
 
+    public ScriptManager getScriptManager() {
+        return scriptManager;
+    }
+
     @Override
     public void onInitializeClient() {
-        WeaveCore.init();
         instance = this;
 
         this.scriptEngine = Engine.create();
@@ -119,6 +121,7 @@ public class Main implements ClientModInitializer {
             LOGGER.info("MyQOLScripts initialization complete! Hello !");
         })));
     }
+
 
     private void registerClientCommands() {
         this.commandManager.addCommand(new MQSCommand(this.scriptingService));

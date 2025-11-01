@@ -26,12 +26,10 @@ import net.me.command.commands.UpdateCommand;
 import net.me.scripting.ScriptingService;
 
 public class MQSCommand extends Command {
-    private final ScriptingService scriptingService;
     private final ScriptCommand scriptCommand;
     private final UpdateCommand updateCommand;
 
     public MQSCommand(ScriptingService scriptingService) {
-        this.scriptingService = scriptingService;
         this.scriptCommand = new ScriptCommand(scriptingService);
         this.updateCommand = new UpdateCommand();
     }
