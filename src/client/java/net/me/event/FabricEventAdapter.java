@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FabricEventAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(FabricEventAdapter.class);
@@ -75,15 +76,47 @@ public class FabricEventAdapter {
     }
 
     private static Object getReturnValueFor(Class<?> clazz) {
-        if (clazz == boolean.class) return false;
-        if (clazz.isPrimitive()) return 0;
+        if (!clazz.isPrimitive()) {
+            return null;
+        }
+        if (clazz == void.class) {
+            return null;
+        }
+        if (clazz == boolean.class) {
+            return false;
+        }
+        if (clazz == byte.class) {
+            return (byte) 0;
+        }
+        if (clazz == short.class) {
+            return (short) 0;
+        }
+        if (clazz == int.class) {
+            return 0;
+        }
+        if (clazz == long.class) {
+            return 0L;
+        }
+        if (clazz == float.class) {
+            return 0.0F;
+        }
+        if (clazz == double.class) {
+            return 0.0D;
+        }
+        if (clazz == char.class) {
+            return '\0';
+        }
         return null;
     }
 
     public void register(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent, Value jsCallback) {
-        Object masterListener = masterFabricListeners.computeIfAbsent(fabricEvent, this::createMasterListenerProxy);
+        AtomicBoolean newlyCreated = new AtomicBoolean(false);
+        Object masterListener = masterFabricListeners.computeIfAbsent(fabricEvent, event -> {
+            newlyCreated.set(true);
+            return createMasterListenerProxy(event);
+        });
 
-        if (masterFabricListeners.get(fabricEvent) == masterListener) {
+        if (newlyCreated.get()) {
             //noinspection unchecked,rawtypes
             ((net.fabricmc.fabric.api.event.Event) fabricEvent).register(masterListener);
             Class<?> listenerInterface = masterListener.getClass().getInterfaces()[0];
@@ -98,6 +131,7 @@ public class FabricEventAdapter {
         List<ScriptedFabricListener> listeners = scriptedFabricListeners.get(fabricEvent);
         if (listeners != null) {
             listeners.removeIf(listener -> listener.owner().equals(owner));
+            removeIfEmpty(fabricEvent, listeners);
         }
     }
 
@@ -105,13 +139,15 @@ public class FabricEventAdapter {
         List<ScriptedFabricListener> listeners = scriptedFabricListeners.get(fabricEvent);
         if (listeners != null) {
             listeners.removeIf(listener -> listener.owner().equals(owner) && listener.jsCallback().equals(callback));
+            removeIfEmpty(fabricEvent, listeners);
         }
     }
 
     public void unregisterAll(RunningScript owner) {
-        scriptedFabricListeners.values().forEach(list ->
-                list.removeIf(listener -> listener.owner().equals(owner))
-        );
+        scriptedFabricListeners.forEach((event, list) -> {
+            list.removeIf(listener -> listener.owner().equals(owner));
+            removeIfEmpty(event, list);
+        });
     }
 
     private Object createMasterListenerProxy(net.fabricmc.fabric.api.event.Event<?> event) {
@@ -165,6 +201,12 @@ public class FabricEventAdapter {
             } finally {
                 scriptManager.setCurrentScript(previousScript);
             }
+        }
+    }
+
+    private void removeIfEmpty(net.fabricmc.fabric.api.event.Event<?> fabricEvent, List<ScriptedFabricListener> listeners) {
+        if (listeners.isEmpty()) {
+            scriptedFabricListeners.remove(fabricEvent, listeners);
         }
     }
 
