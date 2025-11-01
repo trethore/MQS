@@ -198,9 +198,7 @@ public class ScriptingApi {
 
     private static void addModule(Map<String, Value> exportsMap, Value moduleValue) {
         if (moduleValue != null && moduleValue.canInstantiate()) {
-            if (exportsMap.isEmpty()) {
-                exportsMap.put(moduleValue.getMetaQualifiedName(), moduleValue);
-            }
+            exportsMap.put(moduleValue.getMetaQualifiedName(), moduleValue);
             return;
         }
         Main.LOGGER.warn("An argument to exportModule was not a valid, instantiable class. Ignoring: {}", moduleValue);

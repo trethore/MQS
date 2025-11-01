@@ -99,18 +99,21 @@ public class HookInterceptor {
             return false;
         }
 
+        ScriptManager scriptManager = allHooksForName.getFirst().scriptManager();
+        MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
+
         CacheKey cacheKey = new CacheKey(hookId, args.length);
 
         ProxyExecutable chain = CHAIN_CACHE.get(cacheKey);
         if (chain == null) {
-            MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
-            ScriptManager scriptManager = allHooksForName.getFirst().scriptManager();
-            ChainFactory factory = new ChainFactory(allHooksForName, thiz, method, scriptManager, mappingsManager);
+            ChainFactory factory = new ChainFactory(allHooksForName, scriptManager, mappingsManager);
             chain = factory.apply(cacheKey);
             CHAIN_CACHE.put(cacheKey, chain);
         }
 
-        adviceContextStack.get().push(new AdviceContext());
+        AdviceContext adviceContext = new AdviceContext();
+        adviceContext.setHookContext(new HookContext(thiz, method, STACK_WALKER, mappingsManager, scriptManager));
+        adviceContextStack.get().push(adviceContext);
 
         try {
             Value[] initialChainArgs = new Value[args.length];
@@ -153,12 +156,12 @@ public class HookInterceptor {
         }
     }
 
-    public static @NotNull ProxyExecutable rebuildChain(HookContext hookContext, List<HookData> filteredHooks, MappingsManager mappingsManager, ScriptManager scriptManager) {
+    public static @NotNull ProxyExecutable rebuildChain(List<HookData> filteredHooks, MappingsManager mappingsManager, ScriptManager scriptManager) {
         ProxyExecutable nextInChain = createEmptyChainProxy();
 
         for (int i = filteredHooks.size() - 1; i >= 0; i--) {
             final HookData data = filteredHooks.get(i);
-            nextInChain = new HookExecutor(data, nextInChain, hookContext, mappingsManager, scriptManager);
+            nextInChain = new HookExecutor(data, nextInChain, mappingsManager, scriptManager);
         }
         return nextInChain;
     }
@@ -186,15 +189,11 @@ public class HookInterceptor {
 
     public static class ChainFactory implements Function<CacheKey, ProxyExecutable> {
         private final CopyOnWriteArrayList<HookData> allHooksForName;
-        private final Object thiz;
-        private final Method method;
         private final ScriptManager scriptManager;
         private final MappingsManager mappingsManager;
 
-        public ChainFactory(CopyOnWriteArrayList<HookData> allHooksForName, Object thiz, Method method, ScriptManager scriptManager, MappingsManager mappingsManager) {
+        public ChainFactory(CopyOnWriteArrayList<HookData> allHooksForName, ScriptManager scriptManager, MappingsManager mappingsManager) {
             this.allHooksForName = allHooksForName;
-            this.thiz = thiz;
-            this.method = method;
             this.scriptManager = scriptManager;
             this.mappingsManager = mappingsManager;
         }
@@ -209,22 +208,19 @@ public class HookInterceptor {
                 return createEmptyChainProxy();
             }
 
-            HookContext hookContext = new HookContext(thiz, method, STACK_WALKER, mappingsManager, scriptManager);
-            return rebuildChain(hookContext, filteredHooks, mappingsManager, scriptManager);
+            return rebuildChain(filteredHooks, mappingsManager, scriptManager);
         }
     }
 
     public static class HookExecutor implements ProxyExecutable {
         private final HookData data;
         private final ProxyExecutable nextInChain;
-        private final HookContext hookContext;
         private final MappingsManager mappingsManager;
         private final ScriptManager scriptManager;
 
-        public HookExecutor(HookData data, ProxyExecutable nextInChain, HookContext hookContext, MappingsManager mappingsManager, ScriptManager scriptManager) {
+        public HookExecutor(HookData data, ProxyExecutable nextInChain, MappingsManager mappingsManager, ScriptManager scriptManager) {
             this.data = data;
             this.nextInChain = nextInChain;
-            this.hookContext = hookContext;
             this.mappingsManager = mappingsManager;
             this.scriptManager = scriptManager;
         }
@@ -242,13 +238,18 @@ public class HookInterceptor {
                 }
 
                 return data.jsCallback().execute(
-                        hookContext,
+                        getCurrentHookContext(),
                         jsArgsArray,
                         data.owner().getContext().asValue(nextInChain)
                 );
             } finally {
                 data.scriptManager().setCurrentScript(previousScript);
             }
+        }
+
+        private HookContext getCurrentHookContext() {
+            AdviceContext currentContext = adviceContextStack.get().peek();
+            return currentContext != null ? currentContext.getHookContext() : null;
         }
     }
 
@@ -265,6 +266,8 @@ public class HookInterceptor {
         private boolean isNextCalled = false;
         @Getter
         private Value scriptReturnValue = null;
+        @Getter
+        private HookContext hookContext = null;
         private Value[] modifiedArgs = null;
 
         public boolean shouldExecuteOriginal() {
