@@ -17,7 +17,7 @@ repositories {
 	mavenCentral()
 
     maven {
-        url = uri("https://maven.pkg.github.com/trethore/Weave")
+        url = uri("https://maven.pkg.github.com/trethore/MineGui")
         credentials {
             username = findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR") ?: System.getenv("GPR_USER")
             password = findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN") ?: System.getenv("GPR_TOKEN")
@@ -37,9 +37,11 @@ loom {
 		}
 	}
 }
-
+// versions for dependencies
 project.ext.graalVersion = "25.0.1"
-def mineguiVersion = "0.0.3-0.119.4+1.21.4+build.8"
+project.ext.bytebuddyVersion = "1.17.8"
+project.ext.vineflowerVersion = "1.11.1"
+project.ext.mineguiVersion = "0.0.3-0.119.4+1.21.4+build.8"
 
 // Configuration used to fetch sources of external dependencies for browsing
 configurations {
@@ -58,12 +60,12 @@ dependencies {
 	shadow(implementation "org.graalvm.truffle:truffle-api:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-language:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-scriptengine:${graalVersion}")
-	shadow(implementation "net.bytebuddy:byte-buddy:1.17.6")
-	shadow(implementation "net.bytebuddy:byte-buddy-agent:1.17.6")
+	shadow(implementation "net.bytebuddy:byte-buddy:${bytebuddyVersion}")
+	shadow(implementation "net.bytebuddy:byte-buddy-agent:${bytebuddyVersion}")
     shadow(modImplementation "tytoo.minegui:minegui:${mineguiVersion}")
 
 	// Sources for unpack task
-    vineflower "org.vineflower:vineflower:1.10.1"
+    vineflower "org.vineflower:vineflower:${vineflowerVersion}"
 }
 
 tasks.register('applyLicenseHeaders') {
@@ -186,8 +188,8 @@ tasks.register('shadowWeaveJar', com.github.jengelman.gradle.plugins.shadow.task
 }
 
 remapJar {
-    dependsOn(tasks.named('shadowWeaveJar'), tasks.named('shadowLibsJar'))
-    inputFile = tasks.named('shadowWeaveJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).get().archiveFile
+    dependsOn(tasks.named('shadowMineGuiJar'), tasks.named('shadowLibsJar'))
+    inputFile = tasks.named('shadowMineGuiJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).get().archiveFile
 
     from({ zipTree(tasks.named('shadowLibsJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).get().archiveFile.get().asFile) })
 
@@ -209,37 +211,37 @@ publishing {
 	}
 }
 
-def findWeaveNamedJar = {
+def findMineGuiNamedJar = {
     def files = sourceSets.client.runtimeClasspath.files
-    def jar = files.find { it.name.endsWith(".jar") && it.name.contains("weave-ui") }
+    def jar = files.find { it.name.endsWith(".jar") && it.name.contains("MineGui") }
     if (jar == null) {
-        throw new GradleException("Could not locate weave-ui jar on client runtimeClasspath.")
+        throw new GradleException("Could not locate MineGui jar on client runtimeClasspath.")
     }
     jar
 }
 
-tasks.register('decompileWeave', JavaExec) {
+tasks.register('decompileMineGui', JavaExec) {
     group = "help"
-    description = "Decompiles the named Weave jar to readable sources"
+    description = "Decompiles the named MineGui jar to readable sources"
     dependsOn configurations.vineflower
     classpath = configurations.vineflower
     mainClass = "org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler"
     doFirst {
-        def weaveJar = findWeaveNamedJar()
+        def mineGuiJar = findMineGuiNamedJar()
         args = [
                 "-dgs=true",
                 "-rbr=true",
                 "-lit=true",
                 "-ind=    ",
-                weaveJar.absolutePath,
-                file("$buildDir/decompiled/weave-ui").absolutePath
+                mineGuiJar.absolutePath,
+                file("$buildDir/decompiled/minegui").absolutePath
         ]
-        println "Decompiling: ${weaveJar}"
+        println "Decompiling: ${mineGuiJar}"
     }
 }
 
-tasks.register('unpackWeaveSources', Sync) {
-    dependsOn 'decompileWeave'
-    from "$buildDir/decompiled/weave-ui"
-    into "$projectDir/external-dependencies/weave-ui"
+tasks.register('unpackMineGuiSources', Sync) {
+    dependsOn 'decompileMineGui'
+    from "$buildDir/decompiled/MineGui"
+    into "$projectDir/external-dependencies/minegui"
 }
