@@ -51,6 +51,7 @@ Assets and metadata live under `src/client/resources/`; `fabric.mod.json` regist
 - Fabric Loader, Fabric API, and Yarn mappings are versioned in `gradle.properties`; Fabric Loom wires them into the client source set and remaps game classes during packaging. Keep these aligned with Minecraft `1.21.4` before bumping APIs.
 - GraalVM JavaScript artifacts (`graal-sdk`, `truffle-api`, `js-language`, `js-scriptengine`) are bundled through Shadow, relocated to `net.me.libs.graalvm`, and consumed by the scripting engine.
 - Byte Buddy (`byte-buddy`, `byte-buddy-agent`) is shaded to `net.me.libs.bytebuddy` and powers runtime interception in `HookManager`.
+- Lombok ships as a dependency; prefer its annotations to trim boilerplate and keep the host code concise.
 - `tytoo.minegui:minegui` (MineGui) ships from `https://github.com/trethore/MineGui` via GitHub Packages and is relocated to `net.me.libs.minegui`.
 - MineGui documentation is tracked as a submodule under `libs-docs/minegui`; review the latest docs there.
 - Library sources are fetched through the `sourceDeps` configuration (see `build.gradle`) and unpacked per-library with `./gradlew unpackLibSources` into `libs-src/<library>`. Use `./gradlew cleanLibSources` to prune those directories when you need a fresh extraction.
