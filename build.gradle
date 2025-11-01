@@ -1,3 +1,5 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 import java.time.Year
 
 plugins {
@@ -16,14 +18,14 @@ base {
 repositories {
 	mavenCentral()
 
-    maven {
-        url = uri("https://maven.pkg.github.com/trethore/MineGui")
-        credentials {
-            username = findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR") ?: System.getenv("GPR_USER")
-            password = findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN") ?: System.getenv("GPR_TOKEN")
-        }
-        content { includeGroup("tytoo.minegui") }
-    }
+	maven {
+		url = uri("https://maven.pkg.github.com/trethore/MineGui")
+		credentials {
+			username = findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR") ?: System.getenv("GPR_USER")
+			password = findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN") ?: System.getenv("GPR_TOKEN")
+		}
+		content { includeGroup("tytoo.minegui") }
+	}
 
 	maven { url = uri("https://packages.graalvm.org/maven") }
 }
@@ -40,12 +42,21 @@ loom {
 // versions for dependencies
 project.ext.graalVersion = "25.0.1"
 project.ext.bytebuddyVersion = "1.17.8"
-project.ext.vineflowerVersion = "1.11.1"
 project.ext.mineguiVersion = "0.0.3-0.119.4+1.21.4+build.8"
+def sourceLibCoordinates = [
+		minegui:        "tytoo.minegui:minegui:${mineguiVersion}:sources@jar",
+		graalSdk:       "org.graalvm.sdk:graal-sdk:${graalVersion}:sources@jar",
+		truffleApi:     "org.graalvm.truffle:truffle-api:${graalVersion}:sources@jar",
+		jsLanguage:     "org.graalvm.js:js-language:${graalVersion}:sources@jar",
+		jsScriptEngine: "org.graalvm.js:js-scriptengine:${graalVersion}:sources@jar",
+		byteBuddy:      "net.bytebuddy:byte-buddy:${bytebuddyVersion}:sources@jar",
+		byteBuddyAgent: "net.bytebuddy:byte-buddy-agent:${bytebuddyVersion}:sources@jar"
+]
+ext.sourceLibCoordinates = sourceLibCoordinates
 
 // Configuration used to fetch sources of external dependencies for browsing
 configurations {
-    vineflower
+	sourceDeps
 }
 
 dependencies {
@@ -54,18 +65,18 @@ dependencies {
 	modImplementation  "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation  "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-
-    // graalvm my beloved
+	// graalvm my beloved
 	shadow(implementation "org.graalvm.sdk:graal-sdk:${graalVersion}")
 	shadow(implementation "org.graalvm.truffle:truffle-api:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-language:${graalVersion}")
 	shadow(implementation "org.graalvm.js:js-scriptengine:${graalVersion}")
 	shadow(implementation "net.bytebuddy:byte-buddy:${bytebuddyVersion}")
 	shadow(implementation "net.bytebuddy:byte-buddy-agent:${bytebuddyVersion}")
-    shadow(modImplementation "tytoo.minegui:minegui:${mineguiVersion}")
+	shadow(modImplementation "tytoo.minegui:minegui:${mineguiVersion}")
 
-	// Sources for unpack task
-    vineflower "org.vineflower:vineflower:${vineflowerVersion}"
+	sourceLibCoordinates.values().each { coordinate ->
+		sourceDeps coordinate
+	}
 }
 
 tasks.register('applyLicenseHeaders') {
@@ -116,6 +127,16 @@ java {
 	targetCompatibility = JavaVersion.VERSION_21
 }
 
+def manifestAttributes = {
+	[
+			'Implementation-Title':   project.name,
+			'Implementation-Version': project.version,
+			'Built-By':               System.getProperty('user.name'),
+			'Built-Date':             new Date(),
+			'License':                "See ${project.archives_base_name}-LICENSE.txt"
+	]
+}
+
 jar {
 	from("LICENSE") {
 		into ""
@@ -123,13 +144,7 @@ jar {
 	}
 
 	manifest {
-		attributes(
-				'Implementation-Title':       project.name,
-				'Implementation-Version':     project.version,
-				'Built-By':                   System.getProperty('user.name'),
-				'Built-Date':                 new Date(),
-				'License':                    "See ${project.archives_base_name}-LICENSE.txt"
-		)
+		attributes(manifestAttributes())
 	}
 }
 
@@ -149,54 +164,48 @@ shadowJar {
 	relocate 'tytoo.minegui', 'net.me.libs.minegui'
 
 	manifest {
-		attributes(
-				'Implementation-Title':       project.name,
-				'Implementation-Version':     project.version,
-				'Built-By':                   System.getProperty('user.name'),
-				'Built-Date':                 new Date(),
-				'License':                    "See ${project.archives_base_name}-LICENSE.txt"
-		)
+		attributes(manifestAttributes())
 	}
 }
 
-tasks.register('shadowLibsJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
-    archiveClassifier.set("libs-only")
-    configurations = [project.configurations.shadow]
-    dependencies {
-        include(dependency("org.graalvm.sdk:graal-sdk"))
-        include(dependency("org.graalvm.truffle:truffle-api"))
-        include(dependency("org.graalvm.js:js-language"))
-        include(dependency("org.graalvm.js:js-scriptengine"))
-        include(dependency("net.bytebuddy:byte-buddy"))
-        include(dependency("net.bytebuddy:byte-buddy-agent"))
-    }
-    from({ files() })
-    mergeServiceFiles()
-    relocate 'org.graalvm', 'net.me.libs.graalvm'
-    relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
+tasks.register('shadowLibsJar', ShadowJar) {
+	archiveClassifier.set("libs-only")
+	configurations = [project.configurations.shadow]
+	dependencies {
+		include(dependency("org.graalvm.sdk:graal-sdk"))
+		include(dependency("org.graalvm.truffle:truffle-api"))
+		include(dependency("org.graalvm.js:js-language"))
+		include(dependency("org.graalvm.js:js-scriptengine"))
+		include(dependency("net.bytebuddy:byte-buddy"))
+		include(dependency("net.bytebuddy:byte-buddy-agent"))
+	}
+	from({ files() })
+	mergeServiceFiles()
+	relocate 'org.graalvm', 'net.me.libs.graalvm'
+	relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
 }
 
-tasks.register('shadowWeaveJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
-    archiveClassifier.set("weave-dev")
-    configurations = [project.configurations.shadow]
-    from sourceSets.client.output
-    dependencies {
-        include(dependency("tytoo.minegui:minegui"))
-    }
-    mergeServiceFiles()
-    relocate 'tytoo.minegui', 'net.me.libs.minegui'
+tasks.register('shadowMineGuiJar', ShadowJar) {
+	archiveClassifier.set("minegui-dev")
+	configurations = [project.configurations.shadow]
+	from sourceSets.client.output
+	dependencies {
+		include(dependency("tytoo.minegui:minegui"))
+	}
+	mergeServiceFiles()
+	relocate 'tytoo.minegui', 'net.me.libs.minegui'
 }
 
 remapJar {
-    dependsOn(tasks.named('shadowMineGuiJar'), tasks.named('shadowLibsJar'))
-    inputFile = tasks.named('shadowMineGuiJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).get().archiveFile
+	dependsOn(tasks.named('shadowMineGuiJar'), tasks.named('shadowLibsJar'))
+	inputFile = tasks.named('shadowMineGuiJar', ShadowJar).get().archiveFile
 
-    from({ zipTree(tasks.named('shadowLibsJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).get().archiveFile.get().asFile) })
+	from({ zipTree(tasks.named('shadowLibsJar', ShadowJar).get().archiveFile.get().asFile) })
 
-    from("LICENSE") {
-        into "META-INF"
-        rename { "${project.archives_base_name}-LICENSE.txt" }
-    }
+	from("LICENSE") {
+		into "META-INF"
+		rename { "${project.archives_base_name}-LICENSE.txt" }
+	}
 }
 
 publishing {
@@ -211,37 +220,32 @@ publishing {
 	}
 }
 
-def findMineGuiNamedJar = {
-    def files = sourceSets.client.runtimeClasspath.files
-    def jar = files.find { it.name.endsWith(".jar") && it.name.contains("MineGui") }
-    if (jar == null) {
-        throw new GradleException("Could not locate MineGui jar on client runtimeClasspath.")
-    }
-    jar
+tasks.register('unpackLibSources', Sync) {
+	group = "help"
+	description = "Unpacks library sources into libs-src for browsing"
+	duplicatesStrategy = DuplicatesStrategy.INCLUDE
+	into "$projectDir/libs-src"
+	project.ext.sourceLibCoordinates.each { folder, notation ->
+		from({
+			def parts = notation.split(':' as Closure)
+			def artifact = configurations.sourceDeps.resolvedConfiguration.resolvedArtifacts.find { resolved ->
+				resolved.moduleVersion.id.group == parts[0] &&
+						resolved.moduleVersion.id.name == parts[1] &&
+						resolved.moduleVersion.id.version == parts[2]
+			}
+			artifact == null ? [] : project.zipTree(artifact.file)
+		}) {
+			into folder
+		}
+	}
 }
 
-tasks.register('decompileMineGui', JavaExec) {
-    group = "help"
-    description = "Decompiles the named MineGui jar to readable sources"
-    dependsOn configurations.vineflower
-    classpath = configurations.vineflower
-    mainClass = "org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler"
-    doFirst {
-        def mineGuiJar = findMineGuiNamedJar()
-        args = [
-                "-dgs=true",
-                "-rbr=true",
-                "-lit=true",
-                "-ind=    ",
-                mineGuiJar.absolutePath,
-                file("$buildDir/decompiled/minegui").absolutePath
-        ]
-        println "Decompiling: ${mineGuiJar}"
-    }
-}
-
-tasks.register('unpackMineGuiSources', Sync) {
-    dependsOn 'decompileMineGui'
-    from "$buildDir/decompiled/MineGui"
-    into "$projectDir/external-dependencies/minegui"
+tasks.register('cleanLibSources') {
+	group = "help"
+	description = "Removes unpacked library sources"
+	doLast {
+		project.ext.sourceLibCoordinates.keySet().each { folder ->
+			delete "$projectDir/libs-src/${folder}"
+		}
+	}
 }

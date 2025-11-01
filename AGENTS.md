@@ -52,7 +52,7 @@ Assets and metadata live under `src/client/resources/`; `fabric.mod.json` regist
 - GraalVM JavaScript artifacts (`graal-sdk`, `truffle-api`, `js-language`, `js-scriptengine`) are bundled through Shadow, relocated to `net.me.libs.graalvm`, and consumed by the scripting engine.
 - Byte Buddy (`byte-buddy`, `byte-buddy-agent`) is shaded to `net.me.libs.bytebuddy` and powers runtime interception in `HookManager`.
 - `tytoo.minegui:minegui` (MineGui) ships from `https://github.com/trethore/MineGui` via GitHub Packages and is relocated to `net.me.libs.minegui`.
-- Vineflower (`org.vineflower:vineflower`) sits in the custom `vineflower` configuration exclusively for the `decompileMineGui` helper; execute it before `unpackMineGuiSources` whenever you need a fresh decompiled tree.
+- Library sources are fetched through the `sourceDeps` configuration (see `build.gradle`) and unpacked per-library with `./gradlew unpackLibSources` into `libs-src/<library>`. Use `./gradlew cleanLibSources` to prune those directories when you need a fresh extraction.
 
 ## Testing & Verification
 - Do not run Gradle commands yourself; provide the exact command so the user can execute it and state tooling limitations up front.
