@@ -42,7 +42,7 @@ loom {
 // versions for dependencies
 project.ext.graalVersion = "25.0.1"
 project.ext.bytebuddyVersion = "1.17.8"
-project.ext.mineguiVersion = "0.0.3-0.119.4+1.21.4+build.8"
+project.ext.mineguiVersion = "0.0.4-0.119.4+1.21.4+build.8"
 def sourceLibCoordinates = [
 		minegui:        "tytoo.minegui:minegui:${mineguiVersion}:sources@jar",
 		graalSdk:       "org.graalvm.sdk:graal-sdk:${graalVersion}:sources@jar",
