@@ -36,11 +36,9 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public class ScriptContextFactory {
 
@@ -121,12 +119,20 @@ public class ScriptContextFactory {
         addApiMember(bindings, "wrap", ScriptingApi.createWrapProxy(classResolver));
         addApiMember(bindings, "exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
 
-        addApiMember(bindings, "EventManager", new EventAPI(this.eventManager, this.scriptManager));
-        addApiMember(bindings, "ConfigManager", new ConfigAPI(this.configManager, this.scriptManager));
-        addApiMember(bindings, "KeybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
-        addApiMember(bindings, "CommandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
-        addApiMember(bindings, "HookManager", new HookAPI(this.hookManager, this.scriptManager));
-        addApiMember(bindings, "MQSUtils", new MqsUtilsAPI(this.classResolver));
+        Map<String, Object> mqsMembers = new HashMap<>();
+        mqsMembers.put("utils", new MqsUtilsAPI(this.classResolver));
+        mqsMembers.put("eventManager", new EventAPI(this.eventManager, this.scriptManager));
+        mqsMembers.put("events", new EventsHelperAPI(this.eventManager, this.scriptManager));
+        mqsMembers.put("configManager", new ConfigAPI(this.configManager, this.scriptManager));
+        mqsMembers.put("config", new ConfigFacadeAPI(this.configManager, this.scriptManager));
+        mqsMembers.put("keybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
+        mqsMembers.put("keybinds", new KeybindsAPI(this.keybindManager, this.scriptManager));
+        mqsMembers.put("commandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
+        mqsMembers.put("commands", new CommandsHelperAPI(this.scriptManager, this.commandApiService));
+        mqsMembers.put("hookManager", new HookAPI(this.hookManager, this.scriptManager, this.classResolver));
+        mqsMembers.put("hooks", new HooksAPI(this.hookManager, this.scriptManager, this.classResolver));
+
+        addApiMember(bindings, "MQS", ProxyObject.fromMap(mqsMembers));
 
         addApiMember(bindings, "println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);

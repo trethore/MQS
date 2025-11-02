@@ -32,6 +32,7 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Set;
 
 import static net.me.scripting.api.ApiConstants.*;
@@ -96,18 +97,19 @@ public class EventAPI implements ProxyObject {
                     eventTarget = resolveEventTarget(args[0]);
                     phase = EventPhase.POST;
                     callback = args[1];
-                    if (!callback.canExecute())
+                    if (!callback.canExecute()) {
                         throw new IllegalArgumentException("Callback must be a function.");
+                    }
                 } else {
                     eventTarget = resolveEventTarget(args[0]);
-                    Object phaseObj = args[1].isHostObject() ? args[1].asHostObject() : null;
-                    if (!(phaseObj instanceof EventPhase)) {
-                        throw new IllegalArgumentException("Second argument must be a valid phase from EventManager.Phase (e.g., PRE, POST).");
+                    phase = resolvePhase(args[1]);
+                    if (phase == null) {
+                        throw new IllegalArgumentException("Second argument must be a valid phase (PRE or POST).");
                     }
-                    phase = (EventPhase) phaseObj;
                     callback = args[2];
-                    if (!callback.canExecute())
+                    if (!callback.canExecute()) {
                         throw new IllegalArgumentException("Callback must be a function.");
+                    }
                 }
 
                 switch (eventTarget) {
@@ -141,8 +143,9 @@ public class EventAPI implements ProxyObject {
                 Value callback = null;
 
                 if (args.length > 1) {
-                    if (args[1].isHostObject() && args[1].asHostObject() instanceof EventPhase) {
-                        phase = args[1].asHostObject();
+                    EventPhase potentialPhase = resolvePhase(args[1]);
+                    if (potentialPhase != null) {
+                        phase = potentialPhase;
                         if (args.length > 2) {
                             if (args[2].canExecute()) {
                                 callback = args[2];
@@ -212,6 +215,29 @@ public class EventAPI implements ProxyObject {
         }
 
         throw new IllegalArgumentException("Event target must be a class imported via importClass(), a direct Fabric Event object, or an MQS Event from EventManager.Events.");
+    }
+
+    private EventPhase resolvePhase(Value phaseValue) {
+        if (phaseValue == null) {
+            return null;
+        }
+        if (phaseValue.isHostObject()) {
+            Object hostObject = phaseValue.asHostObject();
+            if (hostObject instanceof EventPhase eventPhase) {
+                return eventPhase;
+            }
+        }
+        if (phaseValue.isString()) {
+            String phaseName = phaseValue.asString();
+            if (phaseName != null) {
+                try {
+                    return EventPhase.valueOf(phaseName.toUpperCase(Locale.ROOT));
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("Invalid phase '" + phaseName + "'. Use PRE or POST.");
+                }
+            }
+        }
+        return null;
     }
 
     @Override

@@ -40,7 +40,7 @@ public class ConfigAPI implements ProxyObject {
         this.scriptManager = scriptManager;
     }
 
-    private static Object toSerializableObject(Value value) {
+    static Object toSerializableObject(Value value) {
         if (value == null || value.isNull()) {
             return null;
         }
@@ -92,7 +92,7 @@ public class ConfigAPI implements ProxyObject {
                     String configKey = args[0].asString();
                     Object result = configManager.get(script.getId(), configKey);
                     if (result == null) {
-                        return args.length > 1 ? args[1] : script.getContext().eval("js", "null");
+                        return args.length > 1 ? args[1] : null;
                     }
                     return script.getContext().asValue(result);
                 }

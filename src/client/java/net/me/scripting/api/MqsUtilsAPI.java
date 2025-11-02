@@ -34,15 +34,16 @@ public class MqsUtilsAPI implements ProxyObject {
     public MqsUtilsAPI(ScriptingClassResolver classResolver) {
         this.classResolver = classResolver;
 
-        utilsMap.put("Render2D", Render2DUtils.class);
-        utilsMap.put("Render3D", Render3DUtils.class);
-        utilsMap.put("TextRender", TextRenderUtils.class);
-        utilsMap.put("TextRenderer", TextRendererUtils.class);
-        utilsMap.put("Chat", ChatUtils.class);
-        utilsMap.put("Color", ColorUtils.class);
-        utilsMap.put("Camera", CameraUtils.class);
-        utilsMap.put("Mc", McUtils.class);
+        utilsMap.put("render2D", Render2DUtils.class);
+        utilsMap.put("render3D", Render3DUtils.class);
+        utilsMap.put("textRender", TextRenderUtils.class);
+        utilsMap.put("textRenderer", TextRendererUtils.class);
+        utilsMap.put("chat", ChatUtils.class);
+        utilsMap.put("color", ColorUtils.class);
+        utilsMap.put("camera", CameraUtils.class);
+        utilsMap.put("mc", McUtils.class);
     }
+
 
     @Override
     public Object getMember(String key) {
