@@ -16,33 +16,32 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.command;
+package net.me.command.commands;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.me.command.commands.ScriptCommand;
-import net.me.command.commands.UiCommand;
-import net.me.command.commands.UpdateCommand;
-import net.me.scripting.ScriptingService;
+import net.me.Main;
+import net.me.command.Command;
+import net.me.command.CommandManager;
+import net.me.ui.ScriptView;
+import net.me.utils.ChatUtils;
 
-public class MQSCommand extends Command {
-    private final ScriptCommand scriptCommand;
-    private final UpdateCommand updateCommand;
-    private final UiCommand uiCommand;
-
-    public MQSCommand(ScriptingService scriptingService) {
-        this.scriptCommand = new ScriptCommand(scriptingService);
-        this.updateCommand = new UpdateCommand();
-        this.uiCommand = new UiCommand();
-    }
+public class UiCommand extends Command {
 
     @Override
-    protected LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-        return ClientCommandManager.literal("mqs")
-                .requires(source -> source.hasPermissionLevel(0))
-                .then(scriptCommand.buildCommand())
-                .then(uiCommand.buildCommand())
-                .then(updateCommand.buildCommand());
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("ui")
+                .executes(context -> {
+                    ScriptView scriptView = Main.getInstance().getScriptView();
+                    scriptView.toggleVisibility();
+                    boolean visible = scriptView.isVisible();
+                    if (visible) {
+                        ChatUtils.addInfoChatMessage("My QOL Scripts UI opened.", true);
+                    } else {
+                        ChatUtils.addInfoChatMessage("My QOL Scripts UI closed.", true);
+                    }
+                    return CommandManager.COMMAND_SUCCESS;
+                });
     }
 }
