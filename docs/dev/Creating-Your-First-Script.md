@@ -52,8 +52,6 @@ Open `hello-world.js` in your text editor and paste the following code:
 ```javascript
 // @module(main='HelloWorld', name='Hello World Script', version='1.0.0')
 
-// We can directly access many of Minecraft's classes.
-const MinecraftClient = net.minecraft.client.MinecraftClient;
 const Text = net.minecraft.text.Text;
 
 class HelloWorld {
@@ -61,11 +59,12 @@ class HelloWorld {
      * This method is called when the script is enabled in the MQS menu.
      */
     onEnable() {
-        // Get the current Minecraft client instance
-        const mc = MinecraftClient.getInstance();
-
-        // Send a message directly to the player's chat
-        mc.player.sendMessage(Text.literal("Hello, Scripting World!"), false);
+        // Get the current player from the helper
+        const player = MQS.utils.mc.player();
+        if (player) {
+            // Send a message directly to the player's chat
+            player.sendMessage(Text.literal("Hello, Scripting World!"), false);
+        }
 
         // Also print a message to the game's log/console for debugging
         println("Hello World script enabled.");
@@ -85,8 +84,8 @@ exportModule(HelloWorld);
 
 #### Code Breakdown:
 *   `@module(...)`: This annotation tells MQS that this file contains a script named "Hello World Script" whose main class is `HelloWorld`.
-*   `const MinecraftClient = ...`: We are getting a direct reference to Minecraft's core classes. `net.minecraft...` is globally available.
-*   `onEnable()`: When the script is turned on, this code runs. It gets the game instance (`mc`) and uses it to send a `Text` object to the player's chat.
+*   `const player = MQS.utils.mc.player()`: The helper returns the current player or `null` if no world is loaded.
+*   `onEnable()`: When the script is turned on, this code runs. It gets the current player and uses it to send a `Text` object to the player's chat.
 *   `onDisable()`: When the script is turned off, this code simply prints a message to the game's log.
 *   `exportModule(HelloWorld)`: This makes our `HelloWorld` class discoverable by MQS.
 

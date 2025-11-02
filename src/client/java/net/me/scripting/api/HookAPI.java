@@ -18,6 +18,7 @@
 
 package net.me.scripting.api;
 
+import net.me.hooking.HookExecutionMode;
 import net.me.hooking.HookManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
@@ -29,6 +30,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.Locale;
 import java.util.Set;
 
 import static net.me.scripting.api.ApiConstants.*;
@@ -63,14 +65,21 @@ public class HookAPI implements ProxyObject {
             switch (key) {
                 case HOOK: {
                     HookInvocation invocation = parseHookInvocation(args);
-                    hookManager.hook(owner, invocation.targetClass(), invocation.methodName(), invocation.callback(), invocation.options());
+                    hookManager.hook(owner, invocation.targetClass(), invocation.methodName(), invocation.callback(), invocation.options(), invocation.mode());
                     return null;
                 }
 
                 case UNHOOK: {
                     UnhookInvocation invocation = parseUnhookInvocation(args);
                     if (invocation.argCount() != null) {
-                        hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount());
+                        HookExecutionMode mode = invocation.mode();
+                        if (mode != null) {
+                            hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), mode);
+                        } else {
+                            for (HookExecutionMode candidate : HookExecutionMode.values()) {
+                                hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), candidate);
+                            }
+                        }
                     } else {
                         hookManager.unhookAllForMethod(owner, invocation.targetClass(), invocation.methodName());
                     }
@@ -118,7 +127,8 @@ public class HookAPI implements ProxyObject {
                 Class<?> targetClass = resolveDescriptorClass(descriptorParts.className());
                 Value callback = args[1];
                 Value options = args.length == 3 ? args[2] : null;
-                return new HookInvocation(targetClass, descriptorParts.methodName(), callback, options);
+                HookExecutionMode mode = resolveMode(options, HookExecutionMode.BEFORE);
+                return new HookInvocation(targetClass, descriptorParts.methodName(), callback, options, mode);
             }
         }
 
@@ -134,7 +144,8 @@ public class HookAPI implements ProxyObject {
         String methodName = args[1].asString();
         Value callback = args[2];
         Value options = args.length == 4 ? args[3] : null;
-        return new HookInvocation(targetClass, methodName, callback, options);
+        HookExecutionMode mode = resolveMode(options, HookExecutionMode.BEFORE);
+        return new HookInvocation(targetClass, methodName, callback, options, mode);
     }
 
     private UnhookInvocation parseUnhookInvocation(Value[] args) {
@@ -159,7 +170,8 @@ public class HookAPI implements ProxyObject {
                     argCount = argsMember.asInt();
                 }
             }
-            return new UnhookInvocation(targetClass, descriptorParts.methodName(), argCount);
+            HookExecutionMode mode = resolveMode(options, null);
+            return new UnhookInvocation(targetClass, descriptorParts.methodName(), argCount, mode);
         }
 
         Value methodArgument = args.length > 1 ? args[1] : null;
@@ -175,7 +187,8 @@ public class HookAPI implements ProxyObject {
         if (args.length == 3 && args[2] != null && args[2].hasMembers() && args[2].hasMember(ARGS) && args[2].getMember(ARGS).isNumber()) {
             argCount = args[2].getMember(ARGS).asInt();
         }
-        return new UnhookInvocation(targetClass, methodName, argCount);
+        HookExecutionMode mode = resolveMode(args.length == 3 ? args[2] : null, null);
+        return new UnhookInvocation(targetClass, methodName, argCount, mode);
     }
 
     private HookDescriptor parseDescriptor(String descriptor) {
@@ -196,6 +209,27 @@ public class HookAPI implements ProxyObject {
         }
     }
 
+    private HookExecutionMode resolveMode(Value options, HookExecutionMode defaultMode) {
+        if (options != null && options.hasMembers() && options.hasMember("mode")) {
+            Value modeValue = options.getMember("mode");
+            if (modeValue != null) {
+                if (modeValue.isHostObject() && modeValue.asHostObject() instanceof HookExecutionMode mode) {
+                    return mode;
+                }
+                if (modeValue.isString()) {
+                    String text = modeValue.asString();
+                    if (text != null && !text.isEmpty()) {
+                        try {
+                            return HookExecutionMode.valueOf(text.toUpperCase(Locale.ROOT));
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
+                }
+            }
+        }
+        return defaultMode;
+    }
+
     private Class<?> resolveClass(Object unwrappedArg) {
         return switch (unwrappedArg) {
             case JsClassWrapper wrapper -> wrapper.getTargetClass();
@@ -209,9 +243,10 @@ public class HookAPI implements ProxyObject {
     private record HookDescriptor(String className, String methodName) {
     }
 
-    private record HookInvocation(Class<?> targetClass, String methodName, Value callback, Value options) {
+    private record HookInvocation(Class<?> targetClass, String methodName, Value callback, Value options,
+                                  HookExecutionMode mode) {
     }
 
-    private record UnhookInvocation(Class<?> targetClass, String methodName, Integer argCount) {
+    private record UnhookInvocation(Class<?> targetClass, String methodName, Integer argCount, HookExecutionMode mode) {
     }
 }

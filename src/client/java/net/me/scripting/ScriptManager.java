@@ -28,6 +28,7 @@ import net.me.scripting.engine.*;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.utils.ScriptScheduler;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
@@ -61,9 +62,11 @@ public class ScriptManager {
         CommandAPIService commandApiService = new CommandAPIService();
         commandApiService.init();
 
-        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, commandApiService, hookManager, keybindManager);
+        ScriptScheduler scheduler = new ScriptScheduler(this);
+
+        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, commandApiService, hookManager, keybindManager, scheduler);
         this.contextManager = new ScriptContextManager(contextFactory, perFileExports);
-        this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, contextManager);
+        this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, scheduler, contextManager);
 
         this.scriptDiscoverer = new ScriptDiscoverer();
         this.scriptLoader = new ScriptLoader();

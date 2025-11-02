@@ -34,18 +34,14 @@ This script registers a keybind (`B`) that, when held down, will continuously se
 ```javascript
 // @module(main=TestKeybind, name=Test Keybind Module, version=0.0.1)
 
-const MinecraftClient = net.minecraft.client.MinecraftClient;
 const Text = net.minecraft.text.Text;
 
 // The GLFW key code for the 'B' key.
 const KEY_CODE_B = 66;
 
 class TestKeybind {
-    mc;
-
     onEnable() {
         println("Hello from Test Keybind Module!");
-        this.mc = MinecraftClient.getInstance();
 
         // Register the keybind.
         KeybindManager.register(
@@ -63,7 +59,10 @@ class TestKeybind {
     }
 
     onKeyPress() {
-        this.mc.player.sendMessage(Text.literal("Key 'B' is being held down!"), false);
+        const player = MQS.utils.mc.player();
+        if (player) {
+            player.sendMessage(Text.literal("Key 'B' is being held down!"), false);
+        }
     }
 }
 

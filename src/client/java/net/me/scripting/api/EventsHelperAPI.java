@@ -28,18 +28,19 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
 public class EventsHelperAPI implements ProxyObject {
-    private static final Set<String> MEMBER_KEYS = Set.of("fabric");
+    private static final Set<String> MEMBER_KEYS = Set.of("fabric", "off", "unregister");
 
     private final EventManager eventManager;
     private final ScriptManager scriptManager;
     private final Map<String, Events> namedEvents = new HashMap<>();
     private final ProxyObject fabricProxy;
+    private final Map<RunningScript, Set<EventHandle>> handlesByScript = new ConcurrentHashMap<>();
 
     public EventsHelperAPI(EventManager eventManager, ScriptManager scriptManager) {
         this.eventManager = eventManager;
@@ -54,6 +55,73 @@ public class EventsHelperAPI implements ProxyObject {
     public Object getMember(String key) {
         if ("fabric".equals(key)) {
             return fabricProxy;
+        }
+        if ("off".equals(key)) {
+            return (ProxyExecutable) args -> {
+                RunningScript owner = getCurrentScript();
+                if (args.length == 0) {
+                    disposeHandles(owner, handle -> true);
+                    eventManager.unregisterAll(owner);
+                    handlesByScript.remove(owner);
+                    return null;
+                }
+                Value target = args[0];
+                if (target == null) {
+                    throw new IllegalArgumentException("off() requires a callback or disposer when provided.");
+                }
+                disposeHandles(owner, handle -> handle.matchesValue(target));
+                return null;
+            };
+        }
+        if ("unregister".equals(key)) {
+            return (ProxyExecutable) args -> {
+                if (args.length == 0) {
+                    throw new IllegalArgumentException("unregister(eventOrCallback, phase?) requires at least one argument.");
+                }
+                RunningScript owner = getCurrentScript();
+                Value target = args[0];
+
+                if (target != null && target.canExecute()) {
+                    disposeHandles(owner, handle -> handle.matchesValue(target));
+                    return null;
+                }
+                if (target != null && target.isHostObject() && target.asHostObject() instanceof Events eventEnum) {
+                    EventPhase phase;
+                    if (args.length > 1 && args[1] != null) {
+                        phase = resolvePhase(args[1]);
+                    } else {
+                        phase = null;
+                    }
+                    disposeHandles(owner, handle -> handle.matchesEvent(eventEnum, phase));
+                    if (phase != null) {
+                        eventManager.unregister(owner, eventEnum, phase);
+                    } else {
+                        eventManager.unregister(owner, eventEnum);
+                    }
+                    return null;
+                }
+                if (target != null && target.isString()) {
+                    String eventKey = target.asString();
+                    Events mapped = namedEvents.get(eventKey);
+                    if (mapped == null) {
+                        throw new IllegalArgumentException("Unknown event key '" + eventKey + "'.");
+                    }
+                    EventPhase phase;
+                    if (args.length > 1 && args[1] != null) {
+                        phase = resolvePhase(args[1]);
+                    } else {
+                        phase = null;
+                    }
+                    disposeHandles(owner, handle -> handle.matchesEvent(mapped, phase));
+                    if (phase != null) {
+                        eventManager.unregister(owner, mapped, phase);
+                    } else {
+                        eventManager.unregister(owner, mapped);
+                    }
+                    return null;
+                }
+                throw new IllegalArgumentException("Unsupported unregister target. Pass an MQS event enum, disposer, or callback function.");
+            };
         }
         Events mappedEvent = namedEvents.get(key);
         if (mappedEvent == null) {
@@ -72,7 +140,7 @@ public class EventsHelperAPI implements ProxyObject {
             }
 
             eventManager.register(owner, mappedEvent, phase, callback);
-            return null;
+            return registerEventHandle(owner, mappedEvent, phase, callback);
         };
     }
 
@@ -119,7 +187,7 @@ public class EventsHelperAPI implements ProxyObject {
                         throw new IllegalArgumentException("First argument must be a callback function.");
                     }
                     eventManager.registerFabric(owner, fabricEvent, callback);
-                    return null;
+                    return registerFabricHandle(owner, fabricEvent, callback);
                 };
             }
 
@@ -175,5 +243,133 @@ public class EventsHelperAPI implements ProxyObject {
             rawName = rawName.substring(0, idx) + rawName.substring(idx + "Event".length());
         }
         return "on" + rawName;
+    }
+
+    private Value registerEventHandle(RunningScript owner, Events event, EventPhase phase, Value callback) {
+        EventHandle handle = new EventHandle(owner, event, phase, callback, null);
+        Value disposer = createDisposer(owner, handle);
+        handle.attachDisposer(disposer);
+        trackHandle(owner, handle);
+        return disposer;
+    }
+
+    private Value registerFabricHandle(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent, Value callback) {
+        EventHandle handle = new EventHandle(owner, null, null, callback, fabricEvent);
+        Value disposer = createDisposer(owner, handle);
+        handle.attachDisposer(disposer);
+        trackHandle(owner, handle);
+        return disposer;
+    }
+
+    private Value createDisposer(RunningScript owner, EventHandle handle) {
+        ProxyExecutable exec = args -> {
+            handle.dispose();
+            return null;
+        };
+        return owner.getContext().asValue(exec);
+    }
+
+    private void trackHandle(RunningScript owner, EventHandle handle) {
+        handlesByScript.computeIfAbsent(owner, k -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(handle);
+    }
+
+    private void disposeHandles(RunningScript owner, Predicate<EventHandle> predicate) {
+        Set<EventHandle> owned = handlesByScript.get(owner);
+        if (owned == null || owned.isEmpty()) {
+            return;
+        }
+        List<EventHandle> snapshot = List.copyOf(owned);
+        for (EventHandle handle : snapshot) {
+            if (predicate.test(handle)) {
+                handle.dispose();
+            }
+        }
+    }
+
+    private boolean valueEquals(Value a, Value b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a == b) {
+            return true;
+        }
+        if (a.equals(b) || b.equals(a)) {
+            return true;
+        }
+        if (a.isHostObject() && b.isHostObject()) {
+            Object hostA = a.asHostObject();
+            Object hostB = b.asHostObject();
+            if (hostA == hostB) {
+                return true;
+            }
+        }
+        if (a.isProxyObject() && b.isProxyObject() && a.asProxyObject() == b.asProxyObject()) {
+            return true;
+        }
+        try {
+            if (a.hashCode() == b.hashCode()) {
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    private final class EventHandle {
+        private final RunningScript owner;
+        private final Events event;
+        private final EventPhase phase;
+        private final Value callback;
+        private final net.fabricmc.fabric.api.event.Event<?> fabricEvent;
+        private final AtomicBoolean disposed = new AtomicBoolean(false);
+        private Value disposer;
+
+        private EventHandle(RunningScript owner, Events event, EventPhase phase, Value callback, net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
+            this.owner = owner;
+            this.event = event;
+            this.phase = phase;
+            this.callback = callback;
+            this.fabricEvent = fabricEvent;
+        }
+
+        private void attachDisposer(Value disposer) {
+            this.disposer = disposer;
+        }
+
+        private boolean matchesValue(Value candidate) {
+            return valueEquals(candidate, callback) || valueEquals(candidate, disposer);
+        }
+
+        private boolean matchesEvent(Events targetEvent, EventPhase targetPhase) {
+            if (!Objects.equals(event, targetEvent)) {
+                return false;
+            }
+            if (targetPhase == null) {
+                return true;
+            }
+            return Objects.equals(phase, targetPhase);
+        }
+
+        private void dispose() {
+            if (!disposed.compareAndSet(false, true)) {
+                return;
+            }
+            if (event != null) {
+                if (phase != null) {
+                    eventManager.unregister(owner, event, phase, callback);
+                } else {
+                    eventManager.unregister(owner, event, callback);
+                }
+            } else if (fabricEvent != null) {
+                eventManager.unregister(owner, fabricEvent, callback);
+            }
+            Set<EventHandle> owned = handlesByScript.get(owner);
+            if (owned != null) {
+                owned.remove(this);
+                if (owned.isEmpty()) {
+                    handlesByScript.remove(owner);
+                }
+            }
+        }
     }
 }

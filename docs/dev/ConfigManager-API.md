@@ -49,7 +49,6 @@ This script greets the player using a name stored in the configuration. The firs
 ```javascript
 // @module(main=TestConfigModule, name=Test Config Module, version=0.0.1)
 
-const MinecraftClient = net.minecraft.client.MinecraftClient;
 const Text = net.minecraft.text.Text;
 
 class TestConfigModule {
@@ -63,8 +62,10 @@ class TestConfigModule {
         // The new name will be used the next time this script is enabled.
         // ConfigManager.set("name", "Tata");
 
-        const mc = MinecraftClient.getInstance();
-        mc.player.sendMessage(Text.literal(`Hello ${name}`), false);
+        const player = MQS.utils.mc.player();
+        if (player) {
+            player.sendMessage(Text.literal(`Hello ${name}`), false);
+        }
     }
 
     onDisable() {

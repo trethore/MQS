@@ -188,7 +188,6 @@ exportModule(ArmorWarning);
 ```javascript
 // @module(main=TestExtends, name=Test Extends Module, version=0.0.1)
 
-const MinecraftClient = net.minecraft.client.MinecraftClient;
 const Text = net.minecraft.text.Text;
 const Screen = net.minecraft.client.gui.screen.Screen;
 
@@ -202,8 +201,10 @@ function createCustomScreen(name) {
             println("Custom screen initialized: " + name);
         },
         open: function () {
-            const mc = MinecraftClient.getInstance();
-            mc.send(() => mc.setScreen(this._self)); // Use _self to pass raw instance
+            const mc = MQS.utils.mc.client();
+            if (mc) {
+                mc.send(() => mc.setScreen(this._self)); // Use _self to pass raw instance
+            }
         }
     });
     // Instantiate with parent constructor args (Screen takes a Text title)
@@ -212,8 +213,8 @@ function createCustomScreen(name) {
 
 class TestExtends {
     onEnable() {
-        const mc = MinecraftClient.getInstance();
-        if (mc.player == null) {
+        const mc = MQS.utils.mc.client();
+        if (!mc || mc.player == null) {
             println("Player is null, cannot open screen.");
             return;
         }

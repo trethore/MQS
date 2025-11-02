@@ -29,6 +29,7 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CommandsHelperAPI implements ProxyObject {
     private static final Set<String> MEMBER_KEYS = Set.of("literal", "argument", "register", "registerLiteral");
@@ -82,8 +83,16 @@ public class CommandsHelperAPI implements ProxyObject {
                     throw new IllegalArgumentException("commands.register expects a CommandBuilder instance.");
                 }
                 RunningScript owner = getCurrentScript();
+                String commandName = builder.getRootBuilder().getLiteral();
                 commandApiService.register(owner, builder);
-                return null;
+                AtomicBoolean disposed = new AtomicBoolean(false);
+                ProxyExecutable exec = disposeArgs -> {
+                    if (disposed.compareAndSet(false, true)) {
+                        commandApiService.unregister(owner, commandName);
+                    }
+                    return null;
+                };
+                return owner.getContext().asValue(exec);
             };
             case "registerLiteral" -> (ProxyExecutable) args -> {
                 if (args.length < 2 || !args[0].isString()) {
@@ -96,8 +105,16 @@ public class CommandsHelperAPI implements ProxyObject {
                 RunningScript owner = getCurrentScript();
                 CommandBuilder builder = new CommandBuilder(args[0].asString(), owner, scriptManager);
                 builder.executes(handler);
+                String commandName = builder.getRootBuilder().getLiteral();
                 commandApiService.register(owner, builder);
-                return null;
+                AtomicBoolean disposed = new AtomicBoolean(false);
+                ProxyExecutable exec = disposeArgs -> {
+                    if (disposed.compareAndSet(false, true)) {
+                        commandApiService.unregister(owner, commandName);
+                    }
+                    return null;
+                };
+                return owner.getContext().asValue(exec);
             };
             default -> null;
         };

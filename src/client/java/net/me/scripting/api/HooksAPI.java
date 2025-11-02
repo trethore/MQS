@@ -18,6 +18,7 @@
 
 package net.me.scripting.api;
 
+import net.me.hooking.HookExecutionMode;
 import net.me.hooking.HookManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
@@ -30,9 +31,10 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HooksAPI implements ProxyObject {
-    private static final Set<String> MEMBER_KEYS = Set.of("before");
+    private static final Set<String> MEMBER_KEYS = Set.of("before", "after", "instead");
 
     private final HookManager hookManager;
     private final ScriptManager scriptManager;
@@ -46,19 +48,12 @@ public class HooksAPI implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        if ("before".equals(key)) {
-            return (ProxyExecutable) args -> {
-                if (args.length < 2) {
-                    throw new IllegalArgumentException("Usage: MQS.hooks.before(target, methodOrHandler, handler?, options?)");
-                }
-                RunningScript owner = getCurrentScript();
-
-                HookCall call = parseBeforeArgs(args);
-                hookManager.hook(owner, call.targetClass(), call.methodName(), call.callback(), call.options());
-                return null;
-            };
-        }
-        return null;
+        return switch (key) {
+            case "before" -> createHookExecutable(HookExecutionMode.BEFORE);
+            case "after" -> createHookExecutable(HookExecutionMode.AFTER);
+            case "instead" -> createHookExecutable(HookExecutionMode.INSTEAD);
+            default -> null;
+        };
     }
 
     @Override
@@ -76,6 +71,25 @@ public class HooksAPI implements ProxyObject {
         throw new UnsupportedOperationException("Cannot modify MQS.hooks.");
     }
 
+    private ProxyExecutable createHookExecutable(HookExecutionMode mode) {
+        return args -> {
+            if (args.length < 2) {
+                throw new IllegalArgumentException("Usage: MQS.hooks." + mode.name().toLowerCase() + "(target, methodOrHandler, handler?, options?)");
+            }
+            RunningScript owner = getCurrentScript();
+            HookCall call = parseArgs(args, mode);
+            hookManager.hook(owner, call.targetClass(), call.methodName(), call.callback(), call.options(), mode);
+            AtomicBoolean disposed = new AtomicBoolean(false);
+            ProxyExecutable disposer = disposeArgs -> {
+                if (disposed.compareAndSet(false, true)) {
+                    hookManager.unhookSingle(owner, call.targetClass(), call.methodName(), call.argCount(), mode);
+                }
+                return null;
+            };
+            return owner.getContext().asValue(disposer);
+        };
+    }
+
     private RunningScript getCurrentScript() {
         RunningScript script = scriptManager.getCurrentScript();
         if (script == null) {
@@ -84,7 +98,7 @@ public class HooksAPI implements ProxyObject {
         return script;
     }
 
-    private HookCall parseBeforeArgs(Value[] args) {
+    private HookCall parseArgs(Value[] args, HookExecutionMode mode) {
         if (args[0].isString()) {
             String descriptor = args[0].asString();
             if (descriptor == null || descriptor.isEmpty()) {
@@ -95,14 +109,14 @@ public class HooksAPI implements ProxyObject {
                 throw new IllegalArgumentException("Handler must be executable.");
             }
             Value options = args.length > 2 ? args[2] : null;
-
+            Integer argCount = resolveArgCount(options);
             HookDescriptor parsed = parseDescriptor(descriptor);
             Class<?> targetClass = resolveDescriptorClass(parsed.className());
-            return new HookCall(targetClass, parsed.methodName(), handler, options);
+            return new HookCall(targetClass, parsed.methodName(), handler, options, argCount);
         }
 
         if (args.length < 3 || !args[1].isString()) {
-            throw new IllegalArgumentException("Usage: MQS.hooks.before(Class, 'methodName', handler, options?)");
+            throw new IllegalArgumentException("Usage: MQS.hooks." + mode.name().toLowerCase() + "(Class, 'methodName', handler, options?)");
         }
 
         Object unwrapped = ScriptUtils.unwrapReceiver(args[0]);
@@ -113,7 +127,8 @@ public class HooksAPI implements ProxyObject {
             throw new IllegalArgumentException("Handler must be executable.");
         }
         Value options = args.length > 3 ? args[3] : null;
-        return new HookCall(targetClass, methodName, handler, options);
+        Integer argCount = resolveArgCount(options);
+        return new HookCall(targetClass, methodName, handler, options, argCount);
     }
 
     private HookDescriptor parseDescriptor(String descriptor) {
@@ -147,9 +162,19 @@ public class HooksAPI implements ProxyObject {
         }
     }
 
+    private Integer resolveArgCount(Value options) {
+        if (options != null && options.hasMembers() && options.hasMember("args")) {
+            Value value = options.getMember("args");
+            if (value != null && value.isNumber()) {
+                return value.asInt();
+            }
+        }
+        return null;
+    }
+
     private record HookDescriptor(String className, String methodName) {
     }
 
-    private record HookCall(Class<?> targetClass, String methodName, Value callback, Value options) {
+    private record HookCall(Class<?> targetClass, String methodName, Value callback, Value options, Integer argCount) {
     }
 }

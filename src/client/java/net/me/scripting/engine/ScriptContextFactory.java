@@ -30,6 +30,7 @@ import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import net.me.scripting.wrappers.LazyPackageProxy;
+import net.me.utils.ScriptScheduler;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -52,8 +53,9 @@ public class ScriptContextFactory {
     private final KeybindManager keybindManager;
     private final EventManager eventManager;
     private final HostAccess hostAccess;
+    private final ScriptScheduler scheduler;
 
-    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager) {
+    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager, ScriptScheduler scheduler) {
         this.classResolver = classResolver;
         this.sharedEngine = sharedEngine;
         this.scriptManager = scriptManager;
@@ -62,6 +64,7 @@ public class ScriptContextFactory {
         this.eventManager = eventManager;
         this.hookManager = hookManager;
         this.keybindManager = keybindManager;
+        this.scheduler = scheduler;
 
         this.hostAccess = HostAccess.newBuilder(HostAccess.ALL)
                 .targetTypeMapping(
@@ -120,7 +123,7 @@ public class ScriptContextFactory {
         addApiMember(bindings, "exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
 
         Map<String, Object> mqsMembers = new HashMap<>();
-        mqsMembers.put("utils", new MqsUtilsAPI(this.classResolver));
+        mqsMembers.put("utils", new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler));
         mqsMembers.put("eventManager", new EventAPI(this.eventManager, this.scriptManager));
         mqsMembers.put("events", new EventsHelperAPI(this.eventManager, this.scriptManager));
         mqsMembers.put("configManager", new ConfigAPI(this.configManager, this.scriptManager));

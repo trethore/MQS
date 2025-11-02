@@ -38,16 +38,15 @@ This example uses the convenient `EventManager.Events` object to listen for the 
 ```javascript
 // @module(main=TestEvent, name=Test MQS Event, version=0.0.1)
 
-const MinecraftClient = net.minecraft.client.MinecraftClient;
 const Text = net.minecraft.text.Text;
 
 class TestEvent {
-    mc;
-
     onEnable() {
         println("Hello from Test Event!");
-        this.mc = MinecraftClient.getInstance();
-        this.mc.player.sendMessage(Text.literal("Hello from Test Module!"), false);
+        const player = MQS.utils.mc.player();
+        if (player) {
+            player.sendMessage(Text.literal("Hello from Test Module!"), false);
+        }
 
         // Register using the Events enum and bind the 'this' context.
         EventManager.register(EventManager.Events.EndClientTickEvent, this.onTick.bind(this));
@@ -69,7 +68,7 @@ class TestEvent {
 
 exportModule(TestEvent);
 ```
-> **Note on `.bind(this)`:** When passing a class method like `this.onTick` as a callback, its `this` context is lost. Using `.bind(this)` ensures that when `onTick` is called by the EventManager, `this` inside `onTick` correctly refers to your class instance (e.g., so `this.mc` works).
+> **Note on `.bind(this)`:** When passing a class method like `this.onTick` as a callback, its `this` context is lost. Using `.bind(this)` ensures that when `onTick` is called by the EventManager, `this` inside `onTick` correctly refers to your class instance so you can access its fields.
 
 ---
 
@@ -80,17 +79,17 @@ This example uses a Fabric event directly to also listen for the end of a client
 ```javascript
 // @module(main=TestEvent, name=Test Fabric Event, version=0.0.1)
 
-const MinecraftClient = net.minecraft.client.MinecraftClient;
 const Text = net.minecraft.text.Text;
 // We get a reference to the Fabric event class.
 const ClientTickEvents = net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 class TestEvent {
-    mc;
     onEnable() {
         println("Hello from Test Event!");
-        this.mc = MinecraftClient.getInstance();
-        this.mc.player.sendMessage(Text.literal("Hello from Test Module!"), false);
+        const player = MQS.utils.mc.player();
+        if (player) {
+            player.sendMessage(Text.literal("Hello from Test Module!"), false);
+        }
 
         // Register the listener on the specific event field (e.g., END_CLIENT_TICK).
         EventManager.register(ClientTickEvents.END_CLIENT_TICK, this.onTick.bind(this));

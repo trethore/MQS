@@ -69,7 +69,13 @@ public class ConfigManager {
     public Value getConfigForScript(RunningScript script) {
         Map<String, Object> configMap = getConfig(script.getId());
         Context scriptContext = script.getContext();
-        return scriptContext.asValue(configMap);
+        if (configMap.isEmpty()) {
+            return scriptContext.eval("js", "Object.freeze({})");
+        }
+        String json = GSON.toJson(configMap);
+        Value parsed = scriptContext.eval("js", "JSON.parse").execute(json);
+        scriptContext.eval("js", "Object.freeze").execute(parsed);
+        return parsed;
     }
 
     private Map<String, Object> loadConfigFromFile(String scriptId) {

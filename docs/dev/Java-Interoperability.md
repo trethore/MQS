@@ -90,7 +90,6 @@ This example creates a new class that extends Minecraft's `Screen` class and imp
 ```javascript
 // @module(main=TestExtends, name=Test Extends Module, version=0.0.1)
 
-const MinecraftClient = net.minecraft.client.MinecraftClient;
 const Text = net.minecraft.text.Text;
 const Screen = net.minecraft.client.gui.screen.Screen;
 const Runnable = importClass("java.lang.Runnable");
@@ -119,9 +118,11 @@ function createCustomScreen(name) {
 
         // This is a new, JavaScript-only addon method
         open: function () {
-            const mc = MinecraftClient.getInstance();
-            // _self is the raw Java object instance, required by setScreen
-            mc.send(() => mc.setScreen(this._self));
+            const mc = MQS.utils.mc.client();
+            if (mc) {
+                // _self is the raw Java object instance, required by setScreen
+                mc.send(() => mc.setScreen(this._self));
+            }
             println("Person: " + this.data.name);
             this.run();
         },

@@ -69,7 +69,7 @@ For convenience, the top-level packages for Minecraft, Fabric, and Mojang are av
 // const MinecraftClient = importClass('net.minecraft.client.MinecraftClient');
 // const mc = MinecraftClient.getInstance();
 
-const mc = net.minecraft.client.MinecraftClient.getInstance();
+const mc = MQS.utils.mc.client();
 ```
 The available top-level packages include `net`, `com`, `org`, and more.
 
