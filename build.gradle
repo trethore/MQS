@@ -232,7 +232,8 @@ tasks.register('unpackLibSources', Sync) {
 	into "$projectDir/libs-src"
 	project.ext.sourceLibCoordinates.each { folder, notation ->
 		from({
-			def parts = notation.split(':' as Closure)
+			String notationValue = notation.toString()
+			String[] parts = notationValue.split(':')
 			def artifact = configurations.sourceDeps.resolvedConfiguration.resolvedArtifacts.find { resolved ->
 				resolved.moduleVersion.id.group == parts[0] &&
 						resolved.moduleVersion.id.name == parts[1] &&
