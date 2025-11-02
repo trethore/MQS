@@ -126,9 +126,13 @@ public class HookInterceptor {
             }
             adviceContext.setInitialArgs(Arrays.copyOf(initialChainArgs, initialChainArgs.length));
 
-            List<HookData> afterHooks = allHooksForName.stream()
-                    .filter(data -> (data.argCount() == null || data.argCount() == args.length) && data.mode() == HookExecutionMode.AFTER)
-                    .toList();
+            List<HookData> afterHooks = new ArrayList<>();
+            for (HookData data : allHooksForName) {
+                boolean argCountMatches = data.argCount() == null || data.argCount() == args.length;
+                if (argCountMatches && data.mode() == HookExecutionMode.AFTER) {
+                    afterHooks.add(data);
+                }
+            }
             if (!afterHooks.isEmpty()) {
                 ProxyExecutable afterChain = rebuildChain(afterHooks, mappingsManager, scriptManager, createAfterChainTerminal());
                 adviceContext.setAfterChain(afterChain);
