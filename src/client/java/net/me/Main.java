@@ -20,8 +20,6 @@ package net.me;
 
 import lombok.Getter;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.command.CommandManager;
 import net.me.command.MQSCommand;
@@ -38,8 +36,6 @@ import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.ui.ScriptView;
 import net.me.utils.McUtils;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import org.graalvm.polyglot.Engine;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
@@ -54,9 +50,9 @@ import java.nio.file.Path;
 public class Main implements ClientModInitializer {
     public static final String MOD_ID = "my_qol_scripts";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    @SuppressWarnings("unused")
     public static final String MC_VERSION = "1.21.4";
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
-    private static final String KEY_CATEGORY = "key.categories.my_qol_scripts";
     private static final String KEY_TOGGLE_SCRIPT_VIEW = "key.my-qol-scripts.toggle_ui";
 
     @Getter
@@ -80,7 +76,6 @@ public class Main implements ClientModInitializer {
     @Getter
     private KeybindManager keybindManager;
     private Engine scriptEngine;
-    private KeyBinding scriptViewKeyBinding;
 
     @Override
     public void onInitializeClient() {
@@ -154,16 +149,12 @@ public class Main implements ClientModInitializer {
     }
 
     private void initKeybindings() {
-        this.scriptViewKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        this.keybindManager.registerHost(
                 KEY_TOGGLE_SCRIPT_VIEW,
-                InputUtil.Type.KEYSYM,
+                () -> this.scriptView.toggleVisibility(),
                 GLFW.GLFW_KEY_F9,
-                KEY_CATEGORY
-        ));
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (this.scriptViewKeyBinding.wasPressed()) {
-                this.scriptView.toggleVisibility();
-            }
-        });
+                false,
+                100
+        );
     }
 }
