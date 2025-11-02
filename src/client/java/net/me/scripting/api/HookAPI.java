@@ -20,6 +20,7 @@ package net.me.scripting.api;
 
 import net.me.hooking.HookExecutionMode;
 import net.me.hooking.HookManager;
+import net.me.hooking.HookOptions;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
@@ -30,7 +31,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.Locale;
 import java.util.Set;
 
 import static net.me.scripting.api.ApiConstants.*;
@@ -38,7 +38,6 @@ import static net.me.scripting.api.ApiConstants.*;
 public class HookAPI implements ProxyObject {
 
     private static final Set<String> MEMBER_KEYS = Set.of(HOOK, UNHOOK, UNHOOK_ALL);
-    private static final String ARGS = "args";
     private final HookManager hookManager;
     private final ScriptManager scriptManager;
     private final ScriptingClassResolver classResolver;
@@ -65,7 +64,7 @@ public class HookAPI implements ProxyObject {
             switch (key) {
                 case HOOK: {
                     HookInvocation invocation = parseHookInvocation(args);
-                    hookManager.hook(owner, invocation.targetClass(), invocation.methodName(), invocation.callback(), invocation.options(), invocation.mode());
+                    hookManager.hook(owner, invocation.targetClass(), invocation.methodName(), invocation.callback(), invocation.options());
                     return null;
                 }
 
@@ -126,9 +125,9 @@ public class HookAPI implements ProxyObject {
                 HookDescriptor descriptorParts = parseDescriptor(descriptor);
                 Class<?> targetClass = resolveDescriptorClass(descriptorParts.className());
                 Value callback = args[1];
-                Value options = args.length == 3 ? args[2] : null;
-                HookExecutionMode mode = resolveMode(options, HookExecutionMode.BEFORE);
-                return new HookInvocation(targetClass, descriptorParts.methodName(), callback, options, mode);
+                Value optionsValue = args.length == 3 ? args[2] : null;
+                HookOptions options = HookOptions.fromScript(optionsValue, HookExecutionMode.BEFORE);
+                return new HookInvocation(targetClass, descriptorParts.methodName(), callback, options);
             }
         }
 
@@ -143,9 +142,9 @@ public class HookAPI implements ProxyObject {
         Class<?> targetClass = resolveClass(unwrappedArg);
         String methodName = args[1].asString();
         Value callback = args[2];
-        Value options = args.length == 4 ? args[3] : null;
-        HookExecutionMode mode = resolveMode(options, HookExecutionMode.BEFORE);
-        return new HookInvocation(targetClass, methodName, callback, options, mode);
+        Value optionsValue = args.length == 4 ? args[3] : null;
+        HookOptions options = HookOptions.fromScript(optionsValue, HookExecutionMode.BEFORE);
+        return new HookInvocation(targetClass, methodName, callback, options);
     }
 
     private UnhookInvocation parseUnhookInvocation(Value[] args) {
@@ -163,14 +162,8 @@ public class HookAPI implements ProxyObject {
             }
             HookDescriptor descriptorParts = parseDescriptor(descriptor);
             Class<?> targetClass = resolveDescriptorClass(descriptorParts.className());
-            Integer argCount = null;
-            if (options != null && options.hasMembers()) {
-                Value argsMember = options.getMember(ARGS);
-                if (argsMember != null && argsMember.isNumber()) {
-                    argCount = argsMember.asInt();
-                }
-            }
-            HookExecutionMode mode = resolveMode(options, null);
+            Integer argCount = HookOptions.extractArgCount(options);
+            HookExecutionMode mode = HookOptions.extractMode(options, null);
             return new UnhookInvocation(targetClass, descriptorParts.methodName(), argCount, mode);
         }
 
@@ -183,11 +176,9 @@ public class HookAPI implements ProxyObject {
         Class<?> targetClass = resolveClass(unwrappedArg);
         String methodName = methodArgument.asString();
 
-        Integer argCount = null;
-        if (args.length == 3 && args[2] != null && args[2].hasMembers() && args[2].hasMember(ARGS) && args[2].getMember(ARGS).isNumber()) {
-            argCount = args[2].getMember(ARGS).asInt();
-        }
-        HookExecutionMode mode = resolveMode(args.length == 3 ? args[2] : null, null);
+        Value optionsValue = args.length == 3 ? args[2] : null;
+        Integer argCount = HookOptions.extractArgCount(optionsValue);
+        HookExecutionMode mode = HookOptions.extractMode(optionsValue, null);
         return new UnhookInvocation(targetClass, methodName, argCount, mode);
     }
 
@@ -209,27 +200,6 @@ public class HookAPI implements ProxyObject {
         }
     }
 
-    private HookExecutionMode resolveMode(Value options, HookExecutionMode defaultMode) {
-        if (options != null && options.hasMembers() && options.hasMember("mode")) {
-            Value modeValue = options.getMember("mode");
-            if (modeValue != null) {
-                if (modeValue.isHostObject() && modeValue.asHostObject() instanceof HookExecutionMode mode) {
-                    return mode;
-                }
-                if (modeValue.isString()) {
-                    String text = modeValue.asString();
-                    if (text != null && !text.isEmpty()) {
-                        try {
-                            return HookExecutionMode.valueOf(text.toUpperCase(Locale.ROOT));
-                        } catch (IllegalArgumentException ignored) {
-                        }
-                    }
-                }
-            }
-        }
-        return defaultMode;
-    }
-
     private Class<?> resolveClass(Object unwrappedArg) {
         return switch (unwrappedArg) {
             case JsClassWrapper wrapper -> wrapper.getTargetClass();
@@ -243,8 +213,7 @@ public class HookAPI implements ProxyObject {
     private record HookDescriptor(String className, String methodName) {
     }
 
-    private record HookInvocation(Class<?> targetClass, String methodName, Value callback, Value options,
-                                  HookExecutionMode mode) {
+    private record HookInvocation(Class<?> targetClass, String methodName, Value callback, HookOptions options) {
     }
 
     private record UnhookInvocation(Class<?> targetClass, String methodName, Integer argCount, HookExecutionMode mode) {

@@ -21,6 +21,7 @@ package net.me.scripting.api;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.event.EventManager;
 import net.me.event.EventPhase;
+import net.me.event.EventSubscriptionOptions;
 import net.me.event.Events;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
@@ -34,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 public class EventsHelperAPI implements ProxyObject {
-    private static final Set<String> MEMBER_KEYS = Set.of("fabric", "off", "unregister");
+    private static final Set<String> MEMBER_KEYS = Set.of("fabric", "off", "unregister", "options");
 
     private final EventManager eventManager;
     private final ScriptManager scriptManager;
@@ -88,7 +89,7 @@ public class EventsHelperAPI implements ProxyObject {
                 if (target != null && target.isHostObject() && target.asHostObject() instanceof Events eventEnum) {
                     EventPhase phase;
                     if (args.length > 1 && args[1] != null) {
-                        phase = resolvePhase(args[1]);
+                        phase = EventSubscriptionOptions.resolvePhaseValue(args[1]);
                     } else {
                         phase = null;
                     }
@@ -108,7 +109,7 @@ public class EventsHelperAPI implements ProxyObject {
                     }
                     EventPhase phase;
                     if (args.length > 1 && args[1] != null) {
-                        phase = resolvePhase(args[1]);
+                        phase = EventSubscriptionOptions.resolvePhaseValue(args[1]);
                     } else {
                         phase = null;
                     }
@@ -123,6 +124,9 @@ public class EventsHelperAPI implements ProxyObject {
                 throw new IllegalArgumentException("Unsupported unregister target. Pass an MQS event enum, disposer, or callback function.");
             };
         }
+        if ("options".equals(key)) {
+            return (ProxyExecutable) args -> getCurrentScript().getContext().asValue(EventSubscriptionOptions.builder());
+        }
         Events mappedEvent = namedEvents.get(key);
         if (mappedEvent == null) {
             return null;
@@ -134,10 +138,8 @@ public class EventsHelperAPI implements ProxyObject {
                 throw new IllegalArgumentException("First argument must be a callback function.");
             }
 
-            EventPhase phase = EventPhase.POST;
-            if (args.length > 1 && args[1] != null && args[1].hasMembers() && args[1].hasMember("phase")) {
-                phase = resolvePhase(args[1].getMember("phase"));
-            }
+            EventSubscriptionOptions options = EventSubscriptionOptions.fromScript(args.length > 1 ? args[1] : null, EventPhase.POST);
+            EventPhase phase = options.phase();
 
             eventManager.register(owner, mappedEvent, phase, callback);
             return registerEventHandle(owner, mappedEvent, phase, callback);
@@ -214,26 +216,6 @@ public class EventsHelperAPI implements ProxyObject {
             throw new IllegalStateException("Events helper can only be used from an active script.");
         }
         return script;
-    }
-
-    private EventPhase resolvePhase(Value phaseValue) {
-        if (phaseValue == null) {
-            return EventPhase.POST;
-        }
-        if (phaseValue.isHostObject() && phaseValue.asHostObject() instanceof EventPhase eventPhase) {
-            return eventPhase;
-        }
-        if (phaseValue.isString()) {
-            String text = phaseValue.asString();
-            if (text != null) {
-                try {
-                    return EventPhase.valueOf(text.toUpperCase(Locale.ROOT));
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Invalid phase '" + text + "'. Use PRE or POST.");
-                }
-            }
-        }
-        throw new IllegalArgumentException("Phase must be a string ('PRE'|'POST') or an EventPhase value.");
     }
 
     private String buildHandlerName(Events event) {

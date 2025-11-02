@@ -120,19 +120,16 @@ public class HookManager {
         matcherCache.put(targetClass, methodMatcher);
     }
 
-    public void hook(RunningScript owner, Class<?> targetClass, String yarnMethodName, Value jsCallback, Value options, HookExecutionMode mode) {
+    public void hook(RunningScript owner, Class<?> targetClass, String yarnMethodName, Value jsCallback, HookOptions options) {
         if (jsCallback == null || !jsCallback.canExecute()) {
             Main.LOGGER.error("Script '{}' attempted to hook method '{}' in class '{}' with an invalid or non-executable callback.",
                     owner.getName(), yarnMethodName, targetClass.getName());
             return;
         }
 
-        Integer argCount = null;
-        if (options != null && options.hasMembers()) {
-            if (options.hasMember("args") && options.getMember("args").isNumber()) {
-                argCount = options.getMember("args").asInt();
-            }
-        }
+        HookOptions resolvedOptions = options != null ? options : HookOptions.builder().mode(HookExecutionMode.BEFORE).build();
+        Integer argCount = resolvedOptions.argCount();
+        HookExecutionMode mode = resolvedOptions.mode() != null ? resolvedOptions.mode() : HookExecutionMode.BEFORE;
 
         HookIdentifier hookId = new HookIdentifier(targetClass, yarnMethodName, argCount, mode);
 

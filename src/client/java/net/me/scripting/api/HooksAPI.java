@@ -20,6 +20,7 @@ package net.me.scripting.api;
 
 import net.me.hooking.HookExecutionMode;
 import net.me.hooking.HookManager;
+import net.me.hooking.HookOptions;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
@@ -78,11 +79,11 @@ public class HooksAPI implements ProxyObject {
             }
             RunningScript owner = getCurrentScript();
             HookCall call = parseArgs(args, mode);
-            hookManager.hook(owner, call.targetClass(), call.methodName(), call.callback(), call.options(), mode);
+            hookManager.hook(owner, call.targetClass(), call.methodName(), call.callback(), call.options());
             AtomicBoolean disposed = new AtomicBoolean(false);
             ProxyExecutable disposer = disposeArgs -> {
                 if (disposed.compareAndSet(false, true)) {
-                    hookManager.unhookSingle(owner, call.targetClass(), call.methodName(), call.argCount(), mode);
+                    hookManager.unhookSingle(owner, call.targetClass(), call.methodName(), call.options().argCount(), mode);
                 }
                 return null;
             };
@@ -108,11 +109,11 @@ public class HooksAPI implements ProxyObject {
             if (handler == null || !handler.canExecute()) {
                 throw new IllegalArgumentException("Handler must be executable.");
             }
-            Value options = args.length > 2 ? args[2] : null;
-            Integer argCount = resolveArgCount(options);
+            Value optionsValue = args.length > 2 ? args[2] : null;
+            HookOptions options = HookOptions.withEnforcedMode(optionsValue, mode);
             HookDescriptor parsed = parseDescriptor(descriptor);
             Class<?> targetClass = resolveDescriptorClass(parsed.className());
-            return new HookCall(targetClass, parsed.methodName(), handler, options, argCount);
+            return new HookCall(targetClass, parsed.methodName(), handler, options);
         }
 
         if (args.length < 3 || !args[1].isString()) {
@@ -126,9 +127,9 @@ public class HooksAPI implements ProxyObject {
         if (!handler.canExecute()) {
             throw new IllegalArgumentException("Handler must be executable.");
         }
-        Value options = args.length > 3 ? args[3] : null;
-        Integer argCount = resolveArgCount(options);
-        return new HookCall(targetClass, methodName, handler, options, argCount);
+        Value optionsValue = args.length > 3 ? args[3] : null;
+        HookOptions options = HookOptions.withEnforcedMode(optionsValue, mode);
+        return new HookCall(targetClass, methodName, handler, options);
     }
 
     private HookDescriptor parseDescriptor(String descriptor) {
@@ -162,19 +163,9 @@ public class HooksAPI implements ProxyObject {
         }
     }
 
-    private Integer resolveArgCount(Value options) {
-        if (options != null && options.hasMembers() && options.hasMember("args")) {
-            Value value = options.getMember("args");
-            if (value != null && value.isNumber()) {
-                return value.asInt();
-            }
-        }
-        return null;
-    }
-
     private record HookDescriptor(String className, String methodName) {
     }
 
-    private record HookCall(Class<?> targetClass, String methodName, Value callback, Value options, Integer argCount) {
+    private record HookCall(Class<?> targetClass, String methodName, Value callback, HookOptions options) {
     }
 }

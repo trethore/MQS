@@ -19,6 +19,7 @@
 package net.me.scripting.api;
 
 import net.me.keybinds.KeybindManager;
+import net.me.keybinds.KeybindOptions;
 import net.me.keybinds.Keys;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
@@ -93,8 +94,8 @@ public class KeybindAPI implements ProxyObject {
                     String name = args[0].asString();
                     Value action = args[1];
 
-                    Value options = (args.length > 2 && args[2] != null && args[2].hasMembers()) ? args[2] : null;
-
+                    Value optionsArg = args.length > 2 ? args[2] : null;
+                    KeybindOptions options = KeybindOptions.fromScript(optionsArg, Keys.UNBOUND.getCode());
                     keybindManager.register(name, action, owner, options);
                     return null;
                 }

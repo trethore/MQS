@@ -29,11 +29,6 @@ public final class ConfigKeys {
     public static final String KEYBINDS = "keybinds";
     // Removed: categoryIds and showEnableDisableToast (legacy GUI)
 
-    // Keybind Options (in scripts)
-    public static final String KEYBIND_OPT_KEY = "key";
-    public static final String KEYBIND_OPT_REPEATABLE = "repeatable";
-    public static final String KEYBIND_OPT_DEBOUNCE = "debounce";
-
     // Script Metadata (@module)
     public static final String SCRIPT_META_MAIN = "main";
     public static final String SCRIPT_META_NAME = "name";

@@ -18,10 +18,7 @@
 
 package net.me.scripting.api;
 
-import net.me.event.Event;
-import net.me.event.EventManager;
-import net.me.event.EventPhase;
-import net.me.event.Events;
+import net.me.event.*;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
@@ -32,7 +29,6 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Set;
 
 import static net.me.scripting.api.ApiConstants.*;
@@ -218,26 +214,7 @@ public class EventAPI implements ProxyObject {
     }
 
     private EventPhase resolvePhase(Value phaseValue) {
-        if (phaseValue == null) {
-            return null;
-        }
-        if (phaseValue.isHostObject()) {
-            Object hostObject = phaseValue.asHostObject();
-            if (hostObject instanceof EventPhase eventPhase) {
-                return eventPhase;
-            }
-        }
-        if (phaseValue.isString()) {
-            String phaseName = phaseValue.asString();
-            if (phaseName != null) {
-                try {
-                    return EventPhase.valueOf(phaseName.toUpperCase(Locale.ROOT));
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Invalid phase '" + phaseName + "'. Use PRE or POST.");
-                }
-            }
-        }
-        return null;
+        return EventSubscriptionOptions.resolvePhaseValue(phaseValue);
     }
 
     @Override

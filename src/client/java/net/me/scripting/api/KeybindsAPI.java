@@ -18,19 +18,16 @@
 
 package net.me.scripting.api;
 
-import net.me.config.ConfigKeys;
 import net.me.keybinds.KeybindManager;
+import net.me.keybinds.KeybindOptions;
 import net.me.keybinds.Keys;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -50,10 +47,8 @@ public class KeybindsAPI implements ProxyObject {
     public Object getMember(String key) {
         return switch (key) {
             case "keys" -> keysProxy;
-            case "options" -> {
-                RunningScript owner = getCurrentScript();
-                yield owner.getContext().asValue(new KeybindOptionsBuilder(owner));
-            }
+            case "options" ->
+                    (ProxyExecutable) args -> getCurrentScript().getContext().asValue(KeybindOptions.builder());
             case "bind" -> (ProxyExecutable) args -> {
                 if (args.length < 3) {
                     throw new IllegalArgumentException("Usage: MQS.keybinds.bind(name, key, handler, options?)");
@@ -69,7 +64,7 @@ public class KeybindsAPI implements ProxyObject {
                     throw new IllegalArgumentException("Handler must be executable.");
                 }
 
-                Value options = buildOptions(owner, args.length > 3 ? args[3] : null, keyCode);
+                KeybindOptions options = resolveOptions(args.length > 3 ? args[3] : null, keyCode);
 
                 return registerKeybind(owner, name, handler, options);
             };
@@ -97,7 +92,7 @@ public class KeybindsAPI implements ProxyObject {
                 };
 
                 Value toggleHandler = owner.getContext().asValue(toggleExecutable);
-                Value options = buildOptions(owner, args.length > 3 ? args[3] : null, keyCode);
+                KeybindOptions options = resolveOptions(args.length > 3 ? args[3] : null, keyCode);
 
                 return registerKeybind(owner, name, toggleHandler, options);
             };
@@ -157,26 +152,25 @@ public class KeybindsAPI implements ProxyObject {
         throw new IllegalArgumentException("Key must be a numeric code or retrieved from MQS.keybinds.keys.");
     }
 
-    private Value buildOptions(RunningScript owner, Value optionsArg, int keyCode) {
-        Value options;
-        if (optionsArg != null && optionsArg.isHostObject() && optionsArg.asHostObject() instanceof KeybindOptionsBuilder builder) {
-            options = builder.buildObject();
-        } else if (optionsArg != null && optionsArg.hasMembers()) {
-            options = optionsArg;
-        } else {
-            options = owner.getContext().eval("js", "({})");
+    private KeybindOptions resolveOptions(Value optionsArg, int keyCode) {
+        if (optionsArg == null) {
+            return KeybindOptions.builder().keyCode(keyCode).build();
         }
-        options.putMember(ConfigKeys.KEYBIND_OPT_KEY, keyCode);
-        freeze(owner, options);
-        return options;
+        if (optionsArg.isHostObject()) {
+            Object host = optionsArg.asHostObject();
+            if (host instanceof KeybindOptions options) {
+                return options.withKeyCode(keyCode);
+            }
+            if (host instanceof KeybindOptions.Builder builder) {
+                builder.key(keyCode);
+                return builder.build();
+            }
+        }
+        KeybindOptions parsed = KeybindOptions.fromScript(optionsArg, keyCode);
+        return parsed.withKeyCode(keyCode);
     }
 
-    private void freeze(RunningScript owner, Value value) {
-        Value freezeFunction = owner.getContext().eval("js", "Object.freeze");
-        freezeFunction.execute(value);
-    }
-
-    private Value registerKeybind(RunningScript owner, String name, Value handler, Value options) {
+    private Value registerKeybind(RunningScript owner, String name, Value handler, KeybindOptions options) {
         keybindManager.register(name, handler, owner, options);
         AtomicBoolean disposed = new AtomicBoolean(false);
         ProxyExecutable exec = disposeArgs -> {
@@ -214,41 +208,5 @@ public class KeybindsAPI implements ProxyObject {
                 throw new UnsupportedOperationException("Cannot modify MQS.keybinds.keys.");
             }
         };
-    }
-
-    private static final class KeybindOptionsBuilder {
-        private final RunningScript owner;
-        private final Map<String, Object> values = new HashMap<>();
-
-        private KeybindOptionsBuilder(RunningScript owner) {
-            this.owner = owner;
-        }
-
-        @HostAccess.Export
-        public KeybindOptionsBuilder repeatable(boolean repeatable) {
-            values.put(ConfigKeys.KEYBIND_OPT_REPEATABLE, repeatable);
-            return this;
-        }
-
-        @HostAccess.Export
-        public KeybindOptionsBuilder debounce(Number millis) {
-            if (millis == null) {
-                values.remove(ConfigKeys.KEYBIND_OPT_DEBOUNCE);
-                return this;
-            }
-            int coerced = Math.max(0, millis.intValue());
-            values.put(ConfigKeys.KEYBIND_OPT_DEBOUNCE, coerced);
-            return this;
-        }
-
-        private Value buildObject() {
-            Value object = owner.getContext().eval("js", "({})");
-            if (!values.isEmpty()) {
-                for (Map.Entry<String, Object> entry : values.entrySet()) {
-                    object.putMember(entry.getKey(), entry.getValue());
-                }
-            }
-            return object;
-        }
     }
 }

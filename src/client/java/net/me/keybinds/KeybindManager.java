@@ -20,7 +20,6 @@ package net.me.keybinds;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.Main;
-import net.me.config.ConfigKeys;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
@@ -101,22 +100,11 @@ public class KeybindManager {
         processInput(button, action);
     }
 
-    public void register(String name, Value action, RunningScript owner, Value options) {
-        int defaultKey = Keys.UNBOUND.getCode();
-        boolean repeatable = false;
-        int debounceTime = 100;
-
-        if (options != null && options.hasMembers()) {
-            if (options.hasMember(ConfigKeys.KEYBIND_OPT_KEY) && options.getMember(ConfigKeys.KEYBIND_OPT_KEY).isNumber()) {
-                defaultKey = options.getMember(ConfigKeys.KEYBIND_OPT_KEY).asInt();
-            }
-            if (options.hasMember(ConfigKeys.KEYBIND_OPT_REPEATABLE) && options.getMember(ConfigKeys.KEYBIND_OPT_REPEATABLE).isBoolean()) {
-                repeatable = options.getMember(ConfigKeys.KEYBIND_OPT_REPEATABLE).asBoolean();
-            }
-            if (options.hasMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE) && options.getMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE).isNumber()) {
-                debounceTime = options.getMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE).asInt();
-            }
-        }
+    public void register(String name, Value action, RunningScript owner, KeybindOptions options) {
+        KeybindOptions resolved = options != null ? options : KeybindOptions.builder().keyCode(Keys.UNBOUND.getCode()).build();
+        int defaultKey = resolved.keyCode();
+        boolean repeatable = resolved.repeatable();
+        int debounceTime = resolved.debounceMillis();
 
         String uniqueName = owner.getId() + "::" + name;
         if (keybindsByName.containsKey(uniqueName)) {
