@@ -34,8 +34,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
+import static net.me.scripting.api.ApiConstants.*;
+
 public class EventsHelperAPI implements ProxyObject {
-    private static final Set<String> MEMBER_KEYS = Set.of("fabric", "off", "unregister", "options");
+    private static final Set<String> MEMBER_KEYS = Set.of(
+            FABRIC,
+            OFF,
+            UNREGISTER,
+            OPTIONS
+    );
 
     private final EventManager eventManager;
     private final ScriptManager scriptManager;
@@ -54,10 +61,10 @@ public class EventsHelperAPI implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        if ("fabric".equals(key)) {
+        if (FABRIC.equals(key)) {
             return fabricProxy;
         }
-        if ("off".equals(key)) {
+        if (OFF.equals(key)) {
             return (ProxyExecutable) args -> {
                 RunningScript owner = getCurrentScript();
                 if (args.length == 0) {
@@ -74,7 +81,7 @@ public class EventsHelperAPI implements ProxyObject {
                 return null;
             };
         }
-        if ("unregister".equals(key)) {
+        if (UNREGISTER.equals(key)) {
             return (ProxyExecutable) args -> {
                 if (args.length == 0) {
                     throw new IllegalArgumentException("unregister(eventOrCallback, phase?) requires at least one argument.");
@@ -124,7 +131,7 @@ public class EventsHelperAPI implements ProxyObject {
                 throw new IllegalArgumentException("Unsupported unregister target. Pass an MQS event enum, disposer, or callback function.");
             };
         }
-        if ("options".equals(key)) {
+        if (OPTIONS.equals(key)) {
             return (ProxyExecutable) args -> getCurrentScript().getContext().asValue(EventSubscriptionOptions.builder());
         }
         Events mappedEvent = namedEvents.get(key);

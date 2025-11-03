@@ -27,13 +27,15 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Set;
 
-public class ConfigFacadeAPI implements ProxyObject {
-    private static final Set<String> MEMBER_KEYS = Set.of("get", "set", "getBool", "getNumber", "getString", "has", "save", "load", "getAll");
+import static net.me.scripting.api.ApiConstants.*;
+
+public class ConfigHelperAPI implements ProxyObject {
+    private static final Set<String> MEMBER_KEYS = Set.of(GET, SET, GET_BOOL, GET_NUMBER, GET_STRING, HAS, SAVE, LOAD, GET_ALL);
 
     private final ConfigManager configManager;
     private final ScriptManager scriptManager;
 
-    public ConfigFacadeAPI(ConfigManager configManager, ScriptManager scriptManager) {
+    public ConfigHelperAPI(ConfigManager configManager, ScriptManager scriptManager) {
         this.configManager = configManager;
         this.scriptManager = scriptManager;
     }
@@ -41,7 +43,7 @@ public class ConfigFacadeAPI implements ProxyObject {
     @Override
     public Object getMember(String key) {
         return switch (key) {
-            case "get" -> (ProxyExecutable) args -> {
+            case GET -> (ProxyExecutable) args -> {
                 if (args.length == 0) {
                     throw new IllegalArgumentException("Config.get requires a key.");
                 }
@@ -52,7 +54,7 @@ public class ConfigFacadeAPI implements ProxyObject {
                 }
                 return script.getContext().asValue(stored);
             };
-            case "set" -> (ProxyExecutable) args -> {
+            case SET -> (ProxyExecutable) args -> {
                 if (args.length != 2) {
                     throw new IllegalArgumentException("Config.set requires a key and value.");
                 }
@@ -61,7 +63,7 @@ public class ConfigFacadeAPI implements ProxyObject {
                 configManager.set(script.getId(), args[0].asString(), serialized);
                 return null;
             };
-            case "getBool" -> (ProxyExecutable) args -> {
+            case GET_BOOL -> (ProxyExecutable) args -> {
                 boolean defaultValue = args.length > 1 && coerceBoolean(args[1]);
                 Object stored = readRaw(args, defaultValue);
                 if (stored instanceof Boolean value) {
@@ -75,7 +77,7 @@ public class ConfigFacadeAPI implements ProxyObject {
                 }
                 return defaultValue;
             };
-            case "getNumber" -> (ProxyExecutable) args -> {
+            case GET_NUMBER -> (ProxyExecutable) args -> {
                 double defaultValue = args.length > 1 ? coerceNumber(args[1]) : 0D;
                 Object stored = readRaw(args, defaultValue);
                 if (stored instanceof Number number) {
@@ -89,26 +91,26 @@ public class ConfigFacadeAPI implements ProxyObject {
                 }
                 return defaultValue;
             };
-            case "getString" -> (ProxyExecutable) args -> {
+            case GET_STRING -> (ProxyExecutable) args -> {
                 String defaultValue = args.length > 1 && args[1] != null ? args[1].toString() : null;
                 Object stored = readRaw(args, defaultValue);
                 return stored != null ? stored.toString() : defaultValue;
             };
-            case "has" -> (ProxyExecutable) args -> {
+            case HAS -> (ProxyExecutable) args -> {
                 if (args.length != 1) {
                     throw new IllegalArgumentException("Config.has requires a key.");
                 }
                 RunningScript script = getCurrentScript();
                 return configManager.get(script.getId(), args[0].asString()) != null;
             };
-            case "save" -> (ProxyExecutable) args -> {
+            case SAVE -> (ProxyExecutable) args -> {
                 if (args.length != 0) {
                     throw new IllegalArgumentException("Config.save takes no arguments.");
                 }
                 configManager.saveConfig(getCurrentScript());
                 return null;
             };
-            case "load" -> (ProxyExecutable) args -> {
+            case LOAD -> (ProxyExecutable) args -> {
                 if (args.length != 0) {
                     throw new IllegalArgumentException("Config.load takes no arguments.");
                 }
@@ -117,7 +119,7 @@ public class ConfigFacadeAPI implements ProxyObject {
                 configManager.getConfigForScript(script);
                 return null;
             };
-            case "getAll" -> (ProxyExecutable) args -> {
+            case GET_ALL -> (ProxyExecutable) args -> {
                 if (args.length != 0) {
                     throw new IllegalArgumentException("Config.getAll takes no arguments.");
                 }

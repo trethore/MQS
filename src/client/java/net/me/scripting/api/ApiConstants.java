@@ -35,15 +35,35 @@ public final class ApiConstants {
     public static final String SAVE = "save";
     public static final String LOAD = "load";
     public static final String GET_ALL = "getAll";
+    public static final String GET_BOOL = "getBool";
+    public static final String GET_NUMBER = "getNumber";
+    public static final String GET_STRING = "getString";
     // Event API
     public static final String EVENTS = "Events";
     public static final String PHASE = "Phase";
+    public static final String FABRIC = "fabric";
+    public static final String OFF = "off";
+    public static final String OPTIONS = "options";
     // Hook API
     public static final String HOOK = "hook";
     public static final String UNHOOK = "unhook";
     public static final String UNHOOK_ALL = "unhookAll";
+    public static final String HOOK_BEFORE = "before";
+    public static final String HOOK_AFTER = "after";
+    public static final String HOOK_INSTEAD = "instead";
     // Keybind API
     public static final String KEYS = "Keys";
+    public static final String KEY_KEYS = "keys";
+    public static final String KEYBIND_BIND = "bind";
+    public static final String KEYBIND_BIND_TOGGLE = "bindToggle";
+    public static final String KEYBIND_UNBIND = "unbind";
+    public static final String KEYBIND_UNBIND_ALL = "unbindAll";
+    // Commands helper
+    public static final String REGISTER_LITERAL = "registerLiteral";
+    // MQS utils
+    public static final String MATH = "math";
+    public static final String MC = "mc";
+    public static final String SCHEDULE = "schedule";
 
     private ApiConstants() {
     }

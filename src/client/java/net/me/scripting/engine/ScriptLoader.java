@@ -30,15 +30,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ScriptLoader {
-    private static final String LANGUAGE_ID = "js";
-
     public ScriptLoader() {
     }
 
     public Map<String, Value> loadModules(Path scriptPath, Context context, ThreadLocal<Map<String, Value>> perFileExports) {
         perFileExports.set(new HashMap<>());
         try {
-            Source source = Source.newBuilder(LANGUAGE_ID, scriptPath.toFile())
+            Source source = Source.newBuilder(ScriptConstants.JS, scriptPath.toFile())
                     .mimeType("application/javascript+module")
                     .build();
             context.eval(source);

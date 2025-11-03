@@ -25,6 +25,7 @@ import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.me.Main;
 import net.me.hooking.context.HookContext;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.engine.ScriptConstants;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
@@ -267,7 +268,7 @@ public class HookInterceptor {
             RunningScript previousScript = data.scriptManager().getCurrentScript();
             data.scriptManager().setCurrentScript(data.owner());
             try {
-                Value jsArgsArray = data.owner().getContext().eval("js", "[]");
+                Value jsArgsArray = data.owner().getContext().eval(ScriptConstants.JS, "[]");
                 for (Value arg : passedArgs) {
                     Object javaObject = ScriptUtils.unwrapReceiver(arg);
                     Object customProxy = ScriptUtils.wrapReturn(javaObject, mappingsManager, scriptManager);

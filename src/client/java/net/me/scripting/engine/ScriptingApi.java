@@ -19,6 +19,7 @@
 package net.me.scripting.engine;
 
 import net.me.Main;
+import net.me.scripting.WrapperConstants;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
 import net.me.scripting.extenders.MappedClassExtender;
@@ -36,6 +37,8 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import java.util.*;
 
 public class ScriptingApi {
+    private static final String EXTENDS = "extends";
+    private static final String IMPLEMENTS = "implements";
 
     public static ProxyExecutable createImportClassProxy(ScriptingClassResolver resolver, Context context) {
         return args -> {
@@ -47,7 +50,7 @@ public class ScriptingApi {
             String runtime = resolver.getRuntimeName(name);
             if (runtime != null) return resolver.getOrCreateWrapper(runtime);
             try {
-                return context.eval("js", "Java.type('" + name + "')");
+                return context.eval(ScriptConstants.JS, "Java.type('" + name + "')");
             } catch (Exception e) {
                 throw new RuntimeException("Unknown class or could not load host class: " + name, e);
             }
@@ -93,14 +96,14 @@ public class ScriptingApi {
             Value configArg = args[0];
             Value implementationArg = args[1];
 
-            if (!configArg.hasMembers() || !configArg.hasMember("extends")) {
-                throw new RuntimeException("First argument must be a configuration object with an 'extends' property.");
+            if (!configArg.hasMembers() || !configArg.hasMember(EXTENDS)) {
+                throw new RuntimeException("First argument must be a configuration object with an '" + EXTENDS + "' property.");
             }
             if (!implementationArg.hasMembers() && !implementationArg.isProxyObject()) {
                 throw new RuntimeException("Second argument must be an implementation object containing methods and properties.");
             }
 
-            Value extendsValue = configArg.getMember("extends");
+            Value extendsValue = configArg.getMember(EXTENDS);
             Value parentOverrides = null;
             Value parentAddons = null;
             Value parentSuper = null;
@@ -111,13 +114,13 @@ public class ScriptingApi {
             } else if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
                 parentOverrides = parentProxy.getOriginalOverrides();
                 parentAddons = parentProxy.getOriginalAddons();
-                parentSuper = extendsValue.getMember("_super");
+                parentSuper = extendsValue.getMember(WrapperConstants.SUPER);
 
                 ExtensionConfig originalConfig = parentProxy.getOriginalConfig();
                 MappedClassInfo newExtendsInfo = originalConfig.extendsClass();
                 List<MappedClassInfo> allImplements = new ArrayList<>(originalConfig.implementsClasses());
-                if (configArg.hasMember("implements")) {
-                    Value impl = configArg.getMember("implements");
+                if (configArg.hasMember(IMPLEMENTS)) {
+                    Value impl = configArg.getMember(IMPLEMENTS);
                     if (impl.hasArrayElements()) {
                         for (long i = 0; i < impl.getArraySize(); i++) {
                             allImplements.add(extractInfoFromValue(impl.getArrayElement(i), resolver));
@@ -162,10 +165,10 @@ public class ScriptingApi {
             return null;
         }
         Object proxy = value.isProxyObject() ? value.asProxyObject() : null;
-        if (proxy instanceof net.me.scripting.wrappers.LazyJsClassHolder holder) {
+        if (proxy instanceof LazyJsClassHolder holder) {
             return holder.getWrapper().getTargetClass();
         }
-        if (proxy instanceof net.me.scripting.wrappers.JsClassWrapper wrapper) {
+        if (proxy instanceof JsClassWrapper wrapper) {
             return wrapper.getTargetClass();
         }
         Object unwrapped = ScriptUtils.unwrapReceiver(value);
@@ -205,15 +208,15 @@ public class ScriptingApi {
     }
 
     private static ExtensionConfig parseExtensionConfig(Value configArg, Context context, ScriptingClassResolver resolver, Value extendsValueOverride) {
-        Value extendsValue = (extendsValueOverride != null) ? extendsValueOverride : configArg.getMember("extends");
+        Value extendsValue = (extendsValueOverride != null) ? extendsValueOverride : configArg.getMember(EXTENDS);
         if (extendsValue == null) {
-            throw new RuntimeException("Configuration object must have an 'extends' property.");
+            throw new RuntimeException("Configuration object must have an '" + EXTENDS + "' property.");
         }
 
         MappedClassInfo extendsInfo = extractInfoFromValue(extendsValue, resolver);
         List<MappedClassInfo> implementsInfos = new ArrayList<>();
-        if (configArg.hasMember("implements")) {
-            Value impl = configArg.getMember("implements");
+        if (configArg.hasMember(IMPLEMENTS)) {
+            Value impl = configArg.getMember(IMPLEMENTS);
             if (impl.hasArrayElements()) {
                 for (long i = 0; i < impl.getArraySize(); i++) {
                     implementsInfos.add(extractInfoFromValue(impl.getArrayElement(i), resolver));

@@ -33,6 +33,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ScriptingClassResolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScriptingClassResolver.class);
     private static final Set<String> EXCLUDED = Set.of();
+    private static final String NET_MINECRAFT_PREFIX = "net.minecraft.";
+    private static final String COM_MOJANG_PREFIX = "com.mojang.";
+    private static final String JAVA_PREFIX = "java.";
+    private static final String NET_ME_PREFIX = "net.me";
+    private static final String TRUFFLE_PREFIX = "com.oracle.truffle.host.adapters.";
+    private static final String FABRIC_PREFIX = "net.fabricmc.";
 
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
     private final Map<Class<?>, Boolean> mcRelatedCache = new ConcurrentHashMap<>();
@@ -96,7 +102,7 @@ public class ScriptingClassResolver {
                 }
 
                 String name = currentClass.getName();
-                if (name.startsWith("net.minecraft.") || name.startsWith("com.mojang.")) {
+                if (name.startsWith(NET_MINECRAFT_PREFIX) || name.startsWith(COM_MOJANG_PREFIX)) {
                     return true;
                 }
 
@@ -147,7 +153,7 @@ public class ScriptingClassResolver {
 
     public boolean isClassInMc(String name) {
         return isClassIncluded(name) &&
-                (name.startsWith("net.minecraft.") || name.startsWith("com.mojang."));
+                (name.startsWith(NET_MINECRAFT_PREFIX) || name.startsWith(COM_MOJANG_PREFIX));
     }
 
     public boolean isClassAllowed(String name) {
@@ -157,12 +163,12 @@ public class ScriptingClassResolver {
 
         if (EXCLUDED.contains(name)) return false;
 
-        return name.startsWith("java.")
-                || name.startsWith("net.minecraft.")
-                || name.startsWith("com.mojang.")
-                || name.startsWith("net.me")
-                || name.startsWith("com.oracle.truffle.host.adapters.")
-                || name.startsWith("net.fabricmc.");
+        return name.startsWith(JAVA_PREFIX)
+                || name.startsWith(NET_MINECRAFT_PREFIX)
+                || name.startsWith(COM_MOJANG_PREFIX)
+                || name.startsWith(NET_ME_PREFIX)
+                || name.startsWith(TRUFFLE_PREFIX)
+                || name.startsWith(FABRIC_PREFIX);
     }
 
     public JsClassWrapper getOrCreateWrapper(String runtime) {

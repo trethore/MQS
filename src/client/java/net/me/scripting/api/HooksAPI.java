@@ -34,8 +34,14 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static net.me.scripting.api.ApiConstants.*;
+
 public class HooksAPI implements ProxyObject {
-    private static final Set<String> MEMBER_KEYS = Set.of("before", "after", "instead");
+    private static final Set<String> MEMBER_KEYS = Set.of(
+            HOOK_BEFORE,
+            HOOK_AFTER,
+            HOOK_INSTEAD
+    );
 
     private final HookManager hookManager;
     private final ScriptManager scriptManager;
@@ -50,9 +56,9 @@ public class HooksAPI implements ProxyObject {
     @Override
     public Object getMember(String key) {
         return switch (key) {
-            case "before" -> createHookExecutable(HookExecutionMode.BEFORE);
-            case "after" -> createHookExecutable(HookExecutionMode.AFTER);
-            case "instead" -> createHookExecutable(HookExecutionMode.INSTEAD);
+            case HOOK_BEFORE -> createHookExecutable(HookExecutionMode.BEFORE);
+            case HOOK_AFTER -> createHookExecutable(HookExecutionMode.AFTER);
+            case HOOK_INSTEAD -> createHookExecutable(HookExecutionMode.INSTEAD);
             default -> null;
         };
     }

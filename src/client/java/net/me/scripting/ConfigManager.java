@@ -24,6 +24,7 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import net.me.Main;
 import net.me.config.ConfigKeys;
+import net.me.scripting.engine.ScriptConstants;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -70,11 +71,11 @@ public class ConfigManager {
         Map<String, Object> configMap = getConfig(script.getId());
         Context scriptContext = script.getContext();
         if (configMap.isEmpty()) {
-            return scriptContext.eval("js", "Object.freeze({})");
+            return scriptContext.eval(ScriptConstants.JS, "Object.freeze({})");
         }
         String json = GSON.toJson(configMap);
-        Value parsed = scriptContext.eval("js", "JSON.parse").execute(json);
-        scriptContext.eval("js", "Object.freeze").execute(parsed);
+        Value parsed = scriptContext.eval(ScriptConstants.JS, "JSON.parse").execute(json);
+        scriptContext.eval(ScriptConstants.JS, "Object.freeze").execute(parsed);
         return parsed;
     }
 

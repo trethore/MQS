@@ -31,8 +31,17 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static net.me.scripting.api.ApiConstants.*;
+
 public class KeybindsAPI implements ProxyObject {
-    private static final Set<String> MEMBER_KEYS = Set.of("bind", "bindToggle", "unbind", "unbindAll", "keys", "options");
+    private static final Set<String> MEMBER_KEYS = Set.of(
+            KEYBIND_BIND,
+            KEYBIND_BIND_TOGGLE,
+            KEYBIND_UNBIND,
+            KEYBIND_UNBIND_ALL,
+            KEY_KEYS,
+            OPTIONS
+    );
 
     private final KeybindManager keybindManager;
     private final ScriptManager scriptManager;
@@ -46,10 +55,9 @@ public class KeybindsAPI implements ProxyObject {
     @Override
     public Object getMember(String key) {
         return switch (key) {
-            case "keys" -> keysProxy;
-            case "options" ->
-                    (ProxyExecutable) args -> getCurrentScript().getContext().asValue(KeybindOptions.builder());
-            case "bind" -> (ProxyExecutable) args -> {
+            case KEY_KEYS -> keysProxy;
+            case OPTIONS -> (ProxyExecutable) args -> getCurrentScript().getContext().asValue(KeybindOptions.builder());
+            case KEYBIND_BIND -> (ProxyExecutable) args -> {
                 if (args.length < 3) {
                     throw new IllegalArgumentException("Usage: MQS.keybinds.bind(name, key, handler, options?)");
                 }
@@ -68,7 +76,7 @@ public class KeybindsAPI implements ProxyObject {
 
                 return registerKeybind(owner, name, handler, options);
             };
-            case "bindToggle" -> (ProxyExecutable) args -> {
+            case KEYBIND_BIND_TOGGLE -> (ProxyExecutable) args -> {
                 if (args.length < 3) {
                     throw new IllegalArgumentException("Usage: MQS.keybinds.bindToggle(name, key, handler, options?)");
                 }
@@ -96,7 +104,7 @@ public class KeybindsAPI implements ProxyObject {
 
                 return registerKeybind(owner, name, toggleHandler, options);
             };
-            case "unbind" -> (ProxyExecutable) args -> {
+            case KEYBIND_UNBIND -> (ProxyExecutable) args -> {
                 if (args.length != 1 || !args[0].isString()) {
                     throw new IllegalArgumentException("Usage: MQS.keybinds.unbind(name)");
                 }
@@ -104,7 +112,7 @@ public class KeybindsAPI implements ProxyObject {
                 keybindManager.unregister(owner, args[0].asString());
                 return null;
             };
-            case "unbindAll" -> (ProxyExecutable) args -> {
+            case KEYBIND_UNBIND_ALL -> (ProxyExecutable) args -> {
                 if (args.length != 0) {
                     throw new IllegalArgumentException("Usage: MQS.keybinds.unbindAll()");
                 }

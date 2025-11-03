@@ -92,7 +92,7 @@ public class ScriptContextFactory {
         Main.LOGGER.info("Creating new script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
 
-        Context newContext = Context.newBuilder("js")
+        Context newContext = Context.newBuilder(ScriptConstants.JS)
                 .engine(this.sharedEngine)
                 .allowHostAccess(this.hostAccess)
                 .allowHostClassLookup(classResolver::isClassAllowed)
@@ -114,7 +114,7 @@ public class ScriptContextFactory {
         }
         registerPackages(context);
 
-        Value bindings = context.getBindings("js");
+        Value bindings = context.getBindings(ScriptConstants.JS);
 
         addApiMember(bindings, "importClass", ScriptingApi.createImportClassProxy(classResolver, context));
         addApiMember(bindings, "extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
@@ -127,7 +127,7 @@ public class ScriptContextFactory {
         mqsMembers.put("eventManager", new EventAPI(this.eventManager, this.scriptManager));
         mqsMembers.put("events", new EventsHelperAPI(this.eventManager, this.scriptManager));
         mqsMembers.put("configManager", new ConfigAPI(this.configManager, this.scriptManager));
-        mqsMembers.put("config", new ConfigFacadeAPI(this.configManager, this.scriptManager));
+        mqsMembers.put("config", new ConfigHelperAPI(this.configManager, this.scriptManager));
         mqsMembers.put("keybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
         mqsMembers.put("keybinds", new KeybindsAPI(this.keybindManager, this.scriptManager));
         mqsMembers.put("commandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
@@ -153,7 +153,7 @@ public class ScriptContextFactory {
     }
 
     public void resetContext(Context context) {
-        Value bindings = context.getBindings("js");
+        Value bindings = context.getBindings(ScriptConstants.JS);
         Set<String> memberKeys = new HashSet<>(bindings.getMemberKeys());
 
         for (String key : memberKeys) {
@@ -173,7 +173,7 @@ public class ScriptContextFactory {
             }
         }
 
-        var bindings = context.getBindings("js");
+        Value bindings = context.getBindings(ScriptConstants.JS);
         for (String pkg : topLevelPackages) {
             if (!bindings.hasMember(pkg)) {
                 addApiMember(bindings, pkg, new LazyPackageProxy(pkg, this.classResolver));

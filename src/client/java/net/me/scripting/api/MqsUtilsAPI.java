@@ -34,71 +34,66 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-public class MqsUtilsAPI implements ProxyObject {
+import static net.me.scripting.api.ApiConstants.*;
 
-    private static final Set<String> SPECIAL_KEYS = Set.of("math", "mc", "schedule");
+public class MqsUtilsAPI implements ProxyObject {
+    private static final String MC_RAW = "raw";
+    private static final String MC_GET_MC = "getMc";
+    private static final String MC_GET_PLAYER = "getPlayer";
+    private static final String MC_GET_WORLD = "getWorld";
+    private static final String MC_CLIENT = "client";
+    private static final String MC_PLAYER = "player";
+    private static final String MC_WORLD = "world";
+    private static final String MC_RUN_ON_CLIENT_THREAD = "runOnClientThread";
+    private static final String SCHEDULE_TICK_TIMEOUT = "tickTimeout";
+    private static final String SCHEDULE_MS_TIMEOUT = "msTimeout";
+    private static final String SCHEDULE_TICK_INTERVAL = "tickInterval";
 
     private final ScriptingClassResolver classResolver;
     private final ScriptManager scriptManager;
     private final ScriptScheduler scheduler;
-    private final Map<String, Class<?>> classExports = new HashMap<>();
-    private final ProxyObject mathProxy;
-    private final ProxyObject mcProxy;
-    private final ProxyObject scheduleProxy;
+    private final Map<String, Object> memberExports = new HashMap<>();
 
     public MqsUtilsAPI(ScriptingClassResolver classResolver, ScriptManager scriptManager, ScriptScheduler scheduler) {
         this.classResolver = classResolver;
         this.scriptManager = scriptManager;
         this.scheduler = scheduler;
 
-        classExports.put("render2D", Render2DUtils.class);
-        classExports.put("render3D", Render3DUtils.class);
-        classExports.put("textRender", TextRenderUtils.class);
-        classExports.put("textRenderer", TextRendererUtils.class);
-        classExports.put("chat", ChatUtils.class);
-        classExports.put("color", ColorUtils.class);
-        classExports.put("camera", CameraUtils.class);
-        classExports.put("assets", AssetIdentifiers.class);
+        memberExports.put("render2D", Render2DUtils.class);
+        memberExports.put("render3D", Render3DUtils.class);
+        memberExports.put("textRender", TextRenderUtils.class);
+        memberExports.put("textRenderer", TextRendererUtils.class);
+        memberExports.put("chat", ChatUtils.class);
+        memberExports.put("color", ColorUtils.class);
+        memberExports.put("camera", CameraUtils.class);
+        memberExports.put("assets", AssetIdentifiers.class);
 
-        this.mathProxy = createMathProxy();
-        this.mcProxy = createMcProxy();
-        this.scheduleProxy = createScheduleProxy();
+        ProxyObject mathProxy = createMathProxy();
+        ProxyObject mcProxy = createMcProxy();
+        ProxyObject scheduleProxy = createScheduleProxy();
+
+        memberExports.put(MATH, mathProxy);
+        memberExports.put(MC, mcProxy);
+        memberExports.put(SCHEDULE, scheduleProxy);
     }
 
     @Override
     public Object getMember(String key) {
-        if ("math".equals(key)) {
-            return mathProxy;
-        }
-        if ("mc".equals(key)) {
-            return mcProxy;
-        }
-        if ("schedule".equals(key)) {
-            return scheduleProxy;
-        }
-        Class<?> utilClass = classExports.get(key);
-        if (utilClass != null) {
+        Object export = memberExports.get(key);
+        if (export instanceof Class<?> utilClass) {
             return classResolver.getOrCreateWrapper(utilClass.getName());
         }
-        return null;
+        return export;
     }
 
     @Override
     public Object getMemberKeys() {
-        String[] keys = new String[classExports.size() + SPECIAL_KEYS.size()];
-        int idx = 0;
-        for (String key : classExports.keySet()) {
-            keys[idx++] = key;
-        }
-        for (String specialKey : SPECIAL_KEYS) {
-            keys[idx++] = specialKey;
-        }
-        return keys;
+        return memberExports.keySet().toArray(new String[0]);
     }
 
     @Override
     public boolean hasMember(String key) {
-        return classExports.containsKey(key) || SPECIAL_KEYS.contains(key);
+        return memberExports.containsKey(key);
     }
 
     @Override
@@ -144,33 +139,42 @@ public class MqsUtilsAPI implements ProxyObject {
 
     private ProxyObject createMcProxy() {
         return new ProxyObject() {
-            private final Set<String> keys = Set.of("raw", "getMc", "getPlayer", "getWorld", "client", "player", "world", "runOnClientThread");
+            private final Set<String> keys = Set.of(
+                    MC_RAW,
+                    MC_GET_MC,
+                    MC_GET_PLAYER,
+                    MC_GET_WORLD,
+                    MC_CLIENT,
+                    MC_PLAYER,
+                    MC_WORLD,
+                    MC_RUN_ON_CLIENT_THREAD
+            );
 
             @Override
             public Object getMember(String key) {
                 return switch (key) {
-                    case "raw" -> classResolver.getOrCreateWrapper(McUtils.class.getName());
-                    case "getMc" -> (ProxyExecutable) args -> McUtils.getMc();
-                    case "getPlayer" -> (ProxyExecutable) args -> McUtils.getPlayer();
-                    case "getWorld" -> (ProxyExecutable) args -> McUtils.getWorld();
-                    case "client" -> (ProxyExecutable) args -> ScriptUtils.wrapReturn(
+                    case MC_RAW -> classResolver.getOrCreateWrapper(McUtils.class.getName());
+                    case MC_GET_MC -> (ProxyExecutable) args -> McUtils.getMc();
+                    case MC_GET_PLAYER -> (ProxyExecutable) args -> McUtils.getPlayer();
+                    case MC_GET_WORLD -> (ProxyExecutable) args -> McUtils.getWorld();
+                    case MC_CLIENT -> (ProxyExecutable) args -> ScriptUtils.wrapReturn(
                             MinecraftClient.getInstance(),
                             classResolver.getMappingsManager(),
                             scriptManager
                     );
-                    case "player" -> (ProxyExecutable) args -> {
+                    case MC_PLAYER -> (ProxyExecutable) args -> {
                         MinecraftClient client = MinecraftClient.getInstance();
                         return client != null
                                 ? ScriptUtils.wrapReturn(client.player, classResolver.getMappingsManager(), scriptManager)
                                 : null;
                     };
-                    case "world" -> (ProxyExecutable) args -> {
+                    case MC_WORLD -> (ProxyExecutable) args -> {
                         MinecraftClient client = MinecraftClient.getInstance();
                         return client != null
                                 ? ScriptUtils.wrapReturn(client.world, classResolver.getMappingsManager(), scriptManager)
                                 : null;
                     };
-                    case "runOnClientThread" -> (ProxyExecutable) args -> {
+                    case MC_RUN_ON_CLIENT_THREAD -> (ProxyExecutable) args -> {
                         if (args.length != 1 || args[0] == null || !args[0].canExecute()) {
                             throw new IllegalArgumentException("runOnClientThread requires a callback function.");
                         }
@@ -203,12 +207,16 @@ public class MqsUtilsAPI implements ProxyObject {
 
     private ProxyObject createScheduleProxy() {
         return new ProxyObject() {
-            private final Set<String> keys = Set.of("tickTimeout", "msTimeout", "tickInterval");
+            private final Set<String> keys = Set.of(
+                    SCHEDULE_TICK_TIMEOUT,
+                    SCHEDULE_MS_TIMEOUT,
+                    SCHEDULE_TICK_INTERVAL
+            );
 
             @Override
             public Object getMember(String key) {
                 return switch (key) {
-                    case "tickTimeout" -> (ProxyExecutable) args -> {
+                    case SCHEDULE_TICK_TIMEOUT -> (ProxyExecutable) args -> {
                         ensureCallback(args);
                         RunningScript owner = currentScript();
                         Value callback = args[0];
@@ -216,7 +224,7 @@ public class MqsUtilsAPI implements ProxyObject {
                         Runnable cancel = scheduler.scheduleTickTimeout(owner, callback, delay);
                         return toDisposer(owner, cancel);
                     };
-                    case "msTimeout" -> (ProxyExecutable) args -> {
+                    case SCHEDULE_MS_TIMEOUT -> (ProxyExecutable) args -> {
                         ensureCallback(args);
                         RunningScript owner = currentScript();
                         Value callback = args[0];
@@ -224,7 +232,7 @@ public class MqsUtilsAPI implements ProxyObject {
                         Runnable cancel = scheduler.scheduleMsTimeout(owner, callback, delay);
                         return toDisposer(owner, cancel);
                     };
-                    case "tickInterval" -> (ProxyExecutable) args -> {
+                    case SCHEDULE_TICK_INTERVAL -> (ProxyExecutable) args -> {
                         ensureCallback(args);
                         if (args.length < 2 || !args[1].isNumber()) {
                             throw new IllegalArgumentException("tickInterval requires an interval in ticks.");

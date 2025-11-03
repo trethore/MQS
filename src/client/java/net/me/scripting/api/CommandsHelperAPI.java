@@ -31,8 +31,15 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static net.me.scripting.api.ApiConstants.*;
+
 public class CommandsHelperAPI implements ProxyObject {
-    private static final Set<String> MEMBER_KEYS = Set.of("literal", "argument", "register", "registerLiteral");
+    private static final Set<String> MEMBER_KEYS = Set.of(
+            LITERAL,
+            ARGUMENT,
+            REGISTER,
+            REGISTER_LITERAL
+    );
 
     private final ScriptManager scriptManager;
     private final CommandAPIService commandApiService;
@@ -45,7 +52,7 @@ public class CommandsHelperAPI implements ProxyObject {
     @Override
     public Object getMember(String key) {
         return switch (key) {
-            case "literal" -> (ProxyExecutable) args -> {
+            case LITERAL -> (ProxyExecutable) args -> {
                 if (args.length == 0 || !args[0].isString()) {
                     throw new IllegalArgumentException("commands.literal requires a command name.");
                 }
@@ -70,7 +77,7 @@ public class CommandsHelperAPI implements ProxyObject {
                 }
                 return builder;
             };
-            case "argument" -> (ProxyExecutable) args -> {
+            case ARGUMENT -> (ProxyExecutable) args -> {
                 if (args.length != 2 || !args[0].isString() || !args[1].isString()) {
                     throw new IllegalArgumentException("commands.argument(name, type) requires two string arguments.");
                 }
@@ -78,7 +85,7 @@ public class CommandsHelperAPI implements ProxyObject {
                 var type = ScriptArgumentType.fromString(args[1].asString());
                 return new CommandBuilder(ClientCommandManager.argument(args[0].asString(), type.get()), owner, scriptManager);
             };
-            case "register" -> (ProxyExecutable) args -> {
+            case REGISTER -> (ProxyExecutable) args -> {
                 if (args.length != 1 || !args[0].isHostObject() || !(args[0].asHostObject() instanceof CommandBuilder builder)) {
                     throw new IllegalArgumentException("commands.register expects a CommandBuilder instance.");
                 }
@@ -94,7 +101,7 @@ public class CommandsHelperAPI implements ProxyObject {
                 };
                 return owner.getContext().asValue(exec);
             };
-            case "registerLiteral" -> (ProxyExecutable) args -> {
+            case REGISTER_LITERAL -> (ProxyExecutable) args -> {
                 if (args.length < 2 || !args[0].isString()) {
                     throw new IllegalArgumentException("commands.registerLiteral(name, handler) requires a name and handler.");
                 }
