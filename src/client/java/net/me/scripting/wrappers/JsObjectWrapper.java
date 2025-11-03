@@ -209,6 +209,7 @@ public class JsObjectWrapper implements ProxyObject {
                 Main.LOGGER.debug("    - Argument count matches. Proceeding to unwrap and invoke.");
                 try {
                     Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
+                    ScriptUtils.coerceArgumentTypes(this.javaInstance, m, javaArgs);
                     Main.LOGGER.debug("    - Unwrapped arguments: {}", Arrays.toString(javaArgs));
                     MethodHandle handle = FastAccessorUtils.getMethodHandle(m);
                     Object result = handle.bindTo(this.javaInstance).invokeWithArguments(javaArgs);
