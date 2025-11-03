@@ -122,6 +122,15 @@ processResources {
 	}
 }
 
+tasks.named("processClientResources") {
+	dependsOn(applyLicenseHeaders)
+	inputs.property("version", project.version)
+
+	filesMatching("fabric.mod.json") {
+		expand("version": inputs.properties.version)
+	}
+}
+
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 21
 }
