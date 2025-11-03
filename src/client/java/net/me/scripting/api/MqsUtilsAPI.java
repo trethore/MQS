@@ -22,6 +22,7 @@ import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.utils.ScriptUtils;
 import net.me.utils.*;
 import net.me.utils.math.*;
 import net.minecraft.client.MinecraftClient;
@@ -152,14 +153,22 @@ public class MqsUtilsAPI implements ProxyObject {
                     case "getMc" -> (ProxyExecutable) args -> McUtils.getMc();
                     case "getPlayer" -> (ProxyExecutable) args -> McUtils.getPlayer();
                     case "getWorld" -> (ProxyExecutable) args -> McUtils.getWorld();
-                    case "client" -> (ProxyExecutable) args -> MinecraftClient.getInstance();
+                    case "client" -> (ProxyExecutable) args -> ScriptUtils.wrapReturn(
+                            MinecraftClient.getInstance(),
+                            classResolver.getMappingsManager(),
+                            scriptManager
+                    );
                     case "player" -> (ProxyExecutable) args -> {
                         MinecraftClient client = MinecraftClient.getInstance();
-                        return client != null ? client.player : null;
+                        return client != null
+                                ? ScriptUtils.wrapReturn(client.player, classResolver.getMappingsManager(), scriptManager)
+                                : null;
                     };
                     case "world" -> (ProxyExecutable) args -> {
                         MinecraftClient client = MinecraftClient.getInstance();
-                        return client != null ? client.world : null;
+                        return client != null
+                                ? ScriptUtils.wrapReturn(client.world, classResolver.getMappingsManager(), scriptManager)
+                                : null;
                     };
                     case "runOnClientThread" -> (ProxyExecutable) args -> {
                         if (args.length != 1 || args[0] == null || !args[0].canExecute()) {

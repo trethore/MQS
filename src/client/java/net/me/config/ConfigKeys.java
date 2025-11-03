@@ -27,7 +27,6 @@ public final class ConfigKeys {
     // Per-script configs (in /configs/)
     public static final String ENABLED = "enabled";
     public static final String KEYBINDS = "keybinds";
-    // Removed: categoryIds and showEnableDisableToast (legacy GUI)
 
     // Script Metadata (@module)
     public static final String SCRIPT_META_MAIN = "main";
