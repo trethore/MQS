@@ -20,6 +20,17 @@ Here are the available options:
     *   **Only enable this if you are a developer or if you completely trust every script you have installed.**
     *   This is the same setting controlled by the `allowallclasses` console command. A script refresh is required for it to take effect.
 
+*   **`additionalScriptDirs`** (array of strings, default: `[]`)
+    *   Adds extra folders that MQS will scan for `@module` scripts alongside the default `<Your Minecraft Folder>/my-qol-scripts/scripts`.
+    *   Relative entries are resolved from the `my-qol-scripts` directory, and absolute paths are supported on every platform.
+    *   Example:
+        ```json
+        "additionalScriptDirs": [
+          "../shared-scripts",
+          "D:/scripts/mqs"
+        ]
+        ```
+
 *   **`showEnableDisableToast`** (boolean, default: `true`)
     *   If `true`, a small "toast" notification will appear in the corner of your screen whenever you enable or disable a script, providing instant feedback.
 

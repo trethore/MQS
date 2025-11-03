@@ -20,14 +20,15 @@ package net.me.scripting.engine;
 
 import net.me.Main;
 import net.me.config.ConfigKeys;
+import net.me.config.GlobalConfigManager;
 import net.me.scripting.module.ScriptDescriptor;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -35,24 +36,39 @@ import java.util.stream.Stream;
 public class ScriptDiscoverer {
 
     private static final Pattern MODULE_ANNOTATION_PATTERN = Pattern.compile("^//\\s*@module\\((.*)\\)");
+    private final GlobalConfigManager globalConfigManager;
+    private final Path defaultScriptsDir = Main.MOD_DIR.resolve("scripts");
 
-    public ScriptDiscoverer() {
-        ensureScriptDirectoryExists();
+    public ScriptDiscoverer(GlobalConfigManager globalConfigManager) {
+        this.globalConfigManager = globalConfigManager;
+        ensureDirectoryExists(defaultScriptsDir);
     }
 
     public Map<String, ScriptDescriptor> discoverScripts() {
         Map<String, ScriptDescriptor> availableScripts = new HashMap<>();
-        Path scriptsDir = Main.MOD_DIR.resolve("scripts");
+        List<Path> scriptDirectories = resolveScriptDirectories();
 
-        try (Stream<Path> paths = Files.walk(scriptsDir)) {
+        for (Path directory : scriptDirectories) {
+            discoverScriptsInDirectory(directory, availableScripts);
+        }
+
+        Main.LOGGER.info("Discovered {} available script modules from {} directories.", availableScripts.size(), scriptDirectories.size());
+        return availableScripts;
+    }
+
+    private void discoverScriptsInDirectory(Path directory, Map<String, ScriptDescriptor> availableScripts) {
+        if (!Files.isDirectory(directory)) {
+            Main.LOGGER.warn("Configured script directory '{}' is missing or not a directory. Skipping.", directory);
+            return;
+        }
+
+        try (Stream<Path> paths = Files.walk(directory)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".js"))
                     .forEach(path -> discoverModulesInFile(path, availableScripts));
         } catch (IOException e) {
-            Main.LOGGER.error("Error discovering scripts in {}", scriptsDir, e);
+            Main.LOGGER.error("Error discovering scripts in {}", directory, e);
         }
-        Main.LOGGER.info("Discovered {} available script modules.", availableScripts.size());
-        return availableScripts;
     }
 
     private void discoverModulesInFile(Path path, Map<String, ScriptDescriptor> availableScripts) {
@@ -103,14 +119,73 @@ public class ScriptDiscoverer {
         return metadata;
     }
 
-    private void ensureScriptDirectoryExists() {
-        Path p = Main.MOD_DIR.resolve("scripts");
+    private void ensureDirectoryExists(Path directory) {
         try {
-            if (!Files.exists(p)) {
-                Files.createDirectories(p);
+            if (!Files.exists(directory)) {
+                Files.createDirectories(directory);
             }
         } catch (IOException e) {
-            Main.LOGGER.error("Failed to create scripts directory: {}", p, e);
+            Main.LOGGER.error("Failed to create scripts directory: {}", directory, e);
         }
+    }
+
+    private List<Path> resolveScriptDirectories() {
+        List<Path> directories = new ArrayList<>();
+        directories.add(defaultScriptsDir);
+
+        if (globalConfigManager != null) {
+            List<String> configured = globalConfigManager.getAdditionalScriptDirectories();
+            for (String entry : configured) {
+                Path resolved = resolveConfiguredPath(entry);
+                if (resolved != null) {
+                    directories.add(resolved);
+                }
+            }
+        }
+
+        Set<Path> unique = new LinkedHashSet<>();
+        for (Path directory : directories) {
+            unique.add(directory.normalize());
+        }
+        return new ArrayList<>(unique);
+    }
+
+    private Path resolveConfiguredPath(String entry) {
+        if (entry == null) {
+            return null;
+        }
+        String trimmed = entry.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+
+        String expanded = expandHomeDirectory(trimmed);
+        Path candidate;
+        try {
+            candidate = Path.of(expanded);
+        } catch (InvalidPathException e) {
+            Main.LOGGER.warn("Ignoring invalid script directory '{}'.", entry, e);
+            return null;
+        }
+
+        if (!candidate.isAbsolute()) {
+            candidate = Main.MOD_DIR.resolve(candidate);
+        }
+        return candidate.normalize();
+    }
+
+    private String expandHomeDirectory(String path) {
+        if (path.startsWith("~")) {
+            String home = System.getProperty("user.home");
+            if (home != null && !home.isBlank()) {
+                if (path.equals("~")) {
+                    return home;
+                }
+                if (path.startsWith("~" + File.separator) || path.startsWith("~/") || path.startsWith("~\\")) {
+                    return home + path.substring(1);
+                }
+            }
+        }
+        return path;
     }
 }

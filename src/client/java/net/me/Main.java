@@ -102,6 +102,7 @@ public class Main implements ClientModInitializer {
         configManager.init();
         consoleManager.init();
         commandManager.init();
+        globalConfigManager.init();
 
         this.registerConsoleCommands();
         this.registerClientCommands();
@@ -109,8 +110,7 @@ public class Main implements ClientModInitializer {
         mappingsManager.init();
 
         mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
-            scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager);
-            globalConfigManager.init();
+            scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
             scriptManager.loadAndEnableScriptsFromConfig();
 
             LOGGER.info("MyQOLScripts initialization complete! Hello !");

@@ -20,6 +20,7 @@ package net.me.scripting;
 
 import lombok.Getter;
 import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
@@ -53,7 +54,7 @@ public class ScriptManager {
     public ScriptManager() {
     }
 
-    public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager) {
+    public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager, GlobalConfigManager globalConfigManager) {
         this.configManager = configManager;
 
         this.classResolver = new ScriptingClassResolver();
@@ -68,7 +69,7 @@ public class ScriptManager {
         this.contextManager = new ScriptContextManager(contextFactory, perFileExports);
         this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, scheduler, contextManager);
 
-        this.scriptDiscoverer = new ScriptDiscoverer();
+        this.scriptDiscoverer = new ScriptDiscoverer(globalConfigManager);
         this.scriptLoader = new ScriptLoader();
 
         discoverScripts();

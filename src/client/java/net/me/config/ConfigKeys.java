@@ -23,6 +23,7 @@ public final class ConfigKeys {
     // Global Config (mqs_config.json)
     public static final String LOG_REDIRECT = "logRedirect";
     public static final String ALLOW_ALL_CLASSES = "allowAllClasses";
+    public static final String ADDITIONAL_SCRIPT_DIRS = "additionalScriptDirs";
 
     // Per-script configs (in /configs/)
     public static final String ENABLED = "enabled";

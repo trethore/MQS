@@ -28,6 +28,9 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class GlobalConfigManager {
     private static final Path CONFIG_FILE = Main.MOD_DIR.resolve("mqs_config.json");
@@ -53,9 +56,9 @@ public class GlobalConfigManager {
             this.data = GSON.fromJson(reader, ConfigData.class);
             if (this.data == null) {
                 this.data = new ConfigData();
-            } else {
-                consoleManager.setLogRedirect(this.data.logRedirect);
             }
+            this.data.ensureDefaults();
+            consoleManager.setLogRedirect(this.data.logRedirect);
         } catch (Exception e) {
             Main.LOGGER.error("Failed to load global MQS config, using defaults.", e);
             this.data = new ConfigData();
@@ -93,6 +96,16 @@ public class GlobalConfigManager {
         }
     }
 
+    public List<String> getAdditionalScriptDirectories() {
+        data.ensureDefaults();
+        return Collections.unmodifiableList(data.additionalScriptDirs);
+    }
+
+    public void setAdditionalScriptDirectories(List<String> directories) {
+        data.additionalScriptDirs = directories == null ? new ArrayList<>() : new ArrayList<>(directories);
+        save();
+    }
+
     private static class ConfigData {
         @SerializedName(ConfigKeys.LOG_REDIRECT)
         boolean logRedirect = false;
@@ -100,5 +113,13 @@ public class GlobalConfigManager {
         @SerializedName(ConfigKeys.ALLOW_ALL_CLASSES)
         boolean allowAllClasses = false;
 
+        @SerializedName(ConfigKeys.ADDITIONAL_SCRIPT_DIRS)
+        List<String> additionalScriptDirs = new ArrayList<>();
+
+        void ensureDefaults() {
+            if (additionalScriptDirs == null) {
+                additionalScriptDirs = new ArrayList<>();
+            }
+        }
     }
 }
