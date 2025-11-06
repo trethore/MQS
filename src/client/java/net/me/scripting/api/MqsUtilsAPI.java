@@ -59,12 +59,7 @@ public class MqsUtilsAPI implements ProxyObject {
         this.scriptManager = scriptManager;
         this.scheduler = scheduler;
 
-        memberExports.put("render2D", Render2DUtils.class);
-        memberExports.put("render3D", Render3DUtils.class);
-        memberExports.put("textRender", TextRenderUtils.class);
-        memberExports.put("textRenderer", TextRendererUtils.class);
         memberExports.put("chat", ChatUtils.class);
-        memberExports.put("color", ColorUtils.class);
         memberExports.put("camera", CameraUtils.class);
         memberExports.put("assets", AssetIdentifiers.class);
 

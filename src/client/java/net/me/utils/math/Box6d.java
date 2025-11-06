@@ -18,7 +18,6 @@
 
 package net.me.utils.math;
 
-@SuppressWarnings("unused")
 public record Box6d(
         double x1,
         double y1,
