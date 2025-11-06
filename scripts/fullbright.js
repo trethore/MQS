@@ -87,10 +87,7 @@ class FullBrightHookModule {
 
     onVerify(context, args, next) {
         const valueToValidate = args[0];
-        if (valueToValidate == null) {
-            return Optional.empty();
-        }
-        return Optional.of(valueToValidate);
+        return valueToValidate == null ? Optional.empty() : Optional.of(valueToValidate);
     }
 
     removeHook() {
