@@ -130,7 +130,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
                 keys.add(m.getName());
             }
         }
-        return keys.toArray(new String[0]);
+        return keys.toArray(String[]::new);
     }
 
     @Override

@@ -87,7 +87,9 @@ public class ConfigManager {
                 Map<String, Object> loadedConfig = GSON.fromJson(reader, MAP_TYPE);
                 return loadedConfig != null ? new ConcurrentHashMap<>(loadedConfig) : new ConcurrentHashMap<>();
             } catch (JsonSyntaxException e) {
-                Main.LOGGER.error("Failed to parse config for script ID '{}' due to invalid JSON. A new config will be created.", scriptId, e);
+                Main.LOGGER.error(
+                        "Failed to parse config for script ID '{}' due to invalid JSON. A new config will be created.",
+                        scriptId, e);
             } catch (Exception e) {
                 Main.LOGGER.error("Failed to load config for script ID '{}': {}", scriptId, e.getMessage());
             }
@@ -129,7 +131,8 @@ public class ConfigManager {
     @SuppressWarnings("unchecked")
     public void setKeybind(String scriptId, String keybindName, int keyCode) {
         Map<String, Object> config = getConfig(scriptId);
-        Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(ConfigKeys.KEYBINDS, k -> new ConcurrentHashMap<>());
+        Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(ConfigKeys.KEYBINDS,
+                k -> new ConcurrentHashMap<>());
 
         keybinds.put(keybindName, keyCode);
     }

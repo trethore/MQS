@@ -22,19 +22,16 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.command.commands.ScriptCommand;
-import net.me.command.commands.UiCommand;
 import net.me.command.commands.UpdateCommand;
 import net.me.scripting.ScriptingService;
 
 public class MQSCommand extends Command {
     private final ScriptCommand scriptCommand;
     private final UpdateCommand updateCommand;
-    private final UiCommand uiCommand;
 
     public MQSCommand(ScriptingService scriptingService) {
         this.scriptCommand = new ScriptCommand(scriptingService);
         this.updateCommand = new UpdateCommand();
-        this.uiCommand = new UiCommand();
     }
 
     @Override
@@ -42,7 +39,6 @@ public class MQSCommand extends Command {
         return ClientCommandManager.literal("mqs")
                 .requires(source -> source.hasPermissionLevel(0))
                 .then(scriptCommand.buildCommand())
-                .then(uiCommand.buildCommand())
                 .then(updateCommand.buildCommand());
     }
 }

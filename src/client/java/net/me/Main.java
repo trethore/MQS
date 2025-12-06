@@ -34,16 +34,10 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
-import net.me.ui.ScriptView;
 import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
-import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tytoo.minegui.MineGuiCore;
-import tytoo.minegui.MineGuiInitializationOptions;
-import tytoo.minegui.manager.UIManager;
-import tytoo.minegui.view.cursor.CursorPolicies;
 
 import java.nio.file.Path;
 
@@ -53,7 +47,6 @@ public class Main implements ClientModInitializer {
     @SuppressWarnings("unused")
     public static final String MC_VERSION = "1.21.4";
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
-    private static final String KEY_TOGGLE_SCRIPT_VIEW = "key.my-qol-scripts.toggle_ui";
 
     @Getter
     private static Main instance;
@@ -72,14 +65,11 @@ public class Main implements ClientModInitializer {
     @Getter
     private GlobalConfigManager globalConfigManager;
     @Getter
-    private ScriptView scriptView;
-    @Getter
     private KeybindManager keybindManager;
     private Engine scriptEngine;
 
     @Override
     public void onInitializeClient() {
-        initMineGui();
         instance = this;
 
         this.scriptEngine = Engine.create();
@@ -94,7 +84,6 @@ public class Main implements ClientModInitializer {
         this.eventManager = new EventManager(scriptManager);
         MQSEventBus.setManager(eventManager);
         this.keybindManager = new KeybindManager(scriptManager, configManager);
-        this.initKeybindings();
 
         this.hookManager = new HookManager(scriptManager, mappingsManager);
         this.scriptingService = new ScriptingService(scriptManager, configManager);
@@ -117,17 +106,6 @@ public class Main implements ClientModInitializer {
         })));
     }
 
-    private void initMineGui() {
-        MineGuiInitializationOptions options = MineGuiInitializationOptions.builder(Main.MOD_ID)
-                .defaultCursorPolicyId(CursorPolicies.clickToLockId())
-                .build();
-        MineGuiCore.init(options);
-
-        this.scriptView = new ScriptView();
-        UIManager.get(Main.MOD_ID).register(this.scriptView);
-    }
-
-
     private void registerClientCommands() {
         this.commandManager.addCommand(new MQSCommand(this.scriptingService));
     }
@@ -146,15 +124,5 @@ public class Main implements ClientModInitializer {
         this.consoleManager.addCommand(new SaveConfigCommand(this.consoleManager, this.scriptingService));
         this.consoleManager.addCommand(new SaveAllConfigsCommand(this.consoleManager, this.scriptingService));
         this.consoleManager.addCommand(new AllowAllClassesCommand(this.consoleManager, this.globalConfigManager));
-    }
-
-    private void initKeybindings() {
-        this.keybindManager.registerHost(
-                KEY_TOGGLE_SCRIPT_VIEW,
-                () -> this.scriptView.toggleVisibility(),
-                GLFW.GLFW_KEY_F9,
-                false,
-                100
-        );
     }
 }

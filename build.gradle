@@ -1,266 +1,234 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import tytoo.myqolscripts.UnpackSourcesTask
 
 import java.time.Year
 
+// --- Plugins & metadata ---
 plugins {
-	id 'fabric-loom' version "${loom_version}"
-	id 'com.github.johnrengelman.shadow' version '8.1.1'
-	id 'maven-publish'
+    id 'fabric-loom' version "${loom_version}"
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'maven-publish'
 }
 
 version = project.mod_version
-group   = project.maven_group
+group = project.maven_group
 
 base {
-	archivesName = project.archives_base_name
+    archivesName = project.archives_base_name
 }
 
+// --- Repositories ---
 repositories {
-	mavenCentral()
-
-	maven {
-		url = uri("https://maven.pkg.github.com/trethore/MineGui")
-		credentials {
-			username = findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR") ?: System.getenv("GPR_USER")
-			password = findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN") ?: System.getenv("GPR_TOKEN")
-		}
-		content { includeGroup("tytoo.minegui") }
-	}
-
-	maven { url = uri("https://packages.graalvm.org/maven") }
+    mavenCentral()
+    maven { url = uri("https://packages.graalvm.org/maven") }
 }
 
+// --- Loom setup ---
 loom {
-	splitEnvironmentSourceSets()
+    splitEnvironmentSourceSets()
 
-	mods {
-		"my-qol-scripts" {
-			sourceSet sourceSets.client
-		}
-	}
+    mods {
+        "my-qol-scripts" {
+            sourceSet sourceSets.client
+        }
+    }
 }
-// versions for dependencies
+// --- Version constants ---
 project.ext.graalVersion = "25.0.1"
 project.ext.bytebuddyVersion = "1.17.8"
-project.ext.mineguiVersion = "0.0.7-0.119.4+1.21.4+build.8"
-def sourceLibCoordinates = [
-		minegui:        "tytoo.minegui:minegui:${mineguiVersion}:sources@jar",
-		graalSdk:       "org.graalvm.sdk:graal-sdk:${graalVersion}:sources@jar",
-		truffleApi:     "org.graalvm.truffle:truffle-api:${graalVersion}:sources@jar",
-		jsLanguage:     "org.graalvm.js:js-language:${graalVersion}:sources@jar",
-		jsScriptEngine: "org.graalvm.js:js-scriptengine:${graalVersion}:sources@jar",
-		byteBuddy:      "net.bytebuddy:byte-buddy:${bytebuddyVersion}:sources@jar",
-		byteBuddyAgent: "net.bytebuddy:byte-buddy-agent:${bytebuddyVersion}:sources@jar"
-]
-ext.sourceLibCoordinates = sourceLibCoordinates
+project.ext.cfrVersion = "0.152"
 
 // Configuration used to fetch sources of external dependencies for browsing
 configurations {
-	sourceDeps
+    sourceDeps
+    cfr
 }
 
+// --- Dependencies ---
 dependencies {
-	minecraft          "com.mojang:minecraft:${project.minecraft_version}"
-	mappings           "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation  "net.fabricmc:fabric-loader:${project.loader_version}"
-	modImplementation  "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-	// graalvm my beloved
-	shadow(implementation "org.graalvm.sdk:graal-sdk:${graalVersion}")
-	shadow(implementation "org.graalvm.truffle:truffle-api:${graalVersion}")
-	shadow(implementation "org.graalvm.js:js-language:${graalVersion}")
-	shadow(implementation "org.graalvm.js:js-scriptengine:${graalVersion}")
-	shadow(implementation "net.bytebuddy:byte-buddy:${bytebuddyVersion}")
-	shadow(implementation "net.bytebuddy:byte-buddy-agent:${bytebuddyVersion}")
-	shadow(modImplementation "tytoo.minegui:minegui:${mineguiVersion}")
+    // graalvm my beloved
+    shadow(implementation "org.graalvm.sdk:graal-sdk:${graalVersion}")
+    shadow(implementation "org.graalvm.truffle:truffle-api:${graalVersion}")
+    shadow(implementation "org.graalvm.js:js-language:${graalVersion}")
+    shadow(implementation "org.graalvm.js:js-scriptengine:${graalVersion}")
+    shadow(implementation "net.bytebuddy:byte-buddy:${bytebuddyVersion}")
+    shadow(implementation "net.bytebuddy:byte-buddy-agent:${bytebuddyVersion}")
 
+    // lombok for less boilerplate
     compileOnly 'org.projectlombok:lombok:1.18.42'
     annotationProcessor 'org.projectlombok:lombok:1.18.42'
     clientCompileOnly 'org.projectlombok:lombok:1.18.42'
     clientAnnotationProcessor 'org.projectlombok:lombok:1.18.42'
 
-	sourceLibCoordinates.values().each { coordinate ->
-		sourceDeps coordinate
-	}
+    // Source dependencies for browsing
+    sourceDeps "org.graalvm.sdk:graal-sdk:${graalVersion}:sources@jar"
+    sourceDeps "org.graalvm.truffle:truffle-api:${graalVersion}:sources@jar"
+    sourceDeps "org.graalvm.js:js-language:${graalVersion}:sources@jar"
+    sourceDeps "org.graalvm.js:js-scriptengine:${graalVersion}:sources@jar"
+    sourceDeps "net.bytebuddy:byte-buddy:${bytebuddyVersion}:sources@jar"
+    sourceDeps "net.bytebuddy:byte-buddy-agent:${bytebuddyVersion}:sources@jar"
+
+    cfr "org.benf:cfr:${project.cfrVersion}"
 }
 
+// --- License headers & resource processing ---
 tasks.register('applyLicenseHeaders') {
-	doLast {
-		def headerFile = file('HEADER')
-		if (!headerFile.exists()) {
-			println "HEADER file not found. Skipping license header application."
-			return
-		}
+    doLast {
+        def headerFile = file('HEADER')
+        if (!headerFile.exists()) {
+            println "HEADER file not found. Skipping license header application."
+            return
+        }
 
-		def headerContent = headerFile.getText('UTF-8')
-				.replace('<year>', Year.now().getValue().toString())
-		def firstHeaderLine = headerContent.readLines().first()
+        def headerContent = headerFile.getText('UTF-8')
+                .replace('<year>', Year.now().getValue().toString())
+        def firstHeaderLine = headerContent.readLines().first()
 
-		sourceSets.each { sourceSet ->
-			sourceSet.java.srcDirs.each { srcDir ->
-				if (!srcDir.exists()) return
-				srcDir.eachFileRecurse(groovy.io.FileType.FILES) { file ->
-					if (file.name.endsWith('.java')) {
-						def content = file.getText('UTF-8')
-						if (!content.startsWith(firstHeaderLine)) {
-							println "Adding license header to: $file.path"
-							file.setText(headerContent + '\n\n' + content, 'UTF-8')
-						}
-					}
-				}
-			}
-		}
-	}
+        sourceSets.each { sourceSet ->
+            sourceSet.java.srcDirs.each { srcDir ->
+                if (!srcDir.exists()) return
+                srcDir.eachFileRecurse(groovy.io.FileType.FILES) { file ->
+                    if (file.name.endsWith('.java')) {
+                        def content = file.getText('UTF-8')
+                        if (!content.startsWith(firstHeaderLine)) {
+                            println "Adding license header to: $file.path"
+                            file.setText(headerContent + '\n\n' + content, 'UTF-8')
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
-processResources {
-	dependsOn(applyLicenseHeaders)
-	inputs.property "version", project.version
+["processResources", "processClientResources"].each { taskName ->
+    tasks.named(taskName) {
+        dependsOn(applyLicenseHeaders)
+        inputs.property("version", project.version)
 
-	filesMatching("fabric.mod.json") {
-		expand "version": inputs.properties.version
-	}
+        filesMatching("fabric.mod.json") {
+            expand("version": inputs.properties.version)
+        }
+    }
 }
 
-tasks.named("processClientResources") {
-	dependsOn(applyLicenseHeaders)
-	inputs.property("version", project.version)
-
-	filesMatching("fabric.mod.json") {
-		expand("version": inputs.properties.version)
-	}
-}
-
+// --- Java toolchain ---
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+    it.options.release = 21
 }
 
 java {
-	withSourcesJar()
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 def manifestAttributes = {
-	[
-			'Implementation-Title':   project.name,
-			'Implementation-Version': project.version,
-			'Built-By':               System.getProperty('user.name'),
-			'Built-Date':             new Date(),
-			'License':                "See ${project.archives_base_name}-LICENSE.txt"
-	]
+    [
+            'Implementation-Title'  : project.name,
+            'Implementation-Version': project.version,
+            'Built-By'              : System.getProperty('user.name'),
+            'Built-Date'            : new Date(),
+            'License'               : "See ${project.archives_base_name}-LICENSE.txt"
+    ]
 }
 
+// --- Packaging (JARs) ---
 jar {
-	from("LICENSE") {
-		into ""
-		rename { "${project.archives_base_name}-LICENSE.txt" }
-	}
+    from("LICENSE") {
+        into ""
+        rename { "${project.archives_base_name}-LICENSE.txt" }
+    }
 
-	manifest {
-		attributes(manifestAttributes())
-	}
+    manifest {
+        attributes(manifestAttributes())
+    }
 }
 
 shadowJar {
-	archiveClassifier.set("dev")
-	configurations = [project.configurations.shadow]
-	from sourceSets.client.output
+    archiveClassifier.set("dev")
+    configurations = [project.configurations.shadow]
+    from sourceSets.client.output
 
-	from("LICENSE") {
-		into "META-INF"
-		rename { "${project.archives_base_name}-LICENSE.txt" }
-	}
+    from("LICENSE") {
+        into "META-INF"
+        rename { "${project.archives_base_name}-LICENSE.txt" }
+    }
 
-	mergeServiceFiles()
-	relocate 'org.graalvm', 'net.me.libs.graalvm'
-	relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
-	relocate 'tytoo.minegui', 'net.me.libs.minegui'
+    mergeServiceFiles()
+    relocate 'org.graalvm', 'net.me.libs.graalvm'
+    relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
 
-	manifest {
-		attributes(manifestAttributes())
-	}
+    manifest {
+        attributes(manifestAttributes())
+    }
 }
 
 tasks.register('shadowLibsJar', ShadowJar) {
-	archiveClassifier.set("libs-only")
-	configurations = [project.configurations.shadow]
-	dependencies {
-		include(dependency("org.graalvm.sdk:graal-sdk"))
-		include(dependency("org.graalvm.truffle:truffle-api"))
-		include(dependency("org.graalvm.js:js-language"))
-		include(dependency("org.graalvm.js:js-scriptengine"))
-		include(dependency("net.bytebuddy:byte-buddy"))
-		include(dependency("net.bytebuddy:byte-buddy-agent"))
-	}
-	from({ files() })
-	mergeServiceFiles()
-	relocate 'org.graalvm', 'net.me.libs.graalvm'
-	relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
-}
-
-tasks.register('shadowMineGuiJar', ShadowJar) {
-	archiveClassifier.set("minegui-dev")
-	configurations = [project.configurations.shadow]
-	from sourceSets.client.output
-	dependencies {
-		include(dependency("tytoo.minegui:minegui"))
-	}
-	mergeServiceFiles()
-	relocate 'tytoo.minegui', 'net.me.libs.minegui'
+    archiveClassifier.set("libs-only")
+    configurations = [project.configurations.shadow]
+    dependencies {
+        include(dependency("org.graalvm.sdk:graal-sdk"))
+        include(dependency("org.graalvm.truffle:truffle-api"))
+        include(dependency("org.graalvm.js:js-language"))
+        include(dependency("org.graalvm.js:js-scriptengine"))
+        include(dependency("net.bytebuddy:byte-buddy"))
+        include(dependency("net.bytebuddy:byte-buddy-agent"))
+    }
+    from({ files() })
+    mergeServiceFiles()
+    relocate 'org.graalvm', 'net.me.libs.graalvm'
+    relocate 'net.bytebuddy', 'net.me.libs.bytebuddy'
 }
 
 remapJar {
-	dependsOn(tasks.named('shadowMineGuiJar'), tasks.named('shadowLibsJar'))
-	inputFile = tasks.named('shadowMineGuiJar', ShadowJar).get().archiveFile
+    dependsOn(tasks.named('shadowJar'))
+    inputFile = tasks.named('shadowJar', ShadowJar).get().archiveFile
 
-	from({ zipTree(tasks.named('shadowLibsJar', ShadowJar).get().archiveFile.get().asFile) })
-
-	from("LICENSE") {
-		into "META-INF"
-		rename { "${project.archives_base_name}-LICENSE.txt" }
-	}
+    from("LICENSE") {
+        into "META-INF"
+        rename { "${project.archives_base_name}-LICENSE.txt" }
+    }
 }
 
+// --- Publishing ---
 publishing {
-	publications {
-		create("mavenJava", MavenPublication) {
-			artifactId = project.archives_base_name
-			from components.java
-		}
-	}
-	repositories {
-		// configure your publish repos here
-	}
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+        }
+    }
+    repositories {
+        // configure your publish repos here
+    }
 }
 
-tasks.register('unpackLibSources', Sync) {
-	group = "help"
-	description = "Unpacks library sources into libs-src for browsing"
-	duplicatesStrategy = DuplicatesStrategy.INCLUDE
-	into "$projectDir/libs-src"
-	project.ext.sourceLibCoordinates.each { folder, notation ->
-		from({
-			String notationValue = notation.toString()
-			String[] parts = notationValue.split(':')
-			def artifact = configurations.sourceDeps.resolvedConfiguration.resolvedArtifacts.find { resolved ->
-				resolved.moduleVersion.id.group == parts[0] &&
-						resolved.moduleVersion.id.name == parts[1] &&
-						resolved.moduleVersion.id.version == parts[2]
-			}
-			artifact == null ? [] : project.zipTree(artifact.file)
-		}) {
-			into folder
-		}
-	}
+def unpackedSourcesDir = layout.projectDirectory.dir("libs-src")
+def sourceDepsConfig = configurations.named('sourceDeps')
+def cfrConfig = configurations.named('cfr')
+def minecraftCacheDirProvider = layout.projectDirectory.dir(".gradle/loom-cache/minecraftMaven")
+def fabricCacheDirProvider = layout.projectDirectory.dir(".gradle/loom-cache/remapped_mods/remapped/net/fabricmc/fabric-api")
+
+// --- Source browsing helpers ---
+tasks.register('cleanSources', Delete) {
+    group = "help"
+    description = "Deletes unpacked sources in libs-src/"
+    delete unpackedSourcesDir
 }
 
-tasks.register('cleanLibSources') {
-	group = "help"
-	description = "Removes unpacked library sources"
-	doLast {
-		project.ext.sourceLibCoordinates.keySet().each { folder ->
-			delete "$projectDir/libs-src/${folder}"
-		}
-	}
+tasks.register('unpackSources', UnpackSourcesTask) {
+    group = "help"
+    description = "Unpacks library, Minecraft, and Fabric sources into libs-src/"
+    dependsOn tasks.named('cleanSources')
+    sourceDeps.from(sourceDepsConfig)
+    cfrClasspath.from(cfrConfig)
+    outputDir.set(unpackedSourcesDir)
+    minecraftCacheDir.set(minecraftCacheDirProvider)
+    fabricCacheDir.set(fabricCacheDirProvider)
 }
