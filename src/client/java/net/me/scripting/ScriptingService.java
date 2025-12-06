@@ -73,7 +73,7 @@ public class ScriptingService {
     public String getFormattedScriptList() {
         Collection<ScriptDescriptor> available = listAvailable();
         if (available.isEmpty()) {
-            return "No scripts found. Add .js files to the 'my-qol-scripts/scripts' folder.";
+            return "No scripts found. Add .js files to the 'myqolscripts/scripts' folder.";
         }
 
         return available.stream()

@@ -39,7 +39,7 @@ import java.util.function.Consumer;
 public class UpdateUtils {
 
     private static final Path UPDATES_FOLDER = Main.MOD_DIR.resolve("updates");
-    private static final String UPDATE_FILE_NAME = "my-qol-scripts-update.jar";
+    private static final String UPDATE_FILE_NAME = "myqolscripts-update.jar";
 
     private static final String GITHUB_KEY_TAG_NAME = "tag_name";
     private static final String GITHUB_KEY_BODY = "body";

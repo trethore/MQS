@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "my_qol_scripts",
+  "id": "myqolscripts",
   "version": "${version}",
   "name": "My Qol Scripts",
   "description": "This is just better than JsMacro.",
@@ -12,7 +12,7 @@
     "sources": "https://github.com/trethore/MQS"
   },
   "license": "CC0-1.0",
-  "icon": "assets/my_qol_scripts/icon.png",
+  "icon": "assets/myqolscripts/icon.png",
   "environment": "*",
   "entrypoints": {
     "client": [
@@ -21,7 +21,7 @@
   },
   "mixins": [
     {
-      "config": "my_qol_scripts.client.mixins.json",
+      "config": "myqolscripts.client.mixins.json",
       "environment": "client"
     }
   ],

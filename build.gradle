@@ -28,7 +28,7 @@ loom {
     splitEnvironmentSourceSets()
 
     mods {
-        "my-qol-scripts" {
+        "myqolscripts" {
             sourceSet sourceSets.client
         }
     }

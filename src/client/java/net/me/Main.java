@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 
 public class Main implements ClientModInitializer {
-    public static final String MOD_ID = "my_qol_scripts";
+    public static final String MOD_ID = "myqolscripts";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     @SuppressWarnings("unused")
     public static final String MC_VERSION = "1.21.4";

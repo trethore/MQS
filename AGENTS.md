@@ -12,7 +12,7 @@ Runtime modules are organized into focused packages:
 - `net.me.event`: an MQS-specific event bus layered on Fabric hooks. `EventManager` tracks per-phase listeners, bridges Fabric events through `FabricEventAdapter`, and enforces ownership per `RunningScript`.
 - `net.me.hooking`: ByteBuddy-driven interception. `HookManager` installs the agent, resolves Yarn → runtime names via `MappingsManager`, and applies or removes hooks in response to script requests.
 - `net.me.console`, `net.me.command`, `net.me.keybinds`, `net.me.config`: user-facing surfaces for the integrated console, `/mqs` command tree, script-defined keybinds, and persistent configuration (`mqs_config.json` plus per-script files).
-- `net.me.utils` together with mixins under `net.me.mixin`: shared helpers and mixins declared in `my-qol-scripts.client.mixins.json` that expose Minecraft internals required by the scripting APIs.
+- `net.me.utils` together with mixins under `net.me.mixin`: shared helpers and mixins declared in `myqolscripts.client.mixins.json` that expose Minecraft internals required by the scripting APIs.
 
 Assets and metadata live under `src/client/resources/`; `fabric.mod.json` registers the client entry point and mixin config.
 
@@ -20,7 +20,7 @@ Assets and metadata live under `src/client/resources/`; `fabric.mod.json` regist
 
 - **Scripts are treated as first-class modules with explicit lifecycles**: Managers ensure that enabling a script registers its events, keybinds, hooks, and config, and that disabling it unwinds that state. `ScriptingService` exposes these lifecycle controls to commands, the console, and other surfaces without leaking implementation details.
 - **Performance and stability drive host-side choices**: `ScriptContextManager` pools Graal contexts, hook retransformation only occurs while entries exist, and Minecraft-facing work is scheduled back onto the client thread through `McUtils`. Yarn mappings are loaded up front so JavaScript can rely on stable names.
-- **Security defaults stay conservative**: `ScriptingClassResolver` restricts class access to whitelisted packages unless `GlobalConfigManager`'s `allowAllClasses` flag is explicitly enabled, and global toggles (log redirect, class access) are surfaced via console commands. Scripts are discovered from the user-controlled `my-qol-scripts/scripts` folder, keeping ownership with the player.
+- **Security defaults stay conservative**: `ScriptingClassResolver` restricts class access to whitelisted packages unless `GlobalConfigManager`'s `allowAllClasses` flag is explicitly enabled, and global toggles (log redirect, class access) are surfaced via console commands. Scripts are discovered from the user-controlled `myqolscripts/scripts` folder, keeping ownership with the player.
 - **Contributor ergonomics matter**: APIs expand through explicit utilities (for example `MQSUtils`, rendering helpers, config accessors) instead of broad inheritance trees. Host code targets Java 21 and follows Fabric/Yarn abstractions, so new features should extend the existing managers or adapters rather than bypass them.
 
 ## General Coding Conventions
