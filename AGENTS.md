@@ -1,7 +1,7 @@
 # Repository Guidelines
 
-My QOL Scripts (MQS) is a powerful, client-side scripting mod for Minecraft 1.21.4 that runs on the Fabric mod loader.\
-It provides a high-performance JavaScript engine and a rich set of APIs, allowing you to create complex scripts to enhance your gameplay.
+My QOL Scripts (MQS) is a powerful, client-side scripting mod for Minecraft 1.21.4 that runs on the Fabric mod loader.
+It provides a high-performance JavaScript engine and a rich set of APIs, enabling complex scripts that enhance gameplay.
 
 ## Project Overview & Architecture
 
@@ -27,41 +27,39 @@ Assets and metadata live under `src/client/resources/`; `fabric.mod.json` regist
 - Target Java 21 with 4-space indentation and packages under `net.me.*`.
 - Use PascalCase for classes, camelCase for methods and fields, and UPPER_SNAKE_CASE for constants.
 - Declare explicit types and avoid `var`; prefer descriptive names over one-letter identifiers.
-- Bring types into scope with imports; do not use fully qualified class names inside method bodies.
+- Import types rather than using fully qualified names inside method bodies.
 - When adding shared utilities, document behaviour through clear method names and arguments rather than abstract component hierarchies.
 - Assume contributors are working in IntelliJ IDEA; keep code free of IDE warnings.
-- Never add code comments unless the user explicitly requests documentation.
-- Keep edits minimal and stylistically aligned with surrounding code; do not introduce new formatting tools or unrelated refactors.
-- If the requirements are unclear or the task is infeasible, pause and request clarification before proceeding.
+- Avoid code comments unless documentation is explicitly requested.
+- Keep edits minimal and stylistically consistent with surrounding code; do not introduce unrelated refactors or new formatting tools.
+- If requirements are unclear or infeasible, request clarification before proceeding.
 - Order members in Java classes consistently: static constants, static fields, instance fields, constructors, overridden methods, public methods, protected/private helpers, then getters and setters at the bottom.
 
 ## Java 21 Expectations
-- Assume the runtime is Java 21; rely only on features that are stable in this release and avoid preview or incubator APIs.
-- Leverage modern Java 21 standard-library utilities (Streams, Optional, records) when they improve clarity and maintainability.
-- Maintain explicit, readable control flow; avoid overly clever constructs that impair comprehension.
+- Assume Java 21 at runtime; use only stable features and avoid preview or incubator APIs.
+- Use modern Java 21 standard-library utilities (Streams, Optional, records) when they improve clarity.
+- Maintain explicit, readable control flow; avoid clever constructs that harm comprehension.
 
 ## Minecraft Integration Rules
 - The codebase targets Fabric for Minecraft 1.21.4 with Yarn mappings `1.21.4+build.8`; use APIs that exist in this combination.
-- Prefer modern Fabric/Minecraft methods such as `Identifier.of(String namespace, String path)` and current rendering APIs; avoid deprecated signatures.
+- Prefer modern Fabric/Minecraft methods such as `Identifier.of(String namespace, String path)` and up-to-date rendering APIs; avoid deprecated signatures.
 - Place new assets, mixin configs, and JSON metadata within `src/client/resources/`, keeping identifiers in the `Main.MOD_ID` namespace.
-- Integrate through established abstractions instead of bypassing them unless you are extending those layers.
+- Integrate through established abstractions unless explicitly extending them.
 - Never reference loaders, mappings, or game versions beyond the configured target without explicit user approval.
 
 ## Dependencies & External Sources
-- Fabric Loader, Fabric API, and Yarn mappings are versioned in `gradle.properties`; Fabric Loom wires them into the client source set and remaps game classes during packaging. Keep these aligned with Minecraft `1.21.4` before bumping APIs.
-- GraalVM JavaScript artifacts (`graal-sdk`, `truffle-api`, `js-language`, `js-scriptengine`) are bundled through Shadow, relocated to `net.me.libs.graalvm`, and consumed by the scripting engine.
+- Fabric Loader, Fabric API, and Yarn mappings are versioned in `gradle.properties`; Fabric Loom integrates them into the client source set and remaps game classes during packaging. Keep these aligned with Minecraft `1.21.4` before updating APIs.
+- GraalVM JavaScript artifacts (`graal-sdk`, `truffle-api`, `js-language`, `js-scriptengine`) are bundled through Shadow, relocated to `net.me.libs.graalvm`, and used by the scripting engine.
 - Byte Buddy (`byte-buddy`, `byte-buddy-agent`) is shaded to `net.me.libs.bytebuddy` and powers runtime interception in `HookManager`.
-- Lombok ships as a dependency; prefer its annotations to trim boilerplate and keep the host code concise.
-- `tytoo.minegui:minegui` (MineGui) ships from `https://github.com/trethore/MineGui` via GitHub Packages and is relocated to `net.me.libs.minegui`.
-- MineGui documentation is tracked as a submodule under `libs-docs/minegui`; review the latest docs there.
-- Library sources are fetched through the `sourceDeps` configuration (see `build.gradle`) and unpacked per-library with `./gradlew unpackLibSources` into `libs-src/<library>`. Use `./gradlew cleanLibSources` to prune those directories when you need a fresh extraction.
+- Lombok ships as a dependency; prefer its annotations to reduce boilerplate.
+- Library sources are fetched through the `sourceDeps` configuration (see `build.gradle`) and unpacked per-library with `./gradlew unpackSources` into `libs-src/<library>`. The task `./gradlew cleanSources` prune those directories if you need a fresh extraction.
 
 ## Testing & Verification
-- Do not run Gradle commands yourself; provide the exact command so the user can execute it and state tooling limitations up front.
-- Encourage the user to run `./gradlew compileJava` after changes, `./gradlew build` for full validation, and `./gradlew runClient` to exercise UI flows.
-- Document manual validation steps and remaining risks before finishing.
+- Do not run Gradle commands yourself; instead provide the exact command for the user to execute and state tooling limitations clearly.
+- Encourage running `./gradlew compileJava` after changes, `./gradlew build` for full validation, and `./gradlew runClient` to test UI flows.
+- Document manual validation steps and remaining risks before completing work.
 
 ## Pull Requests
 - Keep PRs focused on a single concern and avoid unrelated cleanups.
-- Provide clear summaries, rationale, and manual test steps; include visuals for UI changes when applicable.
+- Provide clear summaries, rationale, and manual test steps; include visuals for UI changes when relevant.
 - Use Conventional Commit conventions (e.g., `feat(ui): add slider snap support`) and flag breaking API changes early.
