@@ -44,7 +44,7 @@ public class ScriptingApi {
         return args -> {
             if (args.length == 0 || !args[0].isString())
                 throw new RuntimeException("importClass requires a FQCN string argument (Yarn mappings).");
-            var name = args[0].asString();
+            String name = args[0].asString();
             if (!resolver.isClassAllowed(name)) throw new RuntimeException("Class not allowed: " + name);
 
             String runtime = resolver.getRuntimeName(name);
@@ -75,7 +75,7 @@ public class ScriptingApi {
             }
             Class<?> instanceClass = javaInstance.getClass();
 
-            var cm = MappingUtils.combineMappings(instanceClass, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
+            MappingUtils.ClassMappings cm = MappingUtils.combineMappings(instanceClass, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
 
             return new JsObjectWrapper(
                     javaInstance,
@@ -266,7 +266,7 @@ public class ScriptingApi {
             Class<?> clazz = value.as(Class.class);
             String yarnName = resolver.getRuntimeToYarnMap().get(clazz.getName());
             if (yarnName != null) {
-                var cm = MappingUtils.combineMappings(clazz, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
+                MappingUtils.ClassMappings cm = MappingUtils.combineMappings(clazz, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
                 return new MappedClassInfo(yarnName, clazz, cm.methods(), cm.fields());
             } else {
                 return new MappedClassInfo(clazz.getName(), clazz, Collections.emptyMap(), Collections.emptyMap());

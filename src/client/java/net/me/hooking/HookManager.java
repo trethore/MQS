@@ -287,7 +287,7 @@ public class HookManager {
                 mappingsManager.getFieldMap()
         );
 
-        var runtimeNames = classMappings.methods().get(yarnMethodName);
+        List<String> runtimeNames = classMappings.methods().get(yarnMethodName);
         if (runtimeNames != null && !runtimeNames.isEmpty()) {
             return runtimeNames.toArray(new String[0]);
         } else {

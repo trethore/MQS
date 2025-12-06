@@ -31,7 +31,7 @@ public class MappedInstanceProxy implements ProxyObject {
     public MappedInstanceProxy(Object extendedInstance, ScriptingClassResolver resolver) {
         this.extendedInstance = extendedInstance;
 
-        var cm = MappingUtils.combineMappings(
+        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(
                 extendedInstance.getClass(),
                 resolver.getRuntimeToYarnMap(),
                 resolver.getMethodMap(),

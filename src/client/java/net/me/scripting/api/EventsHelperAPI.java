@@ -155,7 +155,7 @@ public class EventsHelperAPI implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        var keys = new String[namedEvents.size() + MEMBER_KEYS.size()];
+        String[] keys = new String[namedEvents.size() + MEMBER_KEYS.size()];
         int index = 0;
         for (String helper : MEMBER_KEYS) {
             keys[index++] = helper;

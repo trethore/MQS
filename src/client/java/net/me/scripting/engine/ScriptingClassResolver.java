@@ -184,7 +184,7 @@ public class ScriptingClassResolver {
 
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
-        var cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
+        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
         return new JsClassWrapper(runtime, cm.methods(), cm.fields(), this.mappingsManager, this.scriptManager);
     }
 

@@ -191,13 +191,13 @@ public class ConfigManager {
         inMemoryConfigs.remove(script.getId());
     }
 
-    public int saveAllConfigs() {
-        int count = inMemoryConfigs.size();
-        if (count == 0) return 0;
+    public void saveAllConfigs() {
+        if (inMemoryConfigs.isEmpty()) {
+            return;
+        }
 
         for (String scriptId : Set.copyOf(inMemoryConfigs.keySet())) {
             saveConfig(scriptId);
         }
-        return count;
     }
 }

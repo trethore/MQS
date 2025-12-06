@@ -107,7 +107,7 @@ public class CommandsAPI implements ProxyObject {
                     }
                     String name = args[0].asString();
                     String typeStr = args[1].asString();
-                    var type = ScriptArgumentType.fromString(typeStr);
+                    ScriptArgumentType type = ScriptArgumentType.fromString(typeStr);
                     return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, this.scriptManager);
                 }
                 case REGISTER: {

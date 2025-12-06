@@ -82,7 +82,7 @@ public class CommandsHelperAPI implements ProxyObject {
                     throw new IllegalArgumentException("commands.argument(name, type) requires two string arguments.");
                 }
                 RunningScript owner = getCurrentScript();
-                var type = ScriptArgumentType.fromString(args[1].asString());
+                ScriptArgumentType type = ScriptArgumentType.fromString(args[1].asString());
                 return new CommandBuilder(ClientCommandManager.argument(args[0].asString(), type.get()), owner, scriptManager);
             };
             case REGISTER -> (ProxyExecutable) args -> {

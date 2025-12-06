@@ -32,6 +32,7 @@ import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
 import net.me.utils.ChatUtils;
 
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -144,7 +145,7 @@ public class ScriptCommand extends Command {
     }
 
     private CompletableFuture<Suggestions> suggestDisabledScripts(CommandContext<FabricClientCommandSource> context, SuggestionsBuilder builder) {
-        var runningIds = scriptingService.listRunning().stream()
+        Set<String> runningIds = scriptingService.listRunning().stream()
                 .map(RunningScript::getId)
                 .collect(Collectors.toSet());
         scriptingService.listAvailable().stream()

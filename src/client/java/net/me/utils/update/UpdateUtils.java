@@ -18,6 +18,8 @@
 
 package net.me.utils.update;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
@@ -140,9 +142,9 @@ public class UpdateUtils {
 
             String downloadUrl = null;
             if (release.has(GITHUB_KEY_ASSETS) && release.get(GITHUB_KEY_ASSETS).isJsonArray()) {
-                var assets = release.get(GITHUB_KEY_ASSETS).getAsJsonArray();
-                for (var asset : assets) {
-                    var assetObj = asset.getAsJsonObject();
+                JsonArray assets = release.get(GITHUB_KEY_ASSETS).getAsJsonArray();
+                for (JsonElement asset : assets) {
+                    JsonObject assetObj = asset.getAsJsonObject();
                     String fileName = assetObj.get(GITHUB_KEY_ASSET_NAME).getAsString();
 
                     if (fileName.endsWith(".jar") && !fileName.endsWith("-sources.jar") && !fileName.endsWith("-dev.jar")) {

@@ -110,7 +110,7 @@ public class MappingsManager {
         Map<String, Map<String, List<String>>> methods = new HashMap<>();
         Map<String, Map<String, String>> fields = new HashMap<>();
 
-        for (var cls : mappingsTree.getClasses()) {
+        for (MemoryMappingTree.ClassMapping cls : mappingsTree.getClasses()) {
             String yarnName = cls.getName(namedId);
             String runtimeName = cls.getName(runtimeId);
             if (yarnName == null || runtimeName == null) continue;

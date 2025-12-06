@@ -107,6 +107,12 @@ public class ScriptingService {
     }
 
     public int saveAll() {
-        return configManager.saveAllConfigs();
+        Collection<RunningScript> runningScripts = scriptManager.getRunningScripts();
+        if (runningScripts.isEmpty()) {
+            return 0;
+        }
+
+        runningScripts.forEach(configManager::saveConfig);
+        return runningScripts.size();
     }
 }
