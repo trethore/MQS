@@ -21,6 +21,7 @@ package net.me.scripting.extenders;
 import net.me.scripting.WrapperConstants;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
+import net.me.scripting.engine.ScriptConstants;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
@@ -37,6 +38,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
+    private static final String BIND_METHOD = "bind";
+
     private final ExtensionConfig config;
     private final Context context;
     private final Value baseAdapterConstructor;
@@ -73,7 +76,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     }
 
     private Value createBaseAdapter() {
-        Value extendFn = context.eval("js", "Java.extend");
+        Value extendFn = context.eval(ScriptConstants.JS, "Java.extend");
         List<Object> extendArgs = new ArrayList<>();
         extendArgs.add(config.extendsClass().targetClass());
         for (MappedClassInfo interfaceInfo : config.implementsClasses()) {
@@ -84,8 +87,8 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
     @Override
     public Object newInstance(Value... constructorArgs) {
-        Value overridesValue = context.eval("js", "({})");
-        Value addonsValue = context.eval("js", "({})");
+        Value overridesValue = context.eval(ScriptConstants.JS, "({})");
+        Value addonsValue = context.eval(ScriptConstants.JS, "({})");
 
         if (this.jsImplementation != null && this.jsImplementation.hasMembers()) {
             for (String key : this.jsImplementation.getMemberKeys()) {
@@ -157,21 +160,21 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
         wrapperProperties.put(WrapperConstants.SELF, baseInstance);
 
-        Value actualGrandParentSuper = (this.parentSuper != null) ? this.parentSuper : context.eval("js", "Java.super").execute(baseInstance);
+        Value actualGrandParentSuper = (this.parentSuper != null) ? this.parentSuper : context.eval(ScriptConstants.JS, "Java.super").execute(baseInstance);
         Map<String, List<String>> currentMethodMappings = this.config.extendsClass().methodMappings();
         wrapperProperties.put(WrapperConstants.SUPER, new SuperProxy(this.parentOverrides, actualGrandParentSuper, wrapperVal, currentMethodMappings));
 
         if (this.parentAddons != null) {
             for (String key : this.parentAddons.getMemberKeys()) {
                 Value member = this.parentAddons.getMember(key);
-                wrapperProperties.put(key, member.canExecute() ? member.invokeMember("bind", wrapperVal) : member);
+                wrapperProperties.put(key, member.canExecute() ? member.invokeMember(BIND_METHOD, wrapperVal) : member);
             }
         }
 
         if (childAddons != null) {
             for (String key : childAddons.getMemberKeys()) {
                 Value member = childAddons.getMember(key);
-                wrapperProperties.put(key, member.canExecute() ? member.invokeMember("bind", wrapperVal) : member);
+                wrapperProperties.put(key, member.canExecute() ? member.invokeMember(BIND_METHOD, wrapperVal) : member);
             }
         }
     }
@@ -257,7 +260,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     private Value mergeJSObjects(Value parent, Value child) {
         if (parent == null || parent.isNull()) return child;
         if (child == null || child.isNull()) return parent;
-        Value merged = context.eval("js", "({})");
+        Value merged = context.eval(ScriptConstants.JS, "({})");
         for (String key : parent.getMemberKeys()) merged.putMember(key, parent.getMember(key));
         for (String key : child.getMemberKeys()) merged.putMember(key, child.getMember(key));
         return merged;

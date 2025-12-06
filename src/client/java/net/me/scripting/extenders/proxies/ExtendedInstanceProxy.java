@@ -23,6 +23,8 @@ import lombok.Setter;
 import net.me.scripting.WrapperConstants;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.utils.ScriptUtils;
+import net.me.scripting.wrappers.JsClassWrapper;
+import net.me.scripting.wrappers.LazyJsClassHolder;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -68,9 +70,9 @@ public class ExtendedInstanceProxy implements ProxyObject {
                     throw new IllegalArgumentException("The argument to _instanceof cannot be null.");
                 }
                 Object proxy = classValue.isProxyObject() ? classValue.asProxyObject() : null;
-                if (proxy instanceof net.me.scripting.wrappers.LazyJsClassHolder holder) {
+                if (proxy instanceof LazyJsClassHolder holder) {
                     rawClass = holder.getWrapper().getTargetClass();
-                } else if (proxy instanceof net.me.scripting.wrappers.JsClassWrapper wrapper) {
+                } else if (proxy instanceof JsClassWrapper wrapper) {
                     rawClass = wrapper.getTargetClass();
                 } else {
                     Object unwrapped = ScriptUtils.unwrapReceiver(classValue);

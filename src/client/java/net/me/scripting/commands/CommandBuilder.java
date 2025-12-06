@@ -21,6 +21,7 @@ package net.me.scripting.commands;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.Main;
@@ -29,6 +30,9 @@ import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+
+import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("unused")
 public class CommandBuilder {
@@ -55,6 +59,7 @@ public class CommandBuilder {
     @HostAccess.Export
     public CommandBuilder executes(Value callback) {
         this.builder.executes(context -> {
+            RunningScript previous = scriptManager.getCurrentScript();
             scriptManager.setCurrentScript(owner);
             try {
                 Value jsInstance = owner.getJsInstance();
@@ -62,7 +67,11 @@ public class CommandBuilder {
             } catch (Exception e) {
                 Main.LOGGER.error("Error executing command in script '{}': {}", owner.getName(), e.getMessage(), e);
             } finally {
-                scriptManager.clearCurrentScript();
+                if (previous != null) {
+                    scriptManager.setCurrentScript(previous);
+                } else {
+                    scriptManager.clearCurrentScript();
+                }
             }
             return CommandManager.COMMAND_SUCCESS;
         });
@@ -77,41 +86,99 @@ public class CommandBuilder {
 
     @HostAccess.Export
     public CommandBuilder suggests(Value callback) {
-        if (this.builder instanceof RequiredArgumentBuilder<?, ?> rawArgBuilder) {
-            @SuppressWarnings("unchecked")
-            RequiredArgumentBuilder<FabricClientCommandSource, ?> argBuilder =
-                    (RequiredArgumentBuilder<FabricClientCommandSource, ?>) rawArgBuilder;
-
-            argBuilder.suggests((context, builder) -> {
-                scriptManager.setCurrentScript(this.owner);
-                try {
-                    Value jsInstance = this.owner.getJsInstance();
-                    Value result = callback.invokeMember("call", jsInstance, new JSCommandContext(context));
-
-                    if (result != null && result.hasArrayElements()) {
-                        for (long i = 0; i < result.getArraySize(); i++) {
-                            Value element = result.getArrayElement(i);
-                            if (element.isString()) {
-                                builder.suggest(element.asString());
-                            }
-                        }
-                    }
-                } catch (Throwable t) {
-                    Main.LOGGER.error("Error executing suggestion provider for script '{}'", this.owner.getName(), t);
-                } finally {
-                    scriptManager.clearCurrentScript();
-                }
-                return builder.buildFuture();
-            });
-            return this;
-        } else {
+        if (!(this.builder instanceof RequiredArgumentBuilder<?, ?> rawArgBuilder)) {
             throw new IllegalStateException("'.suggests()' can only be called on an argument node created with '.arg()'");
         }
+
+        if (callback == null) {
+            throw new IllegalArgumentException("Suggestion source cannot be null.");
+        }
+
+        @SuppressWarnings("unchecked")
+        RequiredArgumentBuilder<FabricClientCommandSource, ?> argBuilder =
+                (RequiredArgumentBuilder<FabricClientCommandSource, ?>) rawArgBuilder;
+
+        argBuilder.suggests((context, builder) -> {
+            RunningScript previous = scriptManager.getCurrentScript();
+            scriptManager.setCurrentScript(this.owner);
+            try {
+                Value jsInstance = this.owner.getJsInstance();
+                Value result = callback.canExecute()
+                        ? callback.invokeMember("call", jsInstance, new JSCommandContext(context))
+                        : callback;
+
+                Value resolved = awaitIfPromise(result);
+                appendSuggestions(resolved, builder);
+            } catch (Throwable t) {
+                Main.LOGGER.error("Error executing suggestion provider for script '{}'", this.owner.getName(), t);
+            } finally {
+                if (previous != null) {
+                    scriptManager.setCurrentScript(previous);
+                } else {
+                    scriptManager.clearCurrentScript();
+                }
+            }
+            return builder.buildFuture();
+        });
+        return this;
     }
 
     @HostAccess.Export
     public CommandBuilder suggest(Value callback) {
         return suggests(callback);
+    }
+
+    private Value awaitIfPromise(Value value) {
+        if (value == null || !value.hasMember("then")) {
+            return value;
+        }
+
+        try {
+            CompletableFuture<Value> future = new CompletableFuture<>();
+            value.invokeMember("then", (ProxyExecutable) args -> {
+                Value resolved = args != null && args.length > 0 ? args[0] : null;
+                future.complete(resolved);
+                return null;
+            });
+            if (value.hasMember("catch")) {
+                value.invokeMember("catch", (ProxyExecutable) args -> {
+                    if (!future.isDone()) {
+                        future.complete(null);
+                    }
+                    return null;
+                });
+            }
+            return future.join();
+        } catch (Exception e) {
+            Main.LOGGER.error("Failed to await promise suggestions for script '{}'", this.owner.getName(), e);
+            return null;
+        }
+    }
+
+    private void appendSuggestions(Value suggestions, SuggestionsBuilder builder) {
+        if (suggestions == null) {
+            return;
+        }
+        if (suggestions.hasArrayElements()) {
+            for (long i = 0; i < suggestions.getArraySize(); i++) {
+                Value element = suggestions.getArrayElement(i);
+                if (element != null && element.isString()) {
+                    builder.suggest(element.asString());
+                }
+            }
+            return;
+        }
+        if (suggestions.isString()) {
+            builder.suggest(suggestions.asString());
+            return;
+        }
+        if (suggestions.isHostObject() && suggestions.asHostObject() instanceof Iterable<?> iterable) {
+            for (Object entry : iterable) {
+                if (entry != null) {
+                    builder.suggest(entry.toString());
+                }
+            }
+        }
     }
 
     public LiteralArgumentBuilder<FabricClientCommandSource> getRootBuilder() {

@@ -50,12 +50,15 @@ public class FabricEventAdapter {
 
     private static Class<?> findListenerType(net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
         if (!fabricEvent.getClass().getName().equals("net.fabricmc.fabric.impl.base.event.ArrayBackedEvent")) {
-            LOGGER.warn("Attempting to find listener type for non-ArrayBackedEvent: {}. This may fail.", fabricEvent.getClass());
+            LOGGER.warn("Attempting to find listener type for non-ArrayBackedEvent: {}. This may fail.",
+                    fabricEvent.getClass());
             return Arrays.stream(fabricEvent.getClass().getMethods())
-                    .filter(m -> m.getName().equals("register") && m.getParameterCount() == 1 && m.getParameterTypes()[0] != net.minecraft.util.Identifier.class)
+                    .filter(m -> m.getName().equals("register") && m.getParameterCount() == 1
+                            && m.getParameterTypes()[0] != net.minecraft.util.Identifier.class)
                     .findFirst()
                     .map(m -> m.getParameterTypes()[0])
-                    .orElseThrow(() -> new IllegalArgumentException("Could not find a single-argument register method on the event " + fabricEvent));
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Could not find a single-argument register method on the event " + fabricEvent));
         }
 
         try {
@@ -72,7 +75,8 @@ public class FabricEventAdapter {
         return Arrays.stream(listenerType.getMethods())
                 .filter(m -> Modifier.isAbstract(m.getModifiers()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Could not find abstract method in " + listenerType.getName()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Could not find abstract method in " + listenerType.getName()));
     }
 
     private static Object getReturnValueFor(Class<?> clazz) {
@@ -172,11 +176,11 @@ public class FabricEventAdapter {
                         return System.identityHashCode(proxy);
                     }
                     return null;
-                }
-        );
+                });
     }
 
-    private void executeScriptedListeners(net.fabricmc.fabric.api.event.Event<?> event, Class<?> listenerType, Object[] args) {
+    private void executeScriptedListeners(net.fabricmc.fabric.api.event.Event<?> event, Class<?> listenerType,
+                                          Object[] args) {
         List<ScriptedFabricListener> listeners = scriptedFabricListeners.get(event);
         if (listeners == null) {
             return;
@@ -191,8 +195,7 @@ public class FabricEventAdapter {
                     wrappedArgs[i] = ScriptUtils.wrapReturn(
                             args[i],
                             scriptManager.getClassResolver().getMappingsManager(),
-                            scriptManager
-                    );
+                            scriptManager);
                 }
                 scriptedListener.jsCallback().execute(wrappedArgs);
             } catch (Exception e) {
@@ -204,7 +207,8 @@ public class FabricEventAdapter {
         }
     }
 
-    private void removeIfEmpty(net.fabricmc.fabric.api.event.Event<?> fabricEvent, List<ScriptedFabricListener> listeners) {
+    private void removeIfEmpty(net.fabricmc.fabric.api.event.Event<?> fabricEvent,
+                               List<ScriptedFabricListener> listeners) {
         if (listeners.isEmpty()) {
             scriptedFabricListeners.remove(fabricEvent, listeners);
         }

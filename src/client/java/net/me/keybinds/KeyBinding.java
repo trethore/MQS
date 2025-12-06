@@ -26,7 +26,7 @@ import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.lwjgl.glfw.GLFW;
 
-public class KeyBinding {
+public class KeyBinding implements KeybindEntry {
     @Getter
     private final String name;
     @Getter

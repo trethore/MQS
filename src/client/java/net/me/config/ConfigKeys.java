@@ -23,16 +23,11 @@ public final class ConfigKeys {
     // Global Config (mqs_config.json)
     public static final String LOG_REDIRECT = "logRedirect";
     public static final String ALLOW_ALL_CLASSES = "allowAllClasses";
+    public static final String ADDITIONAL_SCRIPT_DIRS = "additionalScriptDirs";
 
     // Per-script configs (in /configs/)
     public static final String ENABLED = "enabled";
     public static final String KEYBINDS = "keybinds";
-    // Removed: categoryIds and showEnableDisableToast (legacy GUI)
-
-    // Keybind Options (in scripts)
-    public static final String KEYBIND_OPT_KEY = "key";
-    public static final String KEYBIND_OPT_REPEATABLE = "repeatable";
-    public static final String KEYBIND_OPT_DEBOUNCE = "debounce";
 
     // Script Metadata (@module)
     public static final String SCRIPT_META_MAIN = "main";

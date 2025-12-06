@@ -20,7 +20,6 @@ package net.me.keybinds;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.Main;
-import net.me.config.ConfigKeys;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
@@ -34,8 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class KeybindManager {
+    private static final String HOST_ID = Main.MOD_ID + "::host";
+
     private final Map<String, KeyBinding> keybindsByName = new ConcurrentHashMap<>();
-    private final Map<Integer, List<KeyBinding>> keybindsByKeycode = new ConcurrentHashMap<>();
+    private final Map<String, HostKeyBinding> hostKeybindsByName = new ConcurrentHashMap<>();
+    private final Map<Integer, List<KeybindEntry>> keybindsByKeycode = new ConcurrentHashMap<>();
     private final Set<Integer> heldKeys = ConcurrentHashMap.newKeySet();
     private final ScriptManager scriptManager;
     private final ConfigManager configManager;
@@ -57,10 +59,22 @@ public class KeybindManager {
     }
 
     private void processInput(int keyCode, int action) {
-        List<KeyBinding> bindings = keybindsByKeycode.get(keyCode);
+        List<KeybindEntry> bindings = keybindsByKeycode.get(keyCode);
         if (bindings != null) {
-            for (KeyBinding keyBinding : bindings) {
+            for (KeybindEntry keyBinding : bindings) {
                 keyBinding.execute(action);
+            }
+        }
+    }
+
+    private void detachBinding(KeybindEntry binding) {
+        if (binding == null) return;
+        heldKeys.remove(binding.getKey());
+        List<KeybindEntry> bindings = keybindsByKeycode.get(binding.getKey());
+        if (bindings != null) {
+            bindings.remove(binding);
+            if (bindings.isEmpty()) {
+                keybindsByKeycode.remove(binding.getKey());
             }
         }
     }
@@ -86,22 +100,11 @@ public class KeybindManager {
         processInput(button, action);
     }
 
-    public void register(String name, Value action, RunningScript owner, Value options) {
-        int defaultKey = Keys.UNBOUND.getCode();
-        boolean repeatable = false;
-        int debounceTime = 100;
-
-        if (options != null && options.hasMembers()) {
-            if (options.hasMember(ConfigKeys.KEYBIND_OPT_KEY) && options.getMember(ConfigKeys.KEYBIND_OPT_KEY).isNumber()) {
-                defaultKey = options.getMember(ConfigKeys.KEYBIND_OPT_KEY).asInt();
-            }
-            if (options.hasMember(ConfigKeys.KEYBIND_OPT_REPEATABLE) && options.getMember(ConfigKeys.KEYBIND_OPT_REPEATABLE).isBoolean()) {
-                repeatable = options.getMember(ConfigKeys.KEYBIND_OPT_REPEATABLE).asBoolean();
-            }
-            if (options.hasMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE) && options.getMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE).isNumber()) {
-                debounceTime = options.getMember(ConfigKeys.KEYBIND_OPT_DEBOUNCE).asInt();
-            }
-        }
+    public void register(String name, Value action, RunningScript owner, KeybindOptions options) {
+        KeybindOptions resolved = options != null ? options : KeybindOptions.builder().keyCode(Keys.UNBOUND.getCode()).build();
+        int defaultKey = resolved.keyCode();
+        boolean repeatable = resolved.repeatable();
+        int debounceTime = resolved.debounceMillis();
 
         String uniqueName = owner.getId() + "::" + name;
         if (keybindsByName.containsKey(uniqueName)) {
@@ -119,6 +122,24 @@ public class KeybindManager {
         }
     }
 
+    public HostKeyBinding registerHost(String name, Runnable action, int defaultKey, boolean repeatable, int debounceTime) {
+        String uniqueName = HOST_ID + "::" + name;
+        HostKeyBinding existing = hostKeybindsByName.remove(uniqueName);
+        if (existing != null) {
+            detachBinding(existing);
+        }
+
+        int finalKey = configManager.getKeybind(HOST_ID, name).orElse(defaultKey);
+        HostKeyBinding binding = new HostKeyBinding(name, finalKey, repeatable, action, debounceTime);
+
+        hostKeybindsByName.put(uniqueName, binding);
+        if (finalKey >= 0) {
+            keybindsByKeycode.computeIfAbsent(finalKey, k -> new CopyOnWriteArrayList<>()).add(binding);
+        }
+
+        return binding;
+    }
+
     public void unregister(RunningScript owner, String name) {
         String uniqueName = owner.getId() + "::" + name;
         KeyBinding keyBinding = keybindsByName.remove(uniqueName);
@@ -126,28 +147,14 @@ public class KeybindManager {
             Main.LOGGER.warn("Script '{}' attempted to unregister keybind '{}', which was not found.", owner.getName(), name);
             return;
         }
-        heldKeys.remove(keyBinding.getKey());
-        List<KeyBinding> bindings = keybindsByKeycode.get(keyBinding.getKey());
-        if (bindings != null) {
-            bindings.remove(keyBinding);
-            if (bindings.isEmpty()) {
-                keybindsByKeycode.remove(keyBinding.getKey());
-            }
-        }
+        detachBinding(keyBinding);
     }
 
     public void unregister(RunningScript owner) {
         keybindsByName.entrySet().removeIf(entry -> {
             if (entry.getKey().startsWith(owner.getId() + "::")) {
                 KeyBinding kb = entry.getValue();
-                heldKeys.remove(kb.getKey());
-                List<KeyBinding> bindings = keybindsByKeycode.get(kb.getKey());
-                if (bindings != null) {
-                    bindings.remove(kb);
-                    if (bindings.isEmpty()) {
-                        keybindsByKeycode.remove(kb.getKey());
-                    }
-                }
+                detachBinding(kb);
                 return true;
             }
             return false;
@@ -157,7 +164,7 @@ public class KeybindManager {
     public void rebindKey(KeyBinding binding, int newKeyCode) {
         if (binding == null) return;
 
-        List<KeyBinding> oldBindings = keybindsByKeycode.get(binding.getKey());
+        List<KeybindEntry> oldBindings = keybindsByKeycode.get(binding.getKey());
         if (oldBindings != null) {
             oldBindings.remove(binding);
             if (oldBindings.isEmpty()) {

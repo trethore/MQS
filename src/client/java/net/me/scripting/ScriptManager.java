@@ -20,6 +20,7 @@ package net.me.scripting;
 
 import lombok.Getter;
 import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
@@ -28,6 +29,7 @@ import net.me.scripting.engine.*;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.utils.ScriptScheduler;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
@@ -52,7 +54,7 @@ public class ScriptManager {
     public ScriptManager() {
     }
 
-    public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager) {
+    public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager, GlobalConfigManager globalConfigManager) {
         this.configManager = configManager;
 
         this.classResolver = new ScriptingClassResolver();
@@ -61,11 +63,13 @@ public class ScriptManager {
         CommandAPIService commandApiService = new CommandAPIService();
         commandApiService.init();
 
-        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, commandApiService, hookManager, keybindManager);
-        this.contextManager = new ScriptContextManager(contextFactory, perFileExports);
-        this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, contextManager);
+        ScriptScheduler scheduler = new ScriptScheduler(this);
 
-        this.scriptDiscoverer = new ScriptDiscoverer();
+        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, commandApiService, hookManager, keybindManager, scheduler);
+        this.contextManager = new ScriptContextManager(contextFactory, perFileExports);
+        this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, scheduler, contextManager);
+
+        this.scriptDiscoverer = new ScriptDiscoverer(globalConfigManager);
         this.scriptLoader = new ScriptLoader();
 
         discoverScripts();

@@ -25,6 +25,7 @@ import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.me.Main;
 import net.me.hooking.context.HookContext;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.engine.ScriptConstants;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
@@ -60,17 +61,21 @@ public class HookInterceptor {
         };
     }
 
-    public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
+    public static ProxyExecutable createAfterChainTerminal() {
+        return passedArgs -> null;
+    }
+
+    public static void register(String hookId, Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount, HookExecutionMode mode) {
         HOOKS.computeIfAbsent(hookId, k -> new CopyOnWriteArrayList<>())
-                .addFirst(new HookData(jsCallback, owner, scriptManager, argCount));
+                .addFirst(new HookData(jsCallback, owner, scriptManager, argCount, mode));
 
         CHAIN_CACHE.clear();
     }
 
-    public static void unregister(String hookId, RunningScript owner, Integer argCount) {
+    public static void unregister(String hookId, RunningScript owner, Integer argCount, HookExecutionMode mode) {
         CopyOnWriteArrayList<HookData> hookList = HOOKS.get(hookId);
         if (hookList != null) {
-            boolean removed = hookList.removeIf(data -> data.owner().equals(owner) && Objects.equals(data.argCount(), argCount));
+            boolean removed = hookList.removeIf(data -> data.owner().equals(owner) && Objects.equals(data.argCount(), argCount) && data.mode() == mode);
             if (removed) {
                 Main.LOGGER.info("Unregistered hook owned by '{}': {}", owner.getName(), hookId);
                 CHAIN_CACHE.clear();
@@ -120,6 +125,19 @@ public class HookInterceptor {
             for (int i = 0; i < args.length; i++) {
                 initialChainArgs[i] = Value.asValue(args[i]);
             }
+            adviceContext.setInitialArgs(Arrays.copyOf(initialChainArgs, initialChainArgs.length));
+
+            List<HookData> afterHooks = new ArrayList<>();
+            for (HookData data : allHooksForName) {
+                boolean argCountMatches = data.argCount() == null || data.argCount() == args.length;
+                if (argCountMatches && data.mode() == HookExecutionMode.AFTER) {
+                    afterHooks.add(data);
+                }
+            }
+            if (!afterHooks.isEmpty()) {
+                ProxyExecutable afterChain = rebuildChain(afterHooks, mappingsManager, scriptManager, createAfterChainTerminal());
+                adviceContext.setAfterChain(afterChain);
+            }
 
             Value result = (Value) chain.execute(initialChainArgs);
 
@@ -156,8 +174,8 @@ public class HookInterceptor {
         }
     }
 
-    public static @NotNull ProxyExecutable rebuildChain(List<HookData> filteredHooks, MappingsManager mappingsManager, ScriptManager scriptManager) {
-        ProxyExecutable nextInChain = createEmptyChainProxy();
+    public static @NotNull ProxyExecutable rebuildChain(List<HookData> filteredHooks, MappingsManager mappingsManager, ScriptManager scriptManager, ProxyExecutable terminal) {
+        ProxyExecutable nextInChain = terminal;
 
         for (int i = filteredHooks.size() - 1; i >= 0; i--) {
             final HookData data = filteredHooks.get(i);
@@ -177,11 +195,30 @@ public class HookInterceptor {
             return;
         }
 
-        AdviceContext context = stack.pop();
+        AdviceContext context = stack.peek();
 
-        if (context.hasScriptReturnValue()) {
+        if (context.getAfterChain() != null) {
+            Value[] argsForAfter = context.modifiedArgs();
+            if (argsForAfter == null) {
+                argsForAfter = context.getInitialArgs();
+            }
+            if (argsForAfter == null) {
+                argsForAfter = new Value[0];
+            }
+            try {
+                context.getAfterChain().execute(argsForAfter);
+            } catch (Exception e) {
+                Main.LOGGER.error("JS after hook chain error in {}#{}",
+                        method.getDeclaringClass().getSimpleName(),
+                        method.getName(), e);
+            }
+        }
+
+        AdviceContext currentContext = stack.pop();
+
+        if (currentContext.hasScriptReturnValue()) {
             returnValue = ScriptUtils.unwrapArgs(
-                    new Value[]{context.getScriptReturnValue()},
+                    new Value[]{currentContext.getScriptReturnValue()},
                     new Class<?>[]{method.getReturnType()}
             )[0];
         }
@@ -201,14 +238,15 @@ public class HookInterceptor {
         @Override
         public ProxyExecutable apply(CacheKey key) {
             List<HookData> filteredHooks = allHooksForName.stream()
-                    .filter(hookData -> hookData.argCount() == null || hookData.argCount() == key.argCount())
+                    .filter(hookData -> (hookData.argCount() == null || hookData.argCount() == key.argCount()))
+                    .filter(hookData -> hookData.mode() != HookExecutionMode.AFTER)
                     .toList();
 
             if (filteredHooks.isEmpty()) {
                 return createEmptyChainProxy();
             }
 
-            return rebuildChain(filteredHooks, mappingsManager, scriptManager);
+            return rebuildChain(filteredHooks, mappingsManager, scriptManager, createEmptyChainProxy());
         }
     }
 
@@ -230,7 +268,7 @@ public class HookInterceptor {
             RunningScript previousScript = data.scriptManager().getCurrentScript();
             data.scriptManager().setCurrentScript(data.owner());
             try {
-                Value jsArgsArray = data.owner().getContext().eval("js", "[]");
+                Value jsArgsArray = data.owner().getContext().eval(ScriptConstants.JS, "[]");
                 for (Value arg : passedArgs) {
                     Object javaObject = ScriptUtils.unwrapReceiver(arg);
                     Object customProxy = ScriptUtils.wrapReturn(javaObject, mappingsManager, scriptManager);
@@ -256,7 +294,8 @@ public class HookInterceptor {
     public record CacheKey(String hookId, int argCount) {
     }
 
-    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount) {
+    public record HookData(Value jsCallback, RunningScript owner, ScriptManager scriptManager, Integer argCount,
+                           HookExecutionMode mode) {
     }
 
     @Setter
@@ -268,7 +307,11 @@ public class HookInterceptor {
         private Value scriptReturnValue = null;
         @Getter
         private HookContext hookContext = null;
+        @Getter
+        private Value[] initialArgs = null;
         private Value[] modifiedArgs = null;
+        @Getter
+        private ProxyExecutable afterChain = null;
 
         public boolean shouldExecuteOriginal() {
             return shouldExecuteOriginal;

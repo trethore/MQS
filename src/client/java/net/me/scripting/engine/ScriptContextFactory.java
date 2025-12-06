@@ -30,17 +30,16 @@ import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import net.me.scripting.wrappers.LazyPackageProxy;
+import net.me.utils.ScriptScheduler;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public class ScriptContextFactory {
 
@@ -54,8 +53,9 @@ public class ScriptContextFactory {
     private final KeybindManager keybindManager;
     private final EventManager eventManager;
     private final HostAccess hostAccess;
+    private final ScriptScheduler scheduler;
 
-    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager) {
+    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager, ScriptScheduler scheduler) {
         this.classResolver = classResolver;
         this.sharedEngine = sharedEngine;
         this.scriptManager = scriptManager;
@@ -64,6 +64,7 @@ public class ScriptContextFactory {
         this.eventManager = eventManager;
         this.hookManager = hookManager;
         this.keybindManager = keybindManager;
+        this.scheduler = scheduler;
 
         this.hostAccess = HostAccess.newBuilder(HostAccess.ALL)
                 .targetTypeMapping(
@@ -91,7 +92,7 @@ public class ScriptContextFactory {
         Main.LOGGER.info("Creating new script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
 
-        Context newContext = Context.newBuilder("js")
+        Context newContext = Context.newBuilder(ScriptConstants.JS)
                 .engine(this.sharedEngine)
                 .allowHostAccess(this.hostAccess)
                 .allowHostClassLookup(classResolver::isClassAllowed)
@@ -113,7 +114,7 @@ public class ScriptContextFactory {
         }
         registerPackages(context);
 
-        Value bindings = context.getBindings("js");
+        Value bindings = context.getBindings(ScriptConstants.JS);
 
         addApiMember(bindings, "importClass", ScriptingApi.createImportClassProxy(classResolver, context));
         addApiMember(bindings, "extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
@@ -121,12 +122,20 @@ public class ScriptContextFactory {
         addApiMember(bindings, "wrap", ScriptingApi.createWrapProxy(classResolver));
         addApiMember(bindings, "exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
 
-        addApiMember(bindings, "EventManager", new EventAPI(this.eventManager, this.scriptManager));
-        addApiMember(bindings, "ConfigManager", new ConfigAPI(this.configManager, this.scriptManager));
-        addApiMember(bindings, "KeybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
-        addApiMember(bindings, "CommandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
-        addApiMember(bindings, "HookManager", new HookAPI(this.hookManager, this.scriptManager));
-        addApiMember(bindings, "MQSUtils", new MqsUtilsAPI(this.classResolver));
+        Map<String, Object> mqsMembers = new HashMap<>();
+        mqsMembers.put("utils", new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler));
+        mqsMembers.put("eventManager", new EventAPI(this.eventManager, this.scriptManager));
+        mqsMembers.put("events", new EventsHelperAPI(this.eventManager, this.scriptManager));
+        mqsMembers.put("configManager", new ConfigAPI(this.configManager, this.scriptManager));
+        mqsMembers.put("config", new ConfigHelperAPI(this.configManager, this.scriptManager));
+        mqsMembers.put("keybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
+        mqsMembers.put("keybinds", new KeybindsAPI(this.keybindManager, this.scriptManager));
+        mqsMembers.put("commandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
+        mqsMembers.put("commands", new CommandsHelperAPI(this.scriptManager, this.commandApiService));
+        mqsMembers.put("hookManager", new HookAPI(this.hookManager, this.scriptManager, this.classResolver));
+        mqsMembers.put("hooks", new HooksAPI(this.hookManager, this.scriptManager, this.classResolver));
+
+        addApiMember(bindings, "MQS", ProxyObject.fromMap(mqsMembers));
 
         addApiMember(bindings, "println", (ProxyExecutable) args -> {
             for (Value arg : args) System.out.println(arg);
@@ -144,7 +153,7 @@ public class ScriptContextFactory {
     }
 
     public void resetContext(Context context) {
-        Value bindings = context.getBindings("js");
+        Value bindings = context.getBindings(ScriptConstants.JS);
         Set<String> memberKeys = new HashSet<>(bindings.getMemberKeys());
 
         for (String key : memberKeys) {
@@ -164,7 +173,7 @@ public class ScriptContextFactory {
             }
         }
 
-        var bindings = context.getBindings("js");
+        Value bindings = context.getBindings(ScriptConstants.JS);
         for (String pkg : topLevelPackages) {
             if (!bindings.hasMember(pkg)) {
                 addApiMember(bindings, pkg, new LazyPackageProxy(pkg, this.classResolver));

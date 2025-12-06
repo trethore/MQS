@@ -42,8 +42,9 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 
 public class Main implements ClientModInitializer {
-    public static final String MOD_ID = "my-qol-scripts";
+    public static final String MOD_ID = "my_qol_scripts";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    @SuppressWarnings("unused")
     public static final String MC_VERSION = "1.21.4";
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
 
@@ -90,6 +91,7 @@ public class Main implements ClientModInitializer {
         configManager.init();
         consoleManager.init();
         commandManager.init();
+        globalConfigManager.init();
 
         this.registerConsoleCommands();
         this.registerClientCommands();
@@ -97,14 +99,12 @@ public class Main implements ClientModInitializer {
         mappingsManager.init();
 
         mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
-            scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager);
-            globalConfigManager.init();
+            scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
             scriptManager.loadAndEnableScriptsFromConfig();
 
             LOGGER.info("MyQOLScripts initialization complete! Hello !");
         })));
     }
-
 
     private void registerClientCommands() {
         this.commandManager.addCommand(new MQSCommand(this.scriptingService));

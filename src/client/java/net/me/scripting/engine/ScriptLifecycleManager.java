@@ -24,6 +24,7 @@ import net.me.keybinds.KeybindManager;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.module.RunningScript;
+import net.me.utils.ScriptScheduler;
 
 public class ScriptLifecycleManager {
 
@@ -32,14 +33,16 @@ public class ScriptLifecycleManager {
     private final HookManager hookManager;
     private final KeybindManager keybindManager;
     private final CommandAPIService commandApiService;
+    private final ScriptScheduler scheduler;
     private final ScriptContextManager contextManager;
 
-    public ScriptLifecycleManager(ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager, CommandAPIService commandApiService, ScriptContextManager contextManager) {
+    public ScriptLifecycleManager(ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager, CommandAPIService commandApiService, ScriptScheduler scheduler, ScriptContextManager contextManager) {
         this.configManager = configManager;
         this.eventManager = eventManager;
         this.hookManager = hookManager;
         this.keybindManager = keybindManager;
         this.commandApiService = commandApiService;
+        this.scheduler = scheduler;
         this.contextManager = contextManager;
     }
 
@@ -52,6 +55,7 @@ public class ScriptLifecycleManager {
     public void disable(RunningScript script) {
         script.onDisable();
 
+        scheduler.cancelAllFor(script);
         eventManager.unregisterAll(script);
         commandApiService.unregisterAllFor(script);
         hookManager.unhookAllForScript(script);

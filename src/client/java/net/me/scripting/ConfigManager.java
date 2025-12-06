@@ -24,6 +24,7 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import net.me.Main;
 import net.me.config.ConfigKeys;
+import net.me.scripting.engine.ScriptConstants;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -69,7 +70,13 @@ public class ConfigManager {
     public Value getConfigForScript(RunningScript script) {
         Map<String, Object> configMap = getConfig(script.getId());
         Context scriptContext = script.getContext();
-        return scriptContext.asValue(configMap);
+        if (configMap.isEmpty()) {
+            return scriptContext.eval(ScriptConstants.JS, "Object.freeze({})");
+        }
+        String json = GSON.toJson(configMap);
+        Value parsed = scriptContext.eval(ScriptConstants.JS, "JSON.parse").execute(json);
+        scriptContext.eval(ScriptConstants.JS, "Object.freeze").execute(parsed);
+        return parsed;
     }
 
     private Map<String, Object> loadConfigFromFile(String scriptId) {
@@ -80,7 +87,9 @@ public class ConfigManager {
                 Map<String, Object> loadedConfig = GSON.fromJson(reader, MAP_TYPE);
                 return loadedConfig != null ? new ConcurrentHashMap<>(loadedConfig) : new ConcurrentHashMap<>();
             } catch (JsonSyntaxException e) {
-                Main.LOGGER.error("Failed to parse config for script ID '{}' due to invalid JSON. A new config will be created.", scriptId, e);
+                Main.LOGGER.error(
+                        "Failed to parse config for script ID '{}' due to invalid JSON. A new config will be created.",
+                        scriptId, e);
             } catch (Exception e) {
                 Main.LOGGER.error("Failed to load config for script ID '{}': {}", scriptId, e.getMessage());
             }
@@ -122,7 +131,8 @@ public class ConfigManager {
     @SuppressWarnings("unchecked")
     public void setKeybind(String scriptId, String keybindName, int keyCode) {
         Map<String, Object> config = getConfig(scriptId);
-        Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(ConfigKeys.KEYBINDS, k -> new ConcurrentHashMap<>());
+        Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(ConfigKeys.KEYBINDS,
+                k -> new ConcurrentHashMap<>());
 
         keybinds.put(keybindName, keyCode);
     }

@@ -18,10 +18,7 @@
 
 package net.me.scripting.api;
 
-import net.me.event.Event;
-import net.me.event.EventManager;
-import net.me.event.EventPhase;
-import net.me.event.Events;
+import net.me.event.*;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
@@ -96,18 +93,19 @@ public class EventAPI implements ProxyObject {
                     eventTarget = resolveEventTarget(args[0]);
                     phase = EventPhase.POST;
                     callback = args[1];
-                    if (!callback.canExecute())
+                    if (!callback.canExecute()) {
                         throw new IllegalArgumentException("Callback must be a function.");
+                    }
                 } else {
                     eventTarget = resolveEventTarget(args[0]);
-                    Object phaseObj = args[1].isHostObject() ? args[1].asHostObject() : null;
-                    if (!(phaseObj instanceof EventPhase)) {
-                        throw new IllegalArgumentException("Second argument must be a valid phase from EventManager.Phase (e.g., PRE, POST).");
+                    phase = resolvePhase(args[1]);
+                    if (phase == null) {
+                        throw new IllegalArgumentException("Second argument must be a valid phase (PRE or POST).");
                     }
-                    phase = (EventPhase) phaseObj;
                     callback = args[2];
-                    if (!callback.canExecute())
+                    if (!callback.canExecute()) {
                         throw new IllegalArgumentException("Callback must be a function.");
+                    }
                 }
 
                 switch (eventTarget) {
@@ -141,8 +139,9 @@ public class EventAPI implements ProxyObject {
                 Value callback = null;
 
                 if (args.length > 1) {
-                    if (args[1].isHostObject() && args[1].asHostObject() instanceof EventPhase) {
-                        phase = args[1].asHostObject();
+                    EventPhase potentialPhase = resolvePhase(args[1]);
+                    if (potentialPhase != null) {
+                        phase = potentialPhase;
                         if (args.length > 2) {
                             if (args[2].canExecute()) {
                                 callback = args[2];
@@ -212,6 +211,10 @@ public class EventAPI implements ProxyObject {
         }
 
         throw new IllegalArgumentException("Event target must be a class imported via importClass(), a direct Fabric Event object, or an MQS Event from EventManager.Events.");
+    }
+
+    private EventPhase resolvePhase(Value phaseValue) {
+        return EventSubscriptionOptions.resolvePhaseValue(phaseValue);
     }
 
     @Override
