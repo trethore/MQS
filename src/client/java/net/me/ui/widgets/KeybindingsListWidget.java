@@ -38,6 +38,7 @@ public class KeybindingsListWidget extends ElementListWidget<KeybindingsListWidg
     private static final int PADDING = 6;
     private static final int BUTTON_WIDTH = 120;
     private static final int BUTTON_HEIGHT = 20;
+    private static final int HEADER_TEXT_COLOR = 0xFFFFFFFF;
     private static final int HEADER_LINE_COLOR = 0xFFa3a3a3;
 
     private final KeybindManager keybindManager;
@@ -83,11 +84,20 @@ public class KeybindingsListWidget extends ElementListWidget<KeybindingsListWidg
     public abstract static class Entry extends ElementListWidget.Entry<Entry> {
     }
 
+    public boolean hasListeningBinding() {
+        for (Entry entry : this.children()) {
+            if (entry instanceof BindingEntry bindingEntry && bindingEntry.isListening()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static final class HeaderEntry extends Entry {
         private final SeparatorWidget separator;
 
         private HeaderEntry(String label) {
-            this.separator = new SeparatorWidget(0, 0, 0, 10, Text.literal(label), SeparatorWidget.LEFT);
+            this.separator = new SeparatorWidget(0, 0, 0, 10, Text.literal(label), SeparatorWidget.LEFT, HEADER_TEXT_COLOR, HEADER_LINE_COLOR);
         }
 
         @Override
@@ -175,6 +185,10 @@ public class KeybindingsListWidget extends ElementListWidget<KeybindingsListWidg
         @Override
         public List<? extends Selectable> selectableChildren() {
             return List.of(button);
+        }
+
+        private boolean isListening() {
+            return button.isListening();
         }
     }
 }

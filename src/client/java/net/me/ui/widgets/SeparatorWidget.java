@@ -32,27 +32,34 @@ public class SeparatorWidget extends ClickableWidget {
     public static final int RIGHT = 87;
     private static final int DEFAULT_HEIGHT = 10;
     private static final int LABEL_PADDING = 6;
-    private static final int DEFAULT_COLOR = 0xFFFFFFFF;
-    private final int color;
+    private static final int DEFAULT_TEXT_COLOR = 0xFFFFFFFF;
+    private static final int DEFAULT_LINE_COLOR = 0xFFFFFFFF;
+    private final int textColor;
+    private final int lineColor;
     private final int positionPercent;
     private final boolean hasLabel;
 
     public SeparatorWidget(int x, int y, int width) {
-        this(x, y, width, DEFAULT_HEIGHT, Text.empty(), MIDDLE, DEFAULT_COLOR);
+        this(x, y, width, DEFAULT_HEIGHT, Text.empty(), MIDDLE, DEFAULT_TEXT_COLOR, DEFAULT_LINE_COLOR);
     }
 
     public SeparatorWidget(int x, int y, int width, Text label) {
-        this(x, y, width, DEFAULT_HEIGHT, label, MIDDLE, DEFAULT_COLOR);
+        this(x, y, width, DEFAULT_HEIGHT, label, MIDDLE, DEFAULT_TEXT_COLOR, DEFAULT_LINE_COLOR);
     }
 
-    public  SeparatorWidget(int x, int y, int width, int height, Text label, int positionPercent) {
-        this(x, y, width, height, label, positionPercent, DEFAULT_COLOR);
+    public SeparatorWidget(int x, int y, int width, int height, Text label, int positionPercent) {
+        this(x, y, width, height, label, positionPercent, DEFAULT_TEXT_COLOR, DEFAULT_LINE_COLOR);
     }
 
     public SeparatorWidget(int x, int y, int width, int height, Text label, int positionPercent, int color) {
+        this(x, y, width, height, label, positionPercent, color, color);
+    }
+
+    public SeparatorWidget(int x, int y, int width, int height, Text label, int positionPercent, int textColor, int lineColor) {
         super(x, y, width, height, label == null ? Text.empty() : label);
         this.positionPercent = MathHelper.clamp(positionPercent, 0, 100);
-        this.color = color;
+        this.textColor = textColor;
+        this.lineColor = lineColor;
         this.hasLabel = label != null && !label.getString().isEmpty();
         this.active = false;
         this.visible = true;
@@ -62,7 +69,7 @@ public class SeparatorWidget extends ClickableWidget {
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
         int centerY = this.getY() + this.getHeight() / 2;
         if (!hasLabel) {
-            context.fill(this.getX(), centerY, this.getX() + this.getWidth(), centerY + 1, color);
+            context.fill(this.getX(), centerY, this.getX() + this.getWidth(), centerY + 1, lineColor);
             return;
         }
 
@@ -71,7 +78,7 @@ public class SeparatorWidget extends ClickableWidget {
         int available = this.getWidth() - labelWidth - LABEL_PADDING * 2;
 
         if (available <= 0) {
-            context.drawTextWithShadow(textRenderer, this.getMessage(), this.getX(), centerY - textRenderer.fontHeight / 2, color);
+            context.drawTextWithShadow(textRenderer, this.getMessage(), this.getX(), centerY - textRenderer.fontHeight / 2, textColor);
             return;
         }
 
@@ -85,9 +92,9 @@ public class SeparatorWidget extends ClickableWidget {
         int rightStart = labelStart + labelWidth + LABEL_PADDING;
         int rightEnd = this.getX() + this.getWidth();
 
-        context.fill(leftStart, centerY, leftEnd, centerY + 1, color);
-        context.drawTextWithShadow(textRenderer, this.getMessage(), labelStart, labelY, color);
-        context.fill(rightStart, centerY, rightEnd, centerY + 1, color);
+        context.fill(leftStart, centerY, leftEnd, centerY + 1, lineColor);
+        context.drawTextWithShadow(textRenderer, this.getMessage(), labelStart, labelY, textColor);
+        context.fill(rightStart, centerY, rightEnd, centerY + 1, lineColor);
     }
 
     @Override

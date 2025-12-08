@@ -42,7 +42,7 @@ public class SettingsScreen extends MQSScreen {
     private static final int TITLE_HEIGHT = 16;
     private static final int CONTROL_HEIGHT = 20;
     private static final int GAP_BETWEEN = 12;
-    private static final int LAYOUT_Y_OFFSET = 120;
+    private static final int LAYOUT_Y_OFFSET = 110;
 
     private final GlobalConfigManager globalConfigManager;
 

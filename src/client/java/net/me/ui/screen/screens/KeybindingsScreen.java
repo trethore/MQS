@@ -33,6 +33,7 @@ public class KeybindingsScreen extends MQSScreen {
     private static final int BUTTON_HEIGHT = 20;
     private static final int BUTTON_WIDTH = 140;
     private static final int LIST_ITEM_HEIGHT = 24;
+    private static final int MAX_LIST_HEIGHT = 260;
 
     private final KeybindManager keybindManager;
     private KeybindingsListWidget listWidget;
@@ -48,15 +49,21 @@ public class KeybindingsScreen extends MQSScreen {
         int centerX = getMiddle().x();
 
         TextWidget title = new TextWidget(220, TITLE_HEIGHT, Text.translatable("screen.mqs.keybinds.title"), this.textRenderer).alignCenter();
-        title.setX(centerX - title.getWidth() / 2);
-        title.setY(PADDING);
-        this.addDrawableChild(title);
-
         int listWidth = Math.min(420, this.width - PADDING * 2);
-        int listY = title.getY() + TITLE_HEIGHT + PADDING;
-        int listHeight = this.height - listY - BUTTON_HEIGHT - PADDING * 2;
+        int verticalBudget = this.height - PADDING * 2 - TITLE_HEIGHT - BUTTON_HEIGHT - PADDING * 2;
+        int listHeight = Math.min(verticalBudget, MAX_LIST_HEIGHT);
         listHeight = Math.max(listHeight, LIST_ITEM_HEIGHT * 3);
+
+        int blockHeight = TITLE_HEIGHT + PADDING + listHeight + PADDING + BUTTON_HEIGHT;
+
+        int titleY = Math.max(PADDING, Math.min(getMiddle().y() - blockHeight / 2, this.height - PADDING - blockHeight));
+        int listY = titleY + TITLE_HEIGHT + PADDING;
+        int buttonY = listY + listHeight + PADDING;
         int listX = centerX - listWidth / 2;
+
+        title.setX(centerX - title.getWidth() / 2);
+        title.setY(titleY);
+        this.addDrawableChild(title);
 
         listWidget = new KeybindingsListWidget(this.client, listWidth, listHeight, listY, LIST_ITEM_HEIGHT, keybindManager);
         listWidget.setDimensionsAndPosition(listWidth, listHeight, listX, listY);
@@ -67,7 +74,7 @@ public class KeybindingsScreen extends MQSScreen {
                 .dimensions(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build();
         done.setX(centerX - BUTTON_WIDTH / 2);
-        done.setY(listY + listHeight + PADDING);
+        done.setY(buttonY);
         this.addDrawableChild(done);
     }
 
@@ -75,6 +82,14 @@ public class KeybindingsScreen extends MQSScreen {
     public void resize(net.minecraft.client.MinecraftClient client, int width, int height) {
         super.resize(client, width, height);
         this.init();
+    }
+
+    @Override
+    public boolean shouldCloseOnEsc() {
+        if (listWidget != null && listWidget.hasListeningBinding()) {
+            return false;
+        }
+        return super.shouldCloseOnEsc();
     }
 
     private void refreshList() {

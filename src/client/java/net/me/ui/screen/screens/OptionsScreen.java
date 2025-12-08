@@ -57,7 +57,6 @@ public class OptionsScreen extends MQSScreen {
         layout.add(new TextWidget(BUTTON_WIDTH, TITLE_HEIGHT, Text.translatable("screen.mqs.options.title"), this.textRenderer)
                 .alignCenter(), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.options.settings"), this::openSettings), Positioner::alignHorizontalCenter);
-        layout.add(createActionButton(Text.translatable("screen.mqs.options.commands"), this::placeholder), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.options.keybinds"), this::openKeybindings), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.scripts.open_folder"), this::openScriptsFolder), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.options.open_ide"), this::openInIde), Positioner::alignHorizontalCenter);
@@ -77,9 +76,6 @@ public class OptionsScreen extends MQSScreen {
         return ButtonWidget.builder(label, button -> action.run())
                 .dimensions(0, 0, width, BUTTON_HEIGHT)
                 .build();
-    }
-
-    private void placeholder() {
     }
 
     private void openSettings() {

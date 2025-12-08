@@ -18,9 +18,11 @@
 
 package net.me.ui.widgets;
 
+import lombok.Getter;
 import net.me.keybinds.HostKeyBinding;
 import net.me.keybinds.KeyBinding;
 import net.me.keybinds.KeybindManager;
+import net.me.keybinds.Keys;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
@@ -35,6 +37,7 @@ public class KeybindingButtonWidget extends ButtonWidget {
     private final Supplier<String> labelSupplier;
     @Nullable
     private final Runnable onRebound;
+    @Getter
     private boolean listening;
 
     public KeybindingButtonWidget(int x, int y, int width, int height, KeyBinding binding, KeybindManager keybindManager) {
@@ -70,7 +73,7 @@ public class KeybindingButtonWidget extends ButtonWidget {
 
         if (listening) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-                stopListening();
+                applyBinding(Keys.UNBOUND.getCode());
                 return true;
             }
             applyBinding(keyCode);
