@@ -4,5 +4,10 @@
   "screen.mqs.scripts.refresh": "Actualiser",
   "screen.mqs.scripts.refreshed": "Actualisé",
   "screen.mqs.scripts.open_folder": "Ouvrir le dossier",
-  "screen.mqs.scripts.settings": "Paramètres"
+  "screen.mqs.scripts.options": "Options",
+  "screen.mqs.options.title": "Options",
+  "screen.mqs.options.settings": "Paramètres",
+  "screen.mqs.options.commands": "Commandes",
+  "screen.mqs.options.keybinds": "Raccourcis",
+  "screen.mqs.options.open_ide": "Ouvrir dans l'IDE"
 }

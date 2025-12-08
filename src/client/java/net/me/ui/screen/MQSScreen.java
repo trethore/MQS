@@ -55,6 +55,11 @@ public class MQSScreen extends Screen {
                 });
     }
 
+    @Override
+    public void close() {
+        closeToParent();
+    }
+
     public void closeToParent() {
         McUtils.getMc().ifPresentOrElse(
                 mc -> mc.setScreen(parent)

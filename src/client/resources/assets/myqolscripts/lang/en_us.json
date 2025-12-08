@@ -4,5 +4,10 @@
   "screen.mqs.scripts.refresh": "Refresh",
   "screen.mqs.scripts.refreshed": "Refreshed",
   "screen.mqs.scripts.open_folder": "Open Folder",
-  "screen.mqs.scripts.settings": "Settings"
+  "screen.mqs.scripts.options": "Options",
+  "screen.mqs.options.title": "Options",
+  "screen.mqs.options.settings": "Settings",
+  "screen.mqs.options.commands": "Commands",
+  "screen.mqs.options.keybinds": "Keybinds",
+  "screen.mqs.options.open_ide": "Open in IDE"
 }

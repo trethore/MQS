@@ -30,6 +30,7 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
 import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -67,7 +68,7 @@ public class ScriptsMenuScreen extends MQSScreen {
     @Nullable
     private ButtonWidget refreshButton;
     @Nullable
-    private ButtonWidget settingsButton;
+    private ButtonWidget optionsButton;
     @Nullable
     private ButtonWidget doneButton;
     private String pendingSearch = "";
@@ -110,7 +111,7 @@ public class ScriptsMenuScreen extends MQSScreen {
         refreshButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.refresh"), button -> handleRefresh())
                 .dimensions(0, 0, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT)
                 .build());
-        settingsButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.settings"), button -> {})
+        optionsButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.options"), button -> openOptions())
                 .dimensions(0, 0, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT)
                 .build());
         doneButton = footerLayout.add(ButtonWidget.builder(ScreenTexts.DONE, button -> closeToParent())
@@ -267,8 +268,8 @@ public class ScriptsMenuScreen extends MQSScreen {
         if (refreshButton != null) {
             order.add(refreshButton);
         }
-        if (settingsButton != null) {
-            order.add(settingsButton);
+        if (optionsButton != null) {
+            order.add(optionsButton);
         }
         if (doneButton != null) {
             order.add(doneButton);
@@ -304,12 +305,16 @@ public class ScriptsMenuScreen extends MQSScreen {
         if (headerLayout == null) {
             return;
         }
-        var matrices = context.getMatrices();
+        MatrixStack matrices = context.getMatrices();
         matrices.push();
         matrices.translate(getMiddle().x(), headerLayout.getY() - 35, 0);
         matrices.scale(TITLE_SCALE, TITLE_SCALE, 1.0f);
         int textWidth = this.textRenderer.getWidth(TITLE_TEXT);
         context.drawTextWithShadow(this.textRenderer, TITLE_TEXT, -textWidth / 2, 0, 0xFFFFFF);
         matrices.pop();
+    }
+
+    private void openOptions() {
+        new OptionsScreen(this).open();
     }
 }

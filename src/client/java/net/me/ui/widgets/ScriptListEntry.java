@@ -22,6 +22,9 @@ import lombok.Setter;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.Element;
+import net.minecraft.client.gui.Selectable;
+import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.ElementListWidget;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
@@ -116,12 +119,12 @@ public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
     }
 
     @Override
-    public List<? extends net.minecraft.client.gui.Element> children() {
+    public List<? extends Element> children() {
         return Collections.singletonList(focusAnchor);
     }
 
     @Override
-    public List<? extends net.minecraft.client.gui.Selectable> selectableChildren() {
+    public List<? extends Selectable> selectableChildren() {
         return Collections.singletonList(focusAnchor);
     }
 
@@ -129,7 +132,7 @@ public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
         this.setFocused(focusAnchor);
     }
 
-    private static final class FocusAnchor implements net.minecraft.client.gui.Element, net.minecraft.client.gui.Selectable {
+    private static final class FocusAnchor implements Element, Selectable {
         @Override
         public void setFocused(boolean focused) {
         }
@@ -145,7 +148,7 @@ public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
         }
 
         @Override
-        public void appendNarrations(net.minecraft.client.gui.screen.narration.NarrationMessageBuilder builder) {
+        public void appendNarrations(NarrationMessageBuilder builder) {
         }
     }
 
