@@ -22,7 +22,9 @@ import net.me.keybinds.HostKeyBinding;
 import net.me.keybinds.KeyBinding;
 import net.me.keybinds.KeybindManager;
 import net.me.scripting.module.RunningScript;
+import net.me.ui.UIConstants;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.Selectable;
@@ -34,12 +36,6 @@ import java.util.List;
 import java.util.Map;
 
 public class KeybindingsListWidget extends ElementListWidget<KeybindingsListWidget.Entry> {
-
-    private static final int PADDING = 6;
-    private static final int BUTTON_WIDTH = 120;
-    private static final int BUTTON_HEIGHT = 20;
-    private static final int HEADER_TEXT_COLOR = 0xFFFFFFFF;
-    private static final int HEADER_LINE_COLOR = 0xFFa3a3a3;
 
     private final KeybindManager keybindManager;
 
@@ -81,9 +77,6 @@ public class KeybindingsListWidget extends ElementListWidget<KeybindingsListWidg
         return this.getRowLeft() + this.getRowWidth() - 6;
     }
 
-    public abstract static class Entry extends ElementListWidget.Entry<Entry> {
-    }
-
     public boolean hasListeningBinding() {
         for (Entry entry : this.children()) {
             if (entry instanceof BindingEntry bindingEntry && bindingEntry.isListening()) {
@@ -93,18 +86,21 @@ public class KeybindingsListWidget extends ElementListWidget<KeybindingsListWidg
         return false;
     }
 
+    public abstract static class Entry extends ElementListWidget.Entry<Entry> {
+    }
+
     private static final class HeaderEntry extends Entry {
         private final SeparatorWidget separator;
 
         private HeaderEntry(String label) {
-            this.separator = new SeparatorWidget(0, 0, 0, 10, Text.literal(label), SeparatorWidget.LEFT, HEADER_TEXT_COLOR, HEADER_LINE_COLOR);
+            this.separator = new SeparatorWidget(0, 0, 0, 10, Text.literal(label), SeparatorWidget.LEFT, UIConstants.HEADER_TEXT_COLOR, UIConstants.HEADER_LINE_COLOR);
         }
 
         @Override
         public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float tickDelta) {
-            int width = entryWidth - PADDING * 2;
+            int width = entryWidth - UIConstants.PADDING * 2;
             int height = Math.max(10, entryHeight);
-            int startX = x + PADDING;
+            int startX = x + UIConstants.PADDING;
             int startY = y + (entryHeight - height) / 2;
             separator.setDimensionsAndPosition(width, height, startX, startY);
             separator.render(context, mouseX, mouseY, tickDelta);
@@ -127,22 +123,22 @@ public class KeybindingsListWidget extends ElementListWidget<KeybindingsListWidg
 
         private BindingEntry(String name, KeyBinding binding, KeybindManager manager) {
             this.name = name;
-            this.button = new KeybindingButtonWidget(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT, binding, manager);
+            this.button = new KeybindingButtonWidget(0, 0, UIConstants.BUTTON_WIDTH_MEDIUM, UIConstants.BUTTON_HEIGHT, binding, manager);
         }
 
         private BindingEntry(String name, HostKeyBinding binding, KeybindManager manager) {
             this.name = name;
-            this.button = new KeybindingButtonWidget(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT, binding, manager, null);
+            this.button = new KeybindingButtonWidget(0, 0, UIConstants.BUTTON_WIDTH_MEDIUM, UIConstants.BUTTON_HEIGHT, binding, manager, null);
         }
 
         @Override
         public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float tickDelta) {
-            var textRenderer = MinecraftClient.getInstance().textRenderer;
+            TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
             int labelY = y + (entryHeight - textRenderer.fontHeight) / 2;
-            context.drawTextWithShadow(textRenderer, Text.literal(name), x + PADDING, labelY, 0xFFFFFF);
+            context.drawTextWithShadow(textRenderer, Text.literal(name), x + UIConstants.PADDING, labelY, UIConstants.TEXT_COLOR_WHITE);
 
-            int buttonY = y + (entryHeight - BUTTON_HEIGHT) / 2;
-            int buttonX = x + entryWidth - BUTTON_WIDTH - PADDING;
+            int buttonY = y + (entryHeight - UIConstants.BUTTON_HEIGHT) / 2;
+            int buttonX = x + entryWidth - UIConstants.BUTTON_WIDTH_MEDIUM - UIConstants.PADDING;
             button.setX(buttonX);
             button.setY(buttonY);
             button.render(context, mouseX, mouseY, tickDelta);

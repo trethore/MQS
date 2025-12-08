@@ -21,10 +21,13 @@ package net.me.ui.widgets;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.ElementListWidget;
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.Collection;
-import org.jetbrains.annotations.Nullable;
+
 public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
 
     private final ScriptingService scriptingService;
@@ -79,7 +82,7 @@ public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
     }
 
     @Override
-    public void setSelected(@org.jetbrains.annotations.Nullable ScriptListEntry entry) {
+    public void setSelected(@Nullable ScriptListEntry entry) {
         super.setSelected(entry);
         if (entry == null) {
             this.selectedId = null;
@@ -97,14 +100,14 @@ public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_UP) {
+        if (keyCode == GLFW.GLFW_KEY_DOWN || keyCode == GLFW.GLFW_KEY_UP) {
             int count = this.getEntryCount();
             if (count == 0) {
                 return false;
             }
             ScriptListEntry current = this.getSelectedOrNull();
             int idx = current == null ? -1 : this.children().indexOf(current);
-            int next = keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN ? idx + 1 : idx - 1;
+            int next = keyCode == GLFW.GLFW_KEY_DOWN ? idx + 1 : idx - 1;
             next = Math.max(0, Math.min(count - 1, next));
             if (next != idx) {
                 ScriptListEntry target = this.getEntry(next);
@@ -112,7 +115,7 @@ public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
                 this.ensureVisible(target);
             }
             return true;
-        } else if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER) {
+        } else if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
             ScriptListEntry current = this.getSelectedOrNull();
             if (current != null) {
                 current.toggle();
@@ -132,7 +135,7 @@ public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
     }
 
     @Override
-    protected void renderDecorations(net.minecraft.client.gui.DrawContext context, int mouseX, int mouseY) {
+    protected void renderDecorations(DrawContext context, int mouseX, int mouseY) {
         // Don't render background
     }
 }

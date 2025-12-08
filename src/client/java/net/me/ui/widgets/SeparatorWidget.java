@@ -18,9 +18,11 @@
 
 package net.me.ui.widgets;
 
+import net.me.ui.UIConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
@@ -32,8 +34,8 @@ public class SeparatorWidget extends ClickableWidget {
     public static final int RIGHT = 87;
     private static final int DEFAULT_HEIGHT = 10;
     private static final int LABEL_PADDING = 6;
-    private static final int DEFAULT_TEXT_COLOR = 0xFFFFFFFF;
-    private static final int DEFAULT_LINE_COLOR = 0xFFFFFFFF;
+    private static final int DEFAULT_TEXT_COLOR = UIConstants.TEXT_COLOR_WHITE;
+    private static final int DEFAULT_LINE_COLOR = UIConstants.TEXT_COLOR_WHITE;
     private final int textColor;
     private final int lineColor;
     private final int positionPercent;
@@ -98,7 +100,7 @@ public class SeparatorWidget extends ClickableWidget {
     }
 
     @Override
-    protected void appendClickableNarrations(net.minecraft.client.gui.screen.narration.NarrationMessageBuilder builder) {
+    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
         // Non-interactive separator; no narration needed.
     }
 }

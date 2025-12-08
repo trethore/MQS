@@ -25,8 +25,8 @@ import net.me.keybinds.KeybindManager;
 import net.me.keybinds.Keys;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
-import org.lwjgl.glfw.GLFW;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;

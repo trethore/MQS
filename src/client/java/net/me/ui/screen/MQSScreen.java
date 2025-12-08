@@ -26,23 +26,23 @@ import net.minecraft.text.Text;
 
 public class MQSScreen extends Screen {
 
-    private Screen parent;
-
-    protected MQSScreen(Text title) {
-        super(Text.of(Main.MOD_ID + ": " + title));
-    }
+    private final Screen parent;
 
     protected MQSScreen(String title) {
-        this(Text.of(title));
+        this(null, Text.of(title));
     }
 
-    protected MQSScreen(Screen parent, Text title) {
-        this(title);
-        this.parent = parent;
+    protected MQSScreen(Text title) {
+        this(null, title);
     }
 
     protected MQSScreen(Screen parent, String title) {
         this(parent, Text.of(title));
+    }
+
+    protected MQSScreen(Screen parent, Text title) {
+        super(Text.of(Main.MOD_ID + ": " + title.getString()));
+        this.parent = parent;
     }
 
     public void open() {
@@ -60,7 +60,7 @@ public class MQSScreen extends Screen {
         closeToParent();
     }
 
-    public void closeToParent() {
+    private void closeToParent() {
         McUtils.getMc().ifPresentOrElse(
                 mc -> mc.setScreen(parent)
                 , () -> {

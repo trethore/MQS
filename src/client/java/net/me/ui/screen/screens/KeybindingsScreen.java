@@ -19,24 +19,28 @@
 package net.me.ui.screen.screens;
 
 import net.me.keybinds.KeybindManager;
+import net.me.ui.UIConstants;
 import net.me.ui.screen.MQSScreen;
 import net.me.ui.widgets.KeybindingsListWidget;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
 import net.minecraft.client.gui.widget.TextWidget;
+import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 
 public class KeybindingsScreen extends MQSScreen {
 
-    private static final int PADDING = 16;
-    private static final int TITLE_HEIGHT = 14;
-    private static final int BUTTON_HEIGHT = 20;
-    private static final int BUTTON_WIDTH = 140;
+    private static final int HEADER_HEIGHT = 30;
+    private static final int FOOTER_HEIGHT = 40;
     private static final int LIST_ITEM_HEIGHT = 24;
-    private static final int MAX_LIST_HEIGHT = 260;
 
     private final KeybindManager keybindManager;
     private KeybindingsListWidget listWidget;
+    private ThreePartsLayoutWidget layout;
+    private DirectionalLayoutWidget headerLayout;
+    private DirectionalLayoutWidget footerLayout;
 
     public KeybindingsScreen(MQSScreen parent, KeybindManager keybindManager) {
         super(parent, Text.translatable("screen.mqs.keybinds.title"));
@@ -46,42 +50,60 @@ public class KeybindingsScreen extends MQSScreen {
     @Override
     protected void init() {
         super.init();
-        int centerX = getMiddle().x();
+        layout = new ThreePartsLayoutWidget(this, HEADER_HEIGHT, FOOTER_HEIGHT);
 
-        TextWidget title = new TextWidget(220, TITLE_HEIGHT, Text.translatable("screen.mqs.keybinds.title"), this.textRenderer).alignCenter();
-        int listWidth = Math.min(420, this.width - PADDING * 2);
-        int verticalBudget = this.height - PADDING * 2 - TITLE_HEIGHT - BUTTON_HEIGHT - PADDING * 2;
-        int listHeight = Math.min(verticalBudget, MAX_LIST_HEIGHT);
-        listHeight = Math.max(listHeight, LIST_ITEM_HEIGHT * 3);
+        headerLayout = layout.addHeader(DirectionalLayoutWidget.vertical().spacing(UIConstants.COMPONENT_SPACING), positioner -> positioner.alignHorizontalCenter().marginTop(UIConstants.TITLE_HEIGHT));
+        headerLayout.add(new TextWidget(220, UIConstants.TITLE_HEIGHT, Text.translatable("screen.mqs.keybinds.title"), this.textRenderer).alignCenter());
 
-        int blockHeight = TITLE_HEIGHT + PADDING + listHeight + PADDING + BUTTON_HEIGHT;
+        int listWidth = Math.min(420, this.width - UIConstants.PADDING * 2);
 
-        int titleY = Math.max(PADDING, Math.min(getMiddle().y() - blockHeight / 2, this.height - PADDING - blockHeight));
-        int listY = titleY + TITLE_HEIGHT + PADDING;
-        int buttonY = listY + listHeight + PADDING;
-        int listX = centerX - listWidth / 2;
-
-        title.setX(centerX - title.getWidth() / 2);
-        title.setY(titleY);
-        this.addDrawableChild(title);
-
-        listWidget = new KeybindingsListWidget(this.client, listWidth, listHeight, listY, LIST_ITEM_HEIGHT, keybindManager);
-        listWidget.setDimensionsAndPosition(listWidth, listHeight, listX, listY);
+        listWidget = new KeybindingsListWidget(this.client, listWidth, 0, 0, LIST_ITEM_HEIGHT, keybindManager);
         refreshList();
         this.addDrawableChild(listWidget);
 
-        ButtonWidget done = ButtonWidget.builder(ScreenTexts.DONE, button -> closeToParent())
-                .dimensions(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT)
-                .build();
-        done.setX(centerX - BUTTON_WIDTH / 2);
-        done.setY(buttonY);
-        this.addDrawableChild(done);
+        footerLayout = layout.addFooter(DirectionalLayoutWidget.vertical().spacing(UIConstants.COMPONENT_SPACING), positioner -> positioner.alignHorizontalCenter().marginBottom(UIConstants.PADDING));
+        footerLayout.add(ButtonWidget.builder(ScreenTexts.DONE, button -> close())
+                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_LARGE, UIConstants.BUTTON_HEIGHT)
+                .build());
+
+        layout.forEachChild(this::addDrawableChild);
+        this.refreshWidgetPositions();
     }
 
     @Override
-    public void resize(net.minecraft.client.MinecraftClient client, int width, int height) {
+    protected void refreshWidgetPositions() {
+        if (layout != null) {
+            layout.refreshPositions();
+        }
+        centerAndPositionList();
+    }
+
+    private void centerAndPositionList() {
+        if (listWidget == null || headerLayout == null || footerLayout == null) {
+            return;
+        }
+
+        int listWidth = Math.min(420, this.width - UIConstants.PADDING * 2);
+        int maxListHeight = 260;
+        int verticalBudget = this.height - UIConstants.PADDING * 2 - headerLayout.getHeight() - footerLayout.getHeight() - UIConstants.COMPONENT_SPACING * 2;
+        int listHeight = Math.max(LIST_ITEM_HEIGHT * 3, Math.min(maxListHeight, verticalBudget));
+
+        int blockHeight = headerLayout.getHeight() + UIConstants.COMPONENT_SPACING + listHeight + UIConstants.COMPONENT_SPACING + footerLayout.getHeight();
+        int top = Math.max(UIConstants.PADDING, Math.min(getMiddle().y() - blockHeight / 2, this.height - UIConstants.PADDING - blockHeight));
+
+        int listY = top + headerLayout.getHeight() + UIConstants.COMPONENT_SPACING;
+        int footerY = listY + listHeight + UIConstants.COMPONENT_SPACING;
+
+        headerLayout.setY(top);
+        footerLayout.setY(footerY);
+
+        int listX = getMiddle().x() - listWidth / 2;
+        listWidget.setDimensionsAndPosition(listWidth, listHeight, listX, listY);
+    }
+
+    @Override
+    public void resize(MinecraftClient client, int width, int height) {
         super.resize(client, width, height);
-        this.init();
     }
 
     @Override

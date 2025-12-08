@@ -21,6 +21,8 @@ package net.me.ui.screen.screens;
 import net.me.Main;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.ui.UIConstants;
+import net.me.ui.UIUtils;
 import net.me.ui.screen.MQSScreen;
 import net.me.ui.widgets.ScriptListWidget;
 import net.minecraft.client.MinecraftClient;
@@ -28,15 +30,14 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
-import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.Util;
-import org.lwjgl.glfw.GLFW;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,13 +46,8 @@ import java.util.Locale;
 
 public class ScriptsMenuScreen extends MQSScreen {
 
-    private static final int PADDING = 16;
-    private static final int COMPONENT_GAP = 8;
-    private static final int TITLE_GAP = 14;
     private static final int SEARCH_HEIGHT = 20;
     private static final int LIST_ITEM_HEIGHT = 40;
-    private static final int ACTION_BUTTON_WIDTH = 80;
-    private static final int ACTION_BUTTON_HEIGHT = 20;
     private static final int MAX_LIST_WIDTH = 350;
     private static final int HEADER_HEIGHT = 90;
     private static final float TITLE_SCALE = 1.4f;
@@ -88,7 +84,7 @@ public class ScriptsMenuScreen extends MQSScreen {
     protected void init() {
         super.init();
         layout = new ThreePartsLayoutWidget(this, HEADER_HEIGHT, 40);
-        headerLayout = layout.addHeader(DirectionalLayoutWidget.vertical().spacing(COMPONENT_GAP), positioner -> positioner.alignHorizontalCenter().marginTop(TITLE_GAP + 12));
+        headerLayout = layout.addHeader(DirectionalLayoutWidget.vertical().spacing(UIConstants.COMPONENT_SPACING), positioner -> positioner.alignHorizontalCenter().marginTop(UIConstants.TITLE_HEIGHT + 12));
 
         DirectionalLayoutWidget searchRow = headerLayout.add(DirectionalLayoutWidget.horizontal());
         searchField = new TextFieldWidget(this.textRenderer, 0, 0, computeSearchFieldWidth(), SEARCH_HEIGHT, Text.translatable("screen.mqs.scripts.search"));
@@ -104,18 +100,18 @@ public class ScriptsMenuScreen extends MQSScreen {
         refreshList();
         this.addDrawableChild(scriptList);
 
-        footerLayout = layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COMPONENT_GAP), positioner -> positioner.alignHorizontalCenter().marginBottom(COMPONENT_GAP));
-        openFolderButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.open_folder"), button -> openScriptsFolder())
-                .dimensions(0, 0, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT)
+        footerLayout = layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(UIConstants.COMPONENT_SPACING), positioner -> positioner.alignHorizontalCenter().marginBottom(UIConstants.COMPONENT_SPACING));
+        openFolderButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.open_folder"), button -> UIUtils.openScriptsFolder())
+                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
                 .build());
         refreshButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.refresh"), button -> handleRefresh())
-                .dimensions(0, 0, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT)
+                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
                 .build());
         optionsButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.options"), button -> openOptions())
-                .dimensions(0, 0, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT)
+                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
                 .build());
-        doneButton = footerLayout.add(ButtonWidget.builder(ScreenTexts.DONE, button -> closeToParent())
-                .dimensions(0, 0, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT)
+        doneButton = footerLayout.add(ButtonWidget.builder(ScreenTexts.DONE, button -> close())
+                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
                 .build());
 
         layout.forEachChild(this::addDrawableChild);
@@ -134,13 +130,6 @@ public class ScriptsMenuScreen extends MQSScreen {
 
     private void onEntryToggled() {
         refreshList();
-    }
-
-    private void openScriptsFolder() {
-        if (this.client == null) {
-            return;
-        }
-        Util.getOperatingSystem().open(Main.MOD_DIR.resolve("scripts").toUri());
     }
 
     private void refreshList() {
@@ -208,14 +197,14 @@ public class ScriptsMenuScreen extends MQSScreen {
         int listWidth = computeListWidth();
         int minListHeight = LIST_ITEM_HEIGHT * 3;
         int maxListHeight = 260;
-        int verticalBudget = this.height - PADDING * 2 - headerLayout.getHeight() - footerLayout.getHeight() - COMPONENT_GAP * 2;
+        int verticalBudget = this.height - UIConstants.PADDING * 2 - headerLayout.getHeight() - footerLayout.getHeight() - UIConstants.COMPONENT_SPACING * 2;
         int listHeight = Math.max(minListHeight, Math.min(maxListHeight, verticalBudget));
 
-        int blockHeight = headerLayout.getHeight() + COMPONENT_GAP + listHeight + COMPONENT_GAP + footerLayout.getHeight();
-        int top = Math.max(PADDING, Math.min(getMiddle().y() - blockHeight / 2, this.height - PADDING - blockHeight));
+        int blockHeight = headerLayout.getHeight() + UIConstants.COMPONENT_SPACING + listHeight + UIConstants.COMPONENT_SPACING + footerLayout.getHeight();
+        int top = Math.max(UIConstants.PADDING, Math.min(getMiddle().y() - blockHeight / 2, this.height - UIConstants.PADDING - blockHeight));
 
-        int listY = top + headerLayout.getHeight() + COMPONENT_GAP;
-        int footerY = listY + listHeight + COMPONENT_GAP;
+        int listY = top + headerLayout.getHeight() + UIConstants.COMPONENT_SPACING;
+        int footerY = listY + listHeight + UIConstants.COMPONENT_SPACING;
 
         headerLayout.setY(top);
         footerLayout.setY(footerY);
@@ -225,12 +214,12 @@ public class ScriptsMenuScreen extends MQSScreen {
     }
 
     private int computeSearchFieldWidth() {
-        int maxWidth = this.width - PADDING * 2;
+        int maxWidth = this.width - UIConstants.PADDING * 2;
         return Math.max(160, Math.min(MAX_LIST_WIDTH, maxWidth));
     }
 
     private int computeListWidth() {
-        return Math.min(MAX_LIST_WIDTH, this.width - PADDING * 2);
+        return Math.min(MAX_LIST_WIDTH, this.width - UIConstants.PADDING * 2);
     }
 
     @Override

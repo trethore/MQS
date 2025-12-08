@@ -21,6 +21,9 @@ package net.me.ui.widgets;
 import lombok.Setter;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.ui.UIConstants;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.Selectable;
@@ -28,7 +31,6 @@ import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.ElementListWidget;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
-import net.minecraft.util.math.ColorHelper;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,19 +40,12 @@ import java.util.Locale;
 
 public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
 
-    private static final int STATUS_ON_COLOR = ColorHelper.getArgb(255, 56, 255, 70);
-    private static final int STATUS_OFF_COLOR = ColorHelper.getArgb(255, 255, 75, 75);
-    private static final int STATUS_BORDER_COLOR = ColorHelper.getArgb(255, 144, 144, 144);
-    private static final int STATUS_BORDER_COLOR_HIGHLIGHT = ColorHelper.getArgb(255, 168, 168, 168);
-    private static final int ENTRY_BORDER_COLOR = ColorHelper.getArgb(255, 168, 168, 168);
-
     private final ScriptDescriptor descriptor;
     private final ScriptingService scriptingService;
     private final Runnable onToggle;
+    private final FocusAnchor focusAnchor = new FocusAnchor();
     @Setter
     private ScriptListWidget parentList;
-    private final FocusAnchor focusAnchor = new FocusAnchor();
-
     private boolean running;
     private int lastX;
     private int lastY;
@@ -71,7 +66,7 @@ public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
         this.lastWidth = entryWidth;
         this.lastHeight = entryHeight;
 
-        var textRenderer = net.minecraft.client.MinecraftClient.getInstance().textRenderer;
+        TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
         int lineHeight = textRenderer.fontHeight;
         int textGap = 2;
         int totalTextHeight = lineHeight * 2 + textGap;
@@ -84,11 +79,11 @@ public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
         MutableText title = Text.literal(descriptor.moduleName());
 
         if (active) {
-            context.drawBorder(x, y, entryWidth, entryHeight, ENTRY_BORDER_COLOR);
+            context.drawBorder(x, y, entryWidth, entryHeight, UIConstants.ENTRY_BORDER_COLOR);
         }
 
-        context.drawTextWithShadow(textRenderer, title, textX, textY, 0xFFFFFF);
-        context.drawTextWithShadow(textRenderer, formatPath(descriptor), textX, textY + lineHeight + textGap, 0xA0A0A0);
+        context.drawTextWithShadow(textRenderer, title, textX, textY, UIConstants.TEXT_COLOR_WHITE);
+        context.drawTextWithShadow(textRenderer, formatPath(descriptor), textX, textY + lineHeight + textGap, UIConstants.TEXT_COLOR_DARK_GRAY);
 
         int statusSize = 20;
         int statusRight = x + entryWidth - 6;
@@ -96,8 +91,8 @@ public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
         int statusTop = y + (entryHeight - statusSize) / 2;
         int statusBottom = statusTop + statusSize;
 
-        context.fill(statusLeft, statusTop, statusRight, statusBottom, running ? STATUS_ON_COLOR : STATUS_OFF_COLOR);
-        int borderColor = active ? STATUS_BORDER_COLOR_HIGHLIGHT : STATUS_BORDER_COLOR;
+        context.fill(statusLeft, statusTop, statusRight, statusBottom, running ? UIConstants.STATUS_ON_COLOR : UIConstants.STATUS_OFF_COLOR);
+        int borderColor = active ? UIConstants.STATUS_BORDER_COLOR_HIGHLIGHT : UIConstants.STATUS_BORDER_COLOR;
         context.drawBorder(statusLeft, statusTop, statusSize, statusSize, borderColor);
     }
 
@@ -132,26 +127,6 @@ public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
         this.setFocused(focusAnchor);
     }
 
-    private static final class FocusAnchor implements Element, Selectable {
-        @Override
-        public void setFocused(boolean focused) {
-        }
-
-        @Override
-        public boolean isFocused() {
-            return false;
-        }
-
-        @Override
-        public SelectionType getType() {
-            return SelectionType.NONE;
-        }
-
-        @Override
-        public void appendNarrations(NarrationMessageBuilder builder) {
-        }
-    }
-
     public void toggle() {
         if (running) {
             scriptingService.disable(descriptor.getId());
@@ -179,5 +154,25 @@ public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
             segments.add(path.getName(i).toString());
         }
         return String.join("/", segments).toLowerCase(Locale.ROOT);
+    }
+
+    private static final class FocusAnchor implements Element, Selectable {
+        @Override
+        public boolean isFocused() {
+            return false;
+        }
+
+        @Override
+        public void setFocused(boolean focused) {
+        }
+
+        @Override
+        public SelectionType getType() {
+            return SelectionType.NONE;
+        }
+
+        @Override
+        public void appendNarrations(NarrationMessageBuilder builder) {
+        }
     }
 }
