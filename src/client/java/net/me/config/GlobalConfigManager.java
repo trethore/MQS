@@ -101,9 +101,17 @@ public class GlobalConfigManager {
         return Collections.unmodifiableList(data.additionalScriptDirs);
     }
 
-    public void setAdditionalScriptDirectories(List<String> directories) {
-        data.additionalScriptDirs = directories == null ? new ArrayList<>() : new ArrayList<>(directories);
-        save();
+    public String getDefaultIdeCommand() {
+        data.ensureDefaults();
+        return data.defaultIdeCommand;
+    }
+
+    public void setDefaultIdeCommand(String command) {
+        String sanitized = command == null || command.isBlank() ? "code" : command.trim();
+        if (!sanitized.equals(data.defaultIdeCommand)) {
+            data.defaultIdeCommand = sanitized;
+            save();
+        }
     }
 
     private static class ConfigData {
@@ -116,9 +124,15 @@ public class GlobalConfigManager {
         @SerializedName(ConfigKeys.ADDITIONAL_SCRIPT_DIRS)
         List<String> additionalScriptDirs = new ArrayList<>();
 
+        @SerializedName(ConfigKeys.DEFAULT_IDE_COMMAND)
+        String defaultIdeCommand = "code";
+
         void ensureDefaults() {
             if (additionalScriptDirs == null) {
                 additionalScriptDirs = new ArrayList<>();
+            }
+            if (defaultIdeCommand == null || defaultIdeCommand.isBlank()) {
+                defaultIdeCommand = "code";
             }
         }
     }

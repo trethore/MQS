@@ -9,5 +9,9 @@
   "screen.mqs.options.settings": "Paramètres",
   "screen.mqs.options.commands": "Commandes",
   "screen.mqs.options.keybinds": "Raccourcis",
-  "screen.mqs.options.open_ide": "Ouvrir dans l'IDE"
+  "screen.mqs.options.open_ide": "Ouvrir dans l'IDE",
+  "screen.mqs.settings.title": "Paramètres",
+  "screen.mqs.settings.log_redirect": "Rediriger les logs",
+  "screen.mqs.settings.allow_all_classes": "Autoriser toutes les classes",
+  "screen.mqs.settings.default_ide_command": "Commande IDE par défaut"
 }

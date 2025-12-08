@@ -315,6 +315,6 @@ public class ScriptsMenuScreen extends MQSScreen {
     }
 
     private void openOptions() {
-        new OptionsScreen(this).open();
+        new OptionsScreen(this, Main.getInstance().getGlobalConfigManager()).open();
     }
 }

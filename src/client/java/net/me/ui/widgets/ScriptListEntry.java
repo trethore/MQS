@@ -38,8 +38,8 @@ import java.util.Locale;
 
 public class ScriptListEntry extends ElementListWidget.Entry<ScriptListEntry> {
 
-    private static final int STATUS_ON_COLOR = ColorHelper.getArgb(255, 108, 212, 140);
-    private static final int STATUS_OFF_COLOR = ColorHelper.getArgb(255, 229, 150, 150);
+    private static final int STATUS_ON_COLOR = ColorHelper.getArgb(255, 56, 255, 70);
+    private static final int STATUS_OFF_COLOR = ColorHelper.getArgb(255, 255, 75, 75);
     private static final int STATUS_BORDER_COLOR = ColorHelper.getArgb(255, 144, 144, 144);
     private static final int STATUS_BORDER_COLOR_HIGHLIGHT = ColorHelper.getArgb(255, 168, 168, 168);
     private static final int ENTRY_BORDER_COLOR = ColorHelper.getArgb(255, 168, 168, 168);

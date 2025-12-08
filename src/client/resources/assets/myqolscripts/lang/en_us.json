@@ -9,5 +9,9 @@
   "screen.mqs.options.settings": "Settings",
   "screen.mqs.options.commands": "Commands",
   "screen.mqs.options.keybinds": "Keybinds",
-  "screen.mqs.options.open_ide": "Open in IDE"
+  "screen.mqs.options.open_ide": "Open in IDE",
+  "screen.mqs.settings.title": "Settings",
+  "screen.mqs.settings.log_redirect": "Should redirect logs",
+  "screen.mqs.settings.allow_all_classes": "Allow all classes access",
+  "screen.mqs.settings.default_ide_command": "Default IDE command"
 }

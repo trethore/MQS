@@ -19,6 +19,7 @@
 package net.me.ui.screen.screens;
 
 import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.ui.screen.MQSScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
@@ -39,9 +40,13 @@ public class OptionsScreen extends MQSScreen {
     private static final int BUTTON_HEIGHT = 20;
     private static final int TITLE_HEIGHT = 14;
     private static final int COMPONENT_SPACING = 6;
+    private static final int HEIGHT_OFFSET = 25;
 
-    public OptionsScreen(MQSScreen parent) {
+    private final GlobalConfigManager globalConfigManager;
+
+    public OptionsScreen(MQSScreen parent, GlobalConfigManager globalConfigManager) {
         super(parent, Text.translatable("screen.mqs.options.title"));
+        this.globalConfigManager = globalConfigManager;
     }
 
     @Override
@@ -51,7 +56,7 @@ public class OptionsScreen extends MQSScreen {
 
         layout.add(new TextWidget(BUTTON_WIDTH, TITLE_HEIGHT, Text.translatable("screen.mqs.options.title"), this.textRenderer)
                 .alignCenter(), Positioner::alignHorizontalCenter);
-        layout.add(createActionButton(Text.translatable("screen.mqs.options.settings"), this::placeholder), Positioner::alignHorizontalCenter);
+        layout.add(createActionButton(Text.translatable("screen.mqs.options.settings"), this::openSettings), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.options.commands"), this::placeholder), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.options.keybinds"), this::placeholder), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.scripts.open_folder"), this::openScriptsFolder), Positioner::alignHorizontalCenter);
@@ -60,7 +65,7 @@ public class OptionsScreen extends MQSScreen {
 
         layout.refreshPositions();
         layout.setX(getMiddle().x() - layout.getWidth() / 2);
-        layout.setY(getMiddle().y() - layout.getHeight() / 2 - 50);
+        layout.setY(getMiddle().y() - layout.getHeight() / 2 - HEIGHT_OFFSET);
         layout.forEachChild(this::addDrawableChild);
     }
 
@@ -77,6 +82,10 @@ public class OptionsScreen extends MQSScreen {
     private void placeholder() {
     }
 
+    private void openSettings() {
+        new SettingsScreen(this, globalConfigManager).open();
+    }
+
     private void openScriptsFolder() {
         Path scriptsPath = Main.MOD_DIR.resolve("scripts");
         Util.getOperatingSystem().open(scriptsPath.toUri());
@@ -84,10 +93,19 @@ public class OptionsScreen extends MQSScreen {
 
     private void openInIde() {
         Path scriptsPath = Main.MOD_DIR.resolve("scripts");
+        String command = globalConfigManager.getDefaultIdeCommand();
         try {
-            new ProcessBuilder("code", scriptsPath.toString()).start();
+            new ProcessBuilder(command, scriptsPath.toString()).start();
         } catch (IOException e) {
-            Main.LOGGER.error("Failed to open scripts folder in VS Code", e);
+            if (Util.getOperatingSystem() == Util.OperatingSystem.WINDOWS) {
+                try {
+                    new ProcessBuilder("cmd", "/c", command, scriptsPath.toString()).start();
+                    return;
+                } catch (IOException ignored) {
+                    // fall through to logging below
+                }
+            }
+            Main.LOGGER.error("Failed to open scripts folder in IDE command '{}'", command, e);
         }
     }
 }
