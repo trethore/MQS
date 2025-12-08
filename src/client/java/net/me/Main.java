@@ -35,9 +35,11 @@ import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.utils.McUtils;
+import net.me.ui.screen.screens.ScriptsMenuScreen;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.lwjgl.glfw.GLFW;
 
 import java.nio.file.Path;
 
@@ -92,6 +94,7 @@ public class Main implements ClientModInitializer {
         consoleManager.init();
         commandManager.init();
         globalConfigManager.init();
+        registerUiKeybind();
 
         this.registerConsoleCommands();
         this.registerClientCommands();
@@ -108,6 +111,20 @@ public class Main implements ClientModInitializer {
 
     private void registerClientCommands() {
         this.commandManager.addCommand(new MQSCommand(this.scriptingService));
+    }
+
+    private void registerUiKeybind() {
+        keybindManager.registerHost(
+                "open_ui",
+                () -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
+                    if (!(mc.currentScreen instanceof ScriptsMenuScreen)) {
+                        new ScriptsMenuScreen(scriptingService).open();
+                    }
+                })),
+                GLFW.GLFW_KEY_F10,
+                false,
+                150
+        );
     }
 
     private void registerConsoleCommands() {

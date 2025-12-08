@@ -28,7 +28,7 @@ Assets and metadata live under `src/client/resources/`; `fabric.mod.json` regist
 - Use PascalCase for classes, camelCase for methods and fields, and UPPER_SNAKE_CASE for constants.
 - Declare explicit types and avoid `var`; prefer descriptive names over one-letter identifiers.
 - Import types rather than using fully qualified names inside method bodies.
-- When adding shared utilities, document behaviour through clear method names and arguments rather than abstract component hierarchies.
+- When adding shared utilities, document behavior through clear method names and arguments rather than abstract component hierarchies.
 - Assume contributors are working in IntelliJ IDEA; keep code free of IDE warnings.
 - Avoid code comments unless documentation is explicitly requested.
 - Keep edits minimal and stylistically consistent with surrounding code; do not introduce unrelated refactors or new formatting tools.

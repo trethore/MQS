@@ -16,33 +16,33 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.command;
+package net.me.command.commands;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.me.command.commands.ScriptCommand;
-import net.me.command.commands.UpdateCommand;
-import net.me.command.commands.UICommand;
+import net.me.command.Command;
+import net.me.command.CommandManager;
 import net.me.scripting.ScriptingService;
+import net.me.ui.screen.screens.ScriptsMenuScreen;
+import net.me.utils.McUtils;
 
-public class MQSCommand extends Command {
-    private final ScriptCommand scriptCommand;
-    private final UpdateCommand updateCommand;
-    private final UICommand uiCommand;
+public class UICommand extends Command {
 
-    public MQSCommand(ScriptingService scriptingService) {
-        this.scriptCommand = new ScriptCommand(scriptingService);
-        this.updateCommand = new UpdateCommand();
-        this.uiCommand = new UICommand(scriptingService);
+    private final ScriptingService scriptingService;
+
+    public UICommand(ScriptingService scriptingService) {
+        this.scriptingService = scriptingService;
     }
 
     @Override
-    protected LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-        return ClientCommandManager.literal("mqs")
-                .requires(source -> source.hasPermissionLevel(0))
-                .then(scriptCommand.buildCommand())
-                .then(updateCommand.buildCommand())
-                .then(uiCommand.buildCommand());
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("ui")
+                .executes(context -> openUi());
+    }
+
+    private int openUi() {
+        McUtils.getMc().ifPresent(mc -> mc.send(() -> new ScriptsMenuScreen(scriptingService).open()));
+        return CommandManager.COMMAND_SUCCESS;
     }
 }
