@@ -16,7 +16,21 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.utils.math;
+package net.me.ui.screen.screens;
 
-public record Vec2i(int x, int y) {
+import net.me.ui.screen.MQSScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.text.Text;
+
+public class ConsoleScreen extends MQSScreen {
+
+    public ConsoleScreen(Screen parent) {
+        super(parent, Text.translatable("screen.mqs.scripts.console"));
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        // TODO: Implement console UI
+    }
 }

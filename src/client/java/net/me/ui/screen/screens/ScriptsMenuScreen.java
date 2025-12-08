@@ -64,6 +64,8 @@ public class ScriptsMenuScreen extends MQSScreen {
     @Nullable
     private ButtonWidget refreshButton;
     @Nullable
+    private ButtonWidget consoleButton;
+    @Nullable
     private ButtonWidget optionsButton;
     @Nullable
     private ButtonWidget doneButton;
@@ -100,18 +102,30 @@ public class ScriptsMenuScreen extends MQSScreen {
         refreshList();
         this.addDrawableChild(scriptList);
 
-        footerLayout = layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(UIConstants.COMPONENT_SPACING), positioner -> positioner.alignHorizontalCenter().marginBottom(UIConstants.COMPONENT_SPACING));
-        openFolderButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.open_folder"), button -> UIUtils.openScriptsFolder())
-                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
+        footerLayout = layout.addFooter(DirectionalLayoutWidget.vertical().spacing(UIConstants.COMPONENT_SPACING), positioner -> positioner.alignHorizontalCenter().marginBottom(UIConstants.COMPONENT_SPACING));
+
+        int totalWidth = computeListWidth();
+        int spacing = UIConstants.COMPONENT_SPACING;
+        int buttonWidthRow1 = (totalWidth - spacing) / 2;
+        int buttonWidthRow2 = (totalWidth - (spacing * 2)) / 3;
+
+        DirectionalLayoutWidget row1 = footerLayout.add(DirectionalLayoutWidget.horizontal().spacing(spacing));
+        refreshButton = row1.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.refresh"), button -> handleRefresh())
+                .dimensions(0, 0, buttonWidthRow1, UIConstants.BUTTON_HEIGHT)
                 .build());
-        refreshButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.refresh"), button -> handleRefresh())
-                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
+        consoleButton = row1.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.console"), button -> openConsole())
+                .dimensions(0, 0, buttonWidthRow1, UIConstants.BUTTON_HEIGHT)
                 .build());
-        optionsButton = footerLayout.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.options"), button -> openOptions())
-                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
+
+        DirectionalLayoutWidget row2 = footerLayout.add(DirectionalLayoutWidget.horizontal().spacing(spacing));
+        openFolderButton = row2.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.open_folder"), button -> UIUtils.openScriptsFolder())
+                .dimensions(0, 0, buttonWidthRow2, UIConstants.BUTTON_HEIGHT)
                 .build());
-        doneButton = footerLayout.add(ButtonWidget.builder(ScreenTexts.DONE, button -> close())
-                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
+        doneButton = row2.add(ButtonWidget.builder(ScreenTexts.DONE, button -> close())
+                .dimensions(0, 0, buttonWidthRow2, UIConstants.BUTTON_HEIGHT)
+                .build());
+        optionsButton = row2.add(ButtonWidget.builder(Text.translatable("screen.mqs.scripts.options"), button -> openOptions())
+                .dimensions(0, 0, buttonWidthRow2, UIConstants.BUTTON_HEIGHT)
                 .build());
 
         layout.forEachChild(this::addDrawableChild);
@@ -251,17 +265,20 @@ public class ScriptsMenuScreen extends MQSScreen {
         if (scriptList != null) {
             order.add(scriptList);
         }
-        if (openFolderButton != null) {
-            order.add(openFolderButton);
-        }
         if (refreshButton != null) {
             order.add(refreshButton);
         }
-        if (optionsButton != null) {
-            order.add(optionsButton);
+        if (consoleButton != null) {
+            order.add(consoleButton);
+        }
+        if (openFolderButton != null) {
+            order.add(openFolderButton);
         }
         if (doneButton != null) {
             order.add(doneButton);
+        }
+        if (optionsButton != null) {
+            order.add(optionsButton);
         }
 
         if (order.isEmpty()) {
@@ -301,6 +318,10 @@ public class ScriptsMenuScreen extends MQSScreen {
         int textWidth = this.textRenderer.getWidth(TITLE_TEXT);
         context.drawTextWithShadow(this.textRenderer, TITLE_TEXT, -textWidth / 2, 0, 0xFFFFFF);
         matrices.pop();
+    }
+
+    private void openConsole() {
+        new ConsoleScreen(this).open();
     }
 
     private void openOptions() {

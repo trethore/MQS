@@ -41,6 +41,7 @@ public final class UIConstants {
     public static final int ENTRY_BORDER_COLOR = ColorHelper.getArgb(255, 168, 168, 168);
     public static final int HEADER_TEXT_COLOR = TEXT_COLOR_WHITE;
     public static final int HEADER_LINE_COLOR = TEXT_COLOR_GRAY;
+
     private UIConstants() {
     }
 }

@@ -34,12 +34,12 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
-import net.me.utils.McUtils;
 import net.me.ui.screen.screens.ScriptsMenuScreen;
+import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
+import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.lwjgl.glfw.GLFW;
 
 import java.nio.file.Path;
 

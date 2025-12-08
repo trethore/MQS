@@ -22,8 +22,8 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.command.commands.ScriptCommand;
-import net.me.command.commands.UpdateCommand;
 import net.me.command.commands.UICommand;
+import net.me.command.commands.UpdateCommand;
 import net.me.scripting.ScriptingService;
 
 public class MQSCommand extends Command {

@@ -76,9 +76,9 @@ public class SettingsScreen extends MQSScreen {
 
         int doneY = grid.getY() + grid.getHeight() + UIConstants.PADDING;
         ButtonWidget done = ButtonWidget.builder(ScreenTexts.DONE, button -> close())
-                .dimensions(0, 0, CONTROL_WIDTH, UIConstants.BUTTON_HEIGHT)
+                .dimensions(0, 0, UIConstants.BUTTON_WIDTH_SMALL, UIConstants.BUTTON_HEIGHT)
                 .build();
-        done.setX(centerX - CONTROL_WIDTH / 2);
+        done.setX(centerX - UIConstants.BUTTON_WIDTH_SMALL / 2);
         done.setY(doneY);
         this.addDrawableChild(done);
 
