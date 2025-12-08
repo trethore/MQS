@@ -24,6 +24,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.widget.ElementListWidget;
 
 import java.util.Collection;
+import org.jetbrains.annotations.Nullable;
 public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
 
     private final ScriptingService scriptingService;
@@ -56,6 +57,27 @@ public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
         }
     }
 
+    public void selectById(@Nullable String id) {
+        this.selectedId = id;
+        if (id == null) {
+            this.setSelected(null);
+            return;
+        }
+        for (ScriptListEntry entry : this.children()) {
+            if (!id.equals(entry.descriptor().getId())) {
+                continue;
+            }
+            this.setSelected(entry);
+            this.ensureVisible(entry);
+            break;
+        }
+    }
+
+    @Nullable
+    public String getSelectedId() {
+        return this.selectedId;
+    }
+
     @Override
     public void setSelected(@org.jetbrains.annotations.Nullable ScriptListEntry entry) {
         super.setSelected(entry);
@@ -66,10 +88,6 @@ public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
         this.selectedId = entry.descriptor().getId();
         this.setFocused(entry);
         entry.focusAnchor();
-    }
-
-    public int entryCount() {
-        return this.getEntryCount();
     }
 
     @Override
@@ -115,6 +133,6 @@ public class ScriptListWidget extends ElementListWidget<ScriptListEntry> {
 
     @Override
     protected void renderDecorations(net.minecraft.client.gui.DrawContext context, int mouseX, int mouseY) {
-        // Hook for future texture-based background if needed.
+        // Don't render background
     }
 }
