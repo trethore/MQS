@@ -181,11 +181,35 @@ public class KeybindManager {
         configManager.setKeybind(binding.getOwner().getId(), binding.getName(), newKeyCode);
     }
 
+    public void rebindHostKey(HostKeyBinding binding, int newKeyCode) {
+        if (binding == null) return;
+
+        List<KeybindEntry> oldBindings = keybindsByKeycode.get(binding.getKey());
+        if (oldBindings != null) {
+            oldBindings.remove(binding);
+            if (oldBindings.isEmpty()) {
+                keybindsByKeycode.remove(binding.getKey());
+            }
+        }
+
+        binding.setKey(newKeyCode);
+
+        if (newKeyCode >= 0) {
+            keybindsByKeycode.computeIfAbsent(newKeyCode, k -> new CopyOnWriteArrayList<>()).add(binding);
+        }
+
+        configManager.setKeybind(HOST_ID, binding.getName(), newKeyCode);
+    }
+
     public Map<RunningScript, List<KeyBinding>> getGroupedKeybinds() {
         Map<RunningScript, List<KeyBinding>> grouped = new ConcurrentHashMap<>();
         for (KeyBinding binding : keybindsByName.values()) {
             grouped.computeIfAbsent(binding.getOwner(), k -> new CopyOnWriteArrayList<>()).add(binding);
         }
         return grouped;
+    }
+
+    public List<HostKeyBinding> getHostKeybinds() {
+        return List.copyOf(hostKeybindsByName.values());
     }
 }

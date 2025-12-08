@@ -79,12 +79,7 @@ public class KeyBinding implements KeybindEntry {
     }
 
     public String getKeyName() {
-        if (key < 0) {
-            return "UNKNOWN";
-        } else if (key < 7) {
-            return "BUTTON_" + key;
-        }
-        return Keys.fromCode(this.key).map(Keys::toString).orElse("Unknown");
+        return Keys.toDisplayName(this.key);
     }
 
 }

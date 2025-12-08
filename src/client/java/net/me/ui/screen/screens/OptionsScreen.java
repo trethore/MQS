@@ -58,7 +58,7 @@ public class OptionsScreen extends MQSScreen {
                 .alignCenter(), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.options.settings"), this::openSettings), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.options.commands"), this::placeholder), Positioner::alignHorizontalCenter);
-        layout.add(createActionButton(Text.translatable("screen.mqs.options.keybinds"), this::placeholder), Positioner::alignHorizontalCenter);
+        layout.add(createActionButton(Text.translatable("screen.mqs.options.keybinds"), this::openKeybindings), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.scripts.open_folder"), this::openScriptsFolder), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(Text.translatable("screen.mqs.options.open_ide"), this::openInIde), Positioner::alignHorizontalCenter);
         layout.add(createActionButton(ScreenTexts.DONE, this::closeToParent, SMALL_BUTTON_WIDTH), positioner -> positioner.alignHorizontalCenter().marginTop(PADDING));
@@ -84,6 +84,10 @@ public class OptionsScreen extends MQSScreen {
 
     private void openSettings() {
         new SettingsScreen(this, globalConfigManager).open();
+    }
+
+    private void openKeybindings() {
+        new KeybindingsScreen(this, Main.getInstance().getKeybindManager()).open();
     }
 
     private void openScriptsFolder() {

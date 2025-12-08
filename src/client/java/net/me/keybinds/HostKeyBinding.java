@@ -64,4 +64,8 @@ public class HostKeyBinding implements KeybindEntry {
             hasBeenPressed = false;
         }
     }
+
+    public String getKeyName() {
+        return Keys.toDisplayName(this.key);
+    }
 }

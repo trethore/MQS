@@ -186,6 +186,16 @@ public enum Keys {
         return Optional.ofNullable(LOOKUP.get(code));
     }
 
+    public static String toDisplayName(int code) {
+        if (code < 0) {
+            return "Unbound";
+        }
+        if (code <= 7) {
+            return "BUTTON_" + code;
+        }
+        return fromCode(code).map(Keys::toString).orElse("Unknown");
+    }
+
     @Override
     public String toString() {
         return this.friendlyName;

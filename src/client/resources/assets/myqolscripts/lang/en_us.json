@@ -10,6 +10,8 @@
   "screen.mqs.options.commands": "Commands",
   "screen.mqs.options.keybinds": "Keybinds",
   "screen.mqs.options.open_ide": "Open in IDE",
+  "screen.mqs.keybinds.title": "Keybinds",
+  "screen.mqs.keybinds.coming_soon": "Keybinding management coming soon",
   "screen.mqs.settings.title": "Settings",
   "screen.mqs.settings.log_redirect": "Should redirect logs",
   "screen.mqs.settings.allow_all_classes": "Allow all classes access",
