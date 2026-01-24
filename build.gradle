@@ -33,11 +33,6 @@ loom {
         }
     }
 }
-// --- Version constants ---
-project.ext.graalVersion = "25.0.1"
-project.ext.bytebuddyVersion = "1.17.8"
-project.ext.cfrVersion = "0.152"
-
 // Configuration used to fetch sources of external dependencies for browsing
 configurations {
     sourceDeps
@@ -91,15 +86,19 @@ tasks.register('applyLicenseHeaders') {
 
         sourceSets.each { sourceSet ->
             sourceSet.java.srcDirs.each { srcDir ->
-                if (!srcDir.exists()) return
+                if (!srcDir.exists()) {
+                    return
+                }
                 srcDir.eachFileRecurse(groovy.io.FileType.FILES) { file ->
-                    if (file.name.endsWith('.java')) {
-                        def content = file.getText('UTF-8')
-                        if (!content.startsWith(firstHeaderLine)) {
-                            println "Adding license header to: $file.path"
-                            file.setText(headerContent + '\n\n' + content, 'UTF-8')
-                        }
+                    if (!file.name.endsWith('.java')) {
+                        return
                     }
+                    def content = file.getText('UTF-8')
+                    if (content.startsWith(firstHeaderLine)) {
+                        return
+                    }
+                    println "Adding license header to: $file.path"
+                    file.setText(headerContent + '\n\n' + content, 'UTF-8')
                 }
             }
         }
@@ -119,13 +118,13 @@ tasks.register('applyLicenseHeaders') {
 
 // --- Java toolchain ---
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.release = 25
 }
 
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 def manifestAttributes = {
@@ -173,12 +172,12 @@ tasks.register('shadowLibsJar', ShadowJar) {
     archiveClassifier.set("libs-only")
     configurations = [project.configurations.shadow]
     dependencies {
-        include(dependency("org.graalvm.sdk:graal-sdk"))
-        include(dependency("org.graalvm.truffle:truffle-api"))
-        include(dependency("org.graalvm.js:js-language"))
-        include(dependency("org.graalvm.js:js-scriptengine"))
-        include(dependency("net.bytebuddy:byte-buddy"))
-        include(dependency("net.bytebuddy:byte-buddy-agent"))
+        include { it.moduleGroup == "org.graalvm.sdk" && it.moduleName == "graal-sdk" }
+        include { it.moduleGroup == "org.graalvm.truffle" && it.moduleName == "truffle-api" }
+        include { it.moduleGroup == "org.graalvm.js" && it.moduleName == "js-language" }
+        include { it.moduleGroup == "org.graalvm.js" && it.moduleName == "js-scriptengine" }
+        include { it.moduleGroup == "net.bytebuddy" && it.moduleName == "byte-buddy" }
+        include { it.moduleGroup == "net.bytebuddy" && it.moduleName == "byte-buddy-agent" }
     }
     from({ files() })
     mergeServiceFiles()
@@ -209,13 +208,14 @@ publishing {
     }
 }
 
+// --- Source browsing helpers ---
+
 def unpackedSourcesDir = layout.projectDirectory.dir("libs-src")
 def sourceDepsConfig = configurations.named('sourceDeps')
 def cfrConfig = configurations.named('cfr')
 def minecraftCacheDirProvider = layout.projectDirectory.dir(".gradle/loom-cache/minecraftMaven")
 def fabricCacheDirProvider = layout.projectDirectory.dir(".gradle/loom-cache/remapped_mods/remapped/net/fabricmc/fabric-api")
 
-// --- Source browsing helpers ---
 tasks.register('cleanSources', Delete) {
     group = "help"
     description = "Deletes unpacked sources in libs-src/"
