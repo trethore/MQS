@@ -18,11 +18,13 @@
 
 package net.me.event.events.world;
 
+import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
 import net.minecraft.world.entity.Entity;
 
 
+@Getter
 public class EntityAddedEvent extends Event {
     private final Entity entity;
 
@@ -30,12 +32,8 @@ public class EntityAddedEvent extends Event {
         this.entity = entity;
     }
 
-    public Entity getEntity() {
-        return entity;
-    }
-
     @Override
     public Events getType() {
-        return Events.EntityAddedEvent;
+        return Events.ENTITY_ADDED_EVENT;
     }
 }

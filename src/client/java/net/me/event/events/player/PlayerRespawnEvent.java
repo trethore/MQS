@@ -35,6 +35,6 @@ public class PlayerRespawnEvent extends Event {
 
     @Override
     public Events getType() {
-        return Events.PlayerRespawnEvent;
+        return Events.PLAYER_RESPAWN_EVENT;
     }
 }

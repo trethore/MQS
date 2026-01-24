@@ -93,8 +93,8 @@ public class EventManager {
     }
 
     public void register(RunningScript owner, Class<? extends Event> eventType, EventPhase phase, Value callback) {
-        listeners.computeIfAbsent(eventType, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(phase, k -> new CopyOnWriteArrayList<>())
+        listeners.computeIfAbsent(eventType, _ -> new ConcurrentHashMap<>())
+                .computeIfAbsent(phase, _ -> new CopyOnWriteArrayList<>())
                 .add(new Listener(owner, callback));
     }
 

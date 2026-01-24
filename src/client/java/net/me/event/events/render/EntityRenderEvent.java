@@ -33,7 +33,7 @@ public abstract class EntityRenderEvent<T extends EntityRenderState> extends Can
     private final SubmitNodeCollector vertexConsumers;
     private final int light;
 
-    public EntityRenderEvent(T entity, PoseStack matrices, SubmitNodeCollector vertexConsumers, int light) {
+    protected EntityRenderEvent(T entity, PoseStack matrices, SubmitNodeCollector vertexConsumers, int light) {
         this.entity = entity;
         this.matrices = matrices;
         this.vertexConsumers = vertexConsumers;
@@ -48,7 +48,7 @@ public abstract class EntityRenderEvent<T extends EntityRenderState> extends Can
 
         @Override
         public Events getType() {
-            return Events.EntityRenderEventPre;
+            return Events.ENTITY_RENDER_EVENT_PRE;
         }
     }
 
@@ -60,7 +60,7 @@ public abstract class EntityRenderEvent<T extends EntityRenderState> extends Can
 
         @Override
         public Events getType() {
-            return Events.EntityRenderEventPost;
+            return Events.ENTITY_RENDER_EVENT_POST;
         }
     }
 }

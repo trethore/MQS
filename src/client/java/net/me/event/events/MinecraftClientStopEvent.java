@@ -24,6 +24,6 @@ import net.me.event.Events;
 public class MinecraftClientStopEvent extends Event {
     @Override
     public Events getType() {
-        return Events.MinecraftClientStopEvent;
+        return Events.MINECRAFT_CLIENT_STOP_EVENT;
     }
 }

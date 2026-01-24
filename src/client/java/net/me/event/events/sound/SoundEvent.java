@@ -27,7 +27,7 @@ import net.minecraft.client.resources.sounds.SoundInstance;
 public abstract class SoundEvent extends CancellableEvent {
     private final SoundInstance soundInstance;
 
-    public SoundEvent(SoundInstance soundInstance) {
+    protected SoundEvent(SoundInstance soundInstance) {
         this.soundInstance = soundInstance;
     }
 

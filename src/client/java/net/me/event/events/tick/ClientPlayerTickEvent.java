@@ -34,6 +34,6 @@ public class ClientPlayerTickEvent extends Event {
 
     @Override
     public Events getType() {
-        return Events.ClientPlayerTickEvent;
+        return Events.CLIENT_PLAYER_TICK_EVENT;
     }
 }

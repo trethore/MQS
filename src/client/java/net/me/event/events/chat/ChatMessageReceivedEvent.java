@@ -51,6 +51,6 @@ public class ChatMessageReceivedEvent extends CancellableEvent {
 
     @Override
     public Events getType() {
-        return Events.ChatMessageReceivedEvent;
+        return Events.CHAT_MESSAGE_RECEIVED_EVENT;
     }
 }

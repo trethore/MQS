@@ -18,17 +18,16 @@
 
 package net.me.event.events.screen;
 
+import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.minecraft.client.gui.screens.Screen;
 
+@Getter
 public abstract class CancellableScreenEvent extends CancellableEvent {
     private final Screen screen;
 
-    public CancellableScreenEvent(Screen screen) {
+    protected CancellableScreenEvent(Screen screen) {
         this.screen = screen;
     }
 
-    public Screen getScreen() {
-        return screen;
-    }
 }

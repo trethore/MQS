@@ -40,6 +40,6 @@ public class BlockInteractEvent extends CancellableEvent {
 
     @Override
     public Events getType() {
-        return Events.BlockInteractEvent;
+        return Events.BLOCK_INTERACT_EVENT;
     }
 }

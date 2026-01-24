@@ -35,6 +35,6 @@ public class DeathScreenInitEvent extends ScreenInitEvent {
 
     @Override
     public Events getType() {
-        return Events.DeathScreenInitEvent;
+        return Events.DEATH_SCREEN_INIT_EVENT;
     }
 }

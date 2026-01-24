@@ -30,6 +30,6 @@ public class TitleEvent extends PacketEvent<ClientboundSetTitleTextPacket> {
 
     @Override
     public Events getType() {
-        return Events.TitleEvent;
+        return Events.TITLE_EVENT;
     }
 }

@@ -39,6 +39,6 @@ public class PlayerAttackEntityEvent extends CancellableEvent {
 
     @Override
     public Events getType() {
-        return Events.PlayerAttackEntityEvent;
+        return Events.PLAYER_ATTACK_ENTITY_EVENT;
     }
 }

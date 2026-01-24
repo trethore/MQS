@@ -38,6 +38,6 @@ public class WorldChangeEvent extends Event {
 
     @Override
     public Events getType() {
-        return Events.WorldChangeEvent;
+        return Events.WORLD_CHANGE_EVENT;
     }
 }

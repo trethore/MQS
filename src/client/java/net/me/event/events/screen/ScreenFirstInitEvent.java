@@ -29,6 +29,6 @@ public class ScreenFirstInitEvent extends ScreenEvent {
 
     @Override
     public Events getType() {
-        return Events.ScreenFirstInitEvent;
+        return Events.SCREEN_FIRST_INIT_EVENT;
     }
 }

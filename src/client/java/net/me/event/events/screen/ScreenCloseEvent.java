@@ -28,6 +28,6 @@ public class ScreenCloseEvent extends CancellableScreenEvent {
 
     @Override
     public Events getType() {
-        return Events.ScreenCloseEvent;
+        return Events.SCREEN_CLOSE_EVENT;
     }
 }

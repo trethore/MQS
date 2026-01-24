@@ -29,6 +29,6 @@ public class PlaySoundEvent extends SoundEvent {
 
     @Override
     public Events getType() {
-        return Events.PlaySoundEvent;
+        return Events.PLAY_SOUND_EVENT;
     }
 }

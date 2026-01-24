@@ -35,6 +35,6 @@ public class TitleScreenInitEvent extends ScreenInitEvent {
 
     @Override
     public Events getType() {
-        return Events.TitleScreenInitEvent;
+        return Events.TITLE_SCREEN_INIT_EVENT;
     }
 }

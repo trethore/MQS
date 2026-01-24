@@ -25,7 +25,7 @@ import net.minecraft.network.protocol.Packet;
 public abstract class PacketEvent<T extends Packet<?>> extends CancellableEvent {
     private final T packet;
 
-    public PacketEvent(T packet) {
+    protected PacketEvent(T packet) {
         this.packet = packet;
     }
 

@@ -29,6 +29,6 @@ public class ScreenRemovedEvent extends ScreenEvent {
 
     @Override
     public Events getType() {
-        return Events.ScreenRemovedEvent;
+        return Events.SCREEN_REMOVED_EVENT;
     }
 }

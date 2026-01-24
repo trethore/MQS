@@ -50,6 +50,6 @@ public class WorldRenderEvent extends Event {
 
     @Override
     public Events getType() {
-        return Events.WorldRenderEvent;
+        return Events.WORLD_RENDER_EVENT;
     }
 }

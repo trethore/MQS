@@ -45,6 +45,6 @@ public class NameTagRenderEvent<S extends EntityRenderState> extends Cancellable
 
     @Override
     public Events getType() {
-        return Events.NameTagRenderEvent;
+        return Events.NAME_TAG_RENDER_EVENT;
     }
 }

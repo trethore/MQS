@@ -40,6 +40,6 @@ public class PlayerInteractEntityEvent extends CancellableEvent {
 
     @Override
     public Events getType() {
-        return Events.PlayerInteractEntityEvent;
+        return Events.PLAYER_INTERACT_ENTITY_EVENT;
     }
 }

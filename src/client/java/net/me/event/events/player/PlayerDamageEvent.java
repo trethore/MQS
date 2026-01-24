@@ -36,6 +36,6 @@ public class PlayerDamageEvent extends Event {
 
     @Override
     public Events getType() {
-        return Events.PlayerDamageEvent;
+        return Events.PLAYER_DAMAGE_EVENT;
     }
 }

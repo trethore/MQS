@@ -41,6 +41,6 @@ public class HudRenderEvent extends Event {
 
     @Override
     public Events getType() {
-        return Events.HudRenderEvent;
+        return Events.HUD_RENDER_EVENT;
     }
 }

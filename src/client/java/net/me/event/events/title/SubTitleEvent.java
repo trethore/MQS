@@ -29,6 +29,6 @@ public class SubTitleEvent extends PacketEvent<ClientboundSetSubtitleTextPacket>
 
     @Override
     public Events getType() {
-        return Events.SubtitleEvent;
+        return Events.SUBTITLE_EVENT;
     }
 }

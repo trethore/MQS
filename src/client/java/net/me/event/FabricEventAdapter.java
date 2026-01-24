@@ -49,26 +49,20 @@ public class FabricEventAdapter {
     }
 
     private static Class<?> findListenerType(net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-        if (!fabricEvent.getClass().getName().equals("net.fabricmc.fabric.impl.base.event.ArrayBackedEvent")) {
+        if (!(fabricEvent instanceof ArrayBackedEventAccessor<?> accessor)) {
             LOGGER.warn("Attempting to find listener type for non-ArrayBackedEvent: {}. This may fail.",
                     fabricEvent.getClass());
             return Arrays.stream(fabricEvent.getClass().getMethods())
                     .filter(m -> m.getName().equals("register") && m.getParameterCount() == 1
-                            && m.getParameterTypes()[0] != net.minecraft.util.Identifier.class)
+                            && m.getParameterTypes()[0] != net.minecraft.resources.Identifier.class)
                     .findFirst()
                     .map(m -> m.getParameterTypes()[0])
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Could not find a single-argument register method on the event " + fabricEvent));
         }
 
-        try {
-            ArrayBackedEventAccessor<?> accessor = (ArrayBackedEventAccessor<?>) fabricEvent;
-            Object[] handlers = accessor.getHandlers();
-            return handlers.getClass().getComponentType();
-        } catch (Exception e) {
-            LOGGER.error("Failed to introspect Fabric event listener type via accessor", e);
-            throw new IllegalStateException("Could not determine listener type for Fabric event: " + fabricEvent, e);
-        }
+        Object[] handlers = accessor.getHandlers();
+        return handlers.getClass().getComponentType();
     }
 
     private static Method findSingleAbstractMethod(Class<?> listenerType) {
@@ -127,7 +121,7 @@ public class FabricEventAdapter {
             LOGGER.debug("Registered new master listener for Fabric event: {}", listenerInterface.getName());
         }
 
-        scriptedFabricListeners.computeIfAbsent(fabricEvent, k -> new CopyOnWriteArrayList<>())
+        scriptedFabricListeners.computeIfAbsent(fabricEvent, _ -> new CopyOnWriteArrayList<>())
                 .add(new ScriptedFabricListener(owner, jsCallback));
     }
 

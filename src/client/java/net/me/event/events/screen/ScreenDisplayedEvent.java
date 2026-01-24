@@ -28,6 +28,6 @@ public class ScreenDisplayedEvent extends ScreenEvent {
 
     @Override
     public Events getType() {
-        return Events.ScreenDisplayedEvent;
+        return Events.SCREEN_DISPLAYED_EVENT;
     }
 }

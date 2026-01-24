@@ -45,6 +45,6 @@ public class PlayerMoveEvent extends CancellableEvent {
 
     @Override
     public Events getType() {
-        return Events.PlayerMoveEvent;
+        return Events.PLAYER_MOVE_EVENT;
     }
 }

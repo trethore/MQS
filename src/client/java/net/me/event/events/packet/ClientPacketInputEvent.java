@@ -30,6 +30,6 @@ public class ClientPacketInputEvent extends PacketEvent<Packet<?>> {
 
     @Override
     public Events getType() {
-        return Events.ClientPacketInputEvent;
+        return Events.CLIENT_PACKET_INPUT_EVENT;
     }
 }
