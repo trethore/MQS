@@ -19,7 +19,7 @@
 package net.me.event.events.sound;
 
 import net.me.event.Events;
-import net.minecraft.client.sound.SoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
 
 public class PlaySoundEvent extends SoundEvent {
 

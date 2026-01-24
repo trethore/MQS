@@ -21,31 +21,31 @@ package net.me.event.events.render;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.gui.GuiGraphics;
+import org.joml.Matrix3x2fStack;
 
 @SuppressWarnings("unused")
 public class WorldRenderEvent extends Event {
     @Getter
-    private final DrawContext drawContext;
-    private final RenderTickCounter tickCounter;
+    private final GuiGraphics drawContext;
+    private final DeltaTracker tickCounter;
     @Getter
     private final Camera camera;
 
-    public WorldRenderEvent(DrawContext drawContext, RenderTickCounter tickCounter, Camera camera) {
+    public WorldRenderEvent(GuiGraphics drawContext, DeltaTracker tickCounter, Camera camera) {
         this.drawContext = drawContext;
         this.tickCounter = tickCounter;
         this.camera = camera;
     }
 
-    public MatrixStack getMatrices() {
-        return drawContext.getMatrices();
+    public Matrix3x2fStack getMatrices() {
+        return drawContext.pose();
     }
 
     public float getPartialTicks() {
-        return tickCounter.getTickDelta(true);
+        return tickCounter.getGameTimeDeltaPartialTick(true);
     }
 
     @Override

@@ -38,11 +38,11 @@ public class UICommand extends Command {
     @Override
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
         return ClientCommandManager.literal("ui")
-                .executes(context -> openUi());
+                .executes(_ -> openUi());
     }
 
     private int openUi() {
-        McUtils.getMc().ifPresent(mc -> mc.send(() -> new ScriptsMenuScreen(scriptingService).open()));
+        McUtils.getMc().ifPresent(mc -> mc.se(() -> new ScriptsMenuScreen(scriptingService).open()));
         return CommandManager.COMMAND_SUCCESS;
     }
 }

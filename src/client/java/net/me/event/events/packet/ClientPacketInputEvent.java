@@ -20,7 +20,7 @@ package net.me.event.events.packet;
 
 import net.me.event.Events;
 import net.me.event.PacketEvent;
-import net.minecraft.network.packet.Packet;
+import net.minecraft.network.protocol.Packet;
 
 public class ClientPacketInputEvent extends PacketEvent<Packet<?>> {
 

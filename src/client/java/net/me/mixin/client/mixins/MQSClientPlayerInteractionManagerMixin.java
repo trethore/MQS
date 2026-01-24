@@ -23,43 +23,43 @@ import net.me.event.events.interact.BlockInteractEvent;
 import net.me.event.events.interact.ItemUseEvent;
 import net.me.event.events.player.PlayerAttackEntityEvent;
 import net.me.event.events.player.PlayerInteractEntityEvent;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.network.ClientPlayerInteractionManager;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(ClientPlayerInteractionManager.class)
+@Mixin(MultiPlayerGameMode.class)
 public class MQSClientPlayerInteractionManagerMixin {
-    @Inject(method = "interactBlock", at = @At("HEAD"), cancellable = true)
-    private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+    @Inject(method = "useItemOn", at = @At("HEAD"), cancellable = true)
+    private void onInteractBlock(LocalPlayer player, InteractionHand hand, BlockHitResult hitResult, CallbackInfoReturnable<InteractionResult> cir) {
         BlockInteractEvent event = new BlockInteractEvent(player, hand, hitResult);
         MQSEventBus.post(event);
 
         if (event.isCancelled()) {
-            cir.setReturnValue(ActionResult.FAIL);
+            cir.setReturnValue(InteractionResult.FAIL);
         }
     }
 
-    @Inject(method = "interactItem", at = @At("HEAD"), cancellable = true)
-    private void onInteractItem(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
+    @Inject(method = "useItem", at = @At("HEAD"), cancellable = true)
+    private void onInteractItem(Player player, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir) {
         ItemUseEvent event = new ItemUseEvent(player, hand);
         MQSEventBus.post(event);
 
         if (event.isCancelled()) {
-            cir.setReturnValue(ActionResult.FAIL);
+            cir.setReturnValue(InteractionResult.FAIL);
         }
     }
 
-    @Inject(method = "attackEntity", at = @At("HEAD"), cancellable = true)
-    private void onAttackEntity(PlayerEntity player, Entity target, CallbackInfo ci) {
+    @Inject(method = "attack", at = @At("HEAD"), cancellable = true)
+    private void onAttackEntity(Player player, Entity target, CallbackInfo ci) {
         PlayerAttackEntityEvent event = new PlayerAttackEntityEvent(player, target);
         MQSEventBus.post(event);
 
@@ -68,13 +68,13 @@ public class MQSClientPlayerInteractionManagerMixin {
         }
     }
 
-    @Inject(method = "interactEntity", at = @At("HEAD"), cancellable = true)
-    private void onInteractEntity(PlayerEntity player, Entity entity, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
+    @Inject(method = "interact", at = @At("HEAD"), cancellable = true)
+    private void onInteractEntity(Player player, Entity entity, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir) {
         PlayerInteractEntityEvent event = new PlayerInteractEntityEvent(player, entity, hand);
         MQSEventBus.post(event);
 
         if (event.isCancelled()) {
-            cir.setReturnValue(ActionResult.FAIL);
+            cir.setReturnValue(InteractionResult.FAIL);
         }
     }
 }

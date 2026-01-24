@@ -20,17 +20,17 @@ package net.me.mixin.client.mixins;
 
 import net.me.event.MQSEventBus;
 import net.me.event.events.player.PlayerDamageEvent;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.damage.DamageTracker;
+import net.minecraft.world.damagesource.CombatTracker;
+import net.minecraft.world.damagesource.DamageSource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(DamageTracker.class)
+@Mixin(CombatTracker.class)
 public class MQSDamageTrackerMixin {
 
-    @Inject(method = "onDamage", at = @At("HEAD"))
+    @Inject(method = "recordDamage", at = @At("HEAD"))
     private void onOnDamage(DamageSource damageSource, float damage, CallbackInfo ci) {
         MQSEventBus.post(new PlayerDamageEvent(damageSource, damage));
     }

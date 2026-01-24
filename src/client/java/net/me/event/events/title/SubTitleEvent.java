@@ -20,10 +20,10 @@ package net.me.event.events.title;
 
 import net.me.event.Events;
 import net.me.event.PacketEvent;
-import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 
-public class SubTitleEvent extends PacketEvent<SubtitleS2CPacket> {
-    public SubTitleEvent(SubtitleS2CPacket packet) {
+public class SubTitleEvent extends PacketEvent<ClientboundSetSubtitleTextPacket> {
+    public SubTitleEvent(ClientboundSetSubtitleTextPacket packet) {
         super(packet);
     }
 

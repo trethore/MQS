@@ -86,7 +86,8 @@ public class ConfigHelperAPI implements ProxyObject {
                 if (stored instanceof String text) {
                     try {
                         return Double.parseDouble(text);
-                    } catch (NumberFormatException ignored) {
+                    } catch (NumberFormatException _) {
+                        // Configured value is not a valid number string
                     }
                 }
                 return defaultValue;
@@ -191,7 +192,8 @@ public class ConfigHelperAPI implements ProxyObject {
         if (value.isString()) {
             try {
                 return Double.parseDouble(value.asString());
-            } catch (NumberFormatException ignored) {
+            } catch (NumberFormatException _) {
+                // Not a valid number string
             }
         }
         return 0D;

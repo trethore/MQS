@@ -20,19 +20,19 @@ package net.me.mixin.client.mixins;
 
 import net.me.event.MQSEventBus;
 import net.me.event.events.render.HudRenderEvent;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiGraphics;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(InGameHud.class)
+@Mixin(Gui.class)
 public class MQSHudMixin {
     @Inject(method = "render", at = @At("RETURN"))
-    private void onRender(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        HudRenderEvent event = new HudRenderEvent(context, tickCounter);
+    private void onRender(GuiGraphics graphics, DeltaTracker tickCounter, CallbackInfo ci) {
+        HudRenderEvent event = new HudRenderEvent(graphics, tickCounter);
         MQSEventBus.post(event);
     }
 }

@@ -29,7 +29,7 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.Main;
 import net.me.mixin.client.accessors.CommandNodeAccessor;
 import net.me.scripting.module.RunningScript;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandSource;
 
 import java.util.Map;
@@ -153,13 +153,13 @@ public class CommandAPIService {
     }
 
     private void pushCommandTree(CommandDispatcher<FabricClientCommandSource> dispatcher) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.getNetworkHandler() == null) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.getConnection() == null) {
             return;
         }
 
-        client.send(() -> {
-            final CommandDispatcher<CommandSource> suggestionDispatcher = client.getNetworkHandler().getCommandDispatcher();
+        client.execute(() -> {
+            final CommandDispatcher<CommandSource> suggestionDispatcher = client.getConnection().getCommandDispatcher();
             final RootCommandNode<CommandSource> suggestionRoot = suggestionDispatcher.getRoot();
             @SuppressWarnings("unchecked") final CommandNodeAccessor<CommandSource> rootAccessor = (CommandNodeAccessor<CommandSource>) suggestionRoot;
 

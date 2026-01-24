@@ -22,17 +22,17 @@ import lombok.Getter;
 import lombok.Setter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 
 @Getter
 @SuppressWarnings("unused")
 public class PlayerAttackEntityEvent extends CancellableEvent {
-    private final PlayerEntity attacker;
+    private final Player attacker;
     @Setter
     private Entity target;
 
-    public PlayerAttackEntityEvent(PlayerEntity attacker, Entity target) {
+    public PlayerAttackEntityEvent(Player attacker, Entity target) {
         this.attacker = attacker;
         this.target = target;
     }

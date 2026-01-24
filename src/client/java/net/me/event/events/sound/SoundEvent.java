@@ -20,7 +20,7 @@ package net.me.event.events.sound;
 
 import lombok.Getter;
 import net.me.event.CancellableEvent;
-import net.minecraft.client.sound.SoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
 
 @Getter
 @SuppressWarnings("unused")

@@ -238,7 +238,7 @@ public class EventAPI implements ProxyObject {
             public Object getMember(String key) {
                 try {
                     return Events.valueOf(key);
-                } catch (IllegalArgumentException e) {
+                } catch (IllegalArgumentException _) {
                     return null;
                 }
             }
@@ -266,7 +266,7 @@ public class EventAPI implements ProxyObject {
             public Object getMember(String key) {
                 try {
                     return EventPhase.valueOf(key);
-                } catch (IllegalArgumentException e) {
+                } catch (IllegalArgumentException _) {
                     return null;
                 }
             }

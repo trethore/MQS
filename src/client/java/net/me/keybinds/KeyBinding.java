@@ -60,7 +60,7 @@ public class KeyBinding implements KeybindEntry {
             }
             fireAction();
             hasBeenPressed = true;
-        } else if (glfwAction == GLFW.GLFW_RELEASE && !(currentTime - lastReleaseTime < debounceTime) && hasBeenPressed) {
+        } else if (glfwAction == GLFW.GLFW_RELEASE && currentTime - lastReleaseTime >= debounceTime && hasBeenPressed) {
             lastReleaseTime = System.currentTimeMillis();
             hasBeenPressed = false;
         }

@@ -18,22 +18,22 @@
 
 package net.me.event.events.render;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 
 @Getter
 @SuppressWarnings("unused")
 public abstract class EntityRenderEvent<T extends EntityRenderState> extends CancellableEvent {
     private final T entity;
-    private final MatrixStack matrices;
-    private final VertexConsumerProvider vertexConsumers;
+    private final PoseStack matrices;
+    private final SubmitNodeCollector vertexConsumers;
     private final int light;
 
-    public EntityRenderEvent(T entity, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
+    public EntityRenderEvent(T entity, PoseStack matrices, SubmitNodeCollector vertexConsumers, int light) {
         this.entity = entity;
         this.matrices = matrices;
         this.vertexConsumers = vertexConsumers;
@@ -42,7 +42,7 @@ public abstract class EntityRenderEvent<T extends EntityRenderState> extends Can
 
     public static class Pre<T extends EntityRenderState> extends EntityRenderEvent<T> {
 
-        public Pre(T entity, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
+        public Pre(T entity, PoseStack matrices, SubmitNodeCollector vertexConsumers, int light) {
             super(entity, matrices, vertexConsumers, light);
         }
 
@@ -54,7 +54,7 @@ public abstract class EntityRenderEvent<T extends EntityRenderState> extends Can
 
     public static class Post<T extends EntityRenderState> extends EntityRenderEvent<T> {
 
-        public Post(T entity, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
+        public Post(T entity, PoseStack matrices, SubmitNodeCollector vertexConsumers, int light) {
             super(entity, matrices, vertexConsumers, light);
         }
 

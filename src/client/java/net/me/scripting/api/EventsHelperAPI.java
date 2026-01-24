@@ -68,7 +68,7 @@ public class EventsHelperAPI implements ProxyObject {
             return (ProxyExecutable) args -> {
                 RunningScript owner = getCurrentScript();
                 if (args.length == 0) {
-                    disposeHandles(owner, handle -> true);
+                    disposeHandles(owner, _ -> true);
                     eventManager.unregisterAll(owner);
                     handlesByScript.remove(owner);
                     return null;
@@ -132,7 +132,7 @@ public class EventsHelperAPI implements ProxyObject {
             };
         }
         if (OPTIONS.equals(key)) {
-            return (ProxyExecutable) args -> getCurrentScript().getContext().asValue(EventSubscriptionOptions.builder());
+            return (ProxyExecutable) _ -> getCurrentScript().getContext().asValue(EventSubscriptionOptions.builder());
         }
         Events mappedEvent = namedEvents.get(key);
         if (mappedEvent == null) {
@@ -251,7 +251,7 @@ public class EventsHelperAPI implements ProxyObject {
     }
 
     private Value createDisposer(RunningScript owner, EventHandle handle) {
-        ProxyExecutable exec = args -> {
+        ProxyExecutable exec = _ -> {
             handle.dispose();
             return null;
         };
@@ -259,7 +259,7 @@ public class EventsHelperAPI implements ProxyObject {
     }
 
     private void trackHandle(RunningScript owner, EventHandle handle) {
-        handlesByScript.computeIfAbsent(owner, k -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(handle);
+        handlesByScript.computeIfAbsent(owner, _ -> Collections.newSetFromMap(new ConcurrentHashMap<>())).add(handle);
     }
 
     private void disposeHandles(RunningScript owner, Predicate<EventHandle> predicate) {
@@ -282,7 +282,7 @@ public class EventsHelperAPI implements ProxyObject {
         if (a == b) {
             return true;
         }
-        if (a.equals(b) || b.equals(a)) {
+        if (a.equals(b)) {
             return true;
         }
         if (a.isHostObject() && b.isHostObject()) {
@@ -299,7 +299,8 @@ public class EventsHelperAPI implements ProxyObject {
             if (a.hashCode() == b.hashCode()) {
                 return true;
             }
-        } catch (Exception ignored) {
+        } catch (Exception _) {
+            // Ignore hashCode exceptions
         }
         return false;
     }

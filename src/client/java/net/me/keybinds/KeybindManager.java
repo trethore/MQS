@@ -20,6 +20,8 @@ package net.me.keybinds;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.Main;
+import net.me.keybinds.events.KeyEvent;
+import net.me.keybinds.events.MouseButtonEvent;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.module.RunningScript;
@@ -45,7 +47,7 @@ public class KeybindManager {
     public KeybindManager(ScriptManager scriptManager, ConfigManager configManager) {
         this.scriptManager = scriptManager;
         this.configManager = configManager;
-        ClientTickEvents.END_CLIENT_TICK.register(client -> onTick());
+        ClientTickEvents.END_CLIENT_TICK.register(_ -> onTick());
     }
 
     private void onTick() {
@@ -79,7 +81,9 @@ public class KeybindManager {
         }
     }
 
-    public void onKey(int key, int action) {
+    public void onKey(KeyEvent event) {
+        int key = event.key();
+        int action = event.action();
         if (action != GLFW.GLFW_REPEAT) {
             processInput(key, action);
         }
@@ -91,7 +95,10 @@ public class KeybindManager {
         }
     }
 
-    public void onMouseClick(int button, int action) {
+    public void onMouseClick(MouseButtonEvent event) {
+        int button = event.button();
+        int action = event.action();
+
         if (action == GLFW.GLFW_PRESS) {
             heldKeys.add(button);
         } else if (action == GLFW.GLFW_RELEASE) {
@@ -118,7 +125,7 @@ public class KeybindManager {
 
         keybindsByName.put(uniqueName, keyBinding);
         if (finalKey >= 0) {
-            keybindsByKeycode.computeIfAbsent(finalKey, k -> new CopyOnWriteArrayList<>()).add(keyBinding);
+            keybindsByKeycode.computeIfAbsent(finalKey, _ -> new CopyOnWriteArrayList<>()).add(keyBinding);
         }
     }
 
@@ -134,7 +141,7 @@ public class KeybindManager {
 
         hostKeybindsByName.put(uniqueName, binding);
         if (finalKey >= 0) {
-            keybindsByKeycode.computeIfAbsent(finalKey, k -> new CopyOnWriteArrayList<>()).add(binding);
+            keybindsByKeycode.computeIfAbsent(finalKey, _ -> new CopyOnWriteArrayList<>()).add(binding);
         }
 
         return binding;
@@ -175,7 +182,7 @@ public class KeybindManager {
         binding.setKey(newKeyCode);
 
         if (newKeyCode >= 0) {
-            keybindsByKeycode.computeIfAbsent(newKeyCode, k -> new CopyOnWriteArrayList<>()).add(binding);
+            keybindsByKeycode.computeIfAbsent(newKeyCode, _ -> new CopyOnWriteArrayList<>()).add(binding);
         }
 
         configManager.setKeybind(binding.getOwner().getId(), binding.getName(), newKeyCode);
@@ -195,7 +202,7 @@ public class KeybindManager {
         binding.setKey(newKeyCode);
 
         if (newKeyCode >= 0) {
-            keybindsByKeycode.computeIfAbsent(newKeyCode, k -> new CopyOnWriteArrayList<>()).add(binding);
+            keybindsByKeycode.computeIfAbsent(newKeyCode, _ -> new CopyOnWriteArrayList<>()).add(binding);
         }
 
         configManager.setKeybind(HOST_ID, binding.getName(), newKeyCode);
@@ -204,7 +211,7 @@ public class KeybindManager {
     public Map<RunningScript, List<KeyBinding>> getGroupedKeybinds() {
         Map<RunningScript, List<KeyBinding>> grouped = new ConcurrentHashMap<>();
         for (KeyBinding binding : keybindsByName.values()) {
-            grouped.computeIfAbsent(binding.getOwner(), k -> new CopyOnWriteArrayList<>()).add(binding);
+            grouped.computeIfAbsent(binding.getOwner(), _ -> new CopyOnWriteArrayList<>()).add(binding);
         }
         return grouped;
     }

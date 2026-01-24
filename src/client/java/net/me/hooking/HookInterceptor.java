@@ -41,11 +41,10 @@ import java.util.function.Function;
 
 @SuppressWarnings("unused")
 public class HookInterceptor {
-
-    public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
-    public static final Map<CacheKey, ProxyExecutable> CHAIN_CACHE = new ConcurrentHashMap<>();
     public static final ThreadLocal<Deque<AdviceContext>> adviceContextStack = ThreadLocal.withInitial(ArrayDeque::new);
     public static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+    protected static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
+    protected static final Map<CacheKey, ProxyExecutable> CHAIN_CACHE = new ConcurrentHashMap<>();
 
     public static ProxyExecutable createEmptyChainProxy() {
         return passedArgs -> {

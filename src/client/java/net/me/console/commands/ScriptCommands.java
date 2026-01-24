@@ -24,6 +24,9 @@ import net.me.scripting.ScriptingService;
 
 public class ScriptCommands {
 
+    private ScriptCommands() {
+    }
+
     public static class ListScriptsCommand extends ConsoleCommand {
         private final ScriptingService scriptingService;
 

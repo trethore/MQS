@@ -21,7 +21,7 @@ package net.me.event.events.player;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.world.damagesource.DamageSource;
 
 @Getter
 @SuppressWarnings("unused")

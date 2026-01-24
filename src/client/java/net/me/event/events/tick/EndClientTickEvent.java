@@ -21,13 +21,13 @@ package net.me.event.events.tick;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 @Getter
 public class EndClientTickEvent extends Event {
-    private final MinecraftClient client;
+    private final Minecraft client;
 
-    public EndClientTickEvent(MinecraftClient client) {
+    public EndClientTickEvent(Minecraft client) {
         this.client = client;
     }
 

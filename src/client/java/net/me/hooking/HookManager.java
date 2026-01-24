@@ -63,14 +63,14 @@ public class HookManager {
                 .disableClassFormatChanges()
                 .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
                 .with(AgentBuilder.Listener.StreamWriting.toSystemError().withErrorsOnly())
-                .type((typeDescription, classLoader, module, classBeingRedefined, protectionDomain) -> {
+                .type((typeDescription, _, _, _, _) -> {
                     boolean shouldTransform = nameToClassMap.containsKey(typeDescription.getName());
                     if (shouldTransform) {
                         Main.LOGGER.debug("AgentBuilder: Found matching type to transform: {}", typeDescription.getName());
                     }
                     return shouldTransform;
                 })
-                .transform((builder, typeDescription, classLoader, module, protectionDomain) -> {
+                .transform((builder, typeDescription, _, _, _) -> {
                     try {
                         Main.LOGGER.debug("Transform: Starting transformation for {}", typeDescription.getSimpleName());
                         Class<?> type = nameToClassMap.get(typeDescription.getName());
@@ -156,8 +156,8 @@ public class HookManager {
             HookInterceptor.register(interceptorId, jsCallback, owner, scriptManager, argCount, mode);
         }
 
-        hookedMethods.computeIfAbsent(targetClass, k -> ConcurrentHashMap.newKeySet()).add(hookId);
-        scriptOwnedHooks.computeIfAbsent(owner, k -> ConcurrentHashMap.newKeySet()).add(hookId);
+        hookedMethods.computeIfAbsent(targetClass, _ -> ConcurrentHashMap.newKeySet()).add(hookId);
+        scriptOwnedHooks.computeIfAbsent(owner, _ -> ConcurrentHashMap.newKeySet()).add(hookId);
         updateMatcherForClass(targetClass);
 
         try {

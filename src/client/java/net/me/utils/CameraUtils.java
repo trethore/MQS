@@ -19,7 +19,6 @@
 package net.me.utils;
 
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 
 @SuppressWarnings("unused")
 public final class CameraUtils {

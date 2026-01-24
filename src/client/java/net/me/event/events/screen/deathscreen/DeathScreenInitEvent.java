@@ -20,7 +20,7 @@ package net.me.event.events.screen.deathscreen;
 
 import net.me.event.Events;
 import net.me.event.events.screen.ScreenInitEvent;
-import net.minecraft.client.gui.screen.DeathScreen;
+import net.minecraft.client.gui.screens.DeathScreen;
 
 public class DeathScreenInitEvent extends ScreenInitEvent {
 

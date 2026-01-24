@@ -28,7 +28,7 @@ public abstract class ConsoleCommand {
     private final String usage;
 
 
-    public ConsoleCommand(ConsoleManager consoleManager, String name, String description, String usage) {
+    protected ConsoleCommand(ConsoleManager consoleManager, String name, String description, String usage) {
         this.consoleManager = consoleManager;
         this.name = name;
         this.description = description;

@@ -116,20 +116,19 @@ public class HookAPI implements ProxyObject {
     }
 
     private HookInvocation parseHookInvocation(Value[] args) {
-        if (args.length == 2 || args.length == 3) {
-            if (args[0].isString() && args[1].canExecute()) {
-                String descriptor = args[0].asString();
-                if (descriptor == null || descriptor.isEmpty()) {
-                    throw new IllegalArgumentException("Descriptor cannot be empty.");
-                }
-                HookDescriptor descriptorParts = parseDescriptor(descriptor);
-                Class<?> targetClass = resolveDescriptorClass(descriptorParts.className());
-                Value callback = args[1];
-                Value optionsValue = args.length == 3 ? args[2] : null;
-                HookOptions options = HookOptions.fromScript(optionsValue, HookExecutionMode.BEFORE);
-                return new HookInvocation(targetClass, descriptorParts.methodName(), callback, options);
+        if ((args.length == 2 || args.length == 3) && args[0].isString() && args[1].canExecute()) {
+            String descriptor = args[0].asString();
+            if (descriptor == null || descriptor.isEmpty()) {
+                throw new IllegalArgumentException("Descriptor cannot be empty.");
             }
+            HookDescriptor descriptorParts = parseDescriptor(descriptor);
+            Class<?> targetClass = resolveDescriptorClass(descriptorParts.className());
+            Value callback = args[1];
+            Value optionsValue = args.length == 3 ? args[2] : null;
+            HookOptions options = HookOptions.fromScript(optionsValue, HookExecutionMode.BEFORE);
+            return new HookInvocation(targetClass, descriptorParts.methodName(), callback, options);
         }
+
 
         if (args.length != 3 && args.length != 4) {
             throw new IllegalArgumentException("HookManager.hook requires 3 or 4 arguments.");

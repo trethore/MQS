@@ -21,14 +21,14 @@ package net.me.event.events.tick;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.player.LocalPlayer;
 
 
 @Getter
 public class ClientPlayerTickEvent extends Event {
-    private final ClientPlayerEntity player;
+    private final LocalPlayer player;
 
-    public ClientPlayerTickEvent(ClientPlayerEntity player) {
+    public ClientPlayerTickEvent(LocalPlayer player) {
         this.player = player;
     }
 

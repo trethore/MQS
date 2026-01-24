@@ -21,18 +21,18 @@ package net.me.event.events.interact;
 import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.Hand;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
 
 @Getter
 @SuppressWarnings("unused")
 public class ItemUseEvent extends CancellableEvent {
-    private final PlayerEntity player;
-    private final Hand hand;
+    private final Player player;
+    private final InteractionHand hand;
     private final ItemStack itemStack;
 
-    public ItemUseEvent(PlayerEntity player, Hand hand) {
+    public ItemUseEvent(Player player, InteractionHand hand) {
         this.player = player;
         this.hand = hand;
         this.itemStack = player.getStackInHand(hand);

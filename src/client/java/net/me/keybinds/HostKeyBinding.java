@@ -59,7 +59,7 @@ public class HostKeyBinding implements KeybindEntry {
             }
             action.run();
             hasBeenPressed = true;
-        } else if (glfwAction == GLFW.GLFW_RELEASE && !(currentTime - lastReleaseTime < debounceTime) && hasBeenPressed) {
+        } else if (glfwAction == GLFW.GLFW_RELEASE && currentTime - lastReleaseTime >= debounceTime && hasBeenPressed) {
             lastReleaseTime = System.currentTimeMillis();
             hasBeenPressed = false;
         }

@@ -20,7 +20,7 @@ package net.me.mixin.client.mixins;
 
 import net.me.event.MQSEventBus;
 import net.me.event.events.screen.deathscreen.DeathScreenInitEvent;
-import net.minecraft.client.gui.screen.DeathScreen;
+import net.minecraft.client.gui.screens.DeathScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

@@ -21,15 +21,15 @@ package net.me.event.events.player;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 
 @Getter
 @SuppressWarnings("unused")
 public class PlayerRespawnEvent extends Event {
-    private final ClientPlayerEntity player;
+    private final LocalPlayer player;
 
-    public PlayerRespawnEvent(PlayerRespawnS2CPacket packet, ClientPlayerEntity player) {
+    public PlayerRespawnEvent(ClientboundRespawnPacket packet, LocalPlayer player) {
         this.player = player;
     }
 

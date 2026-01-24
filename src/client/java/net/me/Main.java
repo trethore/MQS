@@ -59,8 +59,6 @@ public class Main implements ClientModInitializer {
     private MappingsManager mappingsManager;
     @Getter
     private ScriptManager scriptManager;
-    private HookManager hookManager;
-    private EventManager eventManager;
     private CommandManager commandManager;
     private ConsoleManager consoleManager;
     private ScriptingService scriptingService;
@@ -68,13 +66,15 @@ public class Main implements ClientModInitializer {
     private GlobalConfigManager globalConfigManager;
     @Getter
     private KeybindManager keybindManager;
-    private Engine scriptEngine;
+
+    private static void setInstance(Main instance) {
+        Main.instance = instance;
+    }
 
     @Override
     public void onInitializeClient() {
-        instance = this;
+        setInstance(this);
 
-        this.scriptEngine = Engine.create();
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
         this.scriptManager = new ScriptManager();
@@ -83,11 +83,11 @@ public class Main implements ClientModInitializer {
         this.consoleManager = new ConsoleManager();
         this.globalConfigManager = new GlobalConfigManager(consoleManager);
 
-        this.eventManager = new EventManager(scriptManager);
+        EventManager eventManager = new EventManager(scriptManager);
         MQSEventBus.setManager(eventManager);
         this.keybindManager = new KeybindManager(scriptManager, configManager);
 
-        this.hookManager = new HookManager(scriptManager, mappingsManager);
+        HookManager hookManager = new HookManager(scriptManager, mappingsManager);
         this.scriptingService = new ScriptingService(scriptManager, configManager);
 
         configManager.init();
@@ -100,13 +100,14 @@ public class Main implements ClientModInitializer {
         this.registerClientCommands();
 
         mappingsManager.init();
+        try (Engine scriptEngine = Engine.create()) {
+            mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.execute(() -> {
+                scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
+                scriptManager.loadAndEnableScriptsFromConfig();
 
-        mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
-            scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
-            scriptManager.loadAndEnableScriptsFromConfig();
-
-            LOGGER.info("MyQOLScripts initialization complete! Hello !");
-        })));
+                LOGGER.info("MyQOLScripts initialization complete! Hello !");
+            })));
+        }
     }
 
     private void registerClientCommands() {
@@ -116,8 +117,8 @@ public class Main implements ClientModInitializer {
     private void registerUiKeybind() {
         keybindManager.registerHost(
                 "open_ui",
-                () -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
-                    if (!(mc.currentScreen instanceof ScriptsMenuScreen)) {
+                () -> McUtils.getMc().ifPresent(mc -> mc.execute(() -> {
+                    if (!(mc.screen instanceof ScriptsMenuScreen)) {
                         new ScriptsMenuScreen(scriptingService).open();
                     }
                 })),

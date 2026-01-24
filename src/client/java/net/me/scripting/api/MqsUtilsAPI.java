@@ -25,7 +25,7 @@ import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.utils.*;
 import net.me.utils.math.*;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -153,20 +153,20 @@ public class MqsUtilsAPI implements ProxyObject {
                     case MC_GET_PLAYER -> (ProxyExecutable) args -> McUtils.getPlayer();
                     case MC_GET_WORLD -> (ProxyExecutable) args -> McUtils.getWorld();
                     case MC_CLIENT -> (ProxyExecutable) args -> ScriptUtils.wrapReturn(
-                            MinecraftClient.getInstance(),
+                            Minecraft.getInstance(),
                             classResolver.getMappingsManager(),
                             scriptManager
                     );
                     case MC_PLAYER -> (ProxyExecutable) args -> {
-                        MinecraftClient client = MinecraftClient.getInstance();
+                        Minecraft client = Minecraft.getInstance();
                         return client != null
                                 ? ScriptUtils.wrapReturn(client.player, classResolver.getMappingsManager(), scriptManager)
                                 : null;
                     };
                     case MC_WORLD -> (ProxyExecutable) args -> {
-                        MinecraftClient client = MinecraftClient.getInstance();
+                        Minecraft client = Minecraft.getInstance();
                         return client != null
-                                ? ScriptUtils.wrapReturn(client.world, classResolver.getMappingsManager(), scriptManager)
+                                ? ScriptUtils.wrapReturn(client.level, classResolver.getMappingsManager(), scriptManager)
                                 : null;
                     };
                     case MC_RUN_ON_CLIENT_THREAD -> (ProxyExecutable) args -> {
@@ -175,8 +175,8 @@ public class MqsUtilsAPI implements ProxyObject {
                         }
                         RunningScript owner = currentScript();
                         Value callback = args[0];
-                        MinecraftClient client = MinecraftClient.getInstance();
-                        client.send(() -> executeCallback(owner, callback));
+                        Minecraft client = Minecraft.getInstance();
+                        client.execute(() -> executeCallback(owner, callback));
                         return null;
                     };
                     default -> null;

@@ -19,7 +19,7 @@
 package net.me.event;
 
 import lombok.Getter;
-import net.minecraft.network.packet.Packet;
+import net.minecraft.network.protocol.Packet;
 
 @Getter
 public abstract class PacketEvent<T extends Packet<?>> extends CancellableEvent {

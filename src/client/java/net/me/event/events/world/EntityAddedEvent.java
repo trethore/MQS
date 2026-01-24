@@ -20,7 +20,7 @@ package net.me.event.events.world;
 
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
 
 
 public class EntityAddedEvent extends Event {

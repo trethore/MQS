@@ -36,7 +36,7 @@ public class ScriptScheduler {
 
     public ScriptScheduler(ScriptManager scriptManager) {
         this.scriptManager = scriptManager;
-        ClientTickEvents.END_CLIENT_TICK.register(client -> onTick());
+        ClientTickEvents.END_CLIENT_TICK.register(_ -> onTick());
     }
 
     public Runnable scheduleTickTimeout(RunningScript owner, Value callback, int delayTicks) {
@@ -85,7 +85,7 @@ public class ScriptScheduler {
         AtomicBoolean disposed = new AtomicBoolean(false);
         synchronized (tasks) {
             tasks.add(task);
-            tasksByScript.computeIfAbsent(task.owner(), key -> new HashSet<>()).add(task);
+            tasksByScript.computeIfAbsent(task.owner(), _ -> new HashSet<>()).add(task);
         }
         return () -> cancelTask(task, disposed);
     }
@@ -165,7 +165,8 @@ public class ScriptScheduler {
         scriptManager.setCurrentScript(owner);
         try {
             callback.execute();
-        } catch (IllegalStateException ignored) {
+        } catch (IllegalStateException _) {
+            // Script engine has been disposed.
         } catch (Exception e) {
             Main.LOGGER.error("Scheduled callback threw for script '{}'", owner.getName(), e);
         } finally {

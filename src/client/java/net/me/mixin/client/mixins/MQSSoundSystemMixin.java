@@ -20,22 +20,22 @@ package net.me.mixin.client.mixins;
 
 import net.me.event.MQSEventBus;
 import net.me.event.events.sound.PlaySoundEvent;
-import net.minecraft.client.sound.SoundInstance;
-import net.minecraft.client.sound.SoundSystem;
+import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.sounds.SoundEngine;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(SoundSystem.class)
+@Mixin(SoundEngine.class)
 public class MQSSoundSystemMixin {
-    @Inject(method = "play(Lnet/minecraft/client/sound/SoundInstance;)V", at = @At("HEAD"), cancellable = true)
-    private void onPlayHead(SoundInstance sound, CallbackInfo ci) {
+    @Inject(method = "play(Lnet/minecraft/client/resources/sounds/SoundInstance;)Lnet/minecraft/client/sounds/SoundEngine$PlayResult;", at = @At("HEAD"), cancellable = true)
+    private void onPlayHead(SoundInstance sound, CallbackInfoReturnable<SoundEngine.PlayResult> ci) {
         PlaySoundEvent event = new PlaySoundEvent(sound);
         MQSEventBus.post(event);
 
         if (event.isCancelled()) {
-            ci.cancel();
+            ci.setReturnValue(SoundEngine.PlayResult.NOT_STARTED);
         }
     }
 }

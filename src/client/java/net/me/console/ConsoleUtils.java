@@ -24,6 +24,8 @@ public class ConsoleUtils {
 
     public static final String TRUE_STRING = "true";
     public static final String FALSE_STRING = "false";
+    private ConsoleUtils() {
+    }
 
     public static Optional<Boolean> parseBooleanArg(String arg) {
         if (TRUE_STRING.equalsIgnoreCase(arg)) return Optional.of(true);

@@ -21,31 +21,31 @@ package net.me.event.events.chat;
 import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
-import net.minecraft.client.gui.hud.MessageIndicator;
-import net.minecraft.network.message.MessageSignatureData;
-import net.minecraft.text.Text;
+import net.minecraft.client.GuiMessageTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MessageSignature;
 import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("unused")
 public class ChatMessageReceivedEvent extends CancellableEvent {
-    private final MessageSignatureData signature;
-    private final MessageIndicator indicator;
+    private final MessageSignature signature;
+    private final GuiMessageTag indicator;
     @Getter
-    private final Text message;
+    private final Component message;
 
-    public ChatMessageReceivedEvent(Text message, MessageSignatureData signature, MessageIndicator indicator) {
+    public ChatMessageReceivedEvent(Component message, MessageSignature signature, GuiMessageTag indicator) {
         this.message = message;
         this.signature = signature;
         this.indicator = indicator;
     }
 
     @Nullable
-    public MessageSignatureData getSignature() {
+    public MessageSignature getSignature() {
         return signature;
     }
 
     @Nullable
-    public MessageIndicator getIndicator() {
+    public GuiMessageTag getIndicator() {
         return indicator;
     }
 

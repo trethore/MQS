@@ -46,7 +46,7 @@ public class CopyTailCommand extends ConsoleCommand {
         } else {
             try {
                 numberOfLines = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 cm.logError("Invalid argument '" + args[0] + "'. Must be a number.");
                 return;
             }
@@ -81,7 +81,7 @@ public class CopyTailCommand extends ConsoleCommand {
                 .map(msg -> String.format("[%s] %s", msg.timestamp(), msg.text()))
                 .collect(Collectors.joining(System.lineSeparator()));
 
-        McUtils.getMc().ifPresent(mc -> mc.keyboard.setClipboard(textToCopy));
+        McUtils.getMc().ifPresent(mc -> mc.keyboardHandler.setClipboard(textToCopy));
         cm.logSuccess("Copied " + tail.size() + " lines to clipboard.");
     }
 }

@@ -20,7 +20,7 @@ package net.me.event.events.screen.titlescreen;
 
 import net.me.event.Events;
 import net.me.event.events.screen.ScreenInitEvent;
-import net.minecraft.client.gui.screen.TitleScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
 
 public class TitleScreenInitEvent extends ScreenInitEvent {
 

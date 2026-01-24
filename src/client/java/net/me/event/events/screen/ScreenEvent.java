@@ -19,7 +19,7 @@
 package net.me.event.events.screen;
 
 import net.me.event.Event;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screens.Screen;
 
 public abstract class ScreenEvent extends Event {
     private final Screen screen;

@@ -93,7 +93,7 @@ public class CommandsHelperAPI implements ProxyObject {
                 String commandName = builder.getRootBuilder().getLiteral();
                 commandApiService.register(owner, builder);
                 AtomicBoolean disposed = new AtomicBoolean(false);
-                ProxyExecutable exec = disposeArgs -> {
+                ProxyExecutable exec = _ -> {
                     if (disposed.compareAndSet(false, true)) {
                         commandApiService.unregister(owner, commandName);
                     }
@@ -115,7 +115,7 @@ public class CommandsHelperAPI implements ProxyObject {
                 String commandName = builder.getRootBuilder().getLiteral();
                 commandApiService.register(owner, builder);
                 AtomicBoolean disposed = new AtomicBoolean(false);
-                ProxyExecutable exec = disposeArgs -> {
+                ProxyExecutable exec = _ -> {
                     if (disposed.compareAndSet(false, true)) {
                         commandApiService.unregister(owner, commandName);
                     }

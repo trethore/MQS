@@ -22,19 +22,18 @@ import net.me.console.log.ConsoleManagerAppender;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ConsoleManager {
+    private static final PrintStream originalOut = new PrintStream(new FileOutputStream(FileDescriptor.out), true);
+    private static final PrintStream originalErr = new PrintStream(new FileOutputStream(FileDescriptor.err), true);
     private static final int MAX_HISTORY_SIZE = 100;
     private final List<ConsoleMessage> messages = new CopyOnWriteArrayList<>();
     private final Map<String, ConsoleCommand> commands = new HashMap<>();
     private final List<String> commandHistory = new ArrayList<>();
-    private final PrintStream originalOut = System.out;
-    private final PrintStream originalErr = System.err;
+
     private ConsoleManagerAppender slf4jAppender;
 
     public void init() {
@@ -184,19 +183,19 @@ public class ConsoleManager {
         public void flush() throws IOException {
             synchronized (this) {
                 super.flush();
-                String record = this.toString();
+                String output = this.toString();
                 super.reset();
 
-                if (record.isEmpty() || record.equals(lineSeparator)) {
+                if (output.isEmpty() || output.equals(lineSeparator)) {
                     return;
                 }
 
-                if (record.endsWith(lineSeparator)) {
-                    record = record.substring(0, record.length() - lineSeparator.length());
+                if (output.endsWith(lineSeparator)) {
+                    output = output.substring(0, output.length() - lineSeparator.length());
                 }
 
-                consoleManager.log(record, messageType);
-                originalStream.println(record);
+                consoleManager.log(output, messageType);
+                originalStream.println(output);
             }
         }
     }

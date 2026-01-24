@@ -19,16 +19,18 @@
 package net.me.mixin.keybinds;
 
 import net.me.Main;
-import net.minecraft.client.Mouse;
+import net.me.keybinds.events.MouseButtonEvent;
+import net.minecraft.client.MouseHandler;
+import net.minecraft.client.input.MouseButtonInfo;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Mouse.class)
+@Mixin(MouseHandler.class)
 public class MQSMouseMixin {
-    @Inject(at = @At("HEAD"), method = "onMouseButton")
-    private void onMouseButton(long window, int button, int action, int mods, CallbackInfo ci) {
-        Main.getInstance().getKeybindManager().onMouseClick(button, action);
+    @Inject(at = @At("HEAD"), method = "onButton")
+    private void onButton(long window, MouseButtonInfo mouseButtonInfo, int action, CallbackInfo ci) {
+        Main.getInstance().getKeybindManager().onMouseClick(new MouseButtonEvent(mouseButtonInfo.button(), action));
     }
 }

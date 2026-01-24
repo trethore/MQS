@@ -20,19 +20,19 @@ package net.me.event.events.world;
 
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.world.ClientWorld;
+import net.minecraft.client.multiplayer.ClientLevel;
 import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("unused")
 public class WorldChangeEvent extends Event {
-    private final ClientWorld world;
+    private final ClientLevel world;
 
-    public WorldChangeEvent(@Nullable ClientWorld world) {
+    public WorldChangeEvent(@Nullable ClientLevel world) {
         this.world = world;
     }
 
     @Nullable
-    public ClientWorld getWorld() {
+    public ClientLevel getWorld() {
         return world;
     }
 

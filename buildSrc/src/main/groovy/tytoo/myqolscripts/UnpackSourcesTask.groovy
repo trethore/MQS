@@ -62,15 +62,17 @@ abstract class UnpackSourcesTask extends DefaultTask {
 			}
 		}
 
-		File minecraftJar = findMinecraftJar()
-		if (minecraftJar != null) {
+		File minecraftClientJar = findMinecraftJar("minecraft-clientOnly-")
+		File minecraftCommonJar = findMinecraftJar("minecraft-common-")
+		if (minecraftClientJar != null || minecraftCommonJar != null) {
 			File minecraftTarget = new File(outputDirFile, "minecraft")
 			fileSystemOperations.delete { delete(minecraftTarget) }
 			minecraftTarget.mkdirs()
-			execOperations.javaexec {
-				mainClass.set('org.benf.cfr.reader.Main')
-				classpath(getCfrClasspath())
-				args(minecraftJar.absolutePath, '--outputdir', minecraftTarget.absolutePath)
+			if (minecraftCommonJar != null) {
+				decompileMinecraftJar(minecraftCommonJar, new File(minecraftTarget, "common"))
+			}
+			if (minecraftClientJar != null) {
+				decompileMinecraftJar(minecraftClientJar, new File(minecraftTarget, "client"))
 			}
 		} else {
 			logger.warn("Could not locate minecraft client jar in loom cache")
@@ -97,7 +99,17 @@ abstract class UnpackSourcesTask extends DefaultTask {
 		}
 	}
 
-	private File findMinecraftJar() {
+	private void decompileMinecraftJar(File minecraftJar, File targetDir) {
+		fileSystemOperations.delete { delete(targetDir) }
+		targetDir.mkdirs()
+		execOperations.javaexec {
+			mainClass.set('org.benf.cfr.reader.Main')
+			classpath(getCfrClasspath())
+			args(minecraftJar.absolutePath, '--outputdir', targetDir.absolutePath)
+		}
+	}
+
+	private File findMinecraftJar(String prefix) {
 		if (!getMinecraftCacheDir().isPresent()) {
 			return null
 		}
@@ -107,7 +119,7 @@ abstract class UnpackSourcesTask extends DefaultTask {
 		}
 		File latest = null
 		root.eachFileRecurse(FileType.FILES) { File file ->
-			if (file.name.startsWith("minecraft-clientOnly-") && file.name.endsWith(".jar") && !file.name.endsWith(".backup.jar")) {
+			if (file.name.startsWith(prefix) && file.name.endsWith(".jar") && !file.name.endsWith(".backup.jar")) {
 				if (latest == null || file.lastModified() > latest.lastModified()) {
 					latest = file
 				}

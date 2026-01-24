@@ -20,11 +20,11 @@ package net.me.event.events.title;
 
 import net.me.event.Events;
 import net.me.event.PacketEvent;
-import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 
-public class TitleEvent extends PacketEvent<TitleS2CPacket> {
+public class TitleEvent extends PacketEvent<ClientboundSetTitleTextPacket> {
 
-    public TitleEvent(TitleS2CPacket packet) {
+    public TitleEvent(ClientboundSetTitleTextPacket packet) {
         super(packet);
     }
 
