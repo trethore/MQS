@@ -56,43 +56,27 @@ public class KeybindsAPI implements ProxyObject {
     public Object getMember(String key) {
         return switch (key) {
             case KEY_KEYS -> keysProxy;
-            case OPTIONS -> (ProxyExecutable) args -> getCurrentScript().getContext().asValue(KeybindOptions.builder());
+            case OPTIONS -> (ProxyExecutable) _ -> getCurrentScript().getContext().asValue(KeybindOptions.builder());
             case KEYBIND_BIND -> (ProxyExecutable) args -> {
-                if (args.length < 3) {
-                    throw new IllegalArgumentException("Usage: MQS.keybinds.bind(name, key, handler, options?)");
-                }
+                ApiArgumentChecks.requireArgCountAtLeast(args, 3, "Usage: MQS.keybinds.bind(name, key, handler, options?)");
                 RunningScript owner = getCurrentScript();
-                if (!args[0].isString()) {
-                    throw new IllegalArgumentException("Keybind name must be a string.");
-                }
-                String name = args[0].asString();
+                String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
                 int keyCode = extractKeyCode(args[1]);
-                Value handler = args[2];
-                if (!handler.canExecute()) {
-                    throw new IllegalArgumentException("Handler must be executable.");
-                }
+                Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
 
                 KeybindOptions options = resolveOptions(args.length > 3 ? args[3] : null, keyCode);
 
                 return registerKeybind(owner, name, handler, options);
             };
             case KEYBIND_BIND_TOGGLE -> (ProxyExecutable) args -> {
-                if (args.length < 3) {
-                    throw new IllegalArgumentException("Usage: MQS.keybinds.bindToggle(name, key, handler, options?)");
-                }
+                ApiArgumentChecks.requireArgCountAtLeast(args, 3, "Usage: MQS.keybinds.bindToggle(name, key, handler, options?)");
                 RunningScript owner = getCurrentScript();
-                if (!args[0].isString()) {
-                    throw new IllegalArgumentException("Keybind name must be a string.");
-                }
-                String name = args[0].asString();
+                String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
                 int keyCode = extractKeyCode(args[1]);
-                Value handler = args[2];
-                if (!handler.canExecute()) {
-                    throw new IllegalArgumentException("Handler must be executable.");
-                }
+                Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
 
                 AtomicBoolean state = new AtomicBoolean(false);
-                ProxyExecutable toggleExecutable = execArgs -> {
+                ProxyExecutable toggleExecutable = _ -> {
                     boolean next = !state.get();
                     state.set(next);
                     handler.execute(next);
@@ -105,17 +89,14 @@ public class KeybindsAPI implements ProxyObject {
                 return registerKeybind(owner, name, toggleHandler, options);
             };
             case KEYBIND_UNBIND -> (ProxyExecutable) args -> {
-                if (args.length != 1 || !args[0].isString()) {
-                    throw new IllegalArgumentException("Usage: MQS.keybinds.unbind(name)");
-                }
+                ApiArgumentChecks.requireArgCount(args, 1, "Usage: MQS.keybinds.unbind(name)");
+                String name = ApiArgumentChecks.requireString(args, 0, "Usage: MQS.keybinds.unbind(name)");
                 RunningScript owner = getCurrentScript();
-                keybindManager.unregister(owner, args[0].asString());
+                keybindManager.unregister(owner, name);
                 return null;
             };
             case KEYBIND_UNBIND_ALL -> (ProxyExecutable) args -> {
-                if (args.length != 0) {
-                    throw new IllegalArgumentException("Usage: MQS.keybinds.unbindAll()");
-                }
+                ApiArgumentChecks.requireArgCount(args, 0, "Usage: MQS.keybinds.unbindAll()");
                 RunningScript owner = getCurrentScript();
                 keybindManager.unregister(owner);
                 return null;
@@ -181,7 +162,7 @@ public class KeybindsAPI implements ProxyObject {
     private Value registerKeybind(RunningScript owner, String name, Value handler, KeybindOptions options) {
         keybindManager.register(name, handler, owner, options);
         AtomicBoolean disposed = new AtomicBoolean(false);
-        ProxyExecutable exec = disposeArgs -> {
+        ProxyExecutable exec = _ -> {
             if (disposed.compareAndSet(false, true)) {
                 keybindManager.unregister(owner, name);
             }

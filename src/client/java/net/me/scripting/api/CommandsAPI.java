@@ -87,56 +87,7 @@ public class CommandsAPI implements ProxyObject {
             return ARG_TYPE_PROXY;
         }
 
-        return (ProxyExecutable) args -> {
-            RunningScript owner = getCurrentScript();
-            switch (key) {
-                case BUILDER: {
-                    if (args.length != 1 || !args[0].isString())
-                        throw new IllegalArgumentException("Commands.builder(name) requires one string argument.");
-                    return new CommandBuilder(args[0].asString(), owner, this.scriptManager);
-                }
-                case LITERAL: {
-                    if (args.length != 1 || !args[0].isString()) {
-                        throw new IllegalArgumentException("Commands.literal(name) requires one string argument.");
-                    }
-                    return new CommandBuilder(ClientCommandManager.literal(args[0].asString()), owner, this.scriptManager);
-                }
-                case ARGUMENT: {
-                    if (args.length != 2 || !args[0].isString() || !args[1].isString()) {
-                        throw new IllegalArgumentException("Commands.argument(name, type) requires two string arguments.");
-                    }
-                    String name = args[0].asString();
-                    String typeStr = args[1].asString();
-                    ScriptArgumentType type = ScriptArgumentType.fromString(typeStr);
-                    return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, this.scriptManager);
-                }
-                case REGISTER: {
-                    if (args.length != 1)
-                        throw new IllegalArgumentException("Commands.register(builder) requires one argument.");
-                    if (!args[0].isHostObject() || !(args[0].asHostObject() instanceof CommandBuilder)) {
-                        throw new IllegalArgumentException("Argument must be a CommandBuilder instance.");
-                    }
-                    CommandBuilder builder = args[0].asHostObject();
-                    service.register(owner, builder);
-                    return null;
-                }
-                case UNREGISTER: {
-                    if (args.length != 1 || !args[0].isString())
-                        throw new IllegalArgumentException("Commands.unregister(commandName) requires one string argument.");
-                    String commandName = args[0].asString();
-                    service.unregister(owner, commandName);
-                    return null;
-                }
-                case UNREGISTER_ALL: {
-                    if (args.length != 0)
-                        throw new IllegalArgumentException("Commands.unregisterAll() takes no arguments.");
-                    service.unregisterAllFor(owner);
-                    return null;
-                }
-                default:
-                    throw new UnsupportedOperationException("Unsupported Commands operation: " + key);
-            }
-        };
+        return (ProxyExecutable) args -> executeCommand(key, args, getCurrentScript());
     }
 
     @Override
@@ -152,5 +103,57 @@ public class CommandsAPI implements ProxyObject {
     @Override
     public void putMember(String key, Value value) {
         throw new UnsupportedOperationException("Cannot modify the Commands API object.");
+    }
+
+    private Object executeCommand(String key, Value[] args, RunningScript owner) {
+        return switch (key) {
+            case BUILDER -> buildNamed(args, owner);
+            case LITERAL -> buildLiteral(args, owner);
+            case ARGUMENT -> buildArgument(args, owner);
+            case REGISTER -> register(args, owner);
+            case UNREGISTER -> unregister(args, owner);
+            case UNREGISTER_ALL -> unregisterAll(args, owner);
+            default -> throw new UnsupportedOperationException("Unsupported Commands operation: " + key);
+        };
+    }
+
+    private CommandBuilder buildNamed(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 1, "Commands.builder(name) requires one string argument.");
+        String name = ApiArgumentChecks.requireString(args, 0, "Commands.builder(name) requires one string argument.");
+        return new CommandBuilder(name, owner, this.scriptManager);
+    }
+
+    private CommandBuilder buildLiteral(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 1, "Commands.literal(name) requires one string argument.");
+        String name = ApiArgumentChecks.requireString(args, 0, "Commands.literal(name) requires one string argument.");
+        return new CommandBuilder(ClientCommandManager.literal(name), owner, this.scriptManager);
+    }
+
+    private CommandBuilder buildArgument(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 2, COMMAND_ARGUMENT_USAGE);
+        String name = ApiArgumentChecks.requireString(args, 0, COMMAND_ARGUMENT_USAGE);
+        String typeStr = ApiArgumentChecks.requireString(args, 1, COMMAND_ARGUMENT_USAGE);
+        ScriptArgumentType type = ScriptArgumentType.fromString(typeStr);
+        return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, this.scriptManager);
+    }
+
+    private Void register(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 1, "Commands.register(builder) requires one argument.");
+        CommandBuilder builder = ApiArgumentChecks.requireHostObject(args, 0, CommandBuilder.class, "Argument must be a CommandBuilder instance.");
+        service.register(owner, builder);
+        return null;
+    }
+
+    private Void unregister(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 1, "Commands.unregister(commandName) requires one string argument.");
+        String commandName = ApiArgumentChecks.requireString(args, 0, "Commands.unregister(commandName) requires one string argument.");
+        service.unregister(owner, commandName);
+        return null;
+    }
+
+    private Void unregisterAll(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 0, "Commands.unregisterAll() takes no arguments.");
+        service.unregisterAllFor(owner);
+        return null;
     }
 }

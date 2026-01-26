@@ -30,15 +30,15 @@ public final class McUtils {
     private McUtils() {
     }
 
-    public static Optional<Minecraft> getMc() {
-        return Optional.of(Minecraft.getInstance());
+    public static Minecraft getMc() {
+        return Minecraft.getInstance();
     }
 
     public static Optional<LocalPlayer> getPlayer() {
-        return getMc().map(mc -> mc.player);
+        return Optional.ofNullable(getMc().player);
     }
 
     public static Optional<ClientLevel> getWorld() {
-        return getMc().map(mc -> mc.level);
+        return Optional.ofNullable(getMc().level);
     }
 }

@@ -43,90 +43,15 @@ public class ConfigHelperAPI implements ProxyObject {
     @Override
     public Object getMember(String key) {
         return switch (key) {
-            case GET -> (ProxyExecutable) args -> {
-                if (args.length == 0) {
-                    throw new IllegalArgumentException("Config.get requires a key.");
-                }
-                RunningScript script = getCurrentScript();
-                Object stored = configManager.get(script.getId(), args[0].asString());
-                if (stored == null) {
-                    return args.length > 1 ? args[1] : null;
-                }
-                return script.getContext().asValue(stored);
-            };
-            case SET -> (ProxyExecutable) args -> {
-                if (args.length != 2) {
-                    throw new IllegalArgumentException("Config.set requires a key and value.");
-                }
-                RunningScript script = getCurrentScript();
-                Object serialized = ConfigAPI.toSerializableObject(args[1]);
-                configManager.set(script.getId(), args[0].asString(), serialized);
-                return null;
-            };
-            case GET_BOOL -> (ProxyExecutable) args -> {
-                boolean defaultValue = args.length > 1 && coerceBoolean(args[1]);
-                Object stored = readRaw(args, defaultValue);
-                if (stored instanceof Boolean value) {
-                    return value;
-                }
-                if (stored instanceof Number number) {
-                    return number.intValue() != 0;
-                }
-                if (stored instanceof String text) {
-                    return Boolean.parseBoolean(text);
-                }
-                return defaultValue;
-            };
-            case GET_NUMBER -> (ProxyExecutable) args -> {
-                double defaultValue = args.length > 1 ? coerceNumber(args[1]) : 0D;
-                Object stored = readRaw(args, defaultValue);
-                if (stored instanceof Number number) {
-                    return number.doubleValue();
-                }
-                if (stored instanceof String text) {
-                    try {
-                        return Double.parseDouble(text);
-                    } catch (NumberFormatException _) {
-                        // Configured value is not a valid number string
-                    }
-                }
-                return defaultValue;
-            };
-            case GET_STRING -> (ProxyExecutable) args -> {
-                String defaultValue = args.length > 1 && args[1] != null ? args[1].toString() : null;
-                Object stored = readRaw(args, defaultValue);
-                return stored != null ? stored.toString() : defaultValue;
-            };
-            case HAS -> (ProxyExecutable) args -> {
-                if (args.length != 1) {
-                    throw new IllegalArgumentException("Config.has requires a key.");
-                }
-                RunningScript script = getCurrentScript();
-                return configManager.get(script.getId(), args[0].asString()) != null;
-            };
-            case SAVE -> (ProxyExecutable) args -> {
-                if (args.length != 0) {
-                    throw new IllegalArgumentException("Config.save takes no arguments.");
-                }
-                configManager.saveConfig(getCurrentScript());
-                return null;
-            };
-            case LOAD -> (ProxyExecutable) args -> {
-                if (args.length != 0) {
-                    throw new IllegalArgumentException("Config.load takes no arguments.");
-                }
-                RunningScript script = getCurrentScript();
-                configManager.unloadConfig(script);
-                configManager.getConfigForScript(script);
-                return null;
-            };
-            case GET_ALL -> (ProxyExecutable) args -> {
-                if (args.length != 0) {
-                    throw new IllegalArgumentException("Config.getAll takes no arguments.");
-                }
-                RunningScript script = getCurrentScript();
-                return configManager.getConfigForScript(script);
-            };
+            case GET -> createGetExecutable();
+            case SET -> createSetExecutable();
+            case GET_BOOL -> createGetBoolExecutable();
+            case GET_NUMBER -> createGetNumberExecutable();
+            case GET_STRING -> createGetStringExecutable();
+            case HAS -> createHasExecutable();
+            case SAVE -> createSaveExecutable();
+            case LOAD -> createLoadExecutable();
+            case GET_ALL -> createGetAllExecutable();
             default -> null;
         };
     }
@@ -144,6 +69,105 @@ public class ConfigHelperAPI implements ProxyObject {
     @Override
     public void putMember(String key, Value value) {
         throw new UnsupportedOperationException("Cannot modify MQS.config.");
+    }
+
+    private ProxyExecutable createGetExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCountAtLeast(args, 1, "Config.get requires a key.");
+            RunningScript script = getCurrentScript();
+            Object stored = configManager.get(script.getId(), args[0].asString());
+            if (stored == null) {
+                return args.length > 1 ? args[1] : null;
+            }
+            return script.getContext().asValue(stored);
+        };
+    }
+
+    private ProxyExecutable createSetExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCount(args, 2, "Config.set requires a key and value.");
+            RunningScript script = getCurrentScript();
+            Object serialized = ConfigAPI.toSerializableObject(args[1]);
+            configManager.set(script.getId(), args[0].asString(), serialized);
+            return null;
+        };
+    }
+
+    private ProxyExecutable createGetBoolExecutable() {
+        return args -> {
+            boolean defaultValue = args.length > 1 && coerceBoolean(args[1]);
+            Object stored = readRaw(args, defaultValue);
+            if (stored instanceof Boolean value) {
+                return value;
+            }
+            if (stored instanceof Number number) {
+                return number.intValue() != 0;
+            }
+            if (stored instanceof String text) {
+                return Boolean.parseBoolean(text);
+            }
+            return defaultValue;
+        };
+    }
+
+    private ProxyExecutable createGetNumberExecutable() {
+        return args -> {
+            double defaultValue = args.length > 1 ? coerceNumber(args[1]) : 0D;
+            Object stored = readRaw(args, defaultValue);
+            if (stored instanceof Number number) {
+                return number.doubleValue();
+            }
+            if (stored instanceof String text) {
+                try {
+                    return Double.parseDouble(text);
+                } catch (NumberFormatException _) {
+                    // Configured value is not a valid number string
+                }
+            }
+            return defaultValue;
+        };
+    }
+
+    private ProxyExecutable createGetStringExecutable() {
+        return args -> {
+            String defaultValue = args.length > 1 && args[1] != null ? args[1].toString() : null;
+            Object stored = readRaw(args, defaultValue);
+            return stored != null ? stored.toString() : defaultValue;
+        };
+    }
+
+    private ProxyExecutable createHasExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCount(args, 1, "Config.has requires a key.");
+            RunningScript script = getCurrentScript();
+            return configManager.get(script.getId(), args[0].asString()) != null;
+        };
+    }
+
+    private ProxyExecutable createSaveExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCount(args, 0, "Config.save takes no arguments.");
+            configManager.saveConfig(getCurrentScript());
+            return null;
+        };
+    }
+
+    private ProxyExecutable createLoadExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCount(args, 0, "Config.load takes no arguments.");
+            RunningScript script = getCurrentScript();
+            configManager.unloadConfig(script);
+            configManager.getConfigForScript(script);
+            return null;
+        };
+    }
+
+    private ProxyExecutable createGetAllExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCount(args, 0, "Config.getAll takes no arguments.");
+            RunningScript script = getCurrentScript();
+            return configManager.getConfigForScript(script);
+        };
     }
 
     private RunningScript getCurrentScript() {

@@ -44,34 +44,65 @@ public final class KeybindOptions {
         if (optionsValue == null) {
             return builder().keyCode(defaultKeyCode).build();
         }
-        if (optionsValue.isHostObject()) {
-            Object hostObject = optionsValue.asHostObject();
-            if (hostObject instanceof KeybindOptions options) {
-                return options.withKeyCode(defaultKeyCode);
-            }
-            if (hostObject instanceof KeybindOptions.Builder builder) {
-                return builder.buildWithDefaultKey(defaultKeyCode);
-            }
+        KeybindOptions hostOptions = fromHostObject(optionsValue, defaultKeyCode);
+        if (hostOptions != null) {
+            return hostOptions;
         }
 
         int keyCode = defaultKeyCode;
         boolean repeatable = false;
         int debounceMillis = 100;
 
-        if (optionsValue.hasMembers()) {
-            if (optionsValue.hasMember(KEY_PROP) && optionsValue.getMember(KEY_PROP).isNumber()) {
-                keyCode = optionsValue.getMember(KEY_PROP).asInt();
-            }
-            if (optionsValue.hasMember(REPEATABLE_PROP) && optionsValue.getMember(REPEATABLE_PROP).isBoolean()) {
-                repeatable = optionsValue.getMember(REPEATABLE_PROP).asBoolean();
-            }
-            if (optionsValue.hasMember(DEBOUNCE_PROP) && optionsValue.getMember(DEBOUNCE_PROP).isNumber()) {
-                int candidate = optionsValue.getMember(DEBOUNCE_PROP).asInt();
-                debounceMillis = Math.max(0, candidate);
-            }
+        if (!optionsValue.hasMembers()) {
+            return new KeybindOptions(keyCode, repeatable, debounceMillis);
         }
 
+        keyCode = readIntMember(optionsValue, KEY_PROP, keyCode);
+        repeatable = readBooleanMember(optionsValue, REPEATABLE_PROP, repeatable);
+        debounceMillis = readNonNegativeIntMember(optionsValue, DEBOUNCE_PROP, debounceMillis);
+
         return new KeybindOptions(keyCode, repeatable, debounceMillis);
+    }
+
+    private static KeybindOptions fromHostObject(Value optionsValue, int defaultKeyCode) {
+        if (!optionsValue.isHostObject()) {
+            return null;
+        }
+        Object hostObject = optionsValue.asHostObject();
+        if (hostObject instanceof KeybindOptions options) {
+            return options.withKeyCode(defaultKeyCode);
+        }
+        if (hostObject instanceof KeybindOptions.Builder builder) {
+            return builder.buildWithDefaultKey(defaultKeyCode);
+        }
+        return null;
+    }
+
+    private static int readIntMember(Value optionsValue, String member, int defaultValue) {
+        if (!optionsValue.hasMember(member)) {
+            return defaultValue;
+        }
+        Value memberValue = optionsValue.getMember(member);
+        if (!memberValue.isNumber()) {
+            return defaultValue;
+        }
+        return memberValue.asInt();
+    }
+
+    private static boolean readBooleanMember(Value optionsValue, String member, boolean defaultValue) {
+        if (!optionsValue.hasMember(member)) {
+            return defaultValue;
+        }
+        Value memberValue = optionsValue.getMember(member);
+        if (!memberValue.isBoolean()) {
+            return defaultValue;
+        }
+        return memberValue.asBoolean();
+    }
+
+    private static int readNonNegativeIntMember(Value optionsValue, String member, int defaultValue) {
+        int value = readIntMember(optionsValue, member, defaultValue);
+        return Math.max(0, value);
     }
 
     public int keyCode() {

@@ -81,7 +81,7 @@ public class CopyTailCommand extends ConsoleCommand {
                 .map(msg -> String.format("[%s] %s", msg.timestamp(), msg.text()))
                 .collect(Collectors.joining(System.lineSeparator()));
 
-        McUtils.getMc().ifPresent(mc -> mc.keyboardHandler.setClipboard(textToCopy));
+        McUtils.getMc().keyboardHandler.setClipboard(textToCopy);
         cm.logSuccess("Copied " + tail.size() + " lines to clipboard.");
     }
 }

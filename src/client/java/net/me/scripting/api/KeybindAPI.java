@@ -34,6 +34,7 @@ import static net.me.scripting.api.ApiConstants.*;
 
 public class KeybindAPI implements ProxyObject {
 
+    private static final String REGISTER_USAGE = "Usage: KeybindManager.register('name', actionFunction, { key, repeatable, debounce })";
     private static final Set<String> MEMBER_KEYS = Set.of(REGISTER, UNREGISTER, UNREGISTER_ALL, KEYS);
     private static final ProxyObject KEYS_PROXY = new ProxyObject() {
         @Override
@@ -87,12 +88,9 @@ public class KeybindAPI implements ProxyObject {
             RunningScript owner = getCurrentScript();
             switch (key) {
                 case REGISTER: {
-                    if (args.length < 2 || !args[0].isString() || !args[1].canExecute()) {
-                        throw new IllegalArgumentException("Usage: KeybindManager.register('name', actionFunction, { key, repeatable, debounce })");
-                    }
-
-                    String name = args[0].asString();
-                    Value action = args[1];
+                    ApiArgumentChecks.requireArgCountAtLeast(args, 2, REGISTER_USAGE);
+                    String name = ApiArgumentChecks.requireString(args, 0, REGISTER_USAGE);
+                    Value action = ApiArgumentChecks.requireExecutable(args, 1, REGISTER_USAGE);
 
                     Value optionsArg = args.length > 2 ? args[2] : null;
                     KeybindOptions options = KeybindOptions.fromScript(optionsArg, Keys.UNBOUND.getCode());
@@ -100,17 +98,13 @@ public class KeybindAPI implements ProxyObject {
                     return null;
                 }
                 case UNREGISTER: {
-                    if (args.length != 1 || !args[0].isString()) {
-                        throw new IllegalArgumentException("Usage: KeybindManager.unregister('name')");
-                    }
-                    String name = args[0].asString();
+                    ApiArgumentChecks.requireArgCount(args, 1, "Usage: KeybindManager.unregister('name')");
+                    String name = ApiArgumentChecks.requireString(args, 0, "Usage: KeybindManager.unregister('name')");
                     keybindManager.unregister(owner, name);
                     return null;
                 }
                 case UNREGISTER_ALL: {
-                    if (args.length != 0) {
-                        throw new IllegalArgumentException("Usage: KeybindManager.unregisterAll()");
-                    }
+                    ApiArgumentChecks.requireArgCount(args, 0, "Usage: KeybindManager.unregisterAll()");
                     keybindManager.unregister(owner);
                     return null;
                 }

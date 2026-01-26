@@ -25,7 +25,6 @@ import net.me.scripting.module.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.utils.*;
 import net.me.utils.math.*;
-import net.minecraft.client.Minecraft;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -149,34 +148,26 @@ public class MqsUtilsAPI implements ProxyObject {
             public Object getMember(String key) {
                 return switch (key) {
                     case MC_RAW -> classResolver.getOrCreateWrapper(McUtils.class.getName());
-                    case MC_GET_MC -> (ProxyExecutable) args -> McUtils.getMc();
-                    case MC_GET_PLAYER -> (ProxyExecutable) args -> McUtils.getPlayer();
-                    case MC_GET_WORLD -> (ProxyExecutable) args -> McUtils.getWorld();
-                    case MC_CLIENT -> (ProxyExecutable) args -> ScriptUtils.wrapReturn(
-                            Minecraft.getInstance(),
+                    case MC_GET_MC -> (ProxyExecutable) _ -> McUtils.getMc();
+                    case MC_GET_PLAYER -> (ProxyExecutable) _ -> McUtils.getPlayer();
+                    case MC_GET_WORLD -> (ProxyExecutable) _ -> McUtils.getWorld();
+                    case MC_CLIENT -> (ProxyExecutable) _ -> ScriptUtils.wrapReturn(
+                            McUtils.getMc(),
                             classResolver.getMappingsManager(),
                             scriptManager
                     );
-                    case MC_PLAYER -> (ProxyExecutable) args -> {
-                        Minecraft client = Minecraft.getInstance();
-                        return client != null
-                                ? ScriptUtils.wrapReturn(client.player, classResolver.getMappingsManager(), scriptManager)
-                                : null;
-                    };
-                    case MC_WORLD -> (ProxyExecutable) args -> {
-                        Minecraft client = Minecraft.getInstance();
-                        return client != null
-                                ? ScriptUtils.wrapReturn(client.level, classResolver.getMappingsManager(), scriptManager)
-                                : null;
-                    };
+                    case MC_PLAYER -> (ProxyExecutable) _ -> McUtils.getPlayer()
+                            .map(player -> ScriptUtils.wrapReturn(player, classResolver.getMappingsManager(), scriptManager))
+                            .orElse(null);
+                    case MC_WORLD -> (ProxyExecutable) _ -> McUtils.getWorld()
+                            .map(world -> ScriptUtils.wrapReturn(world, classResolver.getMappingsManager(), scriptManager))
+                            .orElse(null);
                     case MC_RUN_ON_CLIENT_THREAD -> (ProxyExecutable) args -> {
-                        if (args.length != 1 || args[0] == null || !args[0].canExecute()) {
-                            throw new IllegalArgumentException("runOnClientThread requires a callback function.");
-                        }
+                        ApiArgumentChecks.requireArgCount(args, 1, "runOnClientThread requires a callback function.");
+                        ApiArgumentChecks.requireExecutable(args, 0, "runOnClientThread requires a callback function.");
                         RunningScript owner = currentScript();
                         Value callback = args[0];
-                        Minecraft client = Minecraft.getInstance();
-                        client.execute(() -> executeCallback(owner, callback));
+                        McUtils.getMc().execute(() -> executeCallback(owner, callback));
                         return null;
                     };
                     default -> null;
@@ -260,11 +251,9 @@ public class MqsUtilsAPI implements ProxyObject {
     }
 
     private void ensureCallback(Value[] args) {
-        if (args.length == 0 || args[0] == null || !args[0].canExecute()) {
-            throw new IllegalArgumentException("First argument must be a callback function.");
-        }
-        if (args.length > 1 && args[1] != null && !args[1].isNumber()) {
-            throw new IllegalArgumentException("Delay must be numeric.");
+        ApiArgumentChecks.requireExecutable(args, 0, "First argument must be a callback function.");
+        if (args.length > 1 && args[1] != null) {
+            ApiArgumentChecks.requireNumber(args, 1, "Delay must be numeric.");
         }
     }
 
@@ -277,7 +266,7 @@ public class MqsUtilsAPI implements ProxyObject {
     }
 
     private Value toDisposer(RunningScript owner, Runnable cancel) {
-        ProxyExecutable exec = disposeArgs -> {
+        ProxyExecutable exec = _ -> {
             cancel.run();
             return null;
         };
@@ -289,7 +278,8 @@ public class MqsUtilsAPI implements ProxyObject {
         scriptManager.setCurrentScript(owner);
         try {
             callback.execute();
-        } catch (IllegalStateException ignored) {
+        } catch (IllegalStateException _) {
+            // Ignore script cancellation exceptions
         } catch (Exception e) {
             Main.LOGGER.error("runOnClientThread callback threw for script '{}'", owner.getName(), e);
         } finally {

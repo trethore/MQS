@@ -26,16 +26,12 @@ public final class CameraUtils {
     }
 
     public static Vec3d getCameraPos() {
-        return McUtils.getMc()
-                .map(mc -> mc.getBlockEntityRenderDispatcher().camera.getPos())
-                .orElse(Vec3d.ZERO);
+        return McUtils.getMc().getBlockEntityRenderDispatcher().camera.getPos();
     }
 
 
     public static BlockPos getCameraBlockPos() {
-        return McUtils.getMc()
-                .map(mc -> mc.getBlockEntityRenderDispatcher().camera.getBlockPos())
-                .orElse(BlockPos.ORIGIN);
+        return McUtils.getMc().getBlockEntityRenderDispatcher().camera.getBlockPos();
     }
 
 }

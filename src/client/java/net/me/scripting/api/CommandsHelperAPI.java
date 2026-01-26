@@ -52,77 +52,10 @@ public class CommandsHelperAPI implements ProxyObject {
     @Override
     public Object getMember(String key) {
         return switch (key) {
-            case LITERAL -> (ProxyExecutable) args -> {
-                if (args.length == 0 || !args[0].isString()) {
-                    throw new IllegalArgumentException("commands.literal requires a command name.");
-                }
-                RunningScript owner = getCurrentScript();
-                CommandBuilder builder = new CommandBuilder(args[0].asString(), owner, scriptManager);
-                if (args.length > 1) {
-                    Value configure = args[1];
-                    if (configure != null && configure.canExecute()) {
-                        RunningScript previous = scriptManager.getCurrentScript();
-                        scriptManager.setCurrentScript(owner);
-                        try {
-                            Value jsInstance = owner.getJsInstance();
-                            configure.invokeMember("call", jsInstance, builder);
-                        } finally {
-                            if (previous != null) {
-                                scriptManager.setCurrentScript(previous);
-                            } else {
-                                scriptManager.clearCurrentScript();
-                            }
-                        }
-                    }
-                }
-                return builder;
-            };
-            case ARGUMENT -> (ProxyExecutable) args -> {
-                if (args.length != 2 || !args[0].isString() || !args[1].isString()) {
-                    throw new IllegalArgumentException("commands.argument(name, type) requires two string arguments.");
-                }
-                RunningScript owner = getCurrentScript();
-                ScriptArgumentType type = ScriptArgumentType.fromString(args[1].asString());
-                return new CommandBuilder(ClientCommandManager.argument(args[0].asString(), type.get()), owner, scriptManager);
-            };
-            case REGISTER -> (ProxyExecutable) args -> {
-                if (args.length != 1 || !args[0].isHostObject() || !(args[0].asHostObject() instanceof CommandBuilder builder)) {
-                    throw new IllegalArgumentException("commands.register expects a CommandBuilder instance.");
-                }
-                RunningScript owner = getCurrentScript();
-                String commandName = builder.getRootBuilder().getLiteral();
-                commandApiService.register(owner, builder);
-                AtomicBoolean disposed = new AtomicBoolean(false);
-                ProxyExecutable exec = _ -> {
-                    if (disposed.compareAndSet(false, true)) {
-                        commandApiService.unregister(owner, commandName);
-                    }
-                    return null;
-                };
-                return owner.getContext().asValue(exec);
-            };
-            case REGISTER_LITERAL -> (ProxyExecutable) args -> {
-                if (args.length < 2 || !args[0].isString()) {
-                    throw new IllegalArgumentException("commands.registerLiteral(name, handler) requires a name and handler.");
-                }
-                Value handler = args[1];
-                if (!handler.canExecute()) {
-                    throw new IllegalArgumentException("Handler must be executable.");
-                }
-                RunningScript owner = getCurrentScript();
-                CommandBuilder builder = new CommandBuilder(args[0].asString(), owner, scriptManager);
-                builder.executes(handler);
-                String commandName = builder.getRootBuilder().getLiteral();
-                commandApiService.register(owner, builder);
-                AtomicBoolean disposed = new AtomicBoolean(false);
-                ProxyExecutable exec = _ -> {
-                    if (disposed.compareAndSet(false, true)) {
-                        commandApiService.unregister(owner, commandName);
-                    }
-                    return null;
-                };
-                return owner.getContext().asValue(exec);
-            };
+            case LITERAL -> createLiteralExecutable();
+            case ARGUMENT -> createArgumentExecutable();
+            case REGISTER -> createRegisterExecutable();
+            case REGISTER_LITERAL -> createRegisterLiteralExecutable();
             default -> null;
         };
     }
@@ -140,6 +73,81 @@ public class CommandsHelperAPI implements ProxyObject {
     @Override
     public void putMember(String key, Value value) {
         throw new UnsupportedOperationException("Cannot modify MQS.commands.");
+    }
+
+    private ProxyExecutable createLiteralExecutable() {
+        return args -> {
+            String name = ApiArgumentChecks.requireString(args, 0, "commands.literal requires a command name.");
+            RunningScript owner = getCurrentScript();
+            CommandBuilder builder = new CommandBuilder(name, owner, scriptManager);
+            if (args.length > 1) {
+                Value configure = args[1];
+                if (configure != null && configure.canExecute()) {
+                    invokeWithScript(owner, configure, builder);
+                }
+            }
+            return builder;
+        };
+    }
+
+    private ProxyExecutable createArgumentExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCount(args, 2, COMMAND_ARGUMENT_USAGE);
+            String name = ApiArgumentChecks.requireString(args, 0, COMMAND_ARGUMENT_USAGE);
+            String typeName = ApiArgumentChecks.requireString(args, 1, COMMAND_ARGUMENT_USAGE);
+            RunningScript owner = getCurrentScript();
+            ScriptArgumentType type = ScriptArgumentType.fromString(typeName);
+            return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, scriptManager);
+        };
+    }
+
+    private ProxyExecutable createRegisterExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCount(args, 1, "commands.register expects a CommandBuilder instance.");
+            CommandBuilder builder = ApiArgumentChecks.requireHostObject(args, 0, CommandBuilder.class, "commands.register expects a CommandBuilder instance.");
+            RunningScript owner = getCurrentScript();
+            commandApiService.register(owner, builder);
+            return createDisposer(owner, builder.getRootBuilder().getLiteral());
+        };
+    }
+
+    private ProxyExecutable createRegisterLiteralExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCountAtLeast(args, 2, "commands.registerLiteral(name, handler) requires a name and handler.");
+            String name = ApiArgumentChecks.requireString(args, 0, "commands.registerLiteral(name, handler) requires a name and handler.");
+            Value handler = ApiArgumentChecks.requireExecutable(args, 1, "Handler must be executable.");
+            RunningScript owner = getCurrentScript();
+            CommandBuilder builder = new CommandBuilder(name, owner, scriptManager);
+            builder.executes(handler);
+            commandApiService.register(owner, builder);
+            return createDisposer(owner, builder.getRootBuilder().getLiteral());
+        };
+    }
+
+    private Value createDisposer(RunningScript owner, String commandName) {
+        AtomicBoolean disposed = new AtomicBoolean(false);
+        ProxyExecutable exec = _ -> {
+            if (disposed.compareAndSet(false, true)) {
+                commandApiService.unregister(owner, commandName);
+            }
+            return null;
+        };
+        return owner.getContext().asValue(exec);
+    }
+
+    private void invokeWithScript(RunningScript owner, Value configure, CommandBuilder builder) {
+        RunningScript previous = scriptManager.getCurrentScript();
+        scriptManager.setCurrentScript(owner);
+        try {
+            Value jsInstance = owner.getJsInstance();
+            configure.invokeMember("call", jsInstance, builder);
+        } finally {
+            if (previous != null) {
+                scriptManager.setCurrentScript(previous);
+            } else {
+                scriptManager.clearCurrentScript();
+            }
+        }
     }
 
     private RunningScript getCurrentScript() {

@@ -37,6 +37,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static net.me.scripting.api.ApiConstants.*;
 
 public class HooksAPI implements ProxyObject {
+    private static final String HOOK_USAGE_PREFIX = "Usage: MQS.hooks.";
+    private static final String HOOK_METHOD_USAGE = "(Class, 'methodName', handler, options?)";
     private static final Set<String> MEMBER_KEYS = Set.of(
             HOOK_BEFORE,
             HOOK_AFTER,
@@ -80,14 +82,12 @@ public class HooksAPI implements ProxyObject {
 
     private ProxyExecutable createHookExecutable(HookExecutionMode mode) {
         return args -> {
-            if (args.length < 2) {
-                throw new IllegalArgumentException("Usage: MQS.hooks." + mode.name().toLowerCase() + "(target, methodOrHandler, handler?, options?)");
-            }
+            ApiArgumentChecks.requireArgCountAtLeast(args, 2, HOOK_USAGE_PREFIX + mode.name().toLowerCase() + "(target, methodOrHandler, handler?, options?)");
             RunningScript owner = getCurrentScript();
             HookCall call = parseArgs(args, mode);
             hookManager.hook(owner, call.targetClass(), call.methodName(), call.callback(), call.options());
             AtomicBoolean disposed = new AtomicBoolean(false);
-            ProxyExecutable disposer = disposeArgs -> {
+            ProxyExecutable disposer = _ -> {
                 if (disposed.compareAndSet(false, true)) {
                     hookManager.unhookSingle(owner, call.targetClass(), call.methodName(), call.options().argCount(), mode);
                 }
@@ -111,10 +111,7 @@ public class HooksAPI implements ProxyObject {
             if (descriptor == null || descriptor.isEmpty()) {
                 throw new IllegalArgumentException("Descriptor cannot be empty.");
             }
-            Value handler = args.length > 1 ? args[1] : null;
-            if (handler == null || !handler.canExecute()) {
-                throw new IllegalArgumentException("Handler must be executable.");
-            }
+            Value handler = ApiArgumentChecks.requireExecutable(args, 1, "Handler must be executable.");
             Value optionsValue = args.length > 2 ? args[2] : null;
             HookOptions options = HookOptions.withEnforcedMode(optionsValue, mode);
             HookDescriptor parsed = parseDescriptor(descriptor);
@@ -122,17 +119,13 @@ public class HooksAPI implements ProxyObject {
             return new HookCall(targetClass, parsed.methodName(), handler, options);
         }
 
-        if (args.length < 3 || !args[1].isString()) {
-            throw new IllegalArgumentException("Usage: MQS.hooks." + mode.name().toLowerCase() + "(Class, 'methodName', handler, options?)");
-        }
+        ApiArgumentChecks.requireArgCountAtLeast(args, 3, HOOK_USAGE_PREFIX + mode.name().toLowerCase() + HOOK_METHOD_USAGE);
+        ApiArgumentChecks.requireString(args, 1, HOOK_USAGE_PREFIX + mode.name().toLowerCase() + HOOK_METHOD_USAGE);
 
         Object unwrapped = ScriptUtils.unwrapReceiver(args[0]);
         Class<?> targetClass = resolveClass(unwrapped);
         String methodName = args[1].asString();
-        Value handler = args[2];
-        if (!handler.canExecute()) {
-            throw new IllegalArgumentException("Handler must be executable.");
-        }
+        Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
         Value optionsValue = args.length > 3 ? args[3] : null;
         HookOptions options = HookOptions.withEnforcedMode(optionsValue, mode);
         return new HookCall(targetClass, methodName, handler, options);

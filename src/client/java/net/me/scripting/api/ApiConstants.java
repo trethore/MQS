@@ -28,6 +28,7 @@ public final class ApiConstants {
     public static final String LITERAL = "literal";
     public static final String ARGUMENT = "argument";
     public static final String ARG_TYPE = "ArgType";
+    public static final String COMMAND_ARGUMENT_USAGE = "commands.argument(name, type) requires two string arguments.";
     // Config API
     public static final String GET = "get";
     public static final String SET = "set";

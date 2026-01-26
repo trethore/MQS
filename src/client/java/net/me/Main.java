@@ -36,6 +36,7 @@ import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.ui.screen.screens.ScriptsMenuScreen;
 import net.me.utils.McUtils;
+import net.minecraft.client.Minecraft;
 import org.graalvm.polyglot.Engine;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
@@ -101,12 +102,12 @@ public class Main implements ClientModInitializer {
 
         mappingsManager.init();
         try (Engine scriptEngine = Engine.create()) {
-            mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.execute(() -> {
+            mappingsManager.whenReady(() -> McUtils.getMc().execute(() -> {
                 scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
                 scriptManager.loadAndEnableScriptsFromConfig();
 
                 LOGGER.info("MyQOLScripts initialization complete! Hello !");
-            })));
+            }));
         }
     }
 
@@ -117,11 +118,14 @@ public class Main implements ClientModInitializer {
     private void registerUiKeybind() {
         keybindManager.registerHost(
                 "open_ui",
-                () -> McUtils.getMc().ifPresent(mc -> mc.execute(() -> {
-                    if (!(mc.screen instanceof ScriptsMenuScreen)) {
-                        new ScriptsMenuScreen(scriptingService).open();
-                    }
-                })),
+                () -> {
+                    Minecraft mc = McUtils.getMc();
+                    mc.execute(() -> {
+                        if (!(mc.screen instanceof ScriptsMenuScreen)) {
+                            new ScriptsMenuScreen(scriptingService).open();
+                        }
+                    });
+                },
                 GLFW.GLFW_KEY_F10,
                 false,
                 150

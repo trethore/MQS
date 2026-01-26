@@ -88,7 +88,7 @@ config.
   `HookManager`.
 - Lombok ships as a dependency; prefer its annotations to reduce boilerplate.
 - Library sources are fetched through the `sourceDeps` configuration (see `build.gradle.kts`) and unpacked per library using
-  `./gradlew unpackSources` into `libs-src/<library>`. Use these sources when exploring library code.
+  `./gradlew unpackSources` into `libs-src/<library>`. Use these sources to explore library source code.
 
 ## Testing & Verification
 

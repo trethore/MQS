@@ -65,92 +65,19 @@ public class EventsHelperAPI implements ProxyObject {
             return fabricProxy;
         }
         if (OFF.equals(key)) {
-            return (ProxyExecutable) args -> {
-                RunningScript owner = getCurrentScript();
-                if (args.length == 0) {
-                    disposeHandles(owner, _ -> true);
-                    eventManager.unregisterAll(owner);
-                    handlesByScript.remove(owner);
-                    return null;
-                }
-                Value target = args[0];
-                if (target == null) {
-                    throw new IllegalArgumentException("off() requires a callback or disposer when provided.");
-                }
-                disposeHandles(owner, handle -> handle.matchesValue(target));
-                return null;
-            };
+            return createOffExecutable();
         }
         if (UNREGISTER.equals(key)) {
-            return (ProxyExecutable) args -> {
-                if (args.length == 0) {
-                    throw new IllegalArgumentException("unregister(eventOrCallback, phase?) requires at least one argument.");
-                }
-                RunningScript owner = getCurrentScript();
-                Value target = args[0];
-
-                if (target != null && target.canExecute()) {
-                    disposeHandles(owner, handle -> handle.matchesValue(target));
-                    return null;
-                }
-                if (target != null && target.isHostObject() && target.asHostObject() instanceof Events eventEnum) {
-                    EventPhase phase;
-                    if (args.length > 1 && args[1] != null) {
-                        phase = EventSubscriptionOptions.resolvePhaseValue(args[1]);
-                    } else {
-                        phase = null;
-                    }
-                    disposeHandles(owner, handle -> handle.matchesEvent(eventEnum, phase));
-                    if (phase != null) {
-                        eventManager.unregister(owner, eventEnum, phase);
-                    } else {
-                        eventManager.unregister(owner, eventEnum);
-                    }
-                    return null;
-                }
-                if (target != null && target.isString()) {
-                    String eventKey = target.asString();
-                    Events mapped = namedEvents.get(eventKey);
-                    if (mapped == null) {
-                        throw new IllegalArgumentException("Unknown event key '" + eventKey + "'.");
-                    }
-                    EventPhase phase;
-                    if (args.length > 1 && args[1] != null) {
-                        phase = EventSubscriptionOptions.resolvePhaseValue(args[1]);
-                    } else {
-                        phase = null;
-                    }
-                    disposeHandles(owner, handle -> handle.matchesEvent(mapped, phase));
-                    if (phase != null) {
-                        eventManager.unregister(owner, mapped, phase);
-                    } else {
-                        eventManager.unregister(owner, mapped);
-                    }
-                    return null;
-                }
-                throw new IllegalArgumentException("Unsupported unregister target. Pass an MQS event enum, disposer, or callback function.");
-            };
+            return createUnregisterExecutable();
         }
         if (OPTIONS.equals(key)) {
-            return (ProxyExecutable) _ -> getCurrentScript().getContext().asValue(EventSubscriptionOptions.builder());
+            return createOptionsExecutable();
         }
         Events mappedEvent = namedEvents.get(key);
         if (mappedEvent == null) {
             return null;
         }
-        return (ProxyExecutable) args -> {
-            RunningScript owner = getCurrentScript();
-            Value callback = args.length > 0 ? args[0] : null;
-            if (callback == null || !callback.canExecute()) {
-                throw new IllegalArgumentException("First argument must be a callback function.");
-            }
-
-            EventSubscriptionOptions options = EventSubscriptionOptions.fromScript(args.length > 1 ? args[1] : null, EventPhase.POST);
-            EventPhase phase = options.phase();
-
-            eventManager.register(owner, mappedEvent, phase, callback);
-            return registerEventHandle(owner, mappedEvent, phase, callback);
-        };
+        return createEventExecutable(mappedEvent);
     }
 
     @Override
@@ -191,10 +118,7 @@ public class EventsHelperAPI implements ProxyObject {
                 }
                 return (ProxyExecutable) args -> {
                     RunningScript owner = getCurrentScript();
-                    Value callback = args.length > 0 ? args[0] : null;
-                    if (callback == null || !callback.canExecute()) {
-                        throw new IllegalArgumentException("First argument must be a callback function.");
-                    }
+                    Value callback = ApiArgumentChecks.requireExecutable(args, 0, "First argument must be a callback function.");
                     eventManager.registerFabric(owner, fabricEvent, callback);
                     return registerFabricHandle(owner, fabricEvent, callback);
                 };
@@ -275,34 +199,86 @@ public class EventsHelperAPI implements ProxyObject {
         }
     }
 
-    private boolean valueEquals(Value a, Value b) {
-        if (a == null || b == null) {
-            return false;
-        }
-        if (a == b) {
-            return true;
-        }
-        if (a.equals(b)) {
-            return true;
-        }
-        if (a.isHostObject() && b.isHostObject()) {
-            Object hostA = a.asHostObject();
-            Object hostB = b.asHostObject();
-            if (hostA == hostB) {
-                return true;
+    private ProxyExecutable createOffExecutable() {
+        return args -> {
+            RunningScript owner = getCurrentScript();
+            if (args.length == 0) {
+                disposeAll(owner);
+                return null;
             }
-        }
-        if (a.isProxyObject() && b.isProxyObject() && a.asProxyObject() == b.asProxyObject()) {
-            return true;
-        }
-        try {
-            if (a.hashCode() == b.hashCode()) {
-                return true;
+            Value target = args[0];
+            if (target == null) {
+                throw new IllegalArgumentException("off() requires a callback or disposer when provided.");
             }
-        } catch (Exception _) {
-            // Ignore hashCode exceptions
+            disposeHandles(owner, handle -> handle.matchesValue(target));
+            return null;
+        };
+    }
+
+    private void disposeAll(RunningScript owner) {
+        disposeHandles(owner, _ -> true);
+        eventManager.unregisterAll(owner);
+        handlesByScript.remove(owner);
+    }
+
+    private ProxyExecutable createUnregisterExecutable() {
+        return args -> {
+            ApiArgumentChecks.requireArgCountAtLeast(args, 1, "unregister(eventOrCallback, phase?) requires at least one argument.");
+            RunningScript owner = getCurrentScript();
+            Value target = args[0];
+            if (target != null && target.canExecute()) {
+                disposeHandles(owner, handle -> handle.matchesValue(target));
+                return null;
+            }
+            if (target != null && target.isHostObject() && target.asHostObject() instanceof Events eventEnum) {
+                unregisterEvent(owner, eventEnum, resolveOptionalPhase(args));
+                return null;
+            }
+            if (target != null && target.isString()) {
+                unregisterByKey(owner, target.asString(), resolveOptionalPhase(args));
+                return null;
+            }
+            throw new IllegalArgumentException("Unsupported unregister target. Pass an MQS event enum, disposer, or callback function.");
+        };
+    }
+
+    private EventPhase resolveOptionalPhase(Value[] args) {
+        if (args.length > 1 && args[1] != null) {
+            return EventSubscriptionOptions.resolvePhaseValue(args[1]);
         }
-        return false;
+        return null;
+    }
+
+    private void unregisterEvent(RunningScript owner, Events eventEnum, EventPhase phase) {
+        disposeHandles(owner, handle -> handle.matchesEvent(eventEnum, phase));
+        if (phase != null) {
+            eventManager.unregister(owner, eventEnum, phase);
+        } else {
+            eventManager.unregister(owner, eventEnum);
+        }
+    }
+
+    private void unregisterByKey(RunningScript owner, String eventKey, EventPhase phase) {
+        Events mapped = namedEvents.get(eventKey);
+        if (mapped == null) {
+            throw new IllegalArgumentException("Unknown event key '" + eventKey + "'.");
+        }
+        unregisterEvent(owner, mapped, phase);
+    }
+
+    private ProxyExecutable createOptionsExecutable() {
+        return _ -> getCurrentScript().getContext().asValue(EventSubscriptionOptions.builder());
+    }
+
+    private ProxyExecutable createEventExecutable(Events mappedEvent) {
+        return args -> {
+            RunningScript owner = getCurrentScript();
+            Value callback = ApiArgumentChecks.requireExecutable(args, 0, "First argument must be a callback function.");
+            EventSubscriptionOptions options = EventSubscriptionOptions.fromScript(args.length > 1 ? args[1] : null, EventPhase.POST);
+            EventPhase phase = options.phase();
+            eventManager.register(owner, mappedEvent, phase, callback);
+            return registerEventHandle(owner, mappedEvent, phase, callback);
+        };
     }
 
     private final class EventHandle {
@@ -360,6 +336,36 @@ public class EventsHelperAPI implements ProxyObject {
                     handlesByScript.remove(owner);
                 }
             }
+        }
+
+        private boolean valueEquals(Value a, Value b) {
+            if (a == null || b == null) {
+                return false;
+            }
+            if (a == b) {
+                return true;
+            }
+            if (a.equals(b)) {
+                return true;
+            }
+            if (a.isHostObject() && b.isHostObject()) {
+                Object hostA = a.asHostObject();
+                Object hostB = b.asHostObject();
+                if (hostA == hostB) {
+                    return true;
+                }
+            }
+            if (a.isProxyObject() && b.isProxyObject() && a.asProxyObject() == b.asProxyObject()) {
+                return true;
+            }
+            try {
+                if (a.hashCode() == b.hashCode()) {
+                    return true;
+                }
+            } catch (Exception _) {
+                // Ignore hashCode exceptions
+            }
+            return false;
         }
     }
 }

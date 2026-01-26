@@ -58,46 +58,7 @@ public class HookAPI implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        return (ProxyExecutable) args -> {
-            RunningScript owner = getCurrentScript();
-
-            switch (key) {
-                case HOOK: {
-                    HookInvocation invocation = parseHookInvocation(args);
-                    hookManager.hook(owner, invocation.targetClass(), invocation.methodName(), invocation.callback(), invocation.options());
-                    return null;
-                }
-
-                case UNHOOK: {
-                    UnhookInvocation invocation = parseUnhookInvocation(args);
-                    if (invocation.argCount() != null) {
-                        HookExecutionMode mode = invocation.mode();
-                        if (mode != null) {
-                            hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), mode);
-                        } else {
-                            for (HookExecutionMode candidate : HookExecutionMode.values()) {
-                                hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), candidate);
-                            }
-                        }
-                    } else {
-                        hookManager.unhookAllForMethod(owner, invocation.targetClass(), invocation.methodName());
-                    }
-                    return null;
-                }
-
-                case UNHOOK_ALL: {
-                    if (args.length != 0) {
-                        throw new IllegalArgumentException("Usage: HookManager.unhookAll()");
-                    }
-                    hookManager.unhookAllForScript(owner);
-                    return null;
-                }
-
-
-                default:
-                    throw new UnsupportedOperationException("Unsupported HookManager operation: " + key);
-            }
-        };
+        return (ProxyExecutable) args -> executeOperation(key, args, getCurrentScript());
     }
 
     @Override
@@ -115,6 +76,44 @@ public class HookAPI implements ProxyObject {
         throw new UnsupportedOperationException("Cannot modify the HookManager object.");
     }
 
+    private Object executeOperation(String key, Value[] args, RunningScript owner) {
+        return switch (key) {
+            case HOOK -> hook(owner, args);
+            case UNHOOK -> unhook(owner, args);
+            case UNHOOK_ALL -> unhookAll(owner, args);
+            default -> throw new UnsupportedOperationException("Unsupported HookManager operation: " + key);
+        };
+    }
+
+    private Void hook(RunningScript owner, Value[] args) {
+        HookInvocation invocation = parseHookInvocation(args);
+        hookManager.hook(owner, invocation.targetClass(), invocation.methodName(), invocation.callback(), invocation.options());
+        return null;
+    }
+
+    private Void unhook(RunningScript owner, Value[] args) {
+        UnhookInvocation invocation = parseUnhookInvocation(args);
+        if (invocation.argCount() != null) {
+            HookExecutionMode mode = invocation.mode();
+            if (mode != null) {
+                hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), mode);
+            } else {
+                for (HookExecutionMode candidate : HookExecutionMode.values()) {
+                    hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), candidate);
+                }
+            }
+        } else {
+            hookManager.unhookAllForMethod(owner, invocation.targetClass(), invocation.methodName());
+        }
+        return null;
+    }
+
+    private Void unhookAll(RunningScript owner, Value[] args) {
+        ApiArgumentChecks.requireArgCount(args, 0, "Usage: HookManager.unhookAll()");
+        hookManager.unhookAllForScript(owner);
+        return null;
+    }
+
     private HookInvocation parseHookInvocation(Value[] args) {
         if ((args.length == 2 || args.length == 3) && args[0].isString() && args[1].canExecute()) {
             String descriptor = args[0].asString();
@@ -130,12 +129,9 @@ public class HookAPI implements ProxyObject {
         }
 
 
-        if (args.length != 3 && args.length != 4) {
-            throw new IllegalArgumentException("HookManager.hook requires 3 or 4 arguments.");
-        }
-        if (!args[1].isString() || !args[2].canExecute()) {
-            throw new IllegalArgumentException("Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction, [options])");
-        }
+        ApiArgumentChecks.requireArgCountRange(args, 3, 4, "HookManager.hook requires 3 or 4 arguments.");
+        ApiArgumentChecks.requireString(args, 1, "Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction, [options])");
+        ApiArgumentChecks.requireExecutable(args, 2, "Usage: HookManager.hook(TargetClass, 'methodName', callbackFunction, [options])");
 
         Object unwrappedArg = ScriptUtils.unwrapReceiver(args[0]);
         Class<?> targetClass = resolveClass(unwrappedArg);
@@ -166,15 +162,11 @@ public class HookAPI implements ProxyObject {
             return new UnhookInvocation(targetClass, descriptorParts.methodName(), argCount, mode);
         }
 
-        Value methodArgument = args.length > 1 ? args[1] : null;
-        if (args.length < 2 || args.length > 3 || methodArgument == null || !methodArgument.isString()) {
-            throw new IllegalArgumentException("Usage: HookManager.unhook(TargetClass, 'methodName', [options])");
-        }
+        ApiArgumentChecks.requireArgCountRange(args, 2, 3, "Usage: HookManager.unhook(TargetClass, 'methodName', [options])");
+        String methodName = ApiArgumentChecks.requireString(args, 1, "Usage: HookManager.unhook(TargetClass, 'methodName', [options])");
 
         Object unwrappedArg = ScriptUtils.unwrapReceiver(args[0]);
         Class<?> targetClass = resolveClass(unwrappedArg);
-        String methodName = methodArgument.asString();
-
         Value optionsValue = args.length == 3 ? args[2] : null;
         Integer argCount = HookOptions.extractArgCount(optionsValue);
         HookExecutionMode mode = HookOptions.extractMode(optionsValue, null);

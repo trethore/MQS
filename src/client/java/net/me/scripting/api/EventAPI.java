@@ -48,16 +48,14 @@ public class EventAPI implements ProxyObject {
     }
 
     private static Class<? extends Event> getEventClass(Object eventTarget) {
-        Class<? extends Event> eventType;
-        if (eventTarget instanceof Events eventEnum) {
-            eventType = eventEnum.getEventClass();
-        } else if (eventTarget instanceof Class<?> cls && Event.class.isAssignableFrom(cls)) {
-            //noinspection unchecked
-            eventType = (Class<? extends Event>) cls;
-        } else {
-            throw new IllegalArgumentException("First argument to EventManager.unregister must be an MQS event class, a Fabric Event, or an MQS Event from EventManager.Events.");
-        }
-        return eventType;
+        return switch (eventTarget) {
+            case Events eventEnum -> eventEnum.getEventClass();
+            case Class<?> cls when Event.class.isAssignableFrom(cls) ->
+                //noinspection unchecked
+                    (Class<? extends Event>) cls;
+            case null, default ->
+                    throw new IllegalArgumentException("First argument to EventManager.unregister must be an MQS event class, a Fabric Event, or an MQS Event from EventManager.Events.");
+        };
     }
 
     private RunningScript getCurrentScript() {
@@ -77,115 +75,7 @@ public class EventAPI implements ProxyObject {
             return eventPhaseEnumProxy;
         }
 
-        return (ProxyExecutable) args -> {
-            RunningScript owner = getCurrentScript();
-
-            if (REGISTER.equals(key)) {
-                if (args.length < 2 || args.length > 3) {
-                    throw new IllegalArgumentException("Usage: EventManager.register(EventType, [Phase], callbackFunction)");
-                }
-
-                Object eventTarget;
-                EventPhase phase;
-                Value callback;
-
-                if (args.length == 2) {
-                    eventTarget = resolveEventTarget(args[0]);
-                    phase = EventPhase.POST;
-                    callback = args[1];
-                    if (!callback.canExecute()) {
-                        throw new IllegalArgumentException("Callback must be a function.");
-                    }
-                } else {
-                    eventTarget = resolveEventTarget(args[0]);
-                    phase = resolvePhase(args[1]);
-                    if (phase == null) {
-                        throw new IllegalArgumentException("Second argument must be a valid phase (PRE or POST).");
-                    }
-                    callback = args[2];
-                    if (!callback.canExecute()) {
-                        throw new IllegalArgumentException("Callback must be a function.");
-                    }
-                }
-
-                switch (eventTarget) {
-                    case Events eventEnum -> eventManager.register(owner, eventEnum, phase, callback);
-                    case Class<?> cls when Event.class.isAssignableFrom(cls) ->
-                        //noinspection unchecked
-                            eventManager.register(owner, (Class<? extends Event>) cls, phase, callback);
-                    case net.fabricmc.fabric.api.event.Event<?> fabricEvent ->
-                            eventManager.registerFabric(owner, fabricEvent, callback);
-                    case null, default ->
-                            throw new IllegalArgumentException("First argument to EventManager.register must be a MQS event class, a Fabric Event object, or an MQS Event from EventManager.Events.");
-                }
-                return null;
-            }
-
-            if (UNREGISTER_ALL.equals(key)) {
-                if (args.length != 0) {
-                    throw new IllegalArgumentException("Usage: EventManager.unregisterAll()");
-                }
-                eventManager.unregisterAll(owner);
-                return null;
-            }
-
-            if (UNREGISTER.equals(key)) {
-                if (args.length < 1 || args.length > 3) {
-                    throw new IllegalArgumentException("Usage: EventManager.unregister(EventType, [Phase|callback], [callback])");
-                }
-
-                Object eventTarget = resolveEventTarget(args[0]);
-                EventPhase phase = null;
-                Value callback = null;
-
-                if (args.length > 1) {
-                    EventPhase potentialPhase = resolvePhase(args[1]);
-                    if (potentialPhase != null) {
-                        phase = potentialPhase;
-                        if (args.length > 2) {
-                            if (args[2].canExecute()) {
-                                callback = args[2];
-                            } else {
-                                throw new IllegalArgumentException("Third argument must be a callback function.");
-                            }
-                        }
-                    } else if (args[1].canExecute()) {
-                        callback = args[1];
-                        if (args.length > 2) {
-                            throw new IllegalArgumentException("Cannot provide a third argument when the second is a callback.");
-                        }
-                    } else {
-                        throw new IllegalArgumentException("Second argument must be a Phase or a callback function.");
-                    }
-                }
-
-                if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
-                    if (phase != null) {
-                        throw new IllegalArgumentException("Fabric events do not support phases.");
-                    }
-                    if (callback != null) {
-                        eventManager.unregister(owner, fabricEvent, callback);
-                    } else {
-                        eventManager.unregister(owner, fabricEvent);
-                    }
-                } else {
-                    Class<? extends Event> eventType = getEventClass(eventTarget);
-
-                    if (phase != null && callback != null) {
-                        eventManager.unregister(owner, eventType, phase, callback);
-                    } else if (phase != null) {
-                        eventManager.unregister(owner, eventType, phase);
-                    } else if (callback != null) {
-                        eventManager.unregister(owner, eventType, callback);
-                    } else {
-                        eventManager.unregister(owner, eventType);
-                    }
-                }
-                return null;
-            }
-
-            throw new UnsupportedOperationException("Unsupported EventManager operation: " + key);
-        };
+        return (ProxyExecutable) args -> executeOperation(key, args, getCurrentScript());
     }
 
     private Object resolveEventTarget(Value eventTypeArg) {
@@ -230,6 +120,122 @@ public class EventAPI implements ProxyObject {
     @Override
     public void putMember(String key, Value value) {
         throw new UnsupportedOperationException("Cannot modify the EventManager object.");
+    }
+
+    private Object executeOperation(String key, Value[] args, RunningScript owner) {
+        return switch (key) {
+            case REGISTER -> register(owner, args);
+            case UNREGISTER_ALL -> unregisterAll(owner, args);
+            case UNREGISTER -> unregister(owner, args);
+            default -> throw new UnsupportedOperationException("Unsupported EventManager operation: " + key);
+        };
+    }
+
+    private Void register(RunningScript owner, Value[] args) {
+        ApiArgumentChecks.requireArgCountRange(args, 2, 3, "Usage: EventManager.register(EventType, [Phase], callbackFunction)");
+        Registration registration = parseRegistration(args);
+        registerTarget(owner, registration);
+        return null;
+    }
+
+    private Registration parseRegistration(Value[] args) {
+        Object eventTarget = resolveEventTarget(args[0]);
+        if (args.length == 2) {
+            Value callback = ApiArgumentChecks.requireExecutable(args, 1, "Callback must be a function.");
+            return new Registration(eventTarget, EventPhase.POST, callback);
+        }
+        EventPhase phase = resolvePhase(args[1]);
+        if (phase == null) {
+            throw new IllegalArgumentException("Second argument must be a valid phase (PRE or POST).");
+        }
+        Value callback = ApiArgumentChecks.requireExecutable(args, 2, "Callback must be a function.");
+        return new Registration(eventTarget, phase, callback);
+    }
+
+    private void registerTarget(RunningScript owner, Registration registration) {
+        switch (registration.eventTarget()) {
+            case Events eventEnum ->
+                    eventManager.register(owner, eventEnum, registration.phase(), registration.callback());
+            case Class<?> cls when Event.class.isAssignableFrom(cls) ->
+                //noinspection unchecked
+                    eventManager.register(owner, (Class<? extends Event>) cls, registration.phase(), registration.callback());
+            case net.fabricmc.fabric.api.event.Event<?> fabricEvent ->
+                    eventManager.registerFabric(owner, fabricEvent, registration.callback());
+            case null, default ->
+                    throw new IllegalArgumentException("First argument to EventManager.register must be a MQS event class, a Fabric Event object, or an MQS Event from EventManager.Events.");
+        }
+    }
+
+    private Void unregisterAll(RunningScript owner, Value[] args) {
+        ApiArgumentChecks.requireArgCount(args, 0, "Usage: EventManager.unregisterAll()");
+        eventManager.unregisterAll(owner);
+        return null;
+    }
+
+    private Void unregister(RunningScript owner, Value[] args) {
+        ApiArgumentChecks.requireArgCountRange(args, 1, 3, "Usage: EventManager.unregister(EventType, [Phase|callback], [callback])");
+        UnregisterCall call = parseUnregister(args);
+        unregisterTarget(owner, call);
+        return null;
+    }
+
+    private UnregisterCall parseUnregister(Value[] args) {
+        Object eventTarget = resolveEventTarget(args[0]);
+        UnregisterFilters filters = parseUnregisterFilters(args);
+        return new UnregisterCall(eventTarget, filters.phase(), filters.callback());
+    }
+
+    private UnregisterFilters parseUnregisterFilters(Value[] args) {
+        if (args.length <= 1) {
+            return new UnregisterFilters(null, null);
+        }
+        EventPhase potentialPhase = resolvePhase(args[1]);
+        if (potentialPhase != null) {
+            Value callback = args.length > 2
+                    ? ApiArgumentChecks.requireExecutable(args, 2, "Third argument must be a callback function.")
+                    : null;
+            return new UnregisterFilters(potentialPhase, callback);
+        }
+        if (args[1].canExecute()) {
+            if (args.length > 2) {
+                throw new IllegalArgumentException("Cannot provide a third argument when the second is a callback.");
+            }
+            return new UnregisterFilters(null, args[1]);
+        }
+        throw new IllegalArgumentException("Second argument must be a Phase or a callback function.");
+    }
+
+    private void unregisterTarget(RunningScript owner, UnregisterCall call) {
+        if (call.eventTarget() instanceof net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
+            if (call.phase() != null) {
+                throw new IllegalArgumentException("Fabric events do not support phases.");
+            }
+            if (call.callback() != null) {
+                eventManager.unregister(owner, fabricEvent, call.callback());
+            } else {
+                eventManager.unregister(owner, fabricEvent);
+            }
+            return;
+        }
+
+        Class<? extends Event> eventType = getEventClass(call.eventTarget());
+        unregisterMqsEvent(owner, eventType, call.phase(), call.callback());
+    }
+
+    private void unregisterMqsEvent(RunningScript owner, Class<? extends Event> eventType, EventPhase phase, Value callback) {
+        if (phase != null && callback != null) {
+            eventManager.unregister(owner, eventType, phase, callback);
+            return;
+        }
+        if (phase != null) {
+            eventManager.unregister(owner, eventType, phase);
+            return;
+        }
+        if (callback != null) {
+            eventManager.unregister(owner, eventType, callback);
+            return;
+        }
+        eventManager.unregister(owner, eventType);
     }
 
     private ProxyObject createEventsEnumProxy() {
@@ -286,5 +292,14 @@ public class EventAPI implements ProxyObject {
                 throw new UnsupportedOperationException("Cannot modify the EventPhase enum object.");
             }
         };
+    }
+
+    private record Registration(Object eventTarget, EventPhase phase, Value callback) {
+    }
+
+    private record UnregisterFilters(EventPhase phase, Value callback) {
+    }
+
+    private record UnregisterCall(Object eventTarget, EventPhase phase, Value callback) {
     }
 }

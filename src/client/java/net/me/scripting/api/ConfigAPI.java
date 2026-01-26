@@ -87,8 +87,7 @@ public class ConfigAPI implements ProxyObject {
             RunningScript script = getCurrentScript();
             switch (key) {
                 case GET: {
-                    if (args.length == 0)
-                        throw new IllegalArgumentException("Config.get requires at least one argument (key).");
+                    ApiArgumentChecks.requireArgCountAtLeast(args, 1, "Config.get requires at least one argument (key).");
                     String configKey = args[0].asString();
                     Object result = configManager.get(script.getId(), configKey);
                     if (result == null) {
@@ -97,35 +96,30 @@ public class ConfigAPI implements ProxyObject {
                     return script.getContext().asValue(result);
                 }
                 case SET: {
-                    if (args.length != 2)
-                        throw new IllegalArgumentException("Config.set requires two arguments (key, value).");
+                    ApiArgumentChecks.requireArgCount(args, 2, "Config.set requires two arguments (key, value).");
                     String configKey = args[0].asString();
                     Object value = toSerializableObject(args[1]);
                     configManager.set(script.getId(), configKey, value);
                     return null;
                 }
                 case HAS: {
-                    if (args.length != 1)
-                        throw new IllegalArgumentException("Config.has requires one argument (key).");
+                    ApiArgumentChecks.requireArgCount(args, 1, "Config.has requires one argument (key).");
                     String configKey = args[0].asString();
                     return configManager.get(script.getId(), configKey) != null;
                 }
                 case SAVE: {
-                    if (args.length != 0)
-                        throw new IllegalArgumentException("Config.save takes no arguments.");
+                    ApiArgumentChecks.requireArgCount(args, 0, "Config.save takes no arguments.");
                     configManager.saveConfig(script);
                     return null;
                 }
                 case LOAD: {
-                    if (args.length != 0)
-                        throw new IllegalArgumentException("Config.load takes no arguments.");
+                    ApiArgumentChecks.requireArgCount(args, 0, "Config.load takes no arguments.");
                     configManager.unloadConfig(script);
                     configManager.getConfigForScript(script);
                     return null;
                 }
                 case GET_ALL: {
-                    if (args.length != 0)
-                        throw new IllegalArgumentException("Config.getAll takes no arguments.");
+                    ApiArgumentChecks.requireArgCount(args, 0, "Config.getAll takes no arguments.");
                     return configManager.getConfigForScript(script);
                 }
                 default:
