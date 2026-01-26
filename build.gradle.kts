@@ -53,7 +53,6 @@ loom {
 // Configurations
 
 val sourceDeps: Configuration by configurations.creating
-val cfr: Configuration by configurations.creating
 
 // Dependencies
 
@@ -88,8 +87,6 @@ dependencies {
     sourceDeps("net.bytebuddy:byte-buddy:$bytebuddyVersion:sources@jar")
     sourceDeps("net.bytebuddy:byte-buddy-agent:$bytebuddyVersion:sources@jar")
 
-    // CFR decompiler
-    cfr("org.benf:cfr:${property("cfrVersion")}")
 }
 
 // Java Toolchain
@@ -249,7 +246,6 @@ val unpackSources by tasks.registering(UnpackSourcesTask::class) {
     description = "Unpacks library, Minecraft, and Fabric sources into libs-src/"
     dependsOn(cleanSources)
     sourceDeps.from(configurations.named("sourceDeps"))
-    cfrClasspath.from(configurations.named("cfr"))
     outputDir.set(unpackedSourcesDir)
     minecraftCacheDir.set(minecraftCacheDirProvider)
     fabricCacheDir.set(fabricCacheDirProvider)

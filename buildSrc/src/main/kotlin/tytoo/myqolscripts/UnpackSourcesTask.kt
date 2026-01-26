@@ -5,19 +5,17 @@ import org.gradle.api.file.ArchiveOperations
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileSystemOperations
-import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
-import org.gradle.process.ExecOperations
 import java.io.File
 import javax.inject.Inject
 
 /**
- * Gradle task that unpacks library sources, decompiles Minecraft JARs, and extracts
+ * Gradle task that unpacks library sources, Minecraft genSources JARs, and extracts
  * Fabric API sources into a browsable directory structure for IDE navigation.
  */
 abstract class UnpackSourcesTask : DefaultTask() {
@@ -27,10 +25,6 @@ abstract class UnpackSourcesTask : DefaultTask() {
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sourceDeps: ConfigurableFileCollection
-
-    @get:InputFiles
-    @get:Classpath
-    abstract val cfrClasspath: ConfigurableFileCollection
 
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -52,9 +46,6 @@ abstract class UnpackSourcesTask : DefaultTask() {
     protected abstract val fileSystemOperations: FileSystemOperations
 
     @get:Inject
-    protected abstract val execOperations: ExecOperations
-
-    @get:Inject
     protected abstract val archiveOperations: ArchiveOperations
 
     // Task Action
@@ -65,7 +56,7 @@ abstract class UnpackSourcesTask : DefaultTask() {
         outputDirFile.mkdirs()
 
         unpackSourceDependencies(outputDirFile)
-        decompileMinecraftJars(outputDirFile)
+        unpackMinecraftSources(outputDirFile)
         unpackFabricSources(outputDirFile)
     }
 
@@ -85,13 +76,13 @@ abstract class UnpackSourcesTask : DefaultTask() {
         }
     }
 
-    // Minecraft Decompilation
-    private fun decompileMinecraftJars(outputDirFile: File) {
-        val minecraftClientJar = findMinecraftJar("minecraft-clientOnly-")
-        val minecraftCommonJar = findMinecraftJar("minecraft-common-")
+    // Minecraft Sources
+    private fun unpackMinecraftSources(outputDirFile: File) {
+        val minecraftClientSourcesJar = findMinecraftSourcesJar("minecraft-clientOnly-")
+        val minecraftCommonSourcesJar = findMinecraftSourcesJar("minecraft-common-")
 
-        if (minecraftClientJar == null && minecraftCommonJar == null) {
-            logger.warn("Could not locate minecraft client jar in loom cache")
+        if (minecraftClientSourcesJar == null && minecraftCommonSourcesJar == null) {
+            logger.warn("Could not locate minecraft sources jars in loom cache")
             return
         }
 
@@ -99,27 +90,25 @@ abstract class UnpackSourcesTask : DefaultTask() {
         fileSystemOperations.delete { delete(minecraftTarget) }
         minecraftTarget.mkdirs()
 
-        minecraftCommonJar?.let {
-            decompileJar(it, File(minecraftTarget, "common"))
+        minecraftCommonSourcesJar?.let {
+            unpackJarSources(it, File(minecraftTarget, "common"))
         }
-        minecraftClientJar?.let {
-            decompileJar(it, File(minecraftTarget, "client"))
+        minecraftClientSourcesJar?.let {
+            unpackJarSources(it, File(minecraftTarget, "client"))
         }
     }
 
-    private fun decompileJar(jarFile: File, targetDir: File) {
+    private fun unpackJarSources(jarFile: File, targetDir: File) {
         fileSystemOperations.delete { delete(targetDir) }
         targetDir.mkdirs()
 
-        execOperations.javaexec {
-            @SuppressWarnings("kotlin:S6518")
-            mainClass.set("org.benf.cfr.reader.Main")
-            classpath(cfrClasspath)
-            args(jarFile.absolutePath, "--outputdir", targetDir.absolutePath)
+        fileSystemOperations.copy {
+            from(archiveOperations.zipTree(jarFile))
+            into(targetDir)
         }
     }
 
-    private fun findMinecraftJar(prefix: String): File? {
+    private fun findMinecraftSourcesJar(prefix: String): File? {
         if (!minecraftCacheDir.isPresent) {
             return null
         }
@@ -133,7 +122,7 @@ abstract class UnpackSourcesTask : DefaultTask() {
             .filter { it.isFile }
             .filter { file ->
                 file.name.startsWith(prefix) &&
-                    file.name.endsWith(".jar") &&
+                    file.name.endsWith("-sources.jar") &&
                     !file.name.endsWith(".backup.jar")
             }
             .maxByOrNull { it.lastModified() }

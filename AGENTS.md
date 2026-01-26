@@ -87,7 +87,7 @@ config.
 - Byte Buddy (`byte-buddy`, `byte-buddy-agent`) is shaded to `net.me.libs.bytebuddy` and powers runtime interception in
   `HookManager`.
 - Lombok ships as a dependency; prefer its annotations to reduce boilerplate.
-- Library sources are fetched through the `sourceDeps` configuration (see `build.gradle`) and unpacked per library using
+- Library sources are fetched through the `sourceDeps` configuration (see `build.gradle.kts`) and unpacked per library using
   `./gradlew unpackSources` into `libs-src/<library>`. Use these sources when exploring library code.
 
 ## Testing & Verification
