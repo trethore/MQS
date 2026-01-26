@@ -1,0 +1,185 @@
+package tytoo.myqolscripts
+
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.ArchiveOperations
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.FileSystemOperations
+import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
+import org.gradle.process.ExecOperations
+import java.io.File
+import javax.inject.Inject
+
+/**
+ * Gradle task that unpacks library sources, decompiles Minecraft JARs, and extracts
+ * Fabric API sources into a browsable directory structure for IDE navigation.
+ */
+abstract class UnpackSourcesTask : DefaultTask() {
+
+    // Input Properties
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceDeps: ConfigurableFileCollection
+
+    @get:InputFiles
+    @get:Classpath
+    abstract val cfrClasspath: ConfigurableFileCollection
+
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val minecraftCacheDir: DirectoryProperty
+
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val fabricCacheDir: DirectoryProperty
+
+
+    // Output Properties
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    // Injected Services
+
+    @get:Inject
+    protected abstract val fileSystemOperations: FileSystemOperations
+
+    @get:Inject
+    protected abstract val execOperations: ExecOperations
+
+    @get:Inject
+    protected abstract val archiveOperations: ArchiveOperations
+
+    // Task Action
+
+    @TaskAction
+    fun runTask() {
+        val outputDirFile = outputDir.get().asFile
+        outputDirFile.mkdirs()
+
+        unpackSourceDependencies(outputDirFile)
+        decompileMinecraftJars(outputDirFile)
+        unpackFabricSources(outputDirFile)
+    }
+
+    // Source Dependencies
+    private fun unpackSourceDependencies(outputDirFile: File) {
+        sourceDeps.files.forEach { srcJar ->
+            val baseName = srcJar.name
+                .replace(Regex("\\.jar$"), "")
+                .replace(Regex("-sources$"), "")
+            val targetDir = File(outputDirFile, baseName)
+
+            fileSystemOperations.delete { delete(targetDir) }
+            fileSystemOperations.copy {
+                from(archiveOperations.zipTree(srcJar))
+                into(targetDir)
+            }
+        }
+    }
+
+    // Minecraft Decompilation
+    private fun decompileMinecraftJars(outputDirFile: File) {
+        val minecraftClientJar = findMinecraftJar("minecraft-clientOnly-")
+        val minecraftCommonJar = findMinecraftJar("minecraft-common-")
+
+        if (minecraftClientJar == null && minecraftCommonJar == null) {
+            logger.warn("Could not locate minecraft client jar in loom cache")
+            return
+        }
+
+        val minecraftTarget = File(outputDirFile, "minecraft")
+        fileSystemOperations.delete { delete(minecraftTarget) }
+        minecraftTarget.mkdirs()
+
+        minecraftCommonJar?.let {
+            decompileJar(it, File(minecraftTarget, "common"))
+        }
+        minecraftClientJar?.let {
+            decompileJar(it, File(minecraftTarget, "client"))
+        }
+    }
+
+    private fun decompileJar(jarFile: File, targetDir: File) {
+        fileSystemOperations.delete { delete(targetDir) }
+        targetDir.mkdirs()
+
+        execOperations.javaexec {
+            @SuppressWarnings("kotlin:S6518")
+            mainClass.set("org.benf.cfr.reader.Main")
+            classpath(cfrClasspath)
+            args(jarFile.absolutePath, "--outputdir", targetDir.absolutePath)
+        }
+    }
+
+    private fun findMinecraftJar(prefix: String): File? {
+        if (!minecraftCacheDir.isPresent) {
+            return null
+        }
+
+        val root = minecraftCacheDir.get().asFile
+        if (!root.exists()) {
+            return null
+        }
+
+        return root.walkTopDown()
+            .filter { it.isFile }
+            .filter { file ->
+                file.name.startsWith(prefix) &&
+                    file.name.endsWith(".jar") &&
+                    !file.name.endsWith(".backup.jar")
+            }
+            .maxByOrNull { it.lastModified() }
+    }
+
+    // Fabric Sources
+    private fun unpackFabricSources(outputDirFile: File) {
+        val fabricJars = findFabricSourceJars()
+
+        if (fabricJars.isEmpty()) {
+            if (fabricCacheDir.isPresent) {
+                logger.warn("Fabric cache found but no sources jars were present")
+            } else {
+                logger.warn("Fabric cache directory not found, skipping fabric unpack")
+            }
+            return
+        }
+
+        val fabricTarget = File(outputDirFile, "fabric")
+        fileSystemOperations.delete { delete(fabricTarget) }
+        fabricTarget.mkdirs()
+
+        fabricJars.forEach { jar ->
+            val moduleName = jar.name.replace(Regex("-sources\\.jar$"), "")
+            val moduleTarget = File(fabricTarget, moduleName)
+
+            fileSystemOperations.delete { delete(moduleTarget) }
+            fileSystemOperations.copy {
+                from(archiveOperations.zipTree(jar))
+                into(moduleTarget)
+            }
+        }
+    }
+
+    private fun findFabricSourceJars(): List<File> {
+        if (!fabricCacheDir.isPresent) {
+            return emptyList()
+        }
+
+        val root = fabricCacheDir.get().asFile
+        if (!root.exists()) {
+            return emptyList()
+        }
+
+        return root.walkTopDown()
+            .filter { it.isFile && it.name.endsWith("-sources.jar") }
+            .toList()
+    }
+}
