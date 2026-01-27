@@ -138,13 +138,22 @@ public class ScriptContextFactory {
         addApiMember(bindings, "MQS", ProxyObject.fromMap(mqsMembers));
 
         addApiMember(bindings, "println", (ProxyExecutable) args -> {
-            for (Value arg : args) System.out.println(arg);
+            logScriptOutput(args);
             return null;
         });
         addApiMember(bindings, "print", (ProxyExecutable) args -> {
-            for (Value arg : args) System.out.print(arg);
+            logScriptOutput(args);
             return null;
         });
+    }
+
+    private void logScriptOutput(Value[] args) {
+        if (args == null) {
+            return;
+        }
+        for (Value arg : args) {
+            Main.LOGGER.info("{}", arg);
+        }
     }
 
     private void addApiMember(Value bindings, String name, Object member) {

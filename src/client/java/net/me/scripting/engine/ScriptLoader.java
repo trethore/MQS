@@ -29,11 +29,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ScriptLoader {
-    public ScriptLoader() {
+public final class ScriptLoader {
+    private ScriptLoader() {
+        throw new UnsupportedOperationException("Utility class");
     }
 
-    public Map<String, Value> loadModules(Path scriptPath, Context context, ThreadLocal<Map<String, Value>> perFileExports) {
+    public static Map<String, Value> loadModules(Path scriptPath, Context context, ThreadLocal<Map<String, Value>> perFileExports) {
         perFileExports.set(new HashMap<>());
         try {
             Source source = Source.newBuilder(ScriptConstants.JS, scriptPath.toFile())

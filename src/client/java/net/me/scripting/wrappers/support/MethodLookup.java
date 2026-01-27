@@ -36,8 +36,8 @@ public class MethodLookup {
     }
 
     private static List<Method> findAndCache(Class<?> cls, String cacheKey, List<String> namesToSearch) {
-        Map<String, List<Method>> classCache = methodCache.computeIfAbsent(cls, k -> new ConcurrentHashMap<>());
-        return classCache.computeIfAbsent(cacheKey, k -> ReflectionUtils.findMethods(cls, namesToSearch, false));
+        Map<String, List<Method>> classCache = methodCache.computeIfAbsent(cls, _ -> new ConcurrentHashMap<>());
+        return classCache.computeIfAbsent(cacheKey, _ -> ReflectionUtils.findMethods(cls, namesToSearch, false));
     }
 
     public static List<Method> findDirect(Class<?> cls, String key) {

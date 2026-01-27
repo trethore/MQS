@@ -47,7 +47,6 @@ public class ScriptManager {
     @Getter
     private ScriptingClassResolver classResolver;
     private ScriptDiscoverer scriptDiscoverer;
-    private ScriptLoader scriptLoader;
     private ScriptContextManager contextManager;
     private ScriptLifecycleManager lifecycleManager;
 
@@ -57,8 +56,7 @@ public class ScriptManager {
     public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager, GlobalConfigManager globalConfigManager) {
         this.configManager = configManager;
 
-        this.classResolver = new ScriptingClassResolver();
-        classResolver.init(mappingsManager, this);
+        this.classResolver = ScriptingClassResolver.create(mappingsManager, this);
 
         CommandAPIService commandApiService = new CommandAPIService();
         commandApiService.init();
@@ -70,7 +68,6 @@ public class ScriptManager {
         this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, scheduler, contextManager);
 
         this.scriptDiscoverer = new ScriptDiscoverer(globalConfigManager);
-        this.scriptLoader = new ScriptLoader();
 
         discoverScripts();
     }
@@ -100,7 +97,7 @@ public class ScriptManager {
         Context scriptContext = null;
         try {
             scriptContext = contextManager.getContext();
-            Map<String, Value> fileExports = scriptLoader.loadModules(descriptor.path(), scriptContext, perFileExports);
+            Map<String, Value> fileExports = ScriptLoader.loadModules(descriptor.path(), scriptContext, perFileExports);
 
             String mainClassName = descriptor.mainClass();
             Value scriptClass = fileExports.get(mainClassName);

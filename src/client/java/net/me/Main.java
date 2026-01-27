@@ -34,11 +34,8 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
-import net.me.ui.screen.screens.ScriptsMenuScreen;
 import net.me.utils.McUtils;
-import net.minecraft.client.Minecraft;
 import org.graalvm.polyglot.Engine;
-import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,7 +92,6 @@ public class Main implements ClientModInitializer {
         consoleManager.init();
         commandManager.init();
         globalConfigManager.init();
-        registerUiKeybind();
 
         this.registerConsoleCommands();
         this.registerClientCommands();
@@ -113,23 +109,6 @@ public class Main implements ClientModInitializer {
 
     private void registerClientCommands() {
         this.commandManager.addCommand(new MQSCommand(this.scriptingService));
-    }
-
-    private void registerUiKeybind() {
-        keybindManager.registerHost(
-                "open_ui",
-                () -> {
-                    Minecraft mc = McUtils.getMc();
-                    mc.execute(() -> {
-                        if (!(mc.screen instanceof ScriptsMenuScreen)) {
-                            new ScriptsMenuScreen(scriptingService).open();
-                        }
-                    });
-                },
-                GLFW.GLFW_KEY_F10,
-                false,
-                150
-        );
     }
 
     private void registerConsoleCommands() {

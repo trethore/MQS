@@ -194,7 +194,7 @@ public class JsObjectWrapper implements ProxyObject {
             MethodHandle getter = FastAccessorUtils.getFieldGetter(f);
             Object result = getter.bindTo(javaInstance).invoke();
             return ScriptUtils.wrapReturn(result, this.mappingsManager, this.scriptManager);
-        } catch (NoSuchFieldException e) {
+        } catch (NoSuchFieldException _) {
             return null;
         } catch (Throwable e) {
             throw new RuntimeException("Field access failed: " + key, e);
@@ -209,7 +209,6 @@ public class JsObjectWrapper implements ProxyObject {
                 Main.LOGGER.debug("    - Argument count matches. Proceeding to unwrap and invoke.");
                 try {
                     Object[] javaArgs = ScriptUtils.unwrapArgs(args, m.getParameterTypes());
-                    ScriptUtils.coerceArgumentTypes(this.javaInstance, m, javaArgs);
                     Main.LOGGER.debug("    - Unwrapped arguments: {}", Arrays.toString(javaArgs));
                     MethodHandle handle = FastAccessorUtils.getMethodHandle(m);
                     Object result = handle.bindTo(this.javaInstance).invokeWithArguments(javaArgs);

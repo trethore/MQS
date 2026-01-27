@@ -52,6 +52,7 @@ public class ScriptContextManager {
             contextFactory.resetContext(context);
             contextPool.offer(context);
         }
+        perFileExports.remove();
     }
 
     private void prewarmContextPool() {

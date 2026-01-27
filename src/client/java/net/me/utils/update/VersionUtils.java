@@ -22,6 +22,10 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
 
 public class VersionUtils {
+
+    private VersionUtils() {
+    }
+
     public static String getCurrentVersion() {
         return FabricLoader.getInstance().getModContainer(Main.MOD_ID)
                 .map(modContainer -> modContainer.getMetadata().getVersion().getFriendlyString())
@@ -48,7 +52,7 @@ public class VersionUtils {
                 if (newPart < currentPart) {
                     return false;
                 }
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 if (newParts[i].compareTo(currentParts[i]) > 0) return true;
                 if (newParts[i].compareTo(currentParts[i]) < 0) return false;
             }

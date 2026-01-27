@@ -18,6 +18,7 @@
 
 package net.me.scripting.extenders;
 
+import net.me.Main;
 import net.me.scripting.WrapperConstants;
 import net.me.scripting.config.ExtensionConfig;
 import net.me.scripting.config.MappedClassInfo;
@@ -29,6 +30,7 @@ import net.me.scripting.extenders.proxies.RuntimeBinderProxy;
 import net.me.scripting.extenders.proxies.SuperProxy;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
@@ -144,9 +146,9 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
 
         try {
             return baseAdapterConstructor.newInstance(finalCtorArgs).asHostObject();
-        } catch (Exception e) {
+        } catch (PolyglotException e) {
             String ctorSignature = Arrays.stream(finalCtorArgs).map(a -> a == null ? "null" : a.getClass().getName()).collect(Collectors.joining(", "));
-            throw new RuntimeException("Failed to instantiate adapter. Constructor call with signature (" + ctorSignature + ") failed.", e);
+            throw new IllegalStateException("Failed to instantiate adapter. Constructor call with signature (" + ctorSignature + ") failed.", e);
         }
     }
 
@@ -212,7 +214,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
             List<MappedClassInfo> targets = findTargetsForMethod(jsMethodName);
             if (targets.size() > 1) {
                 List<String> targetNames = targets.stream().map(MappedClassInfo::yarnName).toList();
-                throw new RuntimeException("Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " + targetNames + ". Please specify the target: { overrides: { '" + jsMethodName + "': { '" + targetNames.getFirst() + "': fn } } }");
+                throw new IllegalArgumentException("Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " + targetNames + ". Please specify the target: { overrides: { '" + jsMethodName + "': { '" + targetNames.getFirst() + "': fn } } }");
             }
             if (targets.isEmpty()) {
                 runtimeOverrides.put(jsMethodName, jsFunction);
@@ -226,11 +228,11 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         for (String fqcn : fqcnToObject.getMemberKeys()) {
             Value jsFunction = fqcnToObject.getMember(fqcn);
             if (!jsFunction.canExecute()) {
-                throw new RuntimeException("Value for FQCN '" + fqcn + "' in override for '" + jsMethodName + "' must be a function.");
+                throw new IllegalArgumentException("Value for FQCN '" + fqcn + "' in override for '" + jsMethodName + "' must be a function.");
             }
             MappedClassInfo target = findTargetByYarnName(fqcn);
             if (target == null) {
-                System.err.println("Warning: Override for '" + jsMethodName + "' specified target '" + fqcn + "' which was not found in the list of extended/implemented types.");
+                Main.LOGGER.warn("Override for '{}' specified target '{}' which was not found in the list of extended/implemented types.", jsMethodName, fqcn);
                 continue;
             }
             addOverride(runtimeOverrides, jsMethodName, jsFunction, target);

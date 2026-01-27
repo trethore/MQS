@@ -21,6 +21,7 @@ package net.me.scripting.mappings;
 import lombok.Getter;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.lib.mappingio.format.tiny.Tiny1FileReader;
+import net.fabricmc.loader.impl.lib.mappingio.tree.MappingTree;
 import net.fabricmc.loader.impl.lib.mappingio.tree.MemoryMappingTree;
 import net.me.Main;
 import org.slf4j.Logger;
@@ -30,15 +31,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class MappingsManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(MappingsManager.class);
+    private static final String MAPPINGS_FILE_NAME = "mappings.tiny";
 
     @Getter
     private Map<String, String> classMap = Collections.emptyMap();
@@ -63,9 +62,10 @@ public class MappingsManager {
                 MemoryMappingTree mappingsTree = parseMappings();
                 buildLookupTables(mappingsTree);
                 LOGGER.info("Asynchronous mappings initialization successful.");
-            } catch (Exception e) {
-                LOGGER.error("Failed to initialize mappings asynchronously", e);
-                throw new RuntimeException("Failed to load mappings", e);
+            } catch (IOException exception) {
+                throw new IllegalStateException("Failed to load mappings from resources: " + MAPPINGS_FILE_NAME, exception);
+            } catch (RuntimeException exception) {
+                throw new IllegalStateException("Failed to build mappings tables for: " + MAPPINGS_FILE_NAME, exception);
             }
         });
     }
@@ -87,11 +87,10 @@ public class MappingsManager {
 
     private MemoryMappingTree parseMappings() throws IOException {
         MemoryMappingTree mappingsTree = new MemoryMappingTree();
-        String fileName = "mappings.tiny";
         try (InputStream in = MappingsManager.class.getClassLoader()
-                .getResourceAsStream("assets/" + Main.MOD_ID + "/" + fileName)) {
+                .getResourceAsStream("assets/" + Main.MOD_ID + "/" + MAPPINGS_FILE_NAME)) {
             if (in == null) {
-                throw new IOException("Mappings file " + fileName + " not found in resources");
+                throw new IOException("Mappings file " + MAPPINGS_FILE_NAME + " not found in resources");
             }
             InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8);
             Tiny1FileReader.read(reader, mappingsTree);
@@ -110,7 +109,7 @@ public class MappingsManager {
         Map<String, Map<String, List<String>>> methods = new HashMap<>();
         Map<String, Map<String, String>> fields = new HashMap<>();
 
-        for (MemoryMappingTree.ClassMapping cls : mappingsTree.getClasses()) {
+        for (MappingTree.ClassMapping cls : mappingsTree.getClasses()) {
             String yarnName = cls.getName(namedId);
             String runtimeName = cls.getName(runtimeId);
             if (yarnName == null || runtimeName == null) continue;
@@ -121,17 +120,21 @@ public class MappingsManager {
 
             // Methods
             Map<String, List<String>> methodLookup = cls.getMethods().stream()
-                    .filter(m -> m.getName(namedId) != null)
+                    .filter(m -> m.getName(namedId) != null && m.getName(runtimeId) != null)
                     .collect(Collectors.groupingBy(
-                            m -> m.getName(namedId),
-                            Collectors.mapping(m -> m.getName(runtimeId), Collectors.toList())
+                            m -> Objects.requireNonNull(m.getName(namedId)),
+                            Collectors.mapping(m -> Objects.requireNonNull(m.getName(runtimeId)), Collectors.toList())
                     ));
             methods.put(yarnName, methodLookup);
 
             // Fields
             Map<String, String> fieldLookup = cls.getFields().stream()
-                    .filter(f -> f.getName(namedId) != null)
-                    .collect(Collectors.toMap(f -> f.getName(namedId), f -> f.getName(runtimeId), (a, b) -> b));
+                    .filter(f -> f.getName(namedId) != null && f.getName(runtimeId) != null)
+                    .collect(Collectors.toMap(
+                            f -> Objects.requireNonNull(f.getName(namedId)),
+                            f -> Objects.requireNonNull(f.getName(runtimeId)),
+                            (_, b) -> b
+                    ));
             fields.put(yarnName, fieldLookup);
         }
 

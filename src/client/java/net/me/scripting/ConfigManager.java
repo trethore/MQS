@@ -106,7 +106,7 @@ public class ConfigManager {
 
     public boolean getEnabledState(String scriptId) {
         Object enabled = getConfig(scriptId).get(ConfigKeys.ENABLED);
-        return enabled instanceof Boolean && (Boolean) enabled;
+        return enabled instanceof Boolean bool && bool;
     }
 
     public Object get(String scriptId, String key) {
@@ -121,8 +121,8 @@ public class ConfigManager {
         if (keybindsObj instanceof Map) {
             Map<String, Object> keybinds = (Map<String, Object>) keybindsObj;
             Object keyObj = keybinds.get(keybindName);
-            if (keyObj instanceof Number) {
-                return Optional.of(((Number) keyObj).intValue());
+            if (keyObj instanceof Number number) {
+                return Optional.of(number.intValue());
             }
         }
         return Optional.empty();
@@ -132,7 +132,7 @@ public class ConfigManager {
     public void setKeybind(String scriptId, String keybindName, int keyCode) {
         Map<String, Object> config = getConfig(scriptId);
         Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(ConfigKeys.KEYBINDS,
-                k -> new ConcurrentHashMap<>());
+                _ -> new ConcurrentHashMap<>());
 
         keybinds.put(keybindName, keyCode);
     }

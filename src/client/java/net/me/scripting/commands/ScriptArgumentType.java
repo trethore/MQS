@@ -61,8 +61,10 @@ public enum ScriptArgumentType {
         throw new IllegalArgumentException("Unknown argument type: " + name + ". Available: " + Arrays.toString(values()));
     }
 
-    public ArgumentType<?> get() {
-        return supplier.get();
+    public <T> ArgumentType<T> get() {
+        @SuppressWarnings("unchecked")
+        ArgumentType<T> argumentType = (ArgumentType<T>) supplier.get();
+        return argumentType;
     }
 
     @Override

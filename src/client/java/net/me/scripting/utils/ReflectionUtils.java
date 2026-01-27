@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
 
+@SuppressWarnings("java:S3011") // Accessibility bypass is intentional for this reflection utility
 public final class ReflectionUtils {
 
     private ReflectionUtils() {
@@ -34,17 +35,18 @@ public final class ReflectionUtils {
                 Field f = c.getDeclaredField(name);
                 f.setAccessible(true);
                 return f;
-            } catch (NoSuchFieldException ignored) {
+            } catch (NoSuchFieldException _) {
+                // Continue searching in superclass
             }
         }
         throw new NoSuchFieldException("Field '" + name + "' not found in class " + cls + " or its superclasses.");
     }
 
     public static List<Method> findMethods(Class<?> cls, List<String> names, boolean isStatic) {
-        List<Method> list = new ArrayList<>();
+        List<Method> result = new ArrayList<>();
         Set<String> foundSignatures = new HashSet<>();
-        Queue<Class<?>> toSearch = new LinkedList<>();
         Set<Class<?>> visited = new HashSet<>();
+        Queue<Class<?>> toSearch = new LinkedList<>();
 
         if (cls != null) {
             toSearch.add(cls);
@@ -56,21 +58,34 @@ public final class ReflectionUtils {
                 continue;
             }
 
-            for (Method m : current.getDeclaredMethods()) {
-                if (names.contains(m.getName()) && Modifier.isStatic(m.getModifiers()) == isStatic) {
-                    String signature = m.getName() + Arrays.toString(m.getParameterTypes());
-                    if (foundSignatures.add(signature)) {
-                        m.setAccessible(true);
-                        list.add(m);
-                    }
-                }
-            }
-
-            if (current.getSuperclass() != null) {
-                toSearch.add(current.getSuperclass());
-            }
-            toSearch.addAll(Arrays.asList(current.getInterfaces()));
+            collectMatchingMethods(current, names, isStatic, foundSignatures, result);
+            enqueueRelatedClasses(current, toSearch);
         }
-        return list;
+        return result;
+    }
+
+    private static void collectMatchingMethods(Class<?> cls, List<String> names, boolean isStatic,
+                                               Set<String> foundSignatures, List<Method> result) {
+        for (Method method : cls.getDeclaredMethods()) {
+            if (!isMethodMatch(method, names, isStatic)) {
+                continue;
+            }
+            String signature = method.getName() + Arrays.toString(method.getParameterTypes());
+            if (foundSignatures.add(signature)) {
+                method.setAccessible(true);
+                result.add(method);
+            }
+        }
+    }
+
+    private static boolean isMethodMatch(Method method, List<String> names, boolean isStatic) {
+        return names.contains(method.getName()) && Modifier.isStatic(method.getModifiers()) == isStatic;
+    }
+
+    private static void enqueueRelatedClasses(Class<?> cls, Queue<Class<?>> toSearch) {
+        if (cls.getSuperclass() != null) {
+            toSearch.add(cls.getSuperclass());
+        }
+        Collections.addAll(toSearch, cls.getInterfaces());
     }
 }

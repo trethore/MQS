@@ -56,10 +56,16 @@ public class ScriptingClassResolver {
     private Map<String, String> runtimeToYarn;
     private Set<String> knownPackagePrefixes;
 
-    public ScriptingClassResolver() {
+    private ScriptingClassResolver() {
     }
 
-    public void init(MappingsManager mappingsManager, ScriptManager scriptManager) {
+    public static ScriptingClassResolver create(MappingsManager mappingsManager, ScriptManager scriptManager) {
+        ScriptingClassResolver resolver = new ScriptingClassResolver();
+        resolver.init(mappingsManager, scriptManager);
+        return resolver;
+    }
+
+    private void init(MappingsManager mappingsManager, ScriptManager scriptManager) {
         this.mappingsManager = mappingsManager;
         this.scriptManager = scriptManager;
         loadMappings(mappingsManager);
@@ -86,45 +92,65 @@ public class ScriptingClassResolver {
     }
 
     public boolean isMcRelated(Class<?> cls) {
-        return mcRelatedCache.computeIfAbsent(cls, c -> {
-            if (c == null || c == Object.class) {
-                return false;
+        if (cls == null) {
+            return false;
+        }
+        return mcRelatedCache.computeIfAbsent(cls, this::isMcRelatedUncached);
+    }
+
+    private boolean isMcRelatedUncached(Class<?> cls) {
+        if (cls == null || cls == Object.class) {
+            return false;
+        }
+
+        Queue<Class<?>> toCheck = new ArrayDeque<>();
+        Set<Class<?>> visited = new HashSet<>();
+        enqueueIfValid(toCheck, cls);
+
+        while (!toCheck.isEmpty()) {
+            Class<?> currentClass = toCheck.poll();
+            if (currentClass == null || !visited.add(currentClass)) {
+                continue;
             }
 
-            Queue<Class<?>> toCheck = new LinkedList<>();
-            Set<Class<?>> visited = new HashSet<>();
-            toCheck.add(c);
+            if (isMinecraftNamespace(currentClass)) {
+                return true;
+            }
 
-            while (!toCheck.isEmpty()) {
-                Class<?> currentClass = toCheck.poll();
-                if (currentClass == null || !visited.add(currentClass)) {
-                    continue;
-                }
+            Class<?> superclass = currentClass.getSuperclass();
+            if (isCachedMcRelated(superclass)) {
+                return true;
+            }
+            enqueueIfValid(toCheck, superclass);
 
-                String name = currentClass.getName();
-                if (name.startsWith(NET_MINECRAFT_PREFIX) || name.startsWith(COM_MOJANG_PREFIX)) {
+            for (Class<?> iface : currentClass.getInterfaces()) {
+                if (isCachedMcRelated(iface)) {
                     return true;
                 }
-
-                if (currentClass.getSuperclass() != null) {
-                    Boolean isSuperMcRelated = mcRelatedCache.get(currentClass.getSuperclass());
-                    if (isSuperMcRelated != null && isSuperMcRelated) {
-                        return true;
-                    }
-                    toCheck.add(currentClass.getSuperclass());
-                }
-
-                for (Class<?> iface : currentClass.getInterfaces()) {
-                    Boolean isIfaceMcRelated = mcRelatedCache.get(iface);
-                    if (isIfaceMcRelated != null && isIfaceMcRelated) {
-                        return true;
-                    }
-                    toCheck.add(iface);
-                }
+                enqueueIfValid(toCheck, iface);
             }
+        }
 
+        return false;
+    }
+
+    private boolean isMinecraftNamespace(Class<?> cls) {
+        String name = cls.getName();
+        return name.startsWith(NET_MINECRAFT_PREFIX) || name.startsWith(COM_MOJANG_PREFIX);
+    }
+
+    private boolean isCachedMcRelated(Class<?> cls) {
+        if (cls == null) {
             return false;
-        });
+        }
+        Boolean cached = mcRelatedCache.get(cls);
+        return cached != null && cached;
+    }
+
+    private void enqueueIfValid(Queue<Class<?>> queue, Class<?> cls) {
+        if (cls != null && cls != Object.class) {
+            queue.add(cls);
+        }
     }
 
     public boolean isFullClassPath(String path) {
@@ -175,9 +201,9 @@ public class ScriptingClassResolver {
         return wrapperCache.computeIfAbsent(runtime, r -> {
             try {
                 return createActualJsClassWrapper(r);
-            } catch (Exception e) {
-                LOGGER.error("Failed to create JsClassWrapper for {}", runtime, e);
-                throw new RuntimeException("Failed to create class wrapper for " + runtime, e);
+            } catch (ClassNotFoundException _) {
+                LOGGER.error("Failed to create JsClassWrapper for {}", runtime);
+                throw new IllegalStateException("Failed to create class wrapper for " + runtime);
             }
         });
     }

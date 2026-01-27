@@ -18,20 +18,20 @@
 
 package net.me.utils;
 
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 
 @SuppressWarnings("unused")
 public final class CameraUtils {
     private CameraUtils() {
     }
 
-    public static Vec3d getCameraPos() {
-        return McUtils.getMc().getBlockEntityRenderDispatcher().camera.getPos();
+    public static Vec3 getCameraPos() {
+        return McUtils.getMc().gameRenderer.getMainCamera().position();
     }
 
-
     public static BlockPos getCameraBlockPos() {
-        return McUtils.getMc().getBlockEntityRenderDispatcher().camera.getBlockPos();
+        return McUtils.getMc().gameRenderer.getMainCamera().blockPosition();
     }
 
 }

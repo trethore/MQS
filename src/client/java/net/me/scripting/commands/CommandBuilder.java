@@ -86,19 +86,12 @@ public class CommandBuilder {
 
     @HostAccess.Export
     public CommandBuilder suggests(Value callback) {
-        if (!(this.builder instanceof RequiredArgumentBuilder<?, ?> rawArgBuilder)) {
-            throw new IllegalStateException("'.suggests()' can only be called on an argument node created with '.arg()'");
-        }
-
         if (callback == null) {
             throw new IllegalArgumentException("Suggestion source cannot be null.");
         }
 
-        @SuppressWarnings("unchecked")
-        RequiredArgumentBuilder<FabricClientCommandSource, ?> argBuilder =
-                (RequiredArgumentBuilder<FabricClientCommandSource, ?>) rawArgBuilder;
-
-        argBuilder.suggests((context, builder) -> {
+        RequiredArgumentBuilder<FabricClientCommandSource, ?> argBuilder = requireArgumentBuilder();
+        argBuilder.suggests((context, suggestionsBuilder) -> {
             RunningScript previous = scriptManager.getCurrentScript();
             scriptManager.setCurrentScript(this.owner);
             try {
@@ -108,7 +101,7 @@ public class CommandBuilder {
                         : callback;
 
                 Value resolved = awaitIfPromise(result);
-                appendSuggestions(resolved, builder);
+                appendSuggestions(resolved, suggestionsBuilder);
             } catch (Throwable t) {
                 Main.LOGGER.error("Error executing suggestion provider for script '{}'", this.owner.getName(), t);
             } finally {
@@ -118,7 +111,7 @@ public class CommandBuilder {
                     scriptManager.clearCurrentScript();
                 }
             }
-            return builder.buildFuture();
+            return suggestionsBuilder.buildFuture();
         });
         return this;
     }
@@ -159,26 +152,55 @@ public class CommandBuilder {
         if (suggestions == null) {
             return;
         }
-        if (suggestions.hasArrayElements()) {
-            for (long i = 0; i < suggestions.getArraySize(); i++) {
-                Value element = suggestions.getArrayElement(i);
-                if (element != null && element.isString()) {
-                    builder.suggest(element.asString());
-                }
-            }
+        if (appendArraySuggestions(suggestions, builder)) {
             return;
         }
-        if (suggestions.isString()) {
-            builder.suggest(suggestions.asString());
+        if (appendStringSuggestion(suggestions, builder)) {
             return;
         }
-        if (suggestions.isHostObject() && suggestions.asHostObject() instanceof Iterable<?> iterable) {
-            for (Object entry : iterable) {
-                if (entry != null) {
-                    builder.suggest(entry.toString());
-                }
+        appendIterableSuggestions(suggestions, builder);
+    }
+
+    private boolean appendArraySuggestions(Value suggestions, SuggestionsBuilder builder) {
+        if (!suggestions.hasArrayElements()) {
+            return false;
+        }
+        for (long i = 0; i < suggestions.getArraySize(); i++) {
+            Value element = suggestions.getArrayElement(i);
+            if (element != null && element.isString()) {
+                builder.suggest(element.asString());
             }
         }
+        return true;
+    }
+
+    private boolean appendStringSuggestion(Value suggestions, SuggestionsBuilder builder) {
+        if (!suggestions.isString()) {
+            return false;
+        }
+        builder.suggest(suggestions.asString());
+        return true;
+    }
+
+    private void appendIterableSuggestions(Value suggestions, SuggestionsBuilder builder) {
+        if (!(suggestions.isHostObject() && suggestions.asHostObject() instanceof Iterable<?> iterable)) {
+            return;
+        }
+        for (Object entry : iterable) {
+            if (entry != null) {
+                builder.suggest(entry.toString());
+            }
+        }
+    }
+
+    private RequiredArgumentBuilder<FabricClientCommandSource, ?> requireArgumentBuilder() {
+        if (!(this.builder instanceof RequiredArgumentBuilder<?, ?> rawArgBuilder)) {
+            throw new IllegalStateException("'.suggests()' can only be called on an argument node created with '.arg()'");
+        }
+        @SuppressWarnings("unchecked")
+        RequiredArgumentBuilder<FabricClientCommandSource, ?> argBuilder =
+                (RequiredArgumentBuilder<FabricClientCommandSource, ?>) rawArgBuilder;
+        return argBuilder;
     }
 
     public LiteralArgumentBuilder<FabricClientCommandSource> getRootBuilder() {

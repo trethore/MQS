@@ -30,7 +30,7 @@ import net.me.Main;
 import net.me.mixin.client.accessors.CommandNodeAccessor;
 import net.me.scripting.module.RunningScript;
 import net.minecraft.client.Minecraft;
-import net.minecraft.command.CommandSource;
+import net.minecraft.client.multiplayer.ClientSuggestionProvider;
 
 import java.util.Map;
 import java.util.Queue;
@@ -44,7 +44,7 @@ public class CommandAPIService {
     private final Queue<QueuedCommand> commandQueue = new ConcurrentLinkedQueue<>();
 
     public void init() {
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, _) -> {
             Main.LOGGER.info("Client command registration event fired. Re-registering script commands.");
 
             for (Map.Entry<RunningScript, Map<String, LiteralArgumentBuilder<FabricClientCommandSource>>> scriptEntry : scriptCommands.entrySet()) {
@@ -90,7 +90,7 @@ public class CommandAPIService {
             removeNode(name);
         }
         dispatcher.register(literalBuilder);
-        scriptCommands.computeIfAbsent(owner, k -> new ConcurrentHashMap<>()).put(name, literalBuilder);
+        scriptCommands.computeIfAbsent(owner, _ -> new ConcurrentHashMap<>()).put(name, literalBuilder);
         allManagedCommandNames.add(name);
     }
 
@@ -159,12 +159,12 @@ public class CommandAPIService {
         }
 
         client.execute(() -> {
-            final CommandDispatcher<CommandSource> suggestionDispatcher = client.getConnection().getCommandDispatcher();
-            final RootCommandNode<CommandSource> suggestionRoot = suggestionDispatcher.getRoot();
-            @SuppressWarnings("unchecked") final CommandNodeAccessor<CommandSource> rootAccessor = (CommandNodeAccessor<CommandSource>) suggestionRoot;
+            final CommandDispatcher<ClientSuggestionProvider> suggestionDispatcher = client.getConnection().getCommands();
+            final RootCommandNode<ClientSuggestionProvider> suggestionRoot = suggestionDispatcher.getRoot();
+            @SuppressWarnings("unchecked") final CommandNodeAccessor<ClientSuggestionProvider> rootAccessor = (CommandNodeAccessor<ClientSuggestionProvider>) suggestionRoot;
 
-            final Map<String, CommandNode<CommandSource>> children = rootAccessor.getChildrenMap();
-            final Map<String, LiteralCommandNode<CommandSource>> literals = rootAccessor.getLiteralsMap();
+            final Map<String, CommandNode<ClientSuggestionProvider>> children = rootAccessor.getChildrenMap();
+            final Map<String, LiteralCommandNode<ClientSuggestionProvider>> literals = rootAccessor.getLiteralsMap();
 
             for (String commandName : allManagedCommandNames) {
                 children.remove(commandName);
@@ -174,7 +174,7 @@ public class CommandAPIService {
             for (CommandNode<FabricClientCommandSource> node : dispatcher.getRoot().getChildren()) {
                 if (allManagedCommandNames.contains(node.getName())) {
                     @SuppressWarnings("unchecked")
-                    CommandNode<CommandSource> castedNode = (CommandNode<CommandSource>) (Object) node;
+                    CommandNode<ClientSuggestionProvider> castedNode = (CommandNode<ClientSuggestionProvider>) (Object) node;
                     suggestionRoot.addChild(castedNode);
                 }
             }

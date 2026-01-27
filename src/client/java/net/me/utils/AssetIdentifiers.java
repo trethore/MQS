@@ -19,7 +19,7 @@
 package net.me.utils;
 
 import net.me.Main;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -29,22 +29,22 @@ import java.util.Optional;
 public final class AssetIdentifiers {
 
     // --- Icons ---
-    public static final Identifier ICON_CLOSE = Identifier.of(Main.MOD_ID, "icons/close.png");
-    public static final Identifier ICON_REFRESH = Identifier.of(Main.MOD_ID, "icons/refresh-ccw.png");
-    public static final Identifier ICON_TERMINAL = Identifier.of(Main.MOD_ID, "icons/square-terminal.png");
-    public static final Identifier ICON_MORE_OPTIONS = Identifier.of(Main.MOD_ID, "icons/ellipsis-vertical.png");
-    public static final Identifier ICON_SETTINGS = Identifier.of(Main.MOD_ID, "icons/settings.png");
-    public static final Identifier ICON_KEYBOARD = Identifier.of(Main.MOD_ID, "icons/keyboard.png");
-    public static final Identifier ICON_VSCODE = Identifier.of(Main.MOD_ID, "icons/app-window.png");
-    public static final Identifier ICON_CREATE_SCRIPT = Identifier.of(Main.MOD_ID, "icons/file-code.png");
-    public static final Identifier ICON_OPEN_FOLDER = Identifier.of(Main.MOD_ID, "icons/file-sliders.png");
-    public static final Identifier ICON_WIKI = Identifier.of(Main.MOD_ID, "icons/cog.png");
-    public static final Identifier ICON_STOP = Identifier.of(Main.MOD_ID, "icons/ban.png");
-    public static final Identifier ICON_TAG = Identifier.of(Main.MOD_ID, "icons/tag.png");
-    public static final Identifier ICON_EDIT = Identifier.of(Main.MOD_ID, "icons/pencil.png");
+    public static final Identifier ICON_CLOSE = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/close.png");
+    public static final Identifier ICON_REFRESH = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/refresh-ccw.png");
+    public static final Identifier ICON_TERMINAL = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/square-terminal.png");
+    public static final Identifier ICON_MORE_OPTIONS = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/ellipsis-vertical.png");
+    public static final Identifier ICON_SETTINGS = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/settings.png");
+    public static final Identifier ICON_KEYBOARD = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/keyboard.png");
+    public static final Identifier ICON_VSCODE = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/app-window.png");
+    public static final Identifier ICON_CREATE_SCRIPT = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/file-code.png");
+    public static final Identifier ICON_OPEN_FOLDER = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/file-sliders.png");
+    public static final Identifier ICON_WIKI = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/cog.png");
+    public static final Identifier ICON_STOP = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/ban.png");
+    public static final Identifier ICON_TAG = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/tag.png");
+    public static final Identifier ICON_EDIT = Identifier.fromNamespaceAndPath(Main.MOD_ID, "icons/pencil.png");
 
     // --- Fonts ---
-    public static final Identifier FONT_MQS = Identifier.of(Main.MOD_ID, "mqsfont.ttf");
+    public static final Identifier FONT_MQS = Identifier.fromNamespaceAndPath(Main.MOD_ID, "mqsfont.ttf");
 
 
     // --- URLs ---
