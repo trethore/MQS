@@ -40,7 +40,6 @@ public class ScriptManager {
 
     private final Map<String, ScriptDescriptor> availableScripts = new HashMap<>();
     private final Map<String, RunningScript> runningScripts = new HashMap<>();
-    private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
     private final ThreadLocal<RunningScript> currentScriptContext = new InheritableThreadLocal<>();
 
     private ConfigManager configManager;
@@ -51,6 +50,7 @@ public class ScriptManager {
     private ScriptLifecycleManager lifecycleManager;
 
     public ScriptManager() {
+        // 2 step initialization
     }
 
     public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager, GlobalConfigManager globalConfigManager) {
@@ -64,7 +64,7 @@ public class ScriptManager {
         ScriptScheduler scheduler = new ScriptScheduler(this);
 
         ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, commandApiService, hookManager, keybindManager, scheduler);
-        this.contextManager = new ScriptContextManager(contextFactory, perFileExports);
+        this.contextManager = ScriptContextManager.create(contextFactory);
         this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, scheduler, contextManager);
 
         this.scriptDiscoverer = new ScriptDiscoverer(globalConfigManager);
@@ -97,7 +97,7 @@ public class ScriptManager {
         Context scriptContext = null;
         try {
             scriptContext = contextManager.getContext();
-            Map<String, Value> fileExports = ScriptLoader.loadModules(descriptor.path(), scriptContext, perFileExports);
+            Map<String, Value> fileExports = ScriptLoader.loadModules(descriptor.path(), scriptContext, contextManager.getPerFileExports());
 
             String mainClassName = descriptor.mainClass();
             Value scriptClass = fileExports.get(mainClassName);

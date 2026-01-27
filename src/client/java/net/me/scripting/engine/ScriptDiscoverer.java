@@ -74,49 +74,61 @@ public class ScriptDiscoverer {
     private void discoverModulesInFile(Path path, Map<String, ScriptDescriptor> availableScripts) {
         try {
             List<String> lines = Files.readAllLines(path);
-            for (String line : lines) {
-                Matcher matcher = MODULE_ANNOTATION_PATTERN.matcher(line.trim());
-                if (matcher.matches()) {
-                    String content = matcher.group(1);
-                    Map<String, String> metadata = parseModuleMetadata(content);
-
-                    String mainClass = metadata.get(ConfigKeys.SCRIPT_META_MAIN);
-                    String moduleName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
-
-                    if (mainClass == null || moduleName == null) {
-                        Main.LOGGER.warn("Skipping malformed @module in {}: 'main' and 'name' properties are required. Found: {}", path.getFileName(), line);
-                        continue;
-                    }
-
-                    String version = metadata.getOrDefault(ConfigKeys.SCRIPT_META_VERSION, "N/A");
-                    ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version, mainClass);
-
-                    if (availableScripts.containsKey(descriptor.getId())) {
-                        Main.LOGGER.warn("Duplicate script ID found in {}: {}. The last one found will be used.", path.getFileName(), descriptor.getId());
-                    }
-                    availableScripts.put(descriptor.getId(), descriptor);
-                }
-            }
+            lines.stream()
+                    .map(String::trim)
+                    .map(MODULE_ANNOTATION_PATTERN::matcher)
+                    .filter(Matcher::matches)
+                    .forEach(matcher -> processModuleAnnotation(path, matcher.group(1), availableScripts));
         } catch (IOException e) {
             Main.LOGGER.error("Could not read script file for metadata: {}", path, e);
         }
     }
 
+    private void processModuleAnnotation(Path path, String content, Map<String, ScriptDescriptor> availableScripts) {
+        Map<String, String> metadata = parseModuleMetadata(content);
+
+        String mainClass = metadata.get(ConfigKeys.SCRIPT_META_MAIN);
+        String moduleName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
+
+        if (mainClass == null || moduleName == null) {
+            Main.LOGGER.warn("Skipping malformed @module in {}: 'main' and 'name' are required.", path.getFileName());
+            return;
+        }
+
+        String version = metadata.getOrDefault(ConfigKeys.SCRIPT_META_VERSION, "N/A");
+        ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version, mainClass);
+
+        if (availableScripts.containsKey(descriptor.getId())) {
+            Main.LOGGER.warn("Duplicate script ID found in {}: {}. The last one found will be used.",
+                    path.getFileName(), descriptor.getId());
+        }
+        availableScripts.put(descriptor.getId(), descriptor);
+    }
+
     private Map<String, String> parseModuleMetadata(String content) {
         Map<String, String> metadata = new HashMap<>();
-        String[] pairs = content.split(",");
-        for (String pair : pairs) {
+        for (String pair : content.split(",")) {
             String[] keyValue = pair.split("=", 2);
-            if (keyValue.length == 2) {
-                String key = keyValue[0].trim();
-                String value = keyValue[1].trim();
-                if (value.startsWith("'") && value.endsWith("'") || value.startsWith("\"") && value.endsWith("\"")) {
-                    value = value.substring(1, value.length() - 1);
-                }
-                metadata.put(key, value);
+            if (keyValue.length != 2) {
+                continue;
             }
+            String key = keyValue[0].trim();
+            String value = stripQuotes(keyValue[1].trim());
+            metadata.put(key, value);
         }
         return metadata;
+    }
+
+    private String stripQuotes(String value) {
+        if (value.length() < 2) {
+            return value;
+        }
+        char first = value.charAt(0);
+        char last = value.charAt(value.length() - 1);
+        if ((first == '\'' || first == '"') && first == last) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 
     private void ensureDirectoryExists(Path directory) {
@@ -134,20 +146,16 @@ public class ScriptDiscoverer {
         directories.add(defaultScriptsDir);
 
         if (globalConfigManager != null) {
-            List<String> configured = globalConfigManager.getAdditionalScriptDirectories();
-            for (String entry : configured) {
-                Path resolved = resolveConfiguredPath(entry);
-                if (resolved != null) {
-                    directories.add(resolved);
-                }
-            }
+            globalConfigManager.getAdditionalScriptDirectories().stream()
+                    .map(this::resolveConfiguredPath)
+                    .filter(Objects::nonNull)
+                    .forEach(directories::add);
         }
 
-        Set<Path> unique = new LinkedHashSet<>();
-        for (Path directory : directories) {
-            unique.add(directory.normalize());
-        }
-        return new ArrayList<>(unique);
+        return directories.stream()
+                .map(Path::normalize)
+                .distinct()
+                .toList();
     }
 
     private Path resolveConfiguredPath(String entry) {
@@ -175,17 +183,29 @@ public class ScriptDiscoverer {
     }
 
     private String expandHomeDirectory(String path) {
-        if (path.startsWith("~")) {
-            String home = System.getProperty("user.home");
-            if (home != null && !home.isBlank()) {
-                if (path.equals("~")) {
-                    return home;
-                }
-                if (path.startsWith("~" + File.separator) || path.startsWith("~/") || path.startsWith("~\\")) {
-                    return home + path.substring(1);
-                }
-            }
+        if (!path.startsWith("~")) {
+            return path;
         }
+
+        String home = System.getProperty("user.home");
+        if (home == null || home.isBlank()) {
+            return path;
+        }
+
+        if (path.equals("~")) {
+            return home;
+        }
+
+        if (startsWithHomePrefix(path)) {
+            return home + path.substring(1);
+        }
+
         return path;
+    }
+
+    private boolean startsWithHomePrefix(String path) {
+        return path.startsWith("~" + File.separator)
+                || path.startsWith("~/")
+                || path.startsWith("~\\");
     }
 }

@@ -70,24 +70,37 @@ public final class HookOptions {
         if (optionsValue == null || !optionsValue.hasMembers() || !optionsValue.hasMember(MODE_KEY)) {
             return defaultMode;
         }
+
         Value member = optionsValue.getMember(MODE_KEY);
         if (member == null) {
             return defaultMode;
         }
+
+        HookExecutionMode resolved = resolveModeFromValue(member);
+        return resolved != null ? resolved : defaultMode;
+    }
+
+    private static HookExecutionMode resolveModeFromValue(Value member) {
         if (member.isHostObject() && member.asHostObject() instanceof HookExecutionMode modeValue) {
             return modeValue;
         }
+
         if (member.isString()) {
-            String raw = member.asString();
-            if (raw != null && !raw.isEmpty()) {
-                try {
-                    return HookExecutionMode.valueOf(raw.toUpperCase(Locale.ROOT));
-                } catch (IllegalArgumentException _) {
-                    // if invalid, return default
-                }
-            }
+            return parseModeString(member.asString());
         }
-        return defaultMode;
+
+        return null;
+    }
+
+    private static HookExecutionMode parseModeString(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        try {
+            return HookExecutionMode.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException _) {
+            return null;
+        }
     }
 
     public Integer argCount() {

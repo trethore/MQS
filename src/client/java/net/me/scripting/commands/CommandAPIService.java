@@ -46,27 +46,40 @@ public class CommandAPIService {
     public void init() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, _) -> {
             Main.LOGGER.info("Client command registration event fired. Re-registering script commands.");
-
-            for (Map.Entry<RunningScript, Map<String, LiteralArgumentBuilder<FabricClientCommandSource>>> scriptEntry : scriptCommands.entrySet()) {
-                for (LiteralArgumentBuilder<FabricClientCommandSource> builder : scriptEntry.getValue().values()) {
-                    dispatcher.register(builder);
-                    Main.LOGGER.debug("Re-registered command '{}' for script '{}'", builder.getLiteral(), scriptEntry.getKey().getName());
-                }
-            }
-
-            if (!commandQueue.isEmpty()) {
-                Main.LOGGER.info("Registering {} queued script commands...", commandQueue.size());
-                QueuedCommand queuedCommand;
-                while ((queuedCommand = commandQueue.poll()) != null) {
-                    try {
-                        registerInternal(dispatcher, queuedCommand.owner(), queuedCommand.builder());
-                    } catch (Exception e) {
-                        Main.LOGGER.error("Failed to register queued command '{}' for script '{}': {}",
-                                queuedCommand.builder().getLiteral(), queuedCommand.owner().getName(), e.getMessage());
-                    }
-                }
-            }
+            reRegisterAllCommands(dispatcher);
+            processQueuedCommands(dispatcher);
         });
+    }
+
+    private void reRegisterAllCommands(CommandDispatcher<FabricClientCommandSource> dispatcher) {
+        scriptCommands.forEach((script, commands) ->
+                commands.values().forEach(builder -> {
+                    dispatcher.register(builder);
+                    Main.LOGGER.debug("Re-registered command '{}' for script '{}'", builder.getLiteral(), script.getName());
+                })
+        );
+    }
+
+    private void processQueuedCommands(CommandDispatcher<FabricClientCommandSource> dispatcher) {
+        if (commandQueue.isEmpty()) {
+            return;
+        }
+
+        Main.LOGGER.info("Registering {} queued script commands...", commandQueue.size());
+
+        QueuedCommand queuedCommand;
+        while ((queuedCommand = commandQueue.poll()) != null) {
+            registerQueuedCommand(dispatcher, queuedCommand);
+        }
+    }
+
+    private void registerQueuedCommand(CommandDispatcher<FabricClientCommandSource> dispatcher, QueuedCommand queuedCommand) {
+        try {
+            registerInternal(dispatcher, queuedCommand.owner(), queuedCommand.builder());
+        } catch (Exception e) {
+            Main.LOGGER.error("Failed to register queued command '{}' for script '{}': {}",
+                    queuedCommand.builder().getLiteral(), queuedCommand.owner().getName(), e.getMessage());
+        }
     }
 
     public void register(RunningScript owner, CommandBuilder commandBuilder) {

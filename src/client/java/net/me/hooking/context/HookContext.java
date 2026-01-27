@@ -27,7 +27,6 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
 public class HookContext {
@@ -62,7 +61,7 @@ public class HookContext {
                 .skip(3)
                 .limit(depth)
                 .map(frame -> new CallerInfo(frame.toStackTraceElement()))
-                .collect(Collectors.toList()));
+                .toList());
     }
 
     @HostAccess.Export
@@ -103,15 +102,18 @@ public class HookContext {
         String declaringClassYarnName = getYarnMethodClass();
         Map<String, List<String>> methodsForClass = mappingsManager.getMethodMap().get(declaringClassYarnName);
 
-        if (methodsForClass != null) {
-            for (Map.Entry<String, List<String>> entry : methodsForClass.entrySet()) {
-                if (entry.getValue().contains(method.getName())) {
-                    this.yarnMethodName = entry.getKey();
-                    return this.yarnMethodName;
-                }
-            }
-        }
-        this.yarnMethodName = method.getName();
+        this.yarnMethodName = findYarnMethodName(methodsForClass, method.getName());
         return this.yarnMethodName;
+    }
+
+    private String findYarnMethodName(Map<String, List<String>> methodsForClass, String runtimeName) {
+        if (methodsForClass == null) {
+            return runtimeName;
+        }
+        return methodsForClass.entrySet().stream()
+                .filter(entry -> entry.getValue().contains(runtimeName))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(runtimeName);
     }
 }

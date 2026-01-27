@@ -73,29 +73,40 @@ public class ScriptingApi {
                 throw new IllegalArgumentException("wrap() requires exactly one argument: the instance to wrap.");
             }
             Value v = args[0];
-            if (v.isProxyObject()) {
-                Object proxy = v.asProxyObject();
-                if (proxy instanceof ExtendedInstanceProxy || proxy instanceof JsObjectWrapper || proxy instanceof MappedInstanceProxy) {
-                    return v;
-                }
+            if (isAlreadyWrapped(v)) {
+                return v;
             }
-            Object javaInstance = ScriptUtils.unwrapReceiver(v);
-            if (javaInstance == null) {
-                throw new IllegalArgumentException("The instance passed to wrap() was null or could not be unwrapped to a Java object.");
-            }
-            Class<?> instanceClass = javaInstance.getClass();
-
-            MappingUtils.ClassMappings cm = MappingUtils.combineMappings(instanceClass, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
-
-            return new JsObjectWrapper(
-                    javaInstance,
-                    instanceClass,
-                    cm.methods(),
-                    cm.fields(),
-                    resolver.getMappingsManager(),
-                    resolver.getScriptManager()
-            );
+            return wrapJavaInstance(v, resolver);
         };
+    }
+
+    private static boolean isAlreadyWrapped(Value v) {
+        if (!v.isProxyObject()) {
+            return false;
+        }
+        return switch (v.asProxyObject()) {
+            case ExtendedInstanceProxy _, JsObjectWrapper _, MappedInstanceProxy _ -> true;
+            default -> false;
+        };
+    }
+
+    private static JsObjectWrapper wrapJavaInstance(Value v, ScriptingClassResolver resolver) {
+        Object javaInstance = ScriptUtils.unwrapReceiver(v);
+        if (javaInstance == null) {
+            throw new IllegalArgumentException("The instance passed to wrap() was null or could not be unwrapped to a Java object.");
+        }
+        Class<?> instanceClass = javaInstance.getClass();
+        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(
+                instanceClass, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
+
+        return new JsObjectWrapper(
+                javaInstance,
+                instanceClass,
+                cm.methods(),
+                cm.fields(),
+                resolver.getMappingsManager(),
+                resolver.getScriptManager()
+        );
     }
 
     public static ProxyExecutable createExtendMappedProxy(ScriptingClassResolver resolver, Context context) {
@@ -123,34 +134,45 @@ public class ScriptingApi {
             }
 
             for (Value arg : args) {
-                if (arg != null && arg.hasArrayElements()) {
-                    for (long i = 0; i < arg.getArraySize(); i++) {
-                        addModule(exportsMap, arg.getArrayElement(i));
-                    }
-                } else {
-                    addModule(exportsMap, arg);
-                }
+                processExportArg(arg, exportsMap);
             }
             return null;
         };
+    }
+
+    private static void processExportArg(Value arg, Map<String, Value> exportsMap) {
+        if (arg == null) {
+            addModule(exportsMap, null);
+            return;
+        }
+        if (!arg.hasArrayElements()) {
+            addModule(exportsMap, arg);
+            return;
+        }
+        for (long i = 0; i < arg.getArraySize(); i++) {
+            addModule(exportsMap, arg.getArrayElement(i));
+        }
     }
 
     private static Class<?> getClassFromValue(Value value) {
         if (value == null || value.isNull()) {
             return null;
         }
-        Object proxy = value.isProxyObject() ? value.asProxyObject() : null;
-        if (proxy instanceof LazyJsClassHolder holder) {
-            return holder.getWrapper().getTargetClass();
+
+        if (value.isProxyObject()) {
+            return getClassFromProxy(value.asProxyObject());
         }
-        if (proxy instanceof JsClassWrapper wrapper) {
-            return wrapper.getTargetClass();
-        }
+
         Object unwrapped = ScriptUtils.unwrapReceiver(value);
-        if (unwrapped instanceof Class) {
-            return (Class<?>) unwrapped;
-        }
-        return null;
+        return unwrapped instanceof Class<?> clazz ? clazz : null;
+    }
+
+    private static Class<?> getClassFromProxy(Object proxy) {
+        return switch (proxy) {
+            case LazyJsClassHolder holder -> holder.getWrapper().getTargetClass();
+            case JsClassWrapper wrapper -> wrapper.getTargetClass();
+            default -> null;
+        };
     }
 
 
@@ -223,16 +245,11 @@ public class ScriptingApi {
 
     private static ExtendMappedSetup resolveExtendMappedSetup(Value configArg, Context context, ScriptingClassResolver resolver) {
         Value extendsValue = configArg.getMember(EXTENDS);
-        if (extendsValue.isProxyObject()) {
-            Object proxy = extendsValue.asProxyObject();
-            if (proxy instanceof MappedClassExtender) {
-                ExtensionConfig config = parseExtensionConfig(configArg, context, resolver, extendsValue);
-                return new ExtendMappedSetup(config, null, null, null);
-            }
-            if (proxy instanceof ExtendedInstanceProxy parentProxy) {
-                return buildSetupFromParentProxy(configArg, parentProxy, extendsValue, context, resolver);
-            }
+
+        if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
+            return buildSetupFromParentProxy(configArg, parentProxy, extendsValue, context, resolver);
         }
+
         ExtensionConfig config = parseExtensionConfig(configArg, context, resolver, extendsValue);
         return new ExtendMappedSetup(config, null, null, null);
     }
@@ -310,13 +327,11 @@ public class ScriptingApi {
     }
 
     private static WrapperInfo extractWrapperInfo(Object proxy) {
-        if (proxy instanceof LazyJsClassHolder holder) {
-            return new WrapperInfo(holder.getWrapper(), readLazyYarnName(holder));
-        }
-        if (proxy instanceof JsClassWrapper wrapper) {
-            return new WrapperInfo(wrapper, null);
-        }
-        return null;
+        return switch (proxy) {
+            case LazyJsClassHolder holder -> new WrapperInfo(holder.getWrapper(), readLazyYarnName(holder));
+            case JsClassWrapper wrapper -> new WrapperInfo(wrapper, null);
+            default -> null;
+        };
     }
 
     private static String readLazyYarnName(LazyJsClassHolder holder) {

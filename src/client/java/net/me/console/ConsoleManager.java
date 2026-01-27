@@ -48,26 +48,30 @@ public class ConsoleManager {
         List<String> tokens = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
         boolean inQuotes = false;
+
         for (char c : commandLine.toCharArray()) {
             if (c == '"') {
                 inQuotes = !inQuotes;
-                if (!inQuotes && !sb.isEmpty()) {
-                    tokens.add(sb.toString());
-                    sb.setLength(0);
+                if (!inQuotes) {
+                    flushToken(tokens, sb);
                 }
             } else if (c == ' ' && !inQuotes) {
-                if (!sb.isEmpty()) {
-                    tokens.add(sb.toString());
-                    sb.setLength(0);
-                }
+                flushToken(tokens, sb);
             } else {
                 sb.append(c);
             }
         }
-        if (!sb.isEmpty()) {
-            tokens.add(sb.toString());
-        }
+
+        flushToken(tokens, sb);
         return tokens;
+    }
+
+    private void flushToken(List<String> tokens, StringBuilder sb) {
+        if (sb.isEmpty()) {
+            return;
+        }
+        tokens.add(sb.toString());
+        sb.setLength(0);
     }
 
     public void executeCommand(String input) {

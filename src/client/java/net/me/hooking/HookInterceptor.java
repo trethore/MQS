@@ -133,13 +133,8 @@ public class HookInterceptor {
 
     private static ProxyExecutable getOrCreateChain(String hookId, int argCount, List<HookData> allHooksForName, ScriptManager scriptManager, MappingsManager mappingsManager) {
         CacheKey cacheKey = new CacheKey(hookId, argCount);
-        ProxyExecutable chain = CHAIN_CACHE.get(cacheKey);
-        if (chain == null) {
-            ChainFactory factory = new ChainFactory(allHooksForName, scriptManager, mappingsManager);
-            chain = factory.apply(cacheKey);
-            CHAIN_CACHE.put(cacheKey, chain);
-        }
-        return chain;
+        ChainFactory factory = new ChainFactory(allHooksForName, scriptManager, mappingsManager);
+        return CHAIN_CACHE.computeIfAbsent(cacheKey, factory);
     }
 
     private static AdviceContext createAdviceContext(Object thiz, Method method, MappingsManager mappingsManager, ScriptManager scriptManager) {

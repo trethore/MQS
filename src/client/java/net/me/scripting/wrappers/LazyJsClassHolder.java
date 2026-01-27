@@ -42,9 +42,8 @@ public class LazyJsClassHolder implements ProxyObject, ProxyInstantiable {
             Main.LOGGER.debug("Lazy loading JsClassWrapper for {} -> {}", yarnName, runtimeName);
             try {
                 resolvedWrapper = classResolver.createActualJsClassWrapper(runtimeName);
-            } catch (Exception e) {
-                Main.LOGGER.error("Failed to lazy-load {}: {}", runtimeName, e.getMessage(), e);
-                throw new RuntimeException("Cannot load class " + yarnName, e);
+            } catch (ClassNotFoundException e) {
+                throw new IllegalStateException("Cannot lazy-load class " + yarnName + ": class not found", e);
             }
         }
         return resolvedWrapper;

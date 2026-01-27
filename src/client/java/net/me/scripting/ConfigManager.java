@@ -153,37 +153,41 @@ public class ConfigManager {
         Map<String, Object> configMap = inMemoryConfigs.get(scriptId);
         Path configFile = getConfigFile(scriptId);
 
-        boolean isEnabled = getEnabledState(scriptId);
-        boolean shouldBeSaved = false;
-
-        if (isEnabled) {
-            shouldBeSaved = true;
+        if (shouldPersistConfig(configMap, scriptId)) {
+            writeConfigToFile(configFile, configMap, scriptId);
         } else {
-            if (configMap.size() > 1 || (configMap.size() == 1 && !configMap.containsKey(ConfigKeys.ENABLED))) {
-                shouldBeSaved = true;
-            }
-        }
-
-        if (configMap.isEmpty()) {
-            shouldBeSaved = false;
-        }
-
-        if (shouldBeSaved) {
-            try (FileWriter writer = new FileWriter(configFile.toFile())) {
-                GSON.toJson(configMap, writer);
-            } catch (Exception e) {
-                Main.LOGGER.error("Failed to save config for script '{}': {}", scriptId, e.getMessage());
-            }
-        } else {
-            if (Files.exists(configFile)) {
-                try {
-                    Files.delete(configFile);
-                    Main.LOGGER.info("Deleted empty/default config for disabled script '{}'.", scriptId);
-                } catch (IOException e) {
-                    Main.LOGGER.error("Failed to delete empty config for script '{}'", scriptId, e);
-                }
-            }
+            deleteConfigFileIfExists(configFile, scriptId);
             inMemoryConfigs.remove(scriptId);
+        }
+    }
+
+    private boolean shouldPersistConfig(Map<String, Object> configMap, String scriptId) {
+        if (configMap.isEmpty()) {
+            return false;
+        }
+        if (getEnabledState(scriptId)) {
+            return true;
+        }
+        return configMap.size() > 1 || !configMap.containsKey(ConfigKeys.ENABLED);
+    }
+
+    private void writeConfigToFile(Path configFile, Map<String, Object> configMap, String scriptId) {
+        try (FileWriter writer = new FileWriter(configFile.toFile())) {
+            GSON.toJson(configMap, writer);
+        } catch (Exception e) {
+            Main.LOGGER.error("Failed to save config for script '{}': {}", scriptId, e.getMessage());
+        }
+    }
+
+    private void deleteConfigFileIfExists(Path configFile, String scriptId) {
+        if (!Files.exists(configFile)) {
+            return;
+        }
+        try {
+            Files.delete(configFile);
+            Main.LOGGER.info("Deleted empty/default config for disabled script '{}'.", scriptId);
+        } catch (IOException e) {
+            Main.LOGGER.error("Failed to delete empty config for script '{}'", scriptId, e);
         }
     }
 

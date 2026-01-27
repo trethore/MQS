@@ -85,10 +85,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         }
 
         if (key.endsWith(WrapperConstants.FIELD_SUFFIX)) {
-            String fieldName = key.substring(0, key.length() - 1);
-            if (yarnToRuntimeFields.containsKey(fieldName)) {
-                return readStaticField(fieldName);
-            }
+            return getExplicitFieldMember(key);
         }
 
         if (yarnToRuntimeMethods.containsKey(key)) {
@@ -107,15 +104,26 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         return null;
     }
 
+    private Object getExplicitFieldMember(String key) {
+        String fieldName = key.substring(0, key.length() - 1);
+        if (yarnToRuntimeFields.containsKey(fieldName)) {
+            return readStaticField(fieldName);
+        }
+        return null;
+    }
+
     @Override
     public boolean hasMember(String key) {
-        if (WrapperConstants.CLASS.equals(key)) return true;
+        if (WrapperConstants.CLASS.equals(key)) {
+            return true;
+        }
         if (key.endsWith(WrapperConstants.FIELD_SUFFIX)) {
             return yarnToRuntimeFields.containsKey(key.substring(0, key.length() - 1));
         }
-        return yarnToRuntimeMethods.containsKey(key)
-                || yarnToRuntimeFields.containsKey(key)
-                || !ReflectionUtils.findMethods(targetClass, List.of(key), true).isEmpty();
+        if (yarnToRuntimeMethods.containsKey(key) || yarnToRuntimeFields.containsKey(key)) {
+            return true;
+        }
+        return !ReflectionUtils.findMethods(targetClass, List.of(key), true).isEmpty();
     }
 
     @Override
@@ -125,82 +133,114 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         keys.addAll(yarnToRuntimeMethods.keySet());
         keys.addAll(yarnToRuntimeFields.keySet());
         yarnToRuntimeFields.keySet().forEach(field -> keys.add(field + WrapperConstants.FIELD_SUFFIX));
+        collectStaticMethodNames(keys);
+        return keys.toArray(String[]::new);
+    }
+
+    private void collectStaticMethodNames(Set<String> keys) {
         for (Method m : targetClass.getMethods()) {
             if (Modifier.isStatic(m.getModifiers())) {
                 keys.add(m.getName());
             }
         }
-        return keys.toArray(String[]::new);
     }
 
     @Override
     public void putMember(String key, Value value) {
-        String fieldName = key;
-        boolean isExplicitFieldAccess = false;
-        if (key.endsWith(WrapperConstants.FIELD_SUFFIX)) {
-            fieldName = key.substring(0, key.length() - 1);
-            isExplicitFieldAccess = true;
+        boolean isExplicitFieldAccess = key.endsWith(WrapperConstants.FIELD_SUFFIX);
+        String fieldName = isExplicitFieldAccess ? key.substring(0, key.length() - 1) : key;
+
+        if (!yarnToRuntimeFields.containsKey(fieldName)) {
+            throw new UnsupportedOperationException("No writable static member: " + key);
         }
 
-        if (yarnToRuntimeFields.containsKey(fieldName)) {
-            boolean methodConflict = yarnToRuntimeMethods.containsKey(fieldName);
-            if (methodConflict && !isExplicitFieldAccess) {
-                throw new UnsupportedOperationException(
-                        "Ambiguous write to static member '" + fieldName + "'. A static method with this name exists. " +
-                                "Use the '$' suffix to write to the field directly: " + fieldName + WrapperConstants.FIELD_SUFFIX
-                );
-            }
-            writeStaticField(fieldName, value);
-            return;
+        if (!isExplicitFieldAccess && yarnToRuntimeMethods.containsKey(fieldName)) {
+            throw new UnsupportedOperationException(
+                    "Ambiguous write to static member '" + fieldName + "'. A static method with this name exists. " +
+                            "Use the '$' suffix to write to the field directly: " + fieldName + WrapperConstants.FIELD_SUFFIX
+            );
         }
-        throw new UnsupportedOperationException("No writable static member: " + key);
+
+        writeStaticField(fieldName, value);
     }
 
     private Object invokeConstructor(Value[] polyglotArgs) {
-        int argCount = polyglotArgs.length;
+        Constructor<?> matchingCtor = findConstructorByArgCount(polyglotArgs.length);
+        if (matchingCtor == null) {
+            throw noMatchingConstructorException(polyglotArgs.length);
+        }
+        return invokeConstructorWithArgs(matchingCtor, polyglotArgs);
+    }
+
+    private Constructor<?> findConstructorByArgCount(int argCount) {
         for (Constructor<?> ctor : constructors) {
             if (ctor.getParameterCount() == argCount) {
-                try {
-                    Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, ctor.getParameterTypes());
-                    MethodHandle handle = lookup.unreflectConstructor(ctor);
-                    Object instance = handle.invokeWithArguments(javaArgs);
-                    return ScriptUtils.wrapReturn(instance, this.mappingsManager, this.scriptManager);
-                } catch (Throwable e) {
-                    throw new RuntimeException(
-                            String.format("Failed to instantiate %s: %s", targetClassName, e.getMessage()), e);
-                }
+                return ctor;
             }
         }
+        return null;
+    }
+
+    private Object invokeConstructorWithArgs(Constructor<?> ctor, Value[] polyglotArgs) {
+        try {
+            Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, ctor.getParameterTypes());
+            MethodHandle handle = lookup.unreflectConstructor(ctor);
+            Object instance = handle.invokeWithArguments(javaArgs);
+            return ScriptUtils.wrapReturn(instance, mappingsManager, scriptManager);
+        } catch (Throwable e) {
+            throw new IllegalStateException(
+                    String.format("Failed to instantiate %s: %s", targetClassName, e.getMessage()), e);
+        }
+    }
+
+    private IllegalArgumentException noMatchingConstructorException(int argCount) {
         String available = constructors.stream()
                 .map(c -> c.getParameterCount() + " args")
                 .distinct()
                 .collect(Collectors.joining(", "));
-        throw new RuntimeException(
-                String.format("No constructor for %s with %d args. Available: [%s]",
-                        targetClassName, argCount, available));
+        return new IllegalArgumentException(
+                String.format("No constructor for %s with %d args. Available: [%s]", targetClassName, argCount, available));
     }
 
     private ProxyExecutable createStaticMethodProxyFromMethods(List<Method> methods, String methodNameForErrors) {
-        return polyglotArgs -> {
-            int argCount = polyglotArgs.length;
-            for (Method m : methods) {
-                if (m.getParameterCount() == argCount) {
-                    try {
-                        Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, m.getParameterTypes());
-                        MethodHandle handle = FastAccessorUtils.getMethodHandle(m);
-                        Object result = handle.invokeWithArguments(javaArgs);
-                        return ScriptUtils.wrapReturn(result, this.mappingsManager, this.scriptManager);
-                    } catch (Throwable e) {
-                        if (e.getCause() != null) {
-                            throw new RuntimeException(String.format("Static method %s.%s threw an exception: %s", targetClassName, methodNameForErrors, e.getCause().getMessage()), e.getCause());
-                        }
-                        throw new RuntimeException(String.format("Method invocation failed for static method %s.%s. See logs for details.", targetClassName, methodNameForErrors), e);
-                    }
-                }
+        return polyglotArgs -> invokeStaticMethod(methods, polyglotArgs, methodNameForErrors);
+    }
+
+    private Object invokeStaticMethod(List<Method> methods, Value[] polyglotArgs, String methodName) {
+        Method matchingMethod = findMethodByArgCount(methods, polyglotArgs.length);
+        if (matchingMethod == null) {
+            throw new IllegalArgumentException(
+                    String.format("No static overload for %s.%s with %d args", targetClassName, methodName, polyglotArgs.length));
+        }
+        return invokeMethodWithArgs(matchingMethod, polyglotArgs, methodName);
+    }
+
+    private Method findMethodByArgCount(List<Method> methods, int argCount) {
+        for (Method m : methods) {
+            if (m.getParameterCount() == argCount) {
+                return m;
             }
-            throw new RuntimeException(
-                    String.format("No static overload for %s.%s with %d args", targetClassName, methodNameForErrors, argCount));
-        };
+        }
+        return null;
+    }
+
+    private Object invokeMethodWithArgs(Method method, Value[] polyglotArgs, String methodName) {
+        try {
+            Object[] javaArgs = ScriptUtils.unwrapArgs(polyglotArgs, method.getParameterTypes());
+            MethodHandle handle = FastAccessorUtils.getMethodHandle(method);
+            Object result = handle.invokeWithArguments(javaArgs);
+            return ScriptUtils.wrapReturn(result, mappingsManager, scriptManager);
+        } catch (Throwable e) {
+            throw createMethodInvocationException(methodName, e);
+        }
+    }
+
+    private IllegalStateException createMethodInvocationException(String methodName, Throwable e) {
+        Throwable cause = e.getCause() != null ? e.getCause() : e;
+        String message = cause != e
+                ? String.format("Static method %s.%s threw an exception: %s", targetClassName, methodName, cause.getMessage())
+                : String.format("Method invocation failed for static method %s.%s", targetClassName, methodName);
+        return new IllegalStateException(message, cause);
     }
 
     private ProxyExecutable createStaticMethodProxyFromYarnKey(String yarnKey) {
@@ -211,34 +251,64 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
 
     private Object readStaticField(String yarnKey) {
         String runtimeName = yarnToRuntimeFields.get(yarnKey);
+        Field field;
         try {
-            Field f = ReflectionUtils.findField(targetClass, runtimeName);
-            if (!Modifier.isStatic(f.getModifiers())) {
-                throw new RuntimeException(yarnKey + " is not a static field.");
-            }
-            MethodHandle getter = FastAccessorUtils.getFieldGetter(f);
-            return ScriptUtils.wrapReturn(getter.invoke(), this.mappingsManager, this.scriptManager);
+            field = ReflectionUtils.findField(targetClass, runtimeName);
+        } catch (NoSuchFieldException e) {
+            throw new IllegalStateException(
+                    String.format("Static field %s.%s not found", targetClassName, yarnKey), e);
+        }
+
+        validateStaticField(field, yarnKey);
+        return getFieldValue(field, yarnKey);
+    }
+
+    private void validateStaticField(Field field, String yarnKey) {
+        if (!Modifier.isStatic(field.getModifiers())) {
+            throw new IllegalStateException(yarnKey + " is not a static field.");
+        }
+    }
+
+    private Object getFieldValue(Field field, String yarnKey) {
+        try {
+            MethodHandle getter = FastAccessorUtils.getFieldGetter(field);
+            return ScriptUtils.wrapReturn(getter.invoke(), mappingsManager, scriptManager);
         } catch (Throwable e) {
-            throw new RuntimeException(
+            throw new IllegalStateException(
                     String.format("Error accessing static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
         }
     }
 
     private void writeStaticField(String yarnKey, Value value) {
         String runtimeName = yarnToRuntimeFields.get(yarnKey);
+        Field field;
         try {
-            Field f = ReflectionUtils.findField(targetClass, runtimeName);
-            if (!Modifier.isStatic(f.getModifiers())) {
-                throw new UnsupportedOperationException("Cannot write to non-static field '" + yarnKey + "' via class proxy.");
-            }
-            if (Modifier.isFinal(f.getModifiers())) {
-                throw new UnsupportedOperationException("Cannot modify final static field '" + yarnKey + "'.");
-            }
-            Object javaVal = ScriptUtils.unwrapArgs(new Value[]{value}, new Class[]{f.getType()})[0];
-            MethodHandle setter = FastAccessorUtils.getFieldSetter(f);
+            field = ReflectionUtils.findField(targetClass, runtimeName);
+        } catch (NoSuchFieldException e) {
+            throw new IllegalStateException(
+                    String.format("Static field %s.%s not found", targetClassName, yarnKey), e);
+        }
+
+        validateWritableStaticField(field, yarnKey);
+        setFieldValue(field, value, yarnKey);
+    }
+
+    private void validateWritableStaticField(Field field, String yarnKey) {
+        if (!Modifier.isStatic(field.getModifiers())) {
+            throw new UnsupportedOperationException("Cannot write to non-static field '" + yarnKey + "' via class proxy.");
+        }
+        if (Modifier.isFinal(field.getModifiers())) {
+            throw new UnsupportedOperationException("Cannot modify final static field '" + yarnKey + "'.");
+        }
+    }
+
+    private void setFieldValue(Field field, Value value, String yarnKey) {
+        try {
+            Object javaVal = ScriptUtils.unwrapArgs(new Value[]{value}, new Class[]{field.getType()})[0];
+            MethodHandle setter = FastAccessorUtils.getFieldSetter(field);
             setter.invoke(javaVal);
         } catch (Throwable e) {
-            throw new RuntimeException(
+            throw new IllegalStateException(
                     String.format("Error setting static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
         }
     }
@@ -250,5 +320,4 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     public Map<String, String> getFieldMappings() {
         return yarnToRuntimeFields;
     }
-
 }

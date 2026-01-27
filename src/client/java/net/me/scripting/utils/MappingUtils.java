@@ -41,9 +41,9 @@ public final class MappingUtils {
     }
 
     private static void combineMappingsIterative(Class<?> startCls,
-                                                 Map<String, String> r2y,
-                                                 Map<String, Map<String, List<String>>> mMap,
-                                                 Map<String, Map<String, String>> fMap,
+                                                 Map<String, String> runtimeToYarn,
+                                                 Map<String, Map<String, List<String>>> methodsMap,
+                                                 Map<String, Map<String, String>> fieldsMap,
                                                  Map<String, List<String>> accMethods,
                                                  Map<String, String> accFields) {
         if (startCls == null) {
@@ -56,29 +56,43 @@ public final class MappingUtils {
 
         while (!toSearch.isEmpty()) {
             Class<?> current = toSearch.poll();
-
             if (current == null || !seen.add(current)) {
                 continue;
             }
 
-            String yarn = r2y.get(current.getName());
-            if (yarn != null) {
-                Map<String, List<String>> mm = mMap.get(yarn);
-                if (mm != null) {
-                    mm.forEach(accMethods::putIfAbsent);
-                }
-
-                Map<String, String> fm = fMap.get(yarn);
-                if (fm != null) {
-                    fm.forEach(accFields::putIfAbsent);
-                }
-            }
-
-            if (current.getSuperclass() != null) {
-                toSearch.add(current.getSuperclass());
-            }
-            toSearch.addAll(Arrays.asList(current.getInterfaces()));
+            collectMappingsForClass(current, runtimeToYarn, methodsMap, fieldsMap, accMethods, accFields);
+            enqueueParentTypes(current, toSearch);
         }
+    }
+
+    private static void collectMappingsForClass(Class<?> cls,
+                                                Map<String, String> runtimeToYarn,
+                                                Map<String, Map<String, List<String>>> methodsMap,
+                                                Map<String, Map<String, String>> fieldsMap,
+                                                Map<String, List<String>> accMethods,
+                                                Map<String, String> accFields) {
+        String yarnName = runtimeToYarn.get(cls.getName());
+        if (yarnName == null) {
+            return;
+        }
+
+        Map<String, List<String>> methods = methodsMap.get(yarnName);
+        if (methods != null) {
+            methods.forEach(accMethods::putIfAbsent);
+        }
+
+        Map<String, String> fields = fieldsMap.get(yarnName);
+        if (fields != null) {
+            fields.forEach(accFields::putIfAbsent);
+        }
+    }
+
+    private static void enqueueParentTypes(Class<?> cls, Queue<Class<?>> queue) {
+        Class<?> superclass = cls.getSuperclass();
+        if (superclass != null) {
+            queue.add(superclass);
+        }
+        Collections.addAll(queue, cls.getInterfaces());
     }
 
     public record ClassMappings(

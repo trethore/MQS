@@ -44,59 +44,62 @@ public final class EventSubscriptionOptions {
         if (optionsValue == null) {
             return of(defaultPhase);
         }
-        if (optionsValue.isHostObject()) {
-            Object hostObject = optionsValue.asHostObject();
-            if (hostObject instanceof EventSubscriptionOptions options) {
-                return options;
-            }
-            if (hostObject instanceof Builder builder) {
-                return builder.buildWithDefault(defaultPhase);
-            }
-            if (hostObject instanceof EventPhase eventPhase) {
-                return of(eventPhase);
-            }
+
+        EventSubscriptionOptions fromHost = tryExtractFromHost(optionsValue, defaultPhase);
+        if (fromHost != null) {
+            return fromHost;
         }
-        if (optionsValue.hasMembers() && optionsValue.hasMember(PHASE_PROP)) {
-            EventPhase resolved = resolvePhaseValue(optionsValue.getMember(PHASE_PROP));
-            if (resolved != null) {
-                return of(resolved);
-            }
-        } else {
-            EventPhase resolved = resolvePhaseValue(optionsValue);
-            if (resolved != null) {
-                return of(resolved);
-            }
+
+        Value phaseSource = optionsValue.hasMembers() && optionsValue.hasMember(PHASE_PROP)
+                ? optionsValue.getMember(PHASE_PROP)
+                : optionsValue;
+
+        EventPhase resolved = resolvePhaseValue(phaseSource);
+        return of(resolved != null ? resolved : defaultPhase);
+    }
+
+    private static EventSubscriptionOptions tryExtractFromHost(Value value, EventPhase defaultPhase) {
+        if (!value.isHostObject()) {
+            return null;
         }
-        return of(defaultPhase);
+        return switch (value.asHostObject()) {
+            case EventSubscriptionOptions options -> options;
+            case Builder builder -> builder.buildWithDefault(defaultPhase);
+            case EventPhase eventPhase -> of(eventPhase);
+            default -> null;
+        };
     }
 
     public static EventPhase resolvePhaseValue(Value phaseValue) {
         if (phaseValue == null) {
             return null;
         }
+
         if (phaseValue.isHostObject()) {
-            Object hostObject = phaseValue.asHostObject();
-            if (hostObject instanceof EventPhase eventPhase) {
-                return eventPhase;
-            }
-            if (hostObject instanceof EventSubscriptionOptions options) {
-                return options.phase();
-            }
-            if (hostObject instanceof Builder builder) {
-                return builder.peekPhase();
-            }
+            return switch (phaseValue.asHostObject()) {
+                case EventPhase eventPhase -> eventPhase;
+                case EventSubscriptionOptions options -> options.phase();
+                case Builder builder -> builder.peekPhase();
+                default -> null;
+            };
         }
+
         if (phaseValue.isString()) {
-            String phaseName = phaseValue.asString();
-            if (phaseName != null && !phaseName.isEmpty()) {
-                try {
-                    return EventPhase.valueOf(phaseName.toUpperCase(Locale.ROOT));
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Invalid phase '" + phaseName + "'. Use PRE or POST.", e);
-                }
-            }
+            return parsePhaseString(phaseValue.asString());
         }
+
         return null;
+    }
+
+    private static EventPhase parsePhaseString(String phaseName) {
+        if (phaseName == null || phaseName.isEmpty()) {
+            return null;
+        }
+        try {
+            return EventPhase.valueOf(phaseName.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid phase '" + phaseName + "'. Use PRE or POST.", e);
+        }
     }
 
     public EventPhase phase() {

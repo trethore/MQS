@@ -59,20 +59,7 @@ public class CommandBuilder {
     @HostAccess.Export
     public CommandBuilder executes(Value callback) {
         this.builder.executes(context -> {
-            RunningScript previous = scriptManager.getCurrentScript();
-            scriptManager.setCurrentScript(owner);
-            try {
-                Value jsInstance = owner.getJsInstance();
-                callback.invokeMember("call", jsInstance, new JSCommandContext(context));
-            } catch (Exception e) {
-                Main.LOGGER.error("Error executing command in script '{}': {}", owner.getName(), e.getMessage(), e);
-            } finally {
-                if (previous != null) {
-                    scriptManager.setCurrentScript(previous);
-                } else {
-                    scriptManager.clearCurrentScript();
-                }
-            }
+            withScriptContext(() -> invokeCallback(callback, context));
             return CommandManager.COMMAND_SUCCESS;
         });
         return this;
@@ -83,7 +70,6 @@ public class CommandBuilder {
         return executes(callback);
     }
 
-
     @HostAccess.Export
     public CommandBuilder suggests(Value callback) {
         if (callback == null) {
@@ -92,25 +78,11 @@ public class CommandBuilder {
 
         RequiredArgumentBuilder<FabricClientCommandSource, ?> argBuilder = requireArgumentBuilder();
         argBuilder.suggests((context, suggestionsBuilder) -> {
-            RunningScript previous = scriptManager.getCurrentScript();
-            scriptManager.setCurrentScript(this.owner);
-            try {
-                Value jsInstance = this.owner.getJsInstance();
-                Value result = callback.canExecute()
-                        ? callback.invokeMember("call", jsInstance, new JSCommandContext(context))
-                        : callback;
-
+            withScriptContext(() -> {
+                Value result = invokeOrReturn(callback, context);
                 Value resolved = awaitIfPromise(result);
                 appendSuggestions(resolved, suggestionsBuilder);
-            } catch (Throwable t) {
-                Main.LOGGER.error("Error executing suggestion provider for script '{}'", this.owner.getName(), t);
-            } finally {
-                if (previous != null) {
-                    scriptManager.setCurrentScript(previous);
-                } else {
-                    scriptManager.clearCurrentScript();
-                }
-            }
+            });
             return suggestionsBuilder.buildFuture();
         });
         return this;
@@ -121,31 +93,74 @@ public class CommandBuilder {
         return suggests(callback);
     }
 
+    private void withScriptContext(Runnable action) {
+        RunningScript previous = scriptManager.getCurrentScript();
+        scriptManager.setCurrentScript(owner);
+        try {
+            action.run();
+        } catch (Exception e) {
+            Main.LOGGER.error("Error in script '{}': {}", owner.getName(), e.getMessage(), e);
+        } finally {
+            restoreScriptContext(previous);
+        }
+    }
+
+    private void restoreScriptContext(RunningScript previous) {
+        if (previous != null) {
+            scriptManager.setCurrentScript(previous);
+        } else {
+            scriptManager.clearCurrentScript();
+        }
+    }
+
+    private void invokeCallback(Value callback, com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> context) {
+        Value jsInstance = owner.getJsInstance();
+        callback.invokeMember("call", jsInstance, new JSCommandContext(context));
+    }
+
+    private Value invokeOrReturn(Value callback, com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> context) {
+        if (!callback.canExecute()) {
+            return callback;
+        }
+        Value jsInstance = owner.getJsInstance();
+        return callback.invokeMember("call", jsInstance, new JSCommandContext(context));
+    }
+
     private Value awaitIfPromise(Value value) {
-        if (value == null || !value.hasMember("then")) {
+        if (!isPromise(value)) {
             return value;
         }
 
         try {
-            CompletableFuture<Value> future = new CompletableFuture<>();
-            value.invokeMember("then", (ProxyExecutable) args -> {
-                Value resolved = args != null && args.length > 0 ? args[0] : null;
-                future.complete(resolved);
-                return null;
-            });
-            if (value.hasMember("catch")) {
-                value.invokeMember("catch", (ProxyExecutable) args -> {
-                    if (!future.isDone()) {
-                        future.complete(null);
-                    }
-                    return null;
-                });
-            }
-            return future.join();
+            return awaitPromise(value);
         } catch (Exception e) {
-            Main.LOGGER.error("Failed to await promise suggestions for script '{}'", this.owner.getName(), e);
+            Main.LOGGER.error("Failed to await promise suggestions for script '{}'", owner.getName(), e);
             return null;
         }
+    }
+
+    private boolean isPromise(Value value) {
+        return value != null && value.hasMember("then");
+    }
+
+    private Value awaitPromise(Value promise) {
+        CompletableFuture<Value> future = new CompletableFuture<>();
+
+        promise.invokeMember("then", (ProxyExecutable) args -> {
+            future.complete(args != null && args.length > 0 ? args[0] : null);
+            return null;
+        });
+
+        if (promise.hasMember("catch")) {
+            promise.invokeMember("catch", (ProxyExecutable) args -> {
+                if (!future.isDone()) {
+                    future.complete(null);
+                }
+                return null;
+            });
+        }
+
+        return future.join();
     }
 
     private void appendSuggestions(Value suggestions, SuggestionsBuilder builder) {

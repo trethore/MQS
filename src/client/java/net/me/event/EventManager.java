@@ -54,24 +54,22 @@ public class EventManager {
             return;
         }
 
-        // PRE phase
-        List<Listener> preListeners = phaseListeners.get(EventPhase.PRE);
-        if (preListeners != null) {
-            for (Listener listener : preListeners) {
-                executeListener(listener, event, EventPhase.PRE);
-            }
-        }
+        executePhase(phaseListeners, event, EventPhase.PRE);
 
-        if (event instanceof CancellableEvent && ((CancellableEvent) event).isCancelled()) {
+        if (event instanceof CancellableEvent cancellable && cancellable.isCancelled()) {
             return;
         }
 
-        // POST phase
-        List<Listener> postListeners = phaseListeners.get(EventPhase.POST);
-        if (postListeners != null) {
-            for (Listener listener : postListeners) {
-                executeListener(listener, event, EventPhase.POST);
-            }
+        executePhase(phaseListeners, event, EventPhase.POST);
+    }
+
+    private void executePhase(Map<EventPhase, List<Listener>> phaseListeners, Event event, EventPhase phase) {
+        List<Listener> phaseSpecificListeners = phaseListeners.get(phase);
+        if (phaseSpecificListeners == null) {
+            return;
+        }
+        for (Listener listener : phaseSpecificListeners) {
+            executeListener(listener, event, phase);
         }
     }
 
