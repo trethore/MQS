@@ -25,25 +25,25 @@ import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 public class LazyJsClassHolder implements ProxyObject, ProxyInstantiable {
-    private final String yarnName;
+    private final String namedClassName;
     private final String runtimeName;
     private final ScriptingClassResolver classResolver;
 
     private JsClassWrapper resolvedWrapper;
 
-    public LazyJsClassHolder(String yarnName, String runtimeName, ScriptingClassResolver classResolver) {
-        this.yarnName = yarnName;
+    public LazyJsClassHolder(String namedClassName, String runtimeName, ScriptingClassResolver classResolver) {
+        this.namedClassName = namedClassName;
         this.runtimeName = runtimeName;
         this.classResolver = classResolver;
     }
 
     public JsClassWrapper getWrapper() {
         if (resolvedWrapper == null) {
-            Main.LOGGER.debug("Lazy loading JsClassWrapper for {} -> {}", yarnName, runtimeName);
+            Main.LOGGER.debug("Lazy loading JsClassWrapper for {} -> {}", namedClassName, runtimeName);
             try {
                 resolvedWrapper = classResolver.createActualJsClassWrapper(runtimeName);
             } catch (ClassNotFoundException e) {
-                throw new IllegalStateException("Cannot lazy-load class " + yarnName + ": class not found", e);
+                throw new IllegalStateException("Cannot lazy-load class " + namedClassName + ": class not found", e);
             }
         }
         return resolvedWrapper;

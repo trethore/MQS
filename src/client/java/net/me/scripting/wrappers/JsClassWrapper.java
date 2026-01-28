@@ -47,8 +47,8 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     @Getter
     private final Class<?> targetClass;
     private final String targetClassName;
-    private final Map<String, List<String>> yarnToRuntimeMethods;
-    private final Map<String, String> yarnToRuntimeFields;
+    private final Map<String, List<String>> namedToRuntimeMethods;
+    private final Map<String, String> namedToRuntimeFields;
     private final List<Constructor<?>> constructors;
     private final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
@@ -64,8 +64,8 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         Main.LOGGER.debug("Creating JsClassWrapper for: {}", runtimeFqcn);
         this.targetClass = Class.forName(runtimeFqcn);
         this.targetClassName = targetClass.getName();
-        this.yarnToRuntimeMethods = Map.copyOf(methodLookup);
-        this.yarnToRuntimeFields = Map.copyOf(fieldLookup);
+        this.namedToRuntimeMethods = Map.copyOf(methodLookup);
+        this.namedToRuntimeFields = Map.copyOf(fieldLookup);
         this.constructors = List.of(targetClass.getConstructors());
         this.constructors.forEach(c -> c.setAccessible(true));
 
@@ -88,8 +88,8 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
             return getExplicitFieldMember(key);
         }
 
-        if (yarnToRuntimeMethods.containsKey(key)) {
-            return createStaticMethodProxyFromYarnKey(key);
+        if (namedToRuntimeMethods.containsKey(key)) {
+            return createStaticMethodProxyFromNamedKey(key);
         }
 
         List<Method> directMethods = ReflectionUtils.findMethods(targetClass, List.of(key), true);
@@ -97,7 +97,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
             return createStaticMethodProxyFromMethods(directMethods, key);
         }
 
-        if (yarnToRuntimeFields.containsKey(key)) {
+        if (namedToRuntimeFields.containsKey(key)) {
             return readStaticField(key);
         }
 
@@ -106,7 +106,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
 
     private Object getExplicitFieldMember(String key) {
         String fieldName = key.substring(0, key.length() - 1);
-        if (yarnToRuntimeFields.containsKey(fieldName)) {
+        if (namedToRuntimeFields.containsKey(fieldName)) {
             return readStaticField(fieldName);
         }
         return null;
@@ -118,9 +118,9 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
             return true;
         }
         if (key.endsWith(WrapperConstants.FIELD_SUFFIX)) {
-            return yarnToRuntimeFields.containsKey(key.substring(0, key.length() - 1));
+            return namedToRuntimeFields.containsKey(key.substring(0, key.length() - 1));
         }
-        if (yarnToRuntimeMethods.containsKey(key) || yarnToRuntimeFields.containsKey(key)) {
+        if (namedToRuntimeMethods.containsKey(key) || namedToRuntimeFields.containsKey(key)) {
             return true;
         }
         return !ReflectionUtils.findMethods(targetClass, List.of(key), true).isEmpty();
@@ -130,9 +130,9 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     public Object getMemberKeys() {
         Set<String> keys = new LinkedHashSet<>();
         keys.add(WrapperConstants.CLASS);
-        keys.addAll(yarnToRuntimeMethods.keySet());
-        keys.addAll(yarnToRuntimeFields.keySet());
-        yarnToRuntimeFields.keySet().forEach(field -> keys.add(field + WrapperConstants.FIELD_SUFFIX));
+        keys.addAll(namedToRuntimeMethods.keySet());
+        keys.addAll(namedToRuntimeFields.keySet());
+        namedToRuntimeFields.keySet().forEach(field -> keys.add(field + WrapperConstants.FIELD_SUFFIX));
         collectStaticMethodNames(keys);
         return keys.toArray(String[]::new);
     }
@@ -150,11 +150,11 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         boolean isExplicitFieldAccess = key.endsWith(WrapperConstants.FIELD_SUFFIX);
         String fieldName = isExplicitFieldAccess ? key.substring(0, key.length() - 1) : key;
 
-        if (!yarnToRuntimeFields.containsKey(fieldName)) {
+        if (!namedToRuntimeFields.containsKey(fieldName)) {
             throw new UnsupportedOperationException("No writable static member: " + key);
         }
 
-        if (!isExplicitFieldAccess && yarnToRuntimeMethods.containsKey(fieldName)) {
+        if (!isExplicitFieldAccess && namedToRuntimeMethods.containsKey(fieldName)) {
             throw new UnsupportedOperationException(
                     "Ambiguous write to static member '" + fieldName + "'. A static method with this name exists. " +
                             "Use the '$' suffix to write to the field directly: " + fieldName + WrapperConstants.FIELD_SUFFIX
@@ -243,81 +243,81 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
         return new IllegalStateException(message, cause);
     }
 
-    private ProxyExecutable createStaticMethodProxyFromYarnKey(String yarnKey) {
-        List<String> runtimeNames = yarnToRuntimeMethods.get(yarnKey);
+    private ProxyExecutable createStaticMethodProxyFromNamedKey(String namedKey) {
+        List<String> runtimeNames = namedToRuntimeMethods.get(namedKey);
         List<Method> methods = ReflectionUtils.findMethods(targetClass, runtimeNames, true);
-        return createStaticMethodProxyFromMethods(methods, yarnKey);
+        return createStaticMethodProxyFromMethods(methods, namedKey);
     }
 
-    private Object readStaticField(String yarnKey) {
-        String runtimeName = yarnToRuntimeFields.get(yarnKey);
+    private Object readStaticField(String namedKey) {
+        String runtimeName = namedToRuntimeFields.get(namedKey);
         Field field;
         try {
             field = ReflectionUtils.findField(targetClass, runtimeName);
         } catch (NoSuchFieldException e) {
             throw new IllegalStateException(
-                    String.format("Static field %s.%s not found", targetClassName, yarnKey), e);
+                    String.format("Static field %s.%s not found", targetClassName, namedKey), e);
         }
 
-        validateStaticField(field, yarnKey);
-        return getFieldValue(field, yarnKey);
+        validateStaticField(field, namedKey);
+        return getFieldValue(field, namedKey);
     }
 
-    private void validateStaticField(Field field, String yarnKey) {
+    private void validateStaticField(Field field, String namedKey) {
         if (!Modifier.isStatic(field.getModifiers())) {
-            throw new IllegalStateException(yarnKey + " is not a static field.");
+            throw new IllegalStateException(namedKey + " is not a static field.");
         }
     }
 
-    private Object getFieldValue(Field field, String yarnKey) {
+    private Object getFieldValue(Field field, String namedKey) {
         try {
             MethodHandle getter = FastAccessorUtils.getFieldGetter(field);
             return ScriptUtils.wrapReturn(getter.invoke(), mappingsManager, scriptManager);
         } catch (Throwable e) {
             throw new IllegalStateException(
-                    String.format("Error accessing static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
+                    String.format("Error accessing static field %s.%s: %s", targetClassName, namedKey, e.getMessage()), e);
         }
     }
 
-    private void writeStaticField(String yarnKey, Value value) {
-        String runtimeName = yarnToRuntimeFields.get(yarnKey);
+    private void writeStaticField(String namedKey, Value value) {
+        String runtimeName = namedToRuntimeFields.get(namedKey);
         Field field;
         try {
             field = ReflectionUtils.findField(targetClass, runtimeName);
         } catch (NoSuchFieldException e) {
             throw new IllegalStateException(
-                    String.format("Static field %s.%s not found", targetClassName, yarnKey), e);
+                    String.format("Static field %s.%s not found", targetClassName, namedKey), e);
         }
 
-        validateWritableStaticField(field, yarnKey);
-        setFieldValue(field, value, yarnKey);
+        validateWritableStaticField(field, namedKey);
+        setFieldValue(field, value, namedKey);
     }
 
-    private void validateWritableStaticField(Field field, String yarnKey) {
+    private void validateWritableStaticField(Field field, String namedKey) {
         if (!Modifier.isStatic(field.getModifiers())) {
-            throw new UnsupportedOperationException("Cannot write to non-static field '" + yarnKey + "' via class proxy.");
+            throw new UnsupportedOperationException("Cannot write to non-static field '" + namedKey + "' via class proxy.");
         }
         if (Modifier.isFinal(field.getModifiers())) {
-            throw new UnsupportedOperationException("Cannot modify final static field '" + yarnKey + "'.");
+            throw new UnsupportedOperationException("Cannot modify final static field '" + namedKey + "'.");
         }
     }
 
-    private void setFieldValue(Field field, Value value, String yarnKey) {
+    private void setFieldValue(Field field, Value value, String namedKey) {
         try {
             Object javaVal = ScriptUtils.unwrapArgs(new Value[]{value}, new Class[]{field.getType()})[0];
             MethodHandle setter = FastAccessorUtils.getFieldSetter(field);
             setter.invoke(javaVal);
         } catch (Throwable e) {
             throw new IllegalStateException(
-                    String.format("Error setting static field %s.%s: %s", targetClassName, yarnKey, e.getMessage()), e);
+                    String.format("Error setting static field %s.%s: %s", targetClassName, namedKey, e.getMessage()), e);
         }
     }
 
     public Map<String, List<String>> getMethodMappings() {
-        return yarnToRuntimeMethods;
+        return namedToRuntimeMethods;
     }
 
     public Map<String, String> getFieldMappings() {
-        return yarnToRuntimeFields;
+        return namedToRuntimeFields;
     }
 }

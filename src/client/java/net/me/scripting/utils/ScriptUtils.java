@@ -154,7 +154,7 @@ public final class ScriptUtils {
         }
 
         MappingUtils.ClassMappings cm = MappingUtils.combineMappings(c,
-                mappingsManager.getRuntimeToYarnClassMap(),
+                mappingsManager.getRuntimeToNamedClassMap(),
                 mappingsManager.getMethodMap(),
                 mappingsManager.getFieldMap());
 

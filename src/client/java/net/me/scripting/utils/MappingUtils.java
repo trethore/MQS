@@ -29,19 +29,19 @@ public final class MappingUtils {
     }
 
     public static ClassMappings combineMappings(Class<?> cls,
-                                                Map<String, String> runtimeToYarn,
+                                                Map<String, String> runtimeToNamed,
                                                 Map<String, Map<String, List<String>>> methodsMap,
                                                 Map<String, Map<String, String>> fieldsMap) {
         return MAPPINGS_CACHE.computeIfAbsent(cls, c -> {
             Map<String, List<String>> methods = new LinkedHashMap<>();
             Map<String, String> fields = new LinkedHashMap<>();
-            combineMappingsIterative(c, runtimeToYarn, methodsMap, fieldsMap, methods, fields);
+            combineMappingsIterative(c, runtimeToNamed, methodsMap, fieldsMap, methods, fields);
             return new ClassMappings(methods, fields);
         });
     }
 
     private static void combineMappingsIterative(Class<?> startCls,
-                                                 Map<String, String> runtimeToYarn,
+                                                 Map<String, String> runtimeToNamed,
                                                  Map<String, Map<String, List<String>>> methodsMap,
                                                  Map<String, Map<String, String>> fieldsMap,
                                                  Map<String, List<String>> accMethods,
@@ -60,28 +60,28 @@ public final class MappingUtils {
                 continue;
             }
 
-            collectMappingsForClass(current, runtimeToYarn, methodsMap, fieldsMap, accMethods, accFields);
+            collectMappingsForClass(current, runtimeToNamed, methodsMap, fieldsMap, accMethods, accFields);
             enqueueParentTypes(current, toSearch);
         }
     }
 
     private static void collectMappingsForClass(Class<?> cls,
-                                                Map<String, String> runtimeToYarn,
+                                                Map<String, String> runtimeToNamed,
                                                 Map<String, Map<String, List<String>>> methodsMap,
                                                 Map<String, Map<String, String>> fieldsMap,
                                                 Map<String, List<String>> accMethods,
                                                 Map<String, String> accFields) {
-        String yarnName = runtimeToYarn.get(cls.getName());
-        if (yarnName == null) {
+        String namedName = runtimeToNamed.get(cls.getName());
+        if (namedName == null) {
             return;
         }
 
-        Map<String, List<String>> methods = methodsMap.get(yarnName);
+        Map<String, List<String>> methods = methodsMap.get(namedName);
         if (methods != null) {
             methods.forEach(accMethods::putIfAbsent);
         }
 
-        Map<String, String> fields = fieldsMap.get(yarnName);
+        Map<String, String> fields = fieldsMap.get(namedName);
         if (fields != null) {
             fields.forEach(accFields::putIfAbsent);
         }

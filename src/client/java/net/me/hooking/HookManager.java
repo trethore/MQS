@@ -58,64 +58,64 @@ public class HookManager {
         installAgent();
     }
 
-    public void hook(RunningScript owner, Class<?> targetClass, String yarnMethodName, Value jsCallback, HookOptions options) {
+    public void hook(RunningScript owner, Class<?> targetClass, String namedMethodName, Value jsCallback, HookOptions options) {
         if (!isValidCallback(jsCallback)) {
             Main.LOGGER.error("Script '{}' attempted to hook method '{}' in class '{}' with an invalid callback.",
-                    owner.getName(), yarnMethodName, targetClass.getName());
+                    owner.getName(), namedMethodName, targetClass.getName());
             return;
         }
 
-        HookIdentifier hookId = createHookIdentifier(targetClass, yarnMethodName, options);
+        HookIdentifier hookId = createHookIdentifier(targetClass, namedMethodName, options);
 
         if (isAlreadyHookedByScript(owner, hookId)) {
             Main.LOGGER.warn("Script '{}' has already hooked '{}' with argCount {} in mode {}. Unhook first to replace.",
-                    owner.getName(), yarnMethodName, hookId.argCount(), hookId.mode());
+                    owner.getName(), namedMethodName, hookId.argCount(), hookId.mode());
             return;
         }
 
-        String[] runtimeNames = resolveRuntimeMethodNames(targetClass, yarnMethodName);
+        String[] runtimeNames = resolveRuntimeMethodNames(targetClass, namedMethodName);
         if (runtimeNames.length == 0) {
-            Main.LOGGER.error("Could not resolve yarn method name '{}' for class '{}'. Hooking failed.",
-                    yarnMethodName, targetClass.getName());
+            Main.LOGGER.error("Could not resolve named method '{}' for class '{}'. Hooking failed.",
+                    namedMethodName, targetClass.getName());
             return;
         }
 
         registerHook(owner, targetClass, hookId, runtimeNames, jsCallback);
-        retransformClass(targetClass, owner, yarnMethodName, hookId);
+        retransformClass(targetClass, owner, namedMethodName, hookId);
     }
 
-    public void unhookSingle(RunningScript owner, Class<?> targetClass, String yarnMethodName, Integer argCount, HookExecutionMode mode) {
-        HookIdentifier toRemove = new HookIdentifier(targetClass, yarnMethodName, argCount, mode);
+    public void unhookSingle(RunningScript owner, Class<?> targetClass, String namedMethodName, Integer argCount, HookExecutionMode mode) {
+        HookIdentifier toRemove = new HookIdentifier(targetClass, namedMethodName, argCount, mode);
         Main.LOGGER.debug("HookManager.unhookSingle: Received request for {}", toRemove);
 
         if (!isOwnedByScript(owner, toRemove)) {
             Main.LOGGER.warn("Script '{}' attempted to unhook '{}' (argCount: {}, mode: {}), which it does not own.",
-                    owner.getName(), yarnMethodName, argCount, mode);
+                    owner.getName(), namedMethodName, argCount, mode);
             return;
         }
 
-        unregisterFromInterceptor(targetClass, yarnMethodName, owner, argCount, mode);
+        unregisterFromInterceptor(targetClass, namedMethodName, owner, argCount, mode);
         removeFromScriptOwnership(owner, toRemove);
-        cleanupClassHooks(targetClass, toRemove, yarnMethodName, mode);
+        cleanupClassHooks(targetClass, toRemove, namedMethodName, mode);
     }
 
-    public void unhookAllForMethod(RunningScript owner, Class<?> targetClass, String yarnMethodName) {
+    public void unhookAllForMethod(RunningScript owner, Class<?> targetClass, String namedMethodName) {
         Set<HookIdentifier> owned = scriptOwnedHooks.get(owner);
         if (owned == null) {
             return;
         }
 
         List<HookIdentifier> hooksToRemove = owned.stream()
-                .filter(id -> id.targetClass().equals(targetClass) && id.yarnMethodName().equals(yarnMethodName))
+                .filter(id -> id.targetClass().equals(targetClass) && id.namedMethodName().equals(namedMethodName))
                 .toList();
 
         if (hooksToRemove.isEmpty()) {
             Main.LOGGER.warn("Script '{}' attempted to unhook method '{}', but no matching hooks were found.",
-                    owner.getName(), yarnMethodName);
+                    owner.getName(), namedMethodName);
             return;
         }
 
-        hooksToRemove.forEach(id -> unhookSingle(owner, targetClass, yarnMethodName, id.argCount(), id.mode()));
+        hooksToRemove.forEach(id -> unhookSingle(owner, targetClass, namedMethodName, id.argCount(), id.mode()));
     }
 
     public void unhookAllForScript(RunningScript owner) {
@@ -202,9 +202,9 @@ public class HookManager {
     }
 
     private ElementMatcher.Junction<MethodDescription> buildMatcherForHook(Class<?> targetClass, HookIdentifier hook) {
-        String[] runtimeNames = resolveRuntimeMethodNames(targetClass, hook.yarnMethodName());
+        String[] runtimeNames = resolveRuntimeMethodNames(targetClass, hook.namedMethodName());
         Main.LOGGER.debug("Updating matcher: processing hook for '{}'. Resolved runtime names: {}",
-                hook.yarnMethodName(), Arrays.asList(runtimeNames));
+                hook.namedMethodName(), Arrays.asList(runtimeNames));
 
         ElementMatcher.Junction<MethodDescription> matcher = ElementMatchers.namedOneOf(runtimeNames);
 
@@ -220,10 +220,10 @@ public class HookManager {
         return jsCallback != null && jsCallback.canExecute();
     }
 
-    private HookIdentifier createHookIdentifier(Class<?> targetClass, String yarnMethodName, HookOptions options) {
+    private HookIdentifier createHookIdentifier(Class<?> targetClass, String namedMethodName, HookOptions options) {
         HookOptions resolved = options != null ? options : HookOptions.builder().mode(HookExecutionMode.BEFORE).build();
         HookExecutionMode mode = resolved.mode() != null ? resolved.mode() : HookExecutionMode.BEFORE;
-        return new HookIdentifier(targetClass, yarnMethodName, resolved.argCount(), mode);
+        return new HookIdentifier(targetClass, namedMethodName, resolved.argCount(), mode);
     }
 
     private boolean isAlreadyHookedByScript(RunningScript owner, HookIdentifier hookId) {
@@ -251,23 +251,23 @@ public class HookManager {
         updateMatcherForClass(targetClass);
     }
 
-    private void retransformClass(Class<?> targetClass, RunningScript owner, String yarnMethodName, HookIdentifier hookId) {
+    private void retransformClass(Class<?> targetClass, RunningScript owner, String namedMethodName, HookIdentifier hookId) {
         try {
             Main.LOGGER.debug("HookManager.hook: Requesting re-transformation of class: {}", targetClass.getName());
             instrumentation.retransformClasses(targetClass);
             Main.LOGGER.info("Successfully requested hook for method '{}' (argCount: {}, mode: {}) in class '{}' for script '{}'.",
-                    yarnMethodName, hookId.argCount() == null ? "any" : hookId.argCount(),
+                    namedMethodName, hookId.argCount() == null ? "any" : hookId.argCount(),
                     hookId.mode(), targetClass.getSimpleName(), owner.getName());
         } catch (Exception e) {
             Main.LOGGER.error("Failed to trigger hook for method '{}' in class '{}' for script '{}'. Cleaning up...",
-                    yarnMethodName, targetClass.getName(), owner.getName(), e);
-            unhookSingle(owner, targetClass, yarnMethodName, hookId.argCount(), hookId.mode());
+                    namedMethodName, targetClass.getName(), owner.getName(), e);
+            unhookSingle(owner, targetClass, namedMethodName, hookId.argCount(), hookId.mode());
         }
     }
 
-    private void unregisterFromInterceptor(Class<?> targetClass, String yarnMethodName, RunningScript owner,
+    private void unregisterFromInterceptor(Class<?> targetClass, String namedMethodName, RunningScript owner,
                                            Integer argCount, HookExecutionMode mode) {
-        String[] runtimeNames = resolveRuntimeMethodNames(targetClass, yarnMethodName);
+        String[] runtimeNames = resolveRuntimeMethodNames(targetClass, namedMethodName);
         for (String runtimeName : runtimeNames) {
             String interceptorId = generateInterceptorId(targetClass, runtimeName);
             HookInterceptor.unregister(interceptorId, owner, argCount, mode);
@@ -285,7 +285,7 @@ public class HookManager {
         }
     }
 
-    private void cleanupClassHooks(Class<?> targetClass, HookIdentifier removed, String yarnMethodName, HookExecutionMode mode) {
+    private void cleanupClassHooks(Class<?> targetClass, HookIdentifier removed, String namedMethodName, HookExecutionMode mode) {
         Set<HookIdentifier> methodsOnClass = hookedMethods.get(targetClass);
         if (methodsOnClass == null) {
             return;
@@ -300,7 +300,7 @@ public class HookManager {
             removeClassFromTracking(targetClass);
         } else {
             Main.LOGGER.info("Successfully unregistered hook for '{}' (mode: {}) on class '{}'. Other hooks remain.",
-                    yarnMethodName, mode, targetClass.getSimpleName());
+                    namedMethodName, mode, targetClass.getSimpleName());
         }
 
         safeRetransform(targetClass);
@@ -332,7 +332,7 @@ public class HookManager {
         }
 
         for (HookIdentifier id : hooksToRemove) {
-            unregisterFromInterceptor(targetClass, id.yarnMethodName(), owner, id.argCount(), id.mode());
+            unregisterFromInterceptor(targetClass, id.namedMethodName(), owner, id.argCount(), id.mode());
         }
 
         updateMatcherForClass(targetClass);
@@ -344,22 +344,22 @@ public class HookManager {
         safeRetransform(targetClass);
     }
 
-    private String[] resolveRuntimeMethodNames(Class<?> targetClass, String yarnMethodName) {
+    private String[] resolveRuntimeMethodNames(Class<?> targetClass, String namedMethodName) {
         MappingUtils.ClassMappings classMappings = MappingUtils.combineMappings(
                 targetClass,
-                mappingsManager.getRuntimeToYarnClassMap(),
+                mappingsManager.getRuntimeToNamedClassMap(),
                 mappingsManager.getMethodMap(),
                 mappingsManager.getFieldMap()
         );
 
-        List<String> runtimeNames = classMappings.methods().get(yarnMethodName);
+        List<String> runtimeNames = classMappings.methods().get(namedMethodName);
         if (runtimeNames != null && !runtimeNames.isEmpty()) {
             return runtimeNames.toArray(new String[0]);
         }
 
         return Arrays.stream(targetClass.getMethods())
                 .map(Method::getName)
-                .filter(name -> name.equals(yarnMethodName))
+                .filter(name -> name.equals(namedMethodName))
                 .distinct()
                 .toArray(String[]::new);
     }
@@ -368,7 +368,7 @@ public class HookManager {
         return targetClass.getName() + "::" + methodName;
     }
 
-    private record HookIdentifier(Class<?> targetClass, String yarnMethodName, Integer argCount,
+    private record HookIdentifier(Class<?> targetClass, String namedMethodName, Integer argCount,
                                   HookExecutionMode mode) {
     }
 }

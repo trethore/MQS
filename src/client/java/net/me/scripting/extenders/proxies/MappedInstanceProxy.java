@@ -33,7 +33,7 @@ public class MappedInstanceProxy implements ProxyObject {
 
         MappingUtils.ClassMappings cm = MappingUtils.combineMappings(
                 extendedInstance.getClass(),
-                resolver.getRuntimeToYarnMap(),
+                resolver.getRuntimeToNamedMap(),
                 resolver.getMethodMap(),
                 resolver.getFieldMap()
         );

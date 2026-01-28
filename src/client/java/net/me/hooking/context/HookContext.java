@@ -36,8 +36,8 @@ public class HookContext {
     private final MappingsManager mappingsManager;
     private final ScriptManager scriptManager;
 
-    private String yarnMethodName;
-    private String yarnClassName;
+    private String namedMethodName;
+    private String namedClassName;
 
     public HookContext(Object instance, Method method, StackWalker stackWalker, MappingsManager mappingsManager, ScriptManager scriptManager) {
         this.instance = instance;
@@ -86,27 +86,27 @@ public class HookContext {
     }
 
     @HostAccess.Export
-    public String getYarnMethodClass() {
-        if (yarnClassName == null) {
-            yarnClassName = mappingsManager.getRuntimeToYarnClassMap().getOrDefault(method.getDeclaringClass().getName(), method.getDeclaringClass().getName());
+    public String getNamedMethodClass() {
+        if (namedClassName == null) {
+            namedClassName = mappingsManager.getRuntimeToNamedClassMap().getOrDefault(method.getDeclaringClass().getName(), method.getDeclaringClass().getName());
         }
-        return yarnClassName;
+        return namedClassName;
     }
 
     @HostAccess.Export
-    public String getYarnMethod() {
-        if (yarnMethodName != null) {
-            return yarnMethodName;
+    public String getNamedMethod() {
+        if (namedMethodName != null) {
+            return namedMethodName;
         }
 
-        String declaringClassYarnName = getYarnMethodClass();
-        Map<String, List<String>> methodsForClass = mappingsManager.getMethodMap().get(declaringClassYarnName);
+        String declaringClassNamedName = getNamedMethodClass();
+        Map<String, List<String>> methodsForClass = mappingsManager.getMethodMap().get(declaringClassNamedName);
 
-        this.yarnMethodName = findYarnMethodName(methodsForClass, method.getName());
-        return this.yarnMethodName;
+        this.namedMethodName = findNamedMethodName(methodsForClass, method.getName());
+        return this.namedMethodName;
     }
 
-    private String findYarnMethodName(Map<String, List<String>> methodsForClass, String runtimeName) {
+    private String findNamedMethodName(Map<String, List<String>> methodsForClass, String runtimeName) {
         if (methodsForClass == null) {
             return runtimeName;
         }

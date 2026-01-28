@@ -48,7 +48,7 @@ public class ScriptingApi {
     public static ProxyExecutable createImportClassProxy(ScriptingClassResolver resolver, Context context) {
         return args -> {
             if (args.length == 0 || !args[0].isString()) {
-                throw new IllegalArgumentException("importClass requires a FQCN string argument (Yarn mappings).");
+                throw new IllegalArgumentException("importClass requires a FQCN string argument (named mappings).");
             }
             String name = args[0].asString();
             if (!resolver.isClassAllowed(name)) {
@@ -97,7 +97,7 @@ public class ScriptingApi {
         }
         Class<?> instanceClass = javaInstance.getClass();
         MappingUtils.ClassMappings cm = MappingUtils.combineMappings(
-                instanceClass, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
+                instanceClass, resolver.getRuntimeToNamedMap(), resolver.getMethodMap(), resolver.getFieldMap());
 
         return new JsObjectWrapper(
                 javaInstance,
@@ -307,9 +307,9 @@ public class ScriptingApi {
         if (wrapperInfo == null || wrapperInfo.wrapper() == null) {
             return null;
         }
-        String yarnName = resolveYarnName(wrapperInfo, resolver);
+        String namedClassName = resolveNamedClassName(wrapperInfo, resolver);
         JsClassWrapper wrapper = wrapperInfo.wrapper();
-        return new MappedClassInfo(yarnName, wrapper.getTargetClass(), wrapper.getMethodMappings(), wrapper.getFieldMappings());
+        return new MappedClassInfo(namedClassName, wrapper.getTargetClass(), wrapper.getMethodMappings(), wrapper.getFieldMappings());
     }
 
     private static MappedClassInfo extractInfoFromExtender(Object proxy) {
@@ -328,28 +328,28 @@ public class ScriptingApi {
 
     private static WrapperInfo extractWrapperInfo(Object proxy) {
         return switch (proxy) {
-            case LazyJsClassHolder holder -> new WrapperInfo(holder.getWrapper(), readLazyYarnName(holder));
+            case LazyJsClassHolder holder -> new WrapperInfo(holder.getWrapper(), readLazyNamedClassName(holder));
             case JsClassWrapper wrapper -> new WrapperInfo(wrapper, null);
             default -> null;
         };
     }
 
-    private static String readLazyYarnName(LazyJsClassHolder holder) {
+    private static String readLazyNamedClassName(LazyJsClassHolder holder) {
         try {
-            Field yarnNameField = LazyJsClassHolder.class.getDeclaredField("yarnName");
-            yarnNameField.setAccessible(true);
-            return (String) yarnNameField.get(holder);
+            Field namedClassNameField = LazyJsClassHolder.class.getDeclaredField("namedClassName");
+            namedClassNameField.setAccessible(true);
+            return (String) namedClassNameField.get(holder);
         } catch (ReflectiveOperationException _) {
             return null;
         }
     }
 
-    private static String resolveYarnName(WrapperInfo wrapperInfo, ScriptingClassResolver resolver) {
-        if (wrapperInfo.yarnName() != null) {
-            return wrapperInfo.yarnName();
+    private static String resolveNamedClassName(WrapperInfo wrapperInfo, ScriptingClassResolver resolver) {
+        if (wrapperInfo.namedClassName() != null) {
+            return wrapperInfo.namedClassName();
         }
         String runtimeName = wrapperInfo.wrapper().getTargetClass().getName();
-        return resolver.getRuntimeToYarnMap().getOrDefault(runtimeName, runtimeName);
+        return resolver.getRuntimeToNamedMap().getOrDefault(runtimeName, runtimeName);
     }
 
     private static MappedClassInfo extractInfoFromHostClass(Value value, ScriptingClassResolver resolver) {
@@ -357,10 +357,10 @@ public class ScriptingApi {
             return null;
         }
         Class<?> clazz = value.as(Class.class);
-        String yarnName = resolver.getRuntimeToYarnMap().get(clazz.getName());
-        if (yarnName != null) {
-            MappingUtils.ClassMappings cm = MappingUtils.combineMappings(clazz, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
-            return new MappedClassInfo(yarnName, clazz, cm.methods(), cm.fields());
+        String namedClassName = resolver.getRuntimeToNamedMap().get(clazz.getName());
+        if (namedClassName != null) {
+            MappingUtils.ClassMappings cm = MappingUtils.combineMappings(clazz, resolver.getRuntimeToNamedMap(), resolver.getMethodMap(), resolver.getFieldMap());
+            return new MappedClassInfo(namedClassName, clazz, cm.methods(), cm.fields());
         }
         return new MappedClassInfo(clazz.getName(), clazz, Collections.emptyMap(), Collections.emptyMap());
     }
@@ -372,6 +372,6 @@ public class ScriptingApi {
                                      Value parentSuper) {
     }
 
-    private record WrapperInfo(JsClassWrapper wrapper, String yarnName) {
+    private record WrapperInfo(JsClassWrapper wrapper, String namedClassName) {
     }
 }

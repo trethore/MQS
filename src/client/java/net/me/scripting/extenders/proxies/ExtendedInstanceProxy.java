@@ -191,7 +191,7 @@ public class ExtendedInstanceProxy implements ProxyObject {
     public String toString() {
         return String.format("[MQS Extended Instance: %s (extends %s)]",
                 this.baseInstance.getClass().getName(),
-                this.getOriginalConfig().extendsClass().yarnName());
+                this.getOriginalConfig().extendsClass().namedClassName());
     }
 
     private enum ProxyType {

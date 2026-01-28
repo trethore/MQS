@@ -213,7 +213,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         } else {
             List<MappedClassInfo> targets = findTargetsForMethod(jsMethodName);
             if (targets.size() > 1) {
-                List<String> targetNames = targets.stream().map(MappedClassInfo::yarnName).toList();
+                List<String> targetNames = targets.stream().map(MappedClassInfo::namedClassName).toList();
                 throw new IllegalArgumentException("Ambiguous override for method '" + jsMethodName + "'. It exists in multiple places: " + targetNames + ". Please specify the target: { overrides: { '" + jsMethodName + "': { '" + targetNames.getFirst() + "': fn } } }");
             }
             if (targets.isEmpty()) {
@@ -230,7 +230,7 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
             if (!jsFunction.canExecute()) {
                 throw new IllegalArgumentException("Value for FQCN '" + fqcn + "' in override for '" + jsMethodName + "' must be a function.");
             }
-            MappedClassInfo target = findTargetByYarnName(fqcn);
+            MappedClassInfo target = findTargetByNamedClassName(fqcn);
             if (target == null) {
                 Main.LOGGER.warn("Override for '{}' specified target '{}' which was not found in the list of extended/implemented types.", jsMethodName, fqcn);
                 continue;
@@ -252,11 +252,11 @@ public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
         return found;
     }
 
-    private MappedClassInfo findTargetByYarnName(String yarnName) {
-        if (config.extendsClass().yarnName().equals(yarnName)) {
+    private MappedClassInfo findTargetByNamedClassName(String namedClassName) {
+        if (config.extendsClass().namedClassName().equals(namedClassName)) {
             return config.extendsClass();
         }
-        return config.implementsClasses().stream().filter(info -> info.yarnName().equals(yarnName)).findFirst().orElse(null);
+        return config.implementsClasses().stream().filter(info -> info.namedClassName().equals(namedClassName)).findFirst().orElse(null);
     }
 
     private Value mergeJSObjects(Value parent, Value child) {

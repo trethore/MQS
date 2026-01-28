@@ -53,7 +53,7 @@ public class ScriptingClassResolver {
     private Map<String, Map<String, List<String>>> methodMap;
     @Getter
     private Map<String, Map<String, String>> fieldMap;
-    private Map<String, String> runtimeToYarn;
+    private Map<String, String> runtimeToNamed;
     private Set<String> knownPackagePrefixes;
 
     private ScriptingClassResolver() {
@@ -76,7 +76,7 @@ public class ScriptingClassResolver {
         classMap = mappingsManager.getClassMap();
         methodMap = mappingsManager.getMethodMap();
         fieldMap = mappingsManager.getFieldMap();
-        runtimeToYarn = mappingsManager.getRuntimeToYarnClassMap();
+        runtimeToNamed = mappingsManager.getRuntimeToNamedClassMap();
     }
 
     private void precomputePackagePrefixes() {
@@ -161,12 +161,12 @@ public class ScriptingClassResolver {
         return knownPackagePrefixes.contains(path);
     }
 
-    public String getRuntimeName(String yarnName) {
-        return classMap.get(yarnName);
+    public String getRuntimeName(String namedName) {
+        return classMap.get(namedName);
     }
 
-    public Map<String, String> getRuntimeToYarnMap() {
-        return runtimeToYarn;
+    public Map<String, String> getRuntimeToNamedMap() {
+        return runtimeToNamed;
     }
 
     public Set<String> getKnownPackagePrefixes() {
@@ -210,7 +210,7 @@ public class ScriptingClassResolver {
 
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
-        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
+        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(cls, runtimeToNamed, methodMap, fieldMap);
         return new JsClassWrapper(runtime, cm.methods(), cm.fields(), this.mappingsManager, this.scriptManager);
     }
 
