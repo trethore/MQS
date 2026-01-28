@@ -28,9 +28,11 @@ import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 @SuppressWarnings("unused")
 public class PlayerRespawnEvent extends Event {
     private final LocalPlayer player;
+    private final ClientboundRespawnPacket packet;
 
     public PlayerRespawnEvent(ClientboundRespawnPacket packet, LocalPlayer player) {
         this.player = player;
+        this.packet = packet;
     }
 
     @Override

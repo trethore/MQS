@@ -18,6 +18,7 @@
 
 package net.me.scripting.wrappers;
 
+import lombok.Getter;
 import net.me.Main;
 import net.me.scripting.engine.ScriptingClassResolver;
 import org.graalvm.polyglot.Value;
@@ -25,6 +26,7 @@ import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 public class LazyJsClassHolder implements ProxyObject, ProxyInstantiable {
+    @Getter
     private final String namedClassName;
     private final String runtimeName;
     private final ScriptingClassResolver classResolver;

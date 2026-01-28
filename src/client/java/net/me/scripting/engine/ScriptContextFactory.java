@@ -123,17 +123,18 @@ public class ScriptContextFactory {
         addApiMember(bindings, "exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
 
         Map<String, Object> mqsMembers = new HashMap<>();
+        EventsAPI eventsApi = new EventsAPI(this.eventManager, this.scriptManager);
+        ConfigAPI configApi = new ConfigAPI(this.configManager, this.scriptManager);
+        KeybindsAPI keybindsApi = new KeybindsAPI(this.keybindManager, this.scriptManager);
+        CommandsAPI commandsApi = new CommandsAPI(this.scriptManager, this.commandApiService);
+        HooksAPI hooksApi = new HooksAPI(this.hookManager, this.scriptManager, this.classResolver);
+
+        mqsMembers.put("events", eventsApi);
+        mqsMembers.put("config", configApi);
+        mqsMembers.put("keybinds", keybindsApi);
+        mqsMembers.put("commands", commandsApi);
+        mqsMembers.put("hooks", hooksApi);
         mqsMembers.put("utils", new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler));
-        mqsMembers.put("eventManager", new EventAPI(this.eventManager, this.scriptManager));
-        mqsMembers.put("events", new EventsHelperAPI(this.eventManager, this.scriptManager));
-        mqsMembers.put("configManager", new ConfigAPI(this.configManager, this.scriptManager));
-        mqsMembers.put("config", new ConfigHelperAPI(this.configManager, this.scriptManager));
-        mqsMembers.put("keybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
-        mqsMembers.put("keybinds", new KeybindsAPI(this.keybindManager, this.scriptManager));
-        mqsMembers.put("commandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
-        mqsMembers.put("commands", new CommandsHelperAPI(this.scriptManager, this.commandApiService));
-        mqsMembers.put("hookManager", new HookAPI(this.hookManager, this.scriptManager, this.classResolver));
-        mqsMembers.put("hooks", new HooksAPI(this.hookManager, this.scriptManager, this.classResolver));
 
         addApiMember(bindings, "MQS", ProxyObject.fromMap(mqsMembers));
 

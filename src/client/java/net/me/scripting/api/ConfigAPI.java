@@ -20,27 +20,42 @@ package net.me.scripting.api;
 
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static net.me.scripting.api.ApiConstants.*;
 
 public class ConfigAPI implements ProxyObject {
 
-    private static final Set<String> MEMBER_KEYS = Set.of(GET, SET, HAS, SAVE, LOAD, GET_ALL);
+    private static final Set<String> MEMBER_KEYS = Set.of(
+            GET,
+            SET,
+            HAS,
+            SAVE,
+            LOAD,
+            GET_ALL,
+            GET_BOOL,
+            GET_NUMBER,
+            GET_STRING
+    );
     private final ConfigManager configManager;
-    private final ScriptManager scriptManager;
+    private final ScriptContextHelper contextHelper;
 
     public ConfigAPI(ConfigManager configManager, ScriptManager scriptManager) {
         this.configManager = configManager;
-        this.scriptManager = scriptManager;
+        this.contextHelper = new ScriptContextHelper(scriptManager);
     }
 
-    static Object toSerializableObject(Value value) {
+    public static Object toSerializableObject(Value value) {
         if (value == null || value.isNull()) {
             return null;
         }
@@ -73,18 +88,10 @@ public class ConfigAPI implements ProxyObject {
         return value;
     }
 
-    private RunningScript getCurrentScript() {
-        RunningScript script = scriptManager.getCurrentScript();
-        if (script == null) {
-            throw new IllegalStateException("Config API can only be used within a running script context (e.g., onEnable, onDisable, or an event).");
-        }
-        return script;
-    }
-
     @Override
     public Object getMember(String key) {
         return (ProxyExecutable) args -> {
-            RunningScript script = getCurrentScript();
+            RunningScript script = contextHelper.require("Config API");
             switch (key) {
                 case GET: {
                     ApiArgumentChecks.requireArgCountAtLeast(args, 1, "Config.get requires at least one argument (key).");
@@ -101,6 +108,43 @@ public class ConfigAPI implements ProxyObject {
                     Object value = toSerializableObject(args[1]);
                     configManager.set(script.getId(), configKey, value);
                     return null;
+                }
+                case GET_BOOL: {
+                    ApiArgumentChecks.requireArgCountAtLeast(args, 1, "Config.getBool requires at least one argument (key).");
+                    boolean defaultValue = args.length > 1 && coerceBoolean(args[1]);
+                    Object stored = readRaw(script, args, defaultValue);
+                    if (stored instanceof Boolean value) {
+                        return value;
+                    }
+                    if (stored instanceof Number number) {
+                        return number.intValue() != 0;
+                    }
+                    if (stored instanceof String text) {
+                        return Boolean.parseBoolean(text);
+                    }
+                    return defaultValue;
+                }
+                case GET_NUMBER: {
+                    ApiArgumentChecks.requireArgCountAtLeast(args, 1, "Config.getNumber requires at least one argument (key).");
+                    double defaultValue = args.length > 1 ? coerceNumber(args[1]) : 0D;
+                    Object stored = readRaw(script, args, defaultValue);
+                    if (stored instanceof Number number) {
+                        return number.doubleValue();
+                    }
+                    if (stored instanceof String text) {
+                        try {
+                            return Double.parseDouble(text);
+                        } catch (NumberFormatException _) {
+                            return defaultValue;
+                        }
+                    }
+                    return defaultValue;
+                }
+                case GET_STRING: {
+                    ApiArgumentChecks.requireArgCountAtLeast(args, 1, "Config.getString requires at least one argument (key).");
+                    String defaultValue = args.length > 1 && args[1] != null ? args[1].toString() : null;
+                    Object stored = readRaw(script, args, defaultValue);
+                    return stored != null ? stored.toString() : defaultValue;
                 }
                 case HAS: {
                     ApiArgumentChecks.requireArgCount(args, 1, "Config.has requires one argument (key).");
@@ -126,6 +170,50 @@ public class ConfigAPI implements ProxyObject {
                     throw new UnsupportedOperationException("Unsupported Config operation: " + key);
             }
         };
+    }
+
+    private Object readRaw(RunningScript script, Value[] args, Object defaultValue) {
+        if (args.length == 0) {
+            throw new IllegalArgumentException("Config helpers require a key.");
+        }
+        if (!args[0].isString()) {
+            throw new IllegalArgumentException("Config key must be a string.");
+        }
+        Object stored = configManager.get(script.getId(), args[0].asString());
+        return stored != null ? stored : defaultValue;
+    }
+
+    private boolean coerceBoolean(Value value) {
+        if (value == null) {
+            return false;
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isNumber()) {
+            return value.asInt() != 0;
+        }
+        if (value.isString()) {
+            return Boolean.parseBoolean(value.asString());
+        }
+        return false;
+    }
+
+    private double coerceNumber(Value value) {
+        if (value == null) {
+            return 0D;
+        }
+        if (value.isNumber()) {
+            return value.asDouble();
+        }
+        if (value.isString()) {
+            try {
+                return Double.parseDouble(value.asString());
+            } catch (NumberFormatException _) {
+                return 0D;
+            }
+        }
+        return 0D;
     }
 
     @Override

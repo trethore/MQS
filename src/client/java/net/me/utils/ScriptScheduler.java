@@ -94,18 +94,7 @@ public class ScriptScheduler {
         if (!guard.compareAndSet(false, true)) {
             return;
         }
-        synchronized (tasks) {
-            if (tasks.remove(task)) {
-                Set<ScheduledTask> owned = tasksByScript.get(task.owner());
-                if (owned != null) {
-                    owned.remove(task);
-                    if (owned.isEmpty()) {
-                        tasksByScript.remove(task.owner());
-                    }
-                }
-            }
-        }
-        task.markCancelled();
+        cancelTaskInternal(task);
     }
 
     private void cancelTaskInternal(ScheduledTask task) {
@@ -135,23 +124,25 @@ public class ScriptScheduler {
         }
 
         for (ScheduledTask task : snapshot) {
-            if (task.isCancelled()) {
-                continue;
-            }
-            try {
-                if (!task.shouldRun(tickCounter, now)) {
-                    continue;
-                }
-                executeTask(task);
-                if (task.isInterval()) {
-                    task.reschedule(tickCounter, now);
-                } else {
-                    cancelTaskInternal(task);
-                }
-            } catch (Exception e) {
-                Main.LOGGER.error("Error running scheduled task for script '{}'", task.owner().getName(), e);
+            processTask(task, tickCounter, now);
+        }
+    }
+
+    private void processTask(ScheduledTask task, long currentTick, long now) {
+        if (task.isCancelled() || !task.shouldRun(currentTick, now)) {
+            return;
+        }
+
+        try {
+            executeTask(task);
+            if (task.isInterval()) {
+                task.reschedule(currentTick, now);
+            } else {
                 cancelTaskInternal(task);
             }
+        } catch (Exception e) {
+            Main.LOGGER.error("Error running scheduled task for script '{}'", task.owner().getName(), e);
+            cancelTaskInternal(task);
         }
     }
 

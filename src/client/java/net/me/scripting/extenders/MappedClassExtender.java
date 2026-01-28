@@ -18,6 +18,7 @@
 
 package net.me.scripting.extenders;
 
+import lombok.Getter;
 import net.me.Main;
 import net.me.scripting.WrapperConstants;
 import net.me.scripting.config.ExtensionConfig;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 public class MappedClassExtender implements ProxyObject, ProxyInstantiable {
     private static final String BIND_METHOD = "bind";
 
+    @Getter
     private final ExtensionConfig config;
     private final Context context;
     private final Value baseAdapterConstructor;

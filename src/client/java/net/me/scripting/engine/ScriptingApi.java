@@ -35,7 +35,6 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
-import java.lang.reflect.Field;
 import java.util.*;
 
 public class ScriptingApi {
@@ -316,32 +315,15 @@ public class ScriptingApi {
         if (!(proxy instanceof MappedClassExtender extender)) {
             return null;
         }
-        try {
-            Field configField = MappedClassExtender.class.getDeclaredField("config");
-            configField.setAccessible(true);
-            ExtensionConfig parentConfig = (ExtensionConfig) configField.get(extender);
-            return parentConfig.extendsClass();
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Could not extract config from parent MappedClassExtender.", e);
-        }
+        return extender.getConfig().extendsClass();
     }
 
     private static WrapperInfo extractWrapperInfo(Object proxy) {
         return switch (proxy) {
-            case LazyJsClassHolder holder -> new WrapperInfo(holder.getWrapper(), readLazyNamedClassName(holder));
+            case LazyJsClassHolder holder -> new WrapperInfo(holder.getWrapper(), holder.getNamedClassName());
             case JsClassWrapper wrapper -> new WrapperInfo(wrapper, null);
             default -> null;
         };
-    }
-
-    private static String readLazyNamedClassName(LazyJsClassHolder holder) {
-        try {
-            Field namedClassNameField = LazyJsClassHolder.class.getDeclaredField("namedClassName");
-            namedClassNameField.setAccessible(true);
-            return (String) namedClassNameField.get(holder);
-        } catch (ReflectiveOperationException _) {
-            return null;
-        }
     }
 
     private static String resolveNamedClassName(WrapperInfo wrapperInfo, ScriptingClassResolver resolver) {

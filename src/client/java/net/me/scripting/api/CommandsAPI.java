@@ -20,6 +20,8 @@ package net.me.scripting.api;
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.api.internal.HandleTracker;
+import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.commands.CommandBuilder;
 import net.me.scripting.commands.ScriptArgumentType;
@@ -35,14 +37,27 @@ import static net.me.scripting.api.ApiConstants.*;
 
 public class CommandsAPI implements ProxyObject {
 
-    private static final Set<String> MEMBER_KEYS = Set.of(BUILDER, LITERAL, ARGUMENT, REGISTER, UNREGISTER, UNREGISTER_ALL, ARG_TYPE);
+    private static final Set<String> MEMBER_KEYS = Set.of(
+            BUILDER,
+            LITERAL,
+            ARGUMENT,
+            REGISTER,
+            UNREGISTER,
+            UNREGISTER_ALL,
+            ARG_TYPE,
+            REGISTER_LITERAL
+    );
     private static final ProxyObject ARG_TYPE_PROXY = createArgTypeProxy();
     private final CommandAPIService service;
     private final ScriptManager scriptManager;
+    private final ScriptContextHelper contextHelper;
+    private final HandleTracker<String> commandTracker;
 
     public CommandsAPI(ScriptManager scriptManager, CommandAPIService service) {
         this.scriptManager = scriptManager;
         this.service = service;
+        this.contextHelper = new ScriptContextHelper(scriptManager);
+        this.commandTracker = new HandleTracker<>();
     }
 
     private static ProxyObject createArgTypeProxy() {
@@ -73,21 +88,13 @@ public class CommandsAPI implements ProxyObject {
         };
     }
 
-    private RunningScript getCurrentScript() {
-        RunningScript script = scriptManager.getCurrentScript();
-        if (script == null) {
-            throw new IllegalStateException("Commands API can only be used within a running script context (e.g., onEnable, onDisable, or an event).");
-        }
-        return script;
-    }
-
     @Override
     public Object getMember(String key) {
         if (ARG_TYPE.equals(key)) {
             return ARG_TYPE_PROXY;
         }
 
-        return (ProxyExecutable) args -> executeCommand(key, args, getCurrentScript());
+        return (ProxyExecutable) args -> executeCommand(key, args, contextHelper.require("Commands API"));
     }
 
     @Override
@@ -113,6 +120,7 @@ public class CommandsAPI implements ProxyObject {
             case REGISTER -> register(args, owner);
             case UNREGISTER -> unregister(args, owner);
             case UNREGISTER_ALL -> unregisterAll(args, owner);
+            case REGISTER_LITERAL -> registerLiteral(args, owner);
             default -> throw new UnsupportedOperationException("Unsupported Commands operation: " + key);
         };
     }
@@ -124,9 +132,19 @@ public class CommandsAPI implements ProxyObject {
     }
 
     private CommandBuilder buildLiteral(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 1, "Commands.literal(name) requires one string argument.");
+        ApiArgumentChecks.requireArgCountAtLeast(args, 1, "Commands.literal(name) requires one string argument.");
         String name = ApiArgumentChecks.requireString(args, 0, "Commands.literal(name) requires one string argument.");
-        return new CommandBuilder(ClientCommandManager.literal(name), owner, this.scriptManager);
+        CommandBuilder builder = new CommandBuilder(ClientCommandManager.literal(name), owner, this.scriptManager);
+        if (args.length > 1) {
+            Value configure = args[1];
+            if (configure != null && configure.canExecute()) {
+                contextHelper.executeWithScript(owner, () -> {
+                    Value jsInstance = owner.getJsInstance();
+                    configure.invokeMember("call", jsInstance, builder);
+                });
+            }
+        }
+        return builder;
     }
 
     private CommandBuilder buildArgument(Value[] args, RunningScript owner) {
@@ -137,23 +155,45 @@ public class CommandsAPI implements ProxyObject {
         return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, this.scriptManager);
     }
 
-    private Void register(Value[] args, RunningScript owner) {
+    private Value register(Value[] args, RunningScript owner) {
         ApiArgumentChecks.requireArgCount(args, 1, "Commands.register(builder) requires one argument.");
         CommandBuilder builder = ApiArgumentChecks.requireHostObject(args, 0, CommandBuilder.class, "Argument must be a CommandBuilder instance.");
         service.register(owner, builder);
-        return null;
+        String commandName = builder.getRootBuilder().getLiteral();
+        commandTracker.track(owner, commandName);
+        return contextHelper.createIdempotentDisposer(owner, () -> {
+            service.unregister(owner, commandName);
+            commandTracker.remove(owner, commandName);
+        });
     }
 
     private Void unregister(Value[] args, RunningScript owner) {
         ApiArgumentChecks.requireArgCount(args, 1, "Commands.unregister(commandName) requires one string argument.");
         String commandName = ApiArgumentChecks.requireString(args, 0, "Commands.unregister(commandName) requires one string argument.");
         service.unregister(owner, commandName);
+        commandTracker.remove(owner, commandName);
         return null;
     }
 
     private Void unregisterAll(Value[] args, RunningScript owner) {
         ApiArgumentChecks.requireArgCount(args, 0, "Commands.unregisterAll() takes no arguments.");
         service.unregisterAllFor(owner);
+        commandTracker.disposeAll(owner, _ -> {
+        });
         return null;
+    }
+
+    private Value registerLiteral(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCountAtLeast(args, 2, "Commands.registerLiteral(name, handler) requires a name and handler.");
+        String name = ApiArgumentChecks.requireString(args, 0, "Commands.registerLiteral(name, handler) requires a name and handler.");
+        Value handler = ApiArgumentChecks.requireExecutable(args, 1, "Handler must be executable.");
+        CommandBuilder builder = new CommandBuilder(name, owner, scriptManager);
+        builder.executes(handler);
+        service.register(owner, builder);
+        commandTracker.track(owner, name);
+        return contextHelper.createIdempotentDisposer(owner, () -> {
+            service.unregister(owner, name);
+            commandTracker.remove(owner, name);
+        });
     }
 }

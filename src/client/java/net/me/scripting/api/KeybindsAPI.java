@@ -22,6 +22,8 @@ import net.me.keybinds.KeybindManager;
 import net.me.keybinds.KeybindOptions;
 import net.me.keybinds.Keys;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.api.internal.HandleTracker;
+import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.module.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -34,32 +36,39 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static net.me.scripting.api.ApiConstants.*;
 
 public class KeybindsAPI implements ProxyObject {
+    private static final String REGISTER_USAGE = "Usage: MQS.keybinds.register('name', actionFunction, { key, repeatable, debounce })";
     private static final Set<String> MEMBER_KEYS = Set.of(
             KEYBIND_BIND,
             KEYBIND_BIND_TOGGLE,
             KEYBIND_UNBIND,
             KEYBIND_UNBIND_ALL,
             KEY_KEYS,
-            OPTIONS
+            OPTIONS,
+            REGISTER,
+            UNREGISTER,
+            UNREGISTER_ALL,
+            KEYS
     );
 
     private final KeybindManager keybindManager;
-    private final ScriptManager scriptManager;
+    private final ScriptContextHelper contextHelper;
+    private final HandleTracker<String> keybindTracker;
     private final ProxyObject keysProxy = createKeysProxy();
 
     public KeybindsAPI(KeybindManager keybindManager, ScriptManager scriptManager) {
         this.keybindManager = keybindManager;
-        this.scriptManager = scriptManager;
+        this.contextHelper = new ScriptContextHelper(scriptManager);
+        this.keybindTracker = new HandleTracker<>();
     }
 
     @Override
     public Object getMember(String key) {
         return switch (key) {
-            case KEY_KEYS -> keysProxy;
-            case OPTIONS -> (ProxyExecutable) _ -> getCurrentScript().getContext().asValue(KeybindOptions.builder());
+            case KEY_KEYS, KEYS -> keysProxy;
+            case OPTIONS -> (ProxyExecutable) _ -> contextHelper.require("Keybinds API").getContext().asValue(KeybindOptions.builder());
             case KEYBIND_BIND -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCountAtLeast(args, 3, "Usage: MQS.keybinds.bind(name, key, handler, options?)");
-                RunningScript owner = getCurrentScript();
+                RunningScript owner = contextHelper.require("Keybinds API");
                 String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
                 int keyCode = extractKeyCode(args[1]);
                 Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
@@ -70,7 +79,7 @@ public class KeybindsAPI implements ProxyObject {
             };
             case KEYBIND_BIND_TOGGLE -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCountAtLeast(args, 3, "Usage: MQS.keybinds.bindToggle(name, key, handler, options?)");
-                RunningScript owner = getCurrentScript();
+                RunningScript owner = contextHelper.require("Keybinds API");
                 String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
                 int keyCode = extractKeyCode(args[1]);
                 Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
@@ -91,14 +100,42 @@ public class KeybindsAPI implements ProxyObject {
             case KEYBIND_UNBIND -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCount(args, 1, "Usage: MQS.keybinds.unbind(name)");
                 String name = ApiArgumentChecks.requireString(args, 0, "Usage: MQS.keybinds.unbind(name)");
-                RunningScript owner = getCurrentScript();
+                RunningScript owner = contextHelper.require("Keybinds API");
                 keybindManager.unregister(owner, name);
+                keybindTracker.remove(owner, name);
                 return null;
             };
             case KEYBIND_UNBIND_ALL -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCount(args, 0, "Usage: MQS.keybinds.unbindAll()");
-                RunningScript owner = getCurrentScript();
+                RunningScript owner = contextHelper.require("Keybinds API");
                 keybindManager.unregister(owner);
+                keybindTracker.disposeAll(owner, _ -> {
+                });
+                return null;
+            };
+            case REGISTER -> (ProxyExecutable) args -> {
+                ApiArgumentChecks.requireArgCountAtLeast(args, 2, REGISTER_USAGE);
+                RunningScript owner = contextHelper.require("Keybinds API");
+                String name = ApiArgumentChecks.requireString(args, 0, REGISTER_USAGE);
+                Value action = ApiArgumentChecks.requireExecutable(args, 1, REGISTER_USAGE);
+                Value optionsArg = args.length > 2 ? args[2] : null;
+                KeybindOptions options = KeybindOptions.fromScript(optionsArg, Keys.UNBOUND.getCode());
+                return registerKeybind(owner, name, action, options);
+            };
+            case UNREGISTER -> (ProxyExecutable) args -> {
+                ApiArgumentChecks.requireArgCount(args, 1, "Usage: MQS.keybinds.unregister('name')");
+                String name = ApiArgumentChecks.requireString(args, 0, "Usage: MQS.keybinds.unregister('name')");
+                RunningScript owner = contextHelper.require("Keybinds API");
+                keybindManager.unregister(owner, name);
+                keybindTracker.remove(owner, name);
+                return null;
+            };
+            case UNREGISTER_ALL -> (ProxyExecutable) args -> {
+                ApiArgumentChecks.requireArgCount(args, 0, "Usage: MQS.keybinds.unregisterAll()");
+                RunningScript owner = contextHelper.require("Keybinds API");
+                keybindManager.unregister(owner);
+                keybindTracker.disposeAll(owner, _ -> {
+                });
                 return null;
             };
             default -> null;
@@ -118,14 +155,6 @@ public class KeybindsAPI implements ProxyObject {
     @Override
     public void putMember(String key, Value value) {
         throw new UnsupportedOperationException("Cannot modify MQS.keybinds.");
-    }
-
-    private RunningScript getCurrentScript() {
-        RunningScript script = scriptManager.getCurrentScript();
-        if (script == null) {
-            throw new IllegalStateException("Keybind helpers can only be used from an active script.");
-        }
-        return script;
     }
 
     private int extractKeyCode(Value keyValue) {
@@ -161,14 +190,11 @@ public class KeybindsAPI implements ProxyObject {
 
     private Value registerKeybind(RunningScript owner, String name, Value handler, KeybindOptions options) {
         keybindManager.register(name, handler, owner, options);
-        AtomicBoolean disposed = new AtomicBoolean(false);
-        ProxyExecutable exec = _ -> {
-            if (disposed.compareAndSet(false, true)) {
-                keybindManager.unregister(owner, name);
-            }
-            return null;
-        };
-        return owner.getContext().asValue(exec);
+        keybindTracker.track(owner, name);
+        return contextHelper.createIdempotentDisposer(owner, () -> {
+            keybindManager.unregister(owner, name);
+            keybindTracker.remove(owner, name);
+        });
     }
 
     private ProxyObject createKeysProxy() {
