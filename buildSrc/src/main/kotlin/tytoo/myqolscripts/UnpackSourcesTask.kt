@@ -20,6 +20,22 @@ import javax.inject.Inject
  */
 abstract class UnpackSourcesTask : DefaultTask() {
 
+    companion object {
+        private const val JAR_SUFFIX = ".jar"
+        private const val SOURCES_SUFFIX = "-sources"
+        private const val SOURCES_JAR_SUFFIX = "-sources.jar"
+        private const val BACKUP_JAR_SUFFIX = ".backup.jar"
+        private const val MINECRAFT_CLIENT_PREFIX = "minecraft-clientOnly-"
+        private const val MINECRAFT_COMMON_PREFIX = "minecraft-common-"
+        private const val MINECRAFT_DIR_NAME = "minecraft"
+        private const val FABRIC_DIR_NAME = "fabric"
+        private const val COMMON_DIR_NAME = "common"
+        private const val CLIENT_DIR_NAME = "client"
+        private const val MINECRAFT_SOURCES_WARNING = "Could not locate minecraft sources jars in loom cache"
+        private const val FABRIC_NO_SOURCES_WARNING = "Fabric cache found but no sources jars were present"
+        private const val FABRIC_CACHE_MISSING_WARNING = "Fabric cache directory not found, skipping fabric unpack"
+    }
+
     // Input Properties
 
     @get:InputFiles
@@ -64,37 +80,32 @@ abstract class UnpackSourcesTask : DefaultTask() {
     private fun unpackSourceDependencies(outputDirFile: File) {
         sourceDeps.files.forEach { srcJar ->
             val baseName = srcJar.name
-                .replace(Regex("\\.jar$"), "")
-                .replace(Regex("-sources$"), "")
+                .removeSuffix(JAR_SUFFIX)
+                .removeSuffix(SOURCES_SUFFIX)
             val targetDir = File(outputDirFile, baseName)
-
-            fileSystemOperations.delete { delete(targetDir) }
-            fileSystemOperations.copy {
-                from(archiveOperations.zipTree(srcJar))
-                into(targetDir)
-            }
+            unpackJarSources(srcJar, targetDir)
         }
     }
 
     // Minecraft Sources
     private fun unpackMinecraftSources(outputDirFile: File) {
-        val minecraftClientSourcesJar = findMinecraftSourcesJar("minecraft-clientOnly-")
-        val minecraftCommonSourcesJar = findMinecraftSourcesJar("minecraft-common-")
+        val minecraftClientSourcesJar = findMinecraftSourcesJar(MINECRAFT_CLIENT_PREFIX)
+        val minecraftCommonSourcesJar = findMinecraftSourcesJar(MINECRAFT_COMMON_PREFIX)
 
         if (minecraftClientSourcesJar == null && minecraftCommonSourcesJar == null) {
-            logger.warn("Could not locate minecraft sources jars in loom cache")
+            logger.warn(MINECRAFT_SOURCES_WARNING)
             return
         }
 
-        val minecraftTarget = File(outputDirFile, "minecraft")
+        val minecraftTarget = File(outputDirFile, MINECRAFT_DIR_NAME)
         fileSystemOperations.delete { delete(minecraftTarget) }
         minecraftTarget.mkdirs()
 
         minecraftCommonSourcesJar?.let {
-            unpackJarSources(it, File(minecraftTarget, "common"))
+            unpackJarSources(it, File(minecraftTarget, COMMON_DIR_NAME))
         }
         minecraftClientSourcesJar?.let {
-            unpackJarSources(it, File(minecraftTarget, "client"))
+            unpackJarSources(it, File(minecraftTarget, CLIENT_DIR_NAME))
         }
     }
 
@@ -109,21 +120,14 @@ abstract class UnpackSourcesTask : DefaultTask() {
     }
 
     private fun findMinecraftSourcesJar(prefix: String): File? {
-        if (!minecraftCacheDir.isPresent) {
-            return null
-        }
-
-        val root = minecraftCacheDir.get().asFile
-        if (!root.exists()) {
-            return null
-        }
+        val root = existingDirectory(minecraftCacheDir) ?: return null
 
         return root.walkTopDown()
             .filter { it.isFile }
             .filter { file ->
                 file.name.startsWith(prefix) &&
-                    file.name.endsWith("-sources.jar") &&
-                    !file.name.endsWith(".backup.jar")
+                    file.name.endsWith(SOURCES_JAR_SUFFIX) &&
+                    !file.name.endsWith(BACKUP_JAR_SUFFIX)
             }
             .maxByOrNull { it.lastModified() }
     }
@@ -133,42 +137,40 @@ abstract class UnpackSourcesTask : DefaultTask() {
         val fabricJars = findFabricSourceJars()
 
         if (fabricJars.isEmpty()) {
-            if (fabricCacheDir.isPresent) {
-                logger.warn("Fabric cache found but no sources jars were present")
-            } else {
-                logger.warn("Fabric cache directory not found, skipping fabric unpack")
-            }
+            val warningMessage = if (fabricCacheDir.isPresent) FABRIC_NO_SOURCES_WARNING else FABRIC_CACHE_MISSING_WARNING
+            logger.warn(warningMessage)
             return
         }
 
-        val fabricTarget = File(outputDirFile, "fabric")
+        val fabricTarget = File(outputDirFile, FABRIC_DIR_NAME)
         fileSystemOperations.delete { delete(fabricTarget) }
         fabricTarget.mkdirs()
 
         fabricJars.forEach { jar ->
-            val moduleName = jar.name.replace(Regex("-sources\\.jar$"), "")
+            val moduleName = jar.name.removeSuffix(SOURCES_JAR_SUFFIX)
             val moduleTarget = File(fabricTarget, moduleName)
-
-            fileSystemOperations.delete { delete(moduleTarget) }
-            fileSystemOperations.copy {
-                from(archiveOperations.zipTree(jar))
-                into(moduleTarget)
-            }
+            unpackJarSources(jar, moduleTarget)
         }
     }
 
     private fun findFabricSourceJars(): List<File> {
-        if (!fabricCacheDir.isPresent) {
-            return emptyList()
-        }
-
-        val root = fabricCacheDir.get().asFile
-        if (!root.exists()) {
-            return emptyList()
-        }
+        val root = existingDirectory(fabricCacheDir) ?: return emptyList()
 
         return root.walkTopDown()
-            .filter { it.isFile && it.name.endsWith("-sources.jar") }
+            .filter { it.isFile && it.name.endsWith(SOURCES_JAR_SUFFIX) }
             .toList()
+    }
+
+    private fun existingDirectory(directoryProperty: DirectoryProperty): File? {
+        if (!directoryProperty.isPresent) {
+            return null
+        }
+
+        val directory = directoryProperty.get().asFile
+        if (!directory.exists()) {
+            return null
+        }
+
+        return directory
     }
 }

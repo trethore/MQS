@@ -46,56 +46,50 @@ config.
 
 ## General Coding Conventions
 
-- Target Java 25 with 4-space indentation and packages under `net.me.*`.
+- Target Java 25, use 4-space indentation, and keep packages under `tytoo.grapheneui*`.
 - Use PascalCase for classes, camelCase for methods and fields, and UPPER_SNAKE_CASE for constants.
-- Declare explicit types and avoid `var`; prefer descriptive names over one-letter identifiers.
-- Order members in Java classes consistently: static constants, static fields, instance fields, constructors, overridden
-  methods, public methods, protected/private helpers, then getters and setters at the bottom.
-- Import types rather than using fully qualified names inside method bodies.
-- When adding shared utilities, document behavior through clear method names and arguments rather than abstract
-  component hierarchies.
-- Avoid code comments unless documentation is explicitly requested.
-- Keep edits minimal and stylistically consistent with surrounding code; do not introduce unrelated refactors or new
-  formatting tools.
-- Assume contributors are working in IntelliJ IDEA; keep code free of IDE warnings.
-- If requirements are unclear or infeasible, request clarification before proceeding.
+- Use explicit types instead of `var`, and prefer descriptive names over one-letter identifiers.
+- Keep member order consistent in Java classes: static constants, static fields, instance fields, constructors, overridden
+  methods, public methods, protected and private helper methods, then getters and setters at the bottom.
+- Import types instead of using fully qualified names inside method bodies.
+- When adding shared utilities, express behavior through clear method names and arguments rather than abstract hierarchies.
+- Avoid comments unless documentation is explicitly requested.
+- Keep edits minimal and consistent with surrounding style; avoid unrelated refactors or formatting-only changes.
+- Assume contributors use IntelliJ IDEA, and keep code free of IDE warnings.
+- If requirements are unclear or infeasible, ask for clarification before proceeding.
 
 ## Java 25 Expectations
 
 - Assume Java 25 at runtime; use only stable features and avoid preview or incubator APIs.
 - Use modern Java 25 standard-library utilities (Streams, Optional, records) when they improve clarity.
+- Prefer unnamed variables (`_`) for intentionally unused variables, parameters, and caught exceptions.
+- When intentionally ignoring a caught exception, keep a short explanatory comment in the catch block.
 - Maintain explicit, readable control flow; avoid clever constructs that harm comprehension.
 
 ## Minecraft Integration Rules
 
-- The codebase targets Fabric for Minecraft 1.21.11 with official Mojang mappings; use APIs that exist in this
-  combination.
+- The codebase targets Fabric for Minecraft 1.21.11 with official Mojang mappings; use APIs that exist in this combination.
 - Prefer modern Fabric/Minecraft methods such as `Identifier.fromNamespaceAndPath(String string, String string2)` and
   up-to-date rendering APIs; avoid deprecated signatures.
-- Place new assets, mixin configs, and JSON metadata within `src/client/resources/`, keeping identifiers in the
-  `Main.MOD_ID` namespace.
+- Place new assets, mixin configs, and JSON metadata within `src/client/resources/`, keeping identifiers in the `Main.MOD_ID` namespace.
 - Integrate through established abstractions unless explicitly extending them.
 - Never reference loaders, mappings, or game versions beyond the configured target without explicit user approval.
 
 ## Dependencies & External Sources
 
 - Fabric Loader and Fabric API are versioned in `gradle.properties`; Fabric Loom integrates official Mojang mappings
-  into the client source set and remaps game classes during packaging. Keep these aligned with Minecraft `1.21.11`
-  before updating APIs.
+  into the client source set and remaps game classes during packaging. Keep these aligned with Minecraft `1.21.11` before updating APIs.
 - GraalVM JavaScript artifacts (`graal-sdk`, `truffle-api`, `js-language`, `js-scriptengine`) are bundled through
   Shadow, relocated to `net.me.libs.graalvm`, and used by the scripting engine.
-- Byte Buddy (`byte-buddy`, `byte-buddy-agent`) is shaded to `net.me.libs.bytebuddy` and powers runtime interception in
-  `HookManager`.
+- Byte Buddy (`byte-buddy`, `byte-buddy-agent`) is shaded to `net.me.libs.bytebuddy` and powers runtime interception in `HookManager`.
 - Lombok ships as a dependency; prefer its annotations to reduce boilerplate.
 - Library sources are fetched through the `sourceDeps` configuration (see `build.gradle.kts`) and unpacked per library using
   `./gradlew unpackSources` into `libs-src/<library>`. Use these sources to explore library source code.
 
 ## Testing & Verification
 
-- Do not run Gradle commands yourself; instead provide the exact command for the user to execute and state tooling
-  limitations clearly.
-- Encourage running `./gradlew compileJava` after changes, `./gradlew build` for full validation, and
-  `./gradlew runClient` to test UI flows.
+- Do not run Gradle commands yourself; instead provide the exact command for the user to execute and state tooling limitations clearly.
+- Encourage running `./gradlew compileJava` after changes, `./gradlew build` for full validation, and `./gradlew runDebugClient` to test UI flows.
 - Document manual validation steps and remaining risks before completing work.
 
 ## Pull Requests

@@ -20,6 +20,31 @@ version = property("mod_version")!!
 group = property("maven_group")!!
 
 val archivesBaseName: String = property("archives_base_name") as String
+val sourceDepsConfigurationName = "sourceDeps"
+val shadowConfigurationName = "shadow"
+val shadowJarTaskName = "shadowJar"
+val helpTaskGroup = "help"
+val licenseFileName = "LICENSE"
+val licenseArchiveName = "$archivesBaseName-LICENSE.txt"
+val fabricModMetadataFile = "fabric.mod.json"
+val processResourceTaskNames = listOf("processResources", "processClientResources")
+val javaSourceExtension = "java"
+val graalRelocationFrom = "org.graalvm"
+val graalRelocationTo = "net.me.libs.graalvm"
+val byteBuddyRelocationFrom = "net.bytebuddy"
+val byteBuddyRelocationTo = "net.me.libs.bytebuddy"
+
+val graalModules = listOf(
+    "org.graalvm.sdk" to "graal-sdk",
+    "org.graalvm.truffle" to "truffle-api",
+    "org.graalvm.js" to "js-language",
+    "org.graalvm.js" to "js-scriptengine"
+)
+val byteBuddyModules = listOf(
+    "net.bytebuddy" to "byte-buddy",
+    "net.bytebuddy" to "byte-buddy-agent"
+)
+val shadedModules = graalModules + byteBuddyModules
 
 base {
     archivesName.set(archivesBaseName)
@@ -64,28 +89,24 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
 
     // GraalVM (shaded)
-    shadow(implementation("org.graalvm.sdk:graal-sdk:$graalVersion")!!)
-    shadow(implementation("org.graalvm.truffle:truffle-api:$graalVersion")!!)
-    shadow(implementation("org.graalvm.js:js-language:$graalVersion")!!)
-    shadow(implementation("org.graalvm.js:js-scriptengine:$graalVersion")!!)
+    graalModules.forEach { (moduleGroup, moduleName) ->
+        val coordinate = "$moduleGroup:$moduleName:$graalVersion"
+        shadow(implementation(coordinate)!!)
+        sourceDeps("$coordinate:sources@jar")
+    }
 
     // ByteBuddy (shaded)
-    shadow(implementation("net.bytebuddy:byte-buddy:$bytebuddyVersion")!!)
-    shadow(implementation("net.bytebuddy:byte-buddy-agent:$bytebuddyVersion")!!)
+    byteBuddyModules.forEach { (moduleGroup, moduleName) ->
+        val coordinate = "$moduleGroup:$moduleName:$bytebuddyVersion"
+        shadow(implementation(coordinate)!!)
+        sourceDeps("$coordinate:sources@jar")
+    }
 
     // Lombok
     compileOnly("org.projectlombok:lombok:$lombokVersion")
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")
     "clientCompileOnly"("org.projectlombok:lombok:$lombokVersion")
     "clientAnnotationProcessor"("org.projectlombok:lombok:$lombokVersion")
-
-    // Source dependencies (for IDE browsing)
-    sourceDeps("org.graalvm.sdk:graal-sdk:$graalVersion:sources@jar")
-    sourceDeps("org.graalvm.truffle:truffle-api:$graalVersion:sources@jar")
-    sourceDeps("org.graalvm.js:js-language:$graalVersion:sources@jar")
-    sourceDeps("org.graalvm.js:js-scriptengine:$graalVersion:sources@jar")
-    sourceDeps("net.bytebuddy:byte-buddy:$bytebuddyVersion:sources@jar")
-    sourceDeps("net.bytebuddy:byte-buddy-agent:$bytebuddyVersion:sources@jar")
 
 }
 
@@ -115,34 +136,31 @@ val applyLicenseHeaders by tasks.registering {
             .replace("<year>", Year.now().value.toString())
         val firstHeaderLine = headerContent.lines().first()
 
-        sourceSets.forEach { sourceSet ->
-            sourceSet.java.srcDirs.forEach { srcDir ->
-                if (!srcDir.exists()) {
-                    return@forEach
-                }
-                srcDir.walkTopDown()
-                    .filter { it.isFile && it.name.endsWith(".java") }
-                    .forEach { file ->
-                        val content = file.readText(Charsets.UTF_8)
-                        if (content.startsWith(firstHeaderLine)) {
-                            return@forEach
-                        }
-                        println("Adding license header to: ${file.path}")
-                        file.writeText(headerContent + "\n\n" + content, Charsets.UTF_8)
-                    }
+        val javaSourceFiles = sourceSets.asSequence()
+            .flatMap { sourceSet -> sourceSet.java.srcDirs.asSequence() }
+            .filter { srcDir -> srcDir.exists() }
+            .flatMap { srcDir -> srcDir.walkTopDown() }
+            .filter { sourceFile -> sourceFile.isFile && sourceFile.extension == javaSourceExtension }
+
+        javaSourceFiles.forEach { sourceFile ->
+            val content = sourceFile.readText(Charsets.UTF_8)
+            if (content.startsWith(firstHeaderLine)) {
+                return@forEach
             }
+            println("Adding license header to: ${sourceFile.path}")
+            sourceFile.writeText(headerContent + "\n\n" + content, Charsets.UTF_8)
         }
     }
 }
 
 // Resource Processing
 
-listOf("processResources", "processClientResources").forEach { taskName ->
+processResourceTaskNames.forEach { taskName ->
     tasks.named<ProcessResources>(taskName) {
         dependsOn(applyLicenseHeaders)
         inputs.property("version", project.version)
 
-        filesMatching("fabric.mod.json") {
+        filesMatching(fabricModMetadataFile) {
             expand("version" to project.version)
         }
     }
@@ -155,13 +173,13 @@ fun manifestAttributes(): Map<String, Any> = mapOf(
     "Implementation-Version" to project.version,
     "Built-By" to System.getProperty("user.name"),
     "Built-Date" to Date(),
-    "License" to "See $archivesBaseName-LICENSE.txt"
+    "License" to "See $licenseArchiveName"
 )
 
 tasks.jar {
-    from("LICENSE") {
+    from(licenseFileName) {
         into("")
-        rename { "$archivesBaseName-LICENSE.txt" }
+        rename { licenseArchiveName }
     }
 
     manifest {
@@ -171,17 +189,17 @@ tasks.jar {
 
 tasks.shadowJar {
     archiveClassifier.set("dev")
-    configurations = listOf(project.configurations["shadow"])
+    configurations = listOf(project.configurations[shadowConfigurationName])
     from(sourceSets["client"].output)
 
-    from("LICENSE") {
+    from(licenseFileName) {
         into("META-INF")
-        rename { "$archivesBaseName-LICENSE.txt" }
+        rename { licenseArchiveName }
     }
 
     mergeServiceFiles()
-    relocate("org.graalvm", "net.me.libs.graalvm")
-    relocate("net.bytebuddy", "net.me.libs.bytebuddy")
+    relocate(graalRelocationFrom, graalRelocationTo)
+    relocate(byteBuddyRelocationFrom, byteBuddyRelocationTo)
 
     manifest {
         attributes(manifestAttributes())
@@ -190,28 +208,27 @@ tasks.shadowJar {
 
 val shadowLibsJar by tasks.registering(ShadowJar::class) {
     archiveClassifier.set("libs-only")
-    configurations = listOf(project.configurations["shadow"])
+    configurations = listOf(project.configurations[shadowConfigurationName])
     dependencies {
-        include { it.moduleGroup == "org.graalvm.sdk" && it.moduleName == "graal-sdk" }
-        include { it.moduleGroup == "org.graalvm.truffle" && it.moduleName == "truffle-api" }
-        include { it.moduleGroup == "org.graalvm.js" && it.moduleName == "js-language" }
-        include { it.moduleGroup == "org.graalvm.js" && it.moduleName == "js-scriptengine" }
-        include { it.moduleGroup == "net.bytebuddy" && it.moduleName == "byte-buddy" }
-        include { it.moduleGroup == "net.bytebuddy" && it.moduleName == "byte-buddy-agent" }
+        shadedModules.forEach { (moduleGroup, moduleName) ->
+            include { it.moduleGroup == moduleGroup && it.moduleName == moduleName }
+        }
     }
     from(files())
     mergeServiceFiles()
-    relocate("org.graalvm", "net.me.libs.graalvm")
-    relocate("net.bytebuddy", "net.me.libs.bytebuddy")
+    relocate(graalRelocationFrom, graalRelocationTo)
+    relocate(byteBuddyRelocationFrom, byteBuddyRelocationTo)
 }
 
-tasks.named<RemapJarTask>("remapJar") {
-    dependsOn(tasks.named("shadowJar"))
-    inputFile.set(tasks.named<ShadowJar>("shadowJar").get().archiveFile)
+val shadowJarProvider = tasks.named<ShadowJar>(shadowJarTaskName)
 
-    from("LICENSE") {
+tasks.named<RemapJarTask>("remapJar") {
+    dependsOn(shadowJarProvider)
+    inputFile.set(shadowJarProvider.flatMap { shadowJarTask -> shadowJarTask.archiveFile })
+
+    from(licenseFileName) {
         into("META-INF")
-        rename { "$archivesBaseName-LICENSE.txt" }
+        rename { licenseArchiveName }
     }
 }
 
@@ -236,16 +253,16 @@ val minecraftCacheDirProvider: Directory = layout.projectDirectory.dir(".gradle/
 val fabricCacheDirProvider: Directory = layout.projectDirectory.dir(".gradle/loom-cache/remapped_mods/remapped/net/fabricmc/fabric-api")
 
 val cleanSources by tasks.registering(Delete::class) {
-    group = "help"
+    group = helpTaskGroup
     description = "Deletes unpacked sources in libs-src/"
     delete(unpackedSourcesDir)
 }
 
 val unpackSources by tasks.registering(UnpackSourcesTask::class) {
-    group = "help"
+    group = helpTaskGroup
     description = "Unpacks library, Minecraft, and Fabric sources into libs-src/"
     dependsOn(cleanSources)
-    sourceDeps.from(configurations.named("sourceDeps"))
+    sourceDeps.from(configurations.named(sourceDepsConfigurationName))
     outputDir.set(unpackedSourcesDir)
     minecraftCacheDir.set(minecraftCacheDirProvider)
     fabricCacheDir.set(fabricCacheDirProvider)
