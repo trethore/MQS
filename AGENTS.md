@@ -5,28 +5,35 @@ It provides a high-performance JavaScript engine and a rich set of APIs, enablin
 
 ## Project Overview & Architecture
 
-My QOL Scripts (MQS) ships as a single Fabric client mod with `net.me.Main` as the entry point. During client
-initialization it spins up the GraalJS engine, wires together the scripting, mapping, configuration, event, command,
-console, keybind, and hook managers, then defers script activation until official Mojang mappings finish loading and work is
-rescheduled onto the Minecraft client thread via `McUtils`.
+Here is the structure of the repository:
 
-Runtime modules are organized into focused packages:
-
-- `net.me.scripting`: script discovery (`ScriptDiscoverer` scans the `Main.MOD_DIR/scripts` tree for `@module(...)`
-  declarations), Graal context pooling, lifecycle management, and the `ScriptingService` façade used by in-game commands
-  and the console.
-- `net.me.event`: an MQS-specific event bus layered on Fabric hooks. `EventManager` tracks per-phase listeners, bridges
-  Fabric events through `FabricEventAdapter`, and enforces ownership per `RunningScript`.
-- `net.me.hooking`: ByteBuddy-driven interception. `HookManager` installs the agent, resolves official Mojang → runtime names via
-  `MappingsManager`, and applies or removes hooks in response to script requests.
-- `net.me.console`, `net.me.command`, `net.me.keybinds`, `net.me.config`: user-facing surfaces for the integrated
-  console, `/mqs` command tree, script-defined keybinds, and persistent configuration (`mqs_config.json` plus per-script
-  files).
-- `net.me.utils` together with mixins under `net.me.mixin`: shared helpers and mixins declared in
-  `myqolscripts.client.mixins.json` that expose Minecraft internals required by the scripting APIs.
-
-Assets and metadata live under `src/client/resources/`; `fabric.mod.json` registers the client entry point and mixin
-config.
+```text
+/
+├── libs-src/                                  # Unpacked dependency sources for browsing/reference.
+│   ├── fabric/
+│   ├── minecraft/
+│   └── <lib-name>/
+├── src/
+│   └── client/
+│       ├── java/net/me/
+│       │   ├── scripting/                     # Discovery (`ScriptDiscoverer`), Graal context pooling, lifecycle, `ScriptingService`.
+│       │   ├── event/                         # MQS event bus + Fabric bridge (`EventManager`, `FabricEventAdapter`).
+│       │   ├── hooking/                       # ByteBuddy interception and hook lifecycle (`HookManager`).
+│       │   ├── console/                       # Integrated console and console command surface.
+│       │   ├── command/                       # `/mqs` command tree and command integration.
+│       │   ├── keybinds/                      # Script-defined keybind registration and dispatch.
+│       │   ├── config/                        # Global host config (`mqs_config.json`) and config keys.
+│       │   ├── utils/                         # Shared host-side utilities.
+│       │   └── mixin/                         # Mixins exposing Minecraft internals required by scripting APIs.
+│       └── resources/
+│           ├── fabric.mod.json                # Registers the client entry point and mixin config.
+│           └── myqolscripts.client.mixins.json
+├── scripts/                                   # User-controlled scripts loaded by MQS.
+├── docs/
+├── build.gradle.kts
+├── gradle.properties
+└── settings.gradle.kts
+```
 
 ## Design & Philosophy
 
