@@ -178,7 +178,7 @@ public class CommandsAPI implements ProxyObject {
     private Void unregisterAll(Value[] args, RunningScript owner) {
         ApiArgumentChecks.requireArgCount(args, 0, "Commands.unregisterAll() takes no arguments.");
         service.unregisterAllFor(owner);
-        commandTracker.disposeAll(owner, _ -> {
+        commandTracker.disposeAll(owner, ignored -> {
         });
         return null;
     }

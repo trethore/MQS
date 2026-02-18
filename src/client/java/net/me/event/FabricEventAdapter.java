@@ -110,7 +110,7 @@ public class FabricEventAdapter {
             }
         }
 
-        scriptedListeners.computeIfAbsent(fabricEvent, _ -> new CopyOnWriteArrayList<>())
+        scriptedListeners.computeIfAbsent(fabricEvent, ignored -> new CopyOnWriteArrayList<>())
                 .add(new ScriptedFabricListener(owner, jsCallback));
     }
 

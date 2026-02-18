@@ -98,7 +98,7 @@ public final class HookOptions {
         }
         try {
             return HookExecutionMode.valueOf(raw.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException _) {
+        } catch (IllegalArgumentException ignored) {
             return null;
         }
     }

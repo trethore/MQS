@@ -47,7 +47,7 @@ public class KeybindManager {
     public KeybindManager(ScriptManager scriptManager, ConfigManager configManager) {
         this.scriptManager = scriptManager;
         this.configManager = configManager;
-        ClientTickEvents.END_CLIENT_TICK.register(_ -> onTick());
+        ClientTickEvents.END_CLIENT_TICK.register(ignored -> onTick());
     }
 
     private void onTick() {
@@ -125,7 +125,7 @@ public class KeybindManager {
 
         keybindsByName.put(uniqueName, keyBinding);
         if (finalKey >= 0) {
-            keybindsByKeycode.computeIfAbsent(finalKey, _ -> new CopyOnWriteArrayList<>()).add(keyBinding);
+            keybindsByKeycode.computeIfAbsent(finalKey, ignored -> new CopyOnWriteArrayList<>()).add(keyBinding);
         }
     }
 
@@ -141,7 +141,7 @@ public class KeybindManager {
 
         hostKeybindsByName.put(uniqueName, binding);
         if (finalKey >= 0) {
-            keybindsByKeycode.computeIfAbsent(finalKey, _ -> new CopyOnWriteArrayList<>()).add(binding);
+            keybindsByKeycode.computeIfAbsent(finalKey, ignored -> new CopyOnWriteArrayList<>()).add(binding);
         }
 
         return binding;
@@ -182,7 +182,7 @@ public class KeybindManager {
         binding.setKey(newKeyCode);
 
         if (newKeyCode >= 0) {
-            keybindsByKeycode.computeIfAbsent(newKeyCode, _ -> new CopyOnWriteArrayList<>()).add(binding);
+            keybindsByKeycode.computeIfAbsent(newKeyCode, ignored -> new CopyOnWriteArrayList<>()).add(binding);
         }
 
         configManager.setKeybind(binding.getOwner().getId(), binding.getName(), newKeyCode);
@@ -202,7 +202,7 @@ public class KeybindManager {
         binding.setKey(newKeyCode);
 
         if (newKeyCode >= 0) {
-            keybindsByKeycode.computeIfAbsent(newKeyCode, _ -> new CopyOnWriteArrayList<>()).add(binding);
+            keybindsByKeycode.computeIfAbsent(newKeyCode, ignored -> new CopyOnWriteArrayList<>()).add(binding);
         }
 
         configManager.setKeybind(HOST_ID, binding.getName(), newKeyCode);
@@ -211,7 +211,7 @@ public class KeybindManager {
     public Map<RunningScript, List<KeyBinding>> getGroupedKeybinds() {
         Map<RunningScript, List<KeyBinding>> grouped = new ConcurrentHashMap<>();
         for (KeyBinding binding : keybindsByName.values()) {
-            grouped.computeIfAbsent(binding.getOwner(), _ -> new CopyOnWriteArrayList<>()).add(binding);
+            grouped.computeIfAbsent(binding.getOwner(), ignored -> new CopyOnWriteArrayList<>()).add(binding);
         }
         return grouped;
     }

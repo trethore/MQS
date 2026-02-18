@@ -33,7 +33,7 @@ public final class HandleTracker<H> {
 
     public void track(RunningScript owner, H handle) {
         handlesByScript
-                .computeIfAbsent(owner, _ -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
+                .computeIfAbsent(owner, ignored -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
                 .add(handle);
     }
 
@@ -52,7 +52,7 @@ public final class HandleTracker<H> {
     }
 
     public void disposeAll(RunningScript owner, Consumer<H> onDispose) {
-        dispose(owner, _ -> true, onDispose);
+        dispose(owner, ignored -> true, onDispose);
     }
 
     public void remove(RunningScript owner, H handle) {

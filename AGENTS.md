@@ -48,12 +48,12 @@ Here is the structure of the repository:
   access) are surfaced via console commands. Scripts are discovered from the user-controlled `myqolscripts/scripts`
   folder, keeping ownership with the player.
 - **Contributor ergonomics matter**: APIs expand through explicit utilities (for example `MQSUtils`, rendering helpers,
-  config accessors) instead of broad inheritance trees. Host code targets Java 25 and follows Fabric/Mojang abstractions,
+  config accessors) instead of broad inheritance trees. Host code targets Java 21 and follows Fabric/Mojang abstractions,
   so new features should extend the existing managers or adapters rather than bypass them.
 
 ## General Coding Conventions
 
-- Target Java 25, use 4-space indentation, and keep packages under `tytoo.grapheneui*`.
+- Target Java 21, use 4-space indentation, and keep packages under `tytoo.grapheneui*`.
 - Use PascalCase for classes, camelCase for methods and fields, and UPPER_SNAKE_CASE for constants.
 - Use explicit types instead of `var`, and prefer descriptive names over one-letter identifiers.
 - Keep member order consistent in Java classes: static constants, static fields, instance fields, constructors, overridden
@@ -65,11 +65,11 @@ Here is the structure of the repository:
 - Assume contributors use IntelliJ IDEA, and keep code free of IDE warnings.
 - If requirements are unclear or infeasible, ask for clarification before proceeding.
 
-## Java 25 Expectations
+## Java 21 Expectations
 
-- Assume Java 25 at runtime; use only stable features and avoid preview or incubator APIs.
-- Use modern Java 25 standard-library utilities (Streams, Optional, records) when they improve clarity.
-- Prefer unnamed variables (`_`) for intentionally unused variables, parameters, and caught exceptions.
+- Assume Java 21 at runtime; use only stable features and avoid preview or incubator APIs.
+- Use modern Java 21 standard-library utilities (Streams, Optional, records) when they improve clarity.
+- Use descriptive names like `ignored` for intentionally unused variables, parameters, and caught exceptions.
 - When intentionally ignoring a caught exception, keep a short explanatory comment in the catch block.
 - Maintain explicit, readable control flow; avoid clever constructs that harm comprehension.
 

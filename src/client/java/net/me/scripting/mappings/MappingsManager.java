@@ -168,7 +168,7 @@ public class MappingsManager {
             String namedMethod = method.namedName();
             String runtimeMethod = isDev ? method.namedName() : method.officialName();
             if (namedMethod != null && runtimeMethod != null) {
-                methodLookup.computeIfAbsent(namedMethod, _ -> new ArrayList<>()).add(runtimeMethod);
+                methodLookup.computeIfAbsent(namedMethod, ignored -> new ArrayList<>()).add(runtimeMethod);
             }
         }
         return methodLookup;

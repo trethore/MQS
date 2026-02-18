@@ -132,7 +132,7 @@ public class ConfigManager {
     public void setKeybind(String scriptId, String keybindName, int keyCode) {
         Map<String, Object> config = getConfig(scriptId);
         Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(ConfigKeys.KEYBINDS,
-                _ -> new ConcurrentHashMap<>());
+                ignored -> new ConcurrentHashMap<>());
 
         keybinds.put(keybindName, keyCode);
     }

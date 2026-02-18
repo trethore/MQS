@@ -239,7 +239,7 @@ public class EventsAPI implements ProxyObject {
     }
 
     private ProxyExecutable createOptionsExecutable() {
-        return _ -> contextHelper.require("Events API").getContext().asValue(EventSubscriptionOptions.builder());
+        return ignored -> contextHelper.require("Events API").getContext().asValue(EventSubscriptionOptions.builder());
     }
 
     private ProxyExecutable createEventExecutable(Events mappedEvent) {
@@ -442,7 +442,7 @@ public class EventsAPI implements ProxyObject {
             public Object getMember(String key) {
                 try {
                     return Events.valueOf(key);
-                } catch (IllegalArgumentException _) {
+                } catch (IllegalArgumentException ignored) {
                     return null;
                 }
             }
@@ -470,7 +470,7 @@ public class EventsAPI implements ProxyObject {
             public Object getMember(String key) {
                 try {
                     return EventPhase.valueOf(key);
-                } catch (IllegalArgumentException _) {
+                } catch (IllegalArgumentException ignored) {
                     return null;
                 }
             }
@@ -601,7 +601,7 @@ public class EventsAPI implements ProxyObject {
                 if (a.hashCode() == b.hashCode()) {
                     return true;
                 }
-            } catch (Exception _) {
+            } catch (Exception ignored) {
                 return false;
             }
             return false;

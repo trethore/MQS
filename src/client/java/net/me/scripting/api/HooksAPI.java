@@ -143,18 +143,18 @@ public class HooksAPI implements ProxyObject {
             HookExecutionMode mode = invocation.mode();
             if (mode != null) {
                 hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), mode);
-                hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), invocation.argCount(), mode), _ -> {
+                hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), invocation.argCount(), mode), ignored -> {
                 });
             } else {
                 for (HookExecutionMode candidate : HookExecutionMode.values()) {
                     hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), candidate);
                 }
-                hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), invocation.argCount(), null), _ -> {
+                hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), invocation.argCount(), null), ignored -> {
                 });
             }
         } else {
             hookManager.unhookAllForMethod(owner, invocation.targetClass(), invocation.methodName());
-            hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), null, null), _ -> {
+            hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), null, null), ignored -> {
             });
         }
         return null;
@@ -163,7 +163,7 @@ public class HooksAPI implements ProxyObject {
     private Void unhookAll(RunningScript owner, Value[] args) {
         ApiArgumentChecks.requireArgCount(args, 0, "Usage: MQS.hooks.unhookAll()");
         hookManager.unhookAllForScript(owner);
-        hookTracker.disposeAll(owner, _ -> {
+        hookTracker.disposeAll(owner, ignored -> {
         });
         return null;
     }

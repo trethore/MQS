@@ -201,7 +201,7 @@ public class ScriptingClassResolver {
         return wrapperCache.computeIfAbsent(runtime, r -> {
             try {
                 return createActualJsClassWrapper(r);
-            } catch (ClassNotFoundException _) {
+            } catch (ClassNotFoundException ignored) {
                 LOGGER.error("Failed to create JsClassWrapper for {}", runtime);
                 throw new IllegalStateException("Failed to create class wrapper for " + runtime);
             }

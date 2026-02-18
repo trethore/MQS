@@ -52,7 +52,7 @@ public class VersionUtils {
                 if (newPart < currentPart) {
                     return false;
                 }
-            } catch (NumberFormatException _) {
+            } catch (NumberFormatException ignored) {
                 if (newParts[i].compareTo(currentParts[i]) > 0) return true;
                 if (newParts[i].compareTo(currentParts[i]) < 0) return false;
             }

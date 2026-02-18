@@ -65,7 +65,7 @@ public class KeybindsAPI implements ProxyObject {
     public Object getMember(String key) {
         return switch (key) {
             case KEY_KEYS, KEYS -> keysProxy;
-            case OPTIONS -> (ProxyExecutable) _ -> contextHelper.require("Keybinds API").getContext().asValue(KeybindOptions.builder());
+            case OPTIONS -> (ProxyExecutable) ignored -> contextHelper.require("Keybinds API").getContext().asValue(KeybindOptions.builder());
             case KEYBIND_BIND -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCountAtLeast(args, 3, "Usage: MQS.keybinds.bind(name, key, handler, options?)");
                 RunningScript owner = contextHelper.require("Keybinds API");
@@ -85,7 +85,7 @@ public class KeybindsAPI implements ProxyObject {
                 Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
 
                 AtomicBoolean state = new AtomicBoolean(false);
-                ProxyExecutable toggleExecutable = _ -> {
+                ProxyExecutable toggleExecutable = ignored -> {
                     boolean next = !state.get();
                     state.set(next);
                     handler.execute(next);
@@ -109,7 +109,7 @@ public class KeybindsAPI implements ProxyObject {
                 ApiArgumentChecks.requireArgCount(args, 0, "Usage: MQS.keybinds.unbindAll()");
                 RunningScript owner = contextHelper.require("Keybinds API");
                 keybindManager.unregister(owner);
-                keybindTracker.disposeAll(owner, _ -> {
+                keybindTracker.disposeAll(owner, ignored -> {
                 });
                 return null;
             };
@@ -134,7 +134,7 @@ public class KeybindsAPI implements ProxyObject {
                 ApiArgumentChecks.requireArgCount(args, 0, "Usage: MQS.keybinds.unregisterAll()");
                 RunningScript owner = contextHelper.require("Keybinds API");
                 keybindManager.unregister(owner);
-                keybindTracker.disposeAll(owner, _ -> {
+                keybindTracker.disposeAll(owner, ignored -> {
                 });
                 return null;
             };

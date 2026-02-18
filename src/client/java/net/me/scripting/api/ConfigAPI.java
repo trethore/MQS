@@ -134,7 +134,7 @@ public class ConfigAPI implements ProxyObject {
                     if (stored instanceof String text) {
                         try {
                             return Double.parseDouble(text);
-                        } catch (NumberFormatException _) {
+                        } catch (NumberFormatException ignored) {
                             return defaultValue;
                         }
                     }
@@ -209,7 +209,7 @@ public class ConfigAPI implements ProxyObject {
         if (value.isString()) {
             try {
                 return Double.parseDouble(value.asString());
-            } catch (NumberFormatException _) {
+            } catch (NumberFormatException ignored) {
                 return 0D;
             }
         }

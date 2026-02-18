@@ -44,7 +44,7 @@ public class CommandAPIService {
     private final Queue<QueuedCommand> commandQueue = new ConcurrentLinkedQueue<>();
 
     public void init() {
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, _) -> {
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, ignored) -> {
             Main.LOGGER.info("Client command registration event fired. Re-registering script commands.");
             reRegisterAllCommands(dispatcher);
             processQueuedCommands(dispatcher);
@@ -103,7 +103,7 @@ public class CommandAPIService {
             removeNode(name);
         }
         dispatcher.register(literalBuilder);
-        scriptCommands.computeIfAbsent(owner, _ -> new ConcurrentHashMap<>()).put(name, literalBuilder);
+        scriptCommands.computeIfAbsent(owner, ignored -> new ConcurrentHashMap<>()).put(name, literalBuilder);
         allManagedCommandNames.add(name);
     }
 

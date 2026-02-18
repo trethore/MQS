@@ -246,8 +246,8 @@ public class HookManager {
             HookInterceptor.register(interceptorId, jsCallback, owner, scriptManager, hookId.argCount(), hookId.mode());
         }
 
-        hookedMethods.computeIfAbsent(targetClass, _ -> ConcurrentHashMap.newKeySet()).add(hookId);
-        scriptOwnedHooks.computeIfAbsent(owner, _ -> ConcurrentHashMap.newKeySet()).add(hookId);
+        hookedMethods.computeIfAbsent(targetClass, ignored -> ConcurrentHashMap.newKeySet()).add(hookId);
+        scriptOwnedHooks.computeIfAbsent(owner, ignored -> ConcurrentHashMap.newKeySet()).add(hookId);
         updateMatcherForClass(targetClass);
     }
 

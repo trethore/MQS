@@ -83,10 +83,11 @@ public class ScriptingApi {
         if (!v.isProxyObject()) {
             return false;
         }
-        return switch (v.asProxyObject()) {
-            case ExtendedInstanceProxy _, JsObjectWrapper _, MappedInstanceProxy _ -> true;
-            default -> false;
-        };
+
+        Object o = v.asProxyObject();
+        return o instanceof ExtendedInstanceProxy
+                || o instanceof MappedInstanceProxy
+                || o instanceof JsObjectWrapper;
     }
 
     private static JsObjectWrapper wrapJavaInstance(Value v, ScriptingClassResolver resolver) {

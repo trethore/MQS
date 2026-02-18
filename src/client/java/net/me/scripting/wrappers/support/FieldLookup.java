@@ -38,7 +38,7 @@ public class FieldLookup {
         try {
             accessField(cls, key);
             return true;
-        } catch (NoSuchFieldException _) {
+        } catch (NoSuchFieldException ignored) {
             return false;
         }
     }
@@ -48,7 +48,7 @@ public class FieldLookup {
     }
 
     public Field accessField(Class<?> cls, String key) throws NoSuchFieldException {
-        Map<String, Field> classCache = fieldCache.computeIfAbsent(cls, _ -> new ConcurrentHashMap<>());
+        Map<String, Field> classCache = fieldCache.computeIfAbsent(cls, ignored -> new ConcurrentHashMap<>());
         Field cachedField = classCache.get(key);
         if (cachedField != null) {
             return cachedField;
@@ -59,7 +59,7 @@ public class FieldLookup {
         if (runtimeName != null) {
             try {
                 foundField = ReflectionUtils.findField(cls, runtimeName);
-            } catch (NoSuchFieldException _) {
+            } catch (NoSuchFieldException ignored) {
                 foundField = ReflectionUtils.findField(cls, key);
             }
         } else {

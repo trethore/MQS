@@ -148,18 +148,18 @@ public class MqsUtilsAPI implements ProxyObject {
             public Object getMember(String key) {
                 return switch (key) {
                     case MC_RAW -> classResolver.getOrCreateWrapper(McUtils.class.getName());
-                    case MC_GET_MC -> (ProxyExecutable) _ -> McUtils.getMc();
-                    case MC_GET_PLAYER -> (ProxyExecutable) _ -> McUtils.getPlayer();
-                    case MC_GET_WORLD -> (ProxyExecutable) _ -> McUtils.getWorld();
-                    case MC_CLIENT -> (ProxyExecutable) _ -> ScriptUtils.wrapReturn(
+                    case MC_GET_MC -> (ProxyExecutable) ignored -> McUtils.getMc();
+                    case MC_GET_PLAYER -> (ProxyExecutable) ignored -> McUtils.getPlayer();
+                    case MC_GET_WORLD -> (ProxyExecutable) ignored -> McUtils.getWorld();
+                    case MC_CLIENT -> (ProxyExecutable) ignored -> ScriptUtils.wrapReturn(
                             McUtils.getMc(),
                             classResolver.getMappingsManager(),
                             scriptManager
                     );
-                    case MC_PLAYER -> (ProxyExecutable) _ -> McUtils.getPlayer()
+                    case MC_PLAYER -> (ProxyExecutable) ignored -> McUtils.getPlayer()
                             .map(player -> ScriptUtils.wrapReturn(player, classResolver.getMappingsManager(), scriptManager))
                             .orElse(null);
-                    case MC_WORLD -> (ProxyExecutable) _ -> McUtils.getWorld()
+                    case MC_WORLD -> (ProxyExecutable) ignored -> McUtils.getWorld()
                             .map(world -> ScriptUtils.wrapReturn(world, classResolver.getMappingsManager(), scriptManager))
                             .orElse(null);
                     case MC_RUN_ON_CLIENT_THREAD -> (ProxyExecutable) args -> {
@@ -266,7 +266,7 @@ public class MqsUtilsAPI implements ProxyObject {
     }
 
     private Value toDisposer(RunningScript owner, Runnable cancel) {
-        ProxyExecutable exec = _ -> {
+        ProxyExecutable exec = ignored -> {
             cancel.run();
             return null;
         };
@@ -278,7 +278,7 @@ public class MqsUtilsAPI implements ProxyObject {
         scriptManager.setCurrentScript(owner);
         try {
             callback.execute();
-        } catch (IllegalStateException _) {
+        } catch (IllegalStateException ignored) {
             // Ignore script cancellation exceptions
         } catch (Exception e) {
             Main.LOGGER.error("runOnClientThread callback threw for script '{}'", owner.getName(), e);

@@ -36,7 +36,7 @@ public class CommandManager {
     }
 
     private void registerCommands() {
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, _) -> registerClientCommands(dispatcher));
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, ignored) -> registerClientCommands(dispatcher));
     }
 
     private void registerClientCommands(CommandDispatcher<FabricClientCommandSource> dispatcher) {

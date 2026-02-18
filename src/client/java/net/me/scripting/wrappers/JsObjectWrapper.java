@@ -256,7 +256,7 @@ public class JsObjectWrapper implements ProxyObject {
     private Field findFieldOrNull(String key) {
         try {
             return fields.accessField(instanceClass, key);
-        } catch (NoSuchFieldException _) {
+        } catch (NoSuchFieldException ignored) {
             return null;
         }
     }

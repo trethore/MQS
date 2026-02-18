@@ -65,7 +65,7 @@ public final class AssetIdentifiers {
             if (Modifier.isStatic(field.getModifiers()) && field.getType() == Identifier.class) {
                 return Optional.ofNullable((Identifier) field.get(null));
             }
-        } catch (NoSuchFieldException | IllegalAccessException _) {
+        } catch (NoSuchFieldException | IllegalAccessException ignored) {
             return Optional.empty();
         }
         return Optional.empty();

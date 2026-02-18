@@ -58,7 +58,7 @@ public final class ScriptUtils {
         if (expected != null) {
             try {
                 return v.as(expected);
-            } catch (Exception _) {
+            } catch (Exception ignored) {
                 // Conversion failed, fall through to type-specific handling below
             }
         }

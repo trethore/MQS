@@ -55,7 +55,7 @@ public final class ScriptContextHelper {
     }
 
     public Value createDisposer(RunningScript owner, Runnable onDispose) {
-        ProxyExecutable exec = _ -> {
+        ProxyExecutable exec = ignored -> {
             onDispose.run();
             return null;
         };
@@ -64,7 +64,7 @@ public final class ScriptContextHelper {
 
     public Value createIdempotentDisposer(RunningScript owner, Runnable onDispose) {
         AtomicBoolean disposed = new AtomicBoolean(false);
-        ProxyExecutable exec = _ -> {
+        ProxyExecutable exec = ignored -> {
             if (disposed.compareAndSet(false, true)) {
                 onDispose.run();
             }

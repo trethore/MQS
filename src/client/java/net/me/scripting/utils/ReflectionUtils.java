@@ -35,7 +35,7 @@ public final class ReflectionUtils {
                 Field f = c.getDeclaredField(name);
                 f.setAccessible(true);
                 return f;
-            } catch (NoSuchFieldException _) {
+            } catch (NoSuchFieldException ignored) {
                 // Continue searching in superclass
             }
         }

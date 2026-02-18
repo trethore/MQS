@@ -46,7 +46,7 @@ public class CopyTailCommand extends ConsoleCommand {
         } else {
             try {
                 numberOfLines = Integer.parseInt(args[0]);
-            } catch (NumberFormatException _) {
+            } catch (NumberFormatException ignored) {
                 cm.logError("Invalid argument '" + args[0] + "'. Must be a number.");
                 return;
             }
