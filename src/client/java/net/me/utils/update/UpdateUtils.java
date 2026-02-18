@@ -25,7 +25,7 @@ import com.google.gson.JsonParser;
 import lombok.Getter;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
-import net.me.utils.AssetIdentifiers;
+import net.me.utils.AssetIdentifier;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -116,7 +116,7 @@ public class UpdateUtils {
 
     private static UpdateInfo checkForUpdate() {
         try {
-            URL url = new URI(AssetIdentifiers.URL_GITHUB_API_BASE + AssetIdentifiers.GITHUB_REPO + "/releases/latest").toURL();
+            URL url = new URI(AssetIdentifier.URL_GITHUB_API_BASE.value() + AssetIdentifier.GITHUB_REPO.value() + "/releases/latest").toURL();
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             connection.setRequestProperty("User-Agent", "MQS-Updater");
