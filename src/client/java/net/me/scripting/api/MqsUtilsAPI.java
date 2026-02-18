@@ -33,9 +33,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static net.me.scripting.api.ApiConstants.*;
-
 public class MqsUtilsAPI implements ProxyObject {
+    private static final String MATH = "math";
+    private static final String MC = "mc";
+    private static final String SCHEDULE = "schedule";
     private static final String MC_RAW = "raw";
     private static final String MC_GET_MC = "getMc";
     private static final String MC_GET_PLAYER = "getPlayer";

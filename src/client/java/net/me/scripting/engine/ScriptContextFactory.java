@@ -124,13 +124,13 @@ public class ScriptContextFactory {
 
         Map<String, Object> mqsMembers = new HashMap<>();
         EventsAPI eventsApi = new EventsAPI(this.eventManager, this.scriptManager);
-        ConfigAPI configApi = new ConfigAPI(this.configManager, this.scriptManager);
+        ConfigsAPI configsApi = new ConfigsAPI(this.configManager, this.scriptManager);
         KeybindsAPI keybindsApi = new KeybindsAPI(this.keybindManager, this.scriptManager);
         CommandsAPI commandsApi = new CommandsAPI(this.scriptManager, this.commandApiService);
         HooksAPI hooksApi = new HooksAPI(this.hookManager, this.scriptManager, this.classResolver);
 
         mqsMembers.put("events", eventsApi);
-        mqsMembers.put("config", configApi);
+        mqsMembers.put("config", configsApi);
         mqsMembers.put("keybinds", keybindsApi);
         mqsMembers.put("cmd", commandsApi);
         mqsMembers.put("hooks", hooksApi);

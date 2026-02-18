@@ -19,11 +19,7 @@
 package net.me.scripting.api;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.me.event.Event;
-import net.me.event.EventManager;
-import net.me.event.EventPhase;
-import net.me.event.EventSubscriptionOptions;
-import net.me.event.Events;
+import net.me.event.*;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.api.internal.HandleTracker;
 import net.me.scripting.api.internal.ScriptContextHelper;
@@ -35,16 +31,20 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static net.me.scripting.api.ApiConstants.*;
-
 public class EventsAPI implements ProxyObject {
+    private static final String API_NAME = "Events API";
+    private static final String REGISTER = "register";
+    private static final String UNREGISTER = "unregister";
+    private static final String UNREGISTER_ALL = "unregisterAll";
+    private static final String EVENTS = "Events";
+    private static final String PHASE = "Phase";
+    private static final String FABRIC = "fabric";
+    private static final String OFF = "off";
+    private static final String OPTIONS = "options";
+
     private static final Set<String> MEMBER_KEYS = Set.of(
             FABRIC,
             OFF,
@@ -59,7 +59,7 @@ public class EventsAPI implements ProxyObject {
     private final EventManager eventManager;
     private final ScriptContextHelper contextHelper;
     private final HandleTracker<EventHandle> eventTracker;
-    private final Map<String, Events> namedEvents = new HashMap<>();
+    private final Map<String, Events> namedEvents = new LinkedHashMap<>();
     private final ProxyObject eventsEnumProxy = createEventsEnumProxy();
     private final ProxyObject eventPhaseEnumProxy = createEventPhaseEnumProxy();
     private final ProxyObject fabricProxy;
@@ -74,37 +74,30 @@ public class EventsAPI implements ProxyObject {
         }
     }
 
+    private static Class<? extends Event> getEventClass(Object eventTarget) {
+        return switch (eventTarget) {
+            case Events eventEnum -> eventEnum.getEventClass();
+            case Class<?> cls when Event.class.isAssignableFrom(cls) ->
+                //noinspection unchecked
+                    (Class<? extends Event>) cls;
+            case null, default ->
+                    throw new IllegalArgumentException("First argument to Events.unregister must be an MQS event class, a Fabric Event, or an MQS Event from Events.");
+        };
+    }
+
     @Override
     public Object getMember(String key) {
-        if (FABRIC.equals(key)) {
-            return fabricProxy;
-        }
-        if (OFF.equals(key)) {
-            return createOffExecutable();
-        }
-        if (OPTIONS.equals(key)) {
-            return createOptionsExecutable();
-        }
-        if (EVENTS.equals(key)) {
-            return eventsEnumProxy;
-        }
-        if (PHASE.equals(key)) {
-            return eventPhaseEnumProxy;
-        }
-        if (REGISTER.equals(key)) {
-            return (ProxyExecutable) args -> register(contextHelper.require("Events API"), args);
-        }
-        if (UNREGISTER.equals(key)) {
-            return (ProxyExecutable) args -> unregister(contextHelper.require("Events API"), args);
-        }
-        if (UNREGISTER_ALL.equals(key)) {
-            return (ProxyExecutable) args -> unregisterAll(contextHelper.require("Events API"), args);
-        }
-        Events mappedEvent = namedEvents.get(key);
-        if (mappedEvent == null) {
-            return null;
-        }
-        return createEventExecutable(mappedEvent);
+        return switch (key) {
+            case FABRIC -> fabricProxy;
+            case OFF -> createOffExecutable();
+            case OPTIONS -> createOptionsExecutable();
+            case EVENTS -> eventsEnumProxy;
+            case PHASE -> eventPhaseEnumProxy;
+            case REGISTER -> (ProxyExecutable) args -> register(requireOwner(), args);
+            case UNREGISTER -> (ProxyExecutable) args -> unregister(requireOwner(), args);
+            case UNREGISTER_ALL -> (ProxyExecutable) args -> unregisterAll(requireOwner(), args);
+            default -> resolveNamedEventMember(key);
+        };
     }
 
     @Override
@@ -130,15 +123,16 @@ public class EventsAPI implements ProxyObject {
         throw new UnsupportedOperationException("Cannot modify the MQS.events object.");
     }
 
-    private static Class<? extends Event> getEventClass(Object eventTarget) {
-        return switch (eventTarget) {
-            case Events eventEnum -> eventEnum.getEventClass();
-            case Class<?> cls when Event.class.isAssignableFrom(cls) ->
-                //noinspection unchecked
-                    (Class<? extends Event>) cls;
-            case null, default ->
-                    throw new IllegalArgumentException("First argument to Events.unregister must be an MQS event class, a Fabric Event, or an MQS Event from Events.");
-        };
+    private Object resolveNamedEventMember(String key) {
+        Events mappedEvent = namedEvents.get(key);
+        if (mappedEvent == null) {
+            return null;
+        }
+        return createEventExecutable(mappedEvent);
+    }
+
+    private RunningScript requireOwner() {
+        return contextHelper.require(API_NAME);
     }
 
     private Object resolveEventTarget(Value eventTypeArg) {
@@ -184,10 +178,10 @@ public class EventsAPI implements ProxyObject {
                     return null;
                 }
                 return (ProxyExecutable) args -> {
-                    RunningScript owner = contextHelper.require("Events API");
+                    RunningScript owner = requireOwner();
                     Value callback = ApiArgumentChecks.requireExecutable(args, 0, "First argument must be a callback function.");
                     eventManager.registerFabric(owner, fabricEvent, callback);
-                    return registerFabricHandle(owner, fabricEvent, callback);
+                    return registerHandle(owner, null, null, null, callback, fabricEvent);
                 };
             }
 
@@ -219,7 +213,7 @@ public class EventsAPI implements ProxyObject {
 
     private ProxyExecutable createOffExecutable() {
         return args -> {
-            RunningScript owner = contextHelper.require("Events API");
+            RunningScript owner = requireOwner();
             if (args.length == 0) {
                 disposeAll(owner);
                 return null;
@@ -239,17 +233,17 @@ public class EventsAPI implements ProxyObject {
     }
 
     private ProxyExecutable createOptionsExecutable() {
-        return ignored -> contextHelper.require("Events API").getContext().asValue(EventSubscriptionOptions.builder());
+        return ignored -> requireOwner().getContext().asValue(EventSubscriptionOptions.builder());
     }
 
     private ProxyExecutable createEventExecutable(Events mappedEvent) {
         return args -> {
-            RunningScript owner = contextHelper.require("Events API");
+            RunningScript owner = requireOwner();
             Value callback = ApiArgumentChecks.requireExecutable(args, 0, "First argument must be a callback function.");
             EventSubscriptionOptions options = EventSubscriptionOptions.fromScript(args.length > 1 ? args[1] : null, EventPhase.POST);
             EventPhase phase = options.phase();
             eventManager.register(owner, mappedEvent, phase, callback);
-            return registerEventHandle(owner, mappedEvent, phase, callback);
+            return registerHandle(owner, mappedEvent, mappedEvent.getEventClass(), phase, callback, null);
         };
     }
 
@@ -277,17 +271,17 @@ public class EventsAPI implements ProxyObject {
         switch (registration.eventTarget()) {
             case Events eventEnum -> {
                 eventManager.register(owner, eventEnum, registration.phase(), registration.callback());
-                return registerEventHandle(owner, eventEnum, registration.phase(), registration.callback());
+                return registerHandle(owner, eventEnum, eventEnum.getEventClass(), registration.phase(), registration.callback(), null);
             }
             case Class<?> cls when Event.class.isAssignableFrom(cls) -> {
                 //noinspection unchecked
                 Class<? extends Event> eventClass = (Class<? extends Event>) cls;
                 eventManager.register(owner, eventClass, registration.phase(), registration.callback());
-                return registerEventClassHandle(owner, eventClass, registration.phase(), registration.callback());
+                return registerHandle(owner, null, eventClass, registration.phase(), registration.callback(), null);
             }
             case net.fabricmc.fabric.api.event.Event<?> fabricEvent -> {
                 eventManager.registerFabric(owner, fabricEvent, registration.callback());
-                return registerFabricHandle(owner, fabricEvent, registration.callback());
+                return registerHandle(owner, null, null, null, registration.callback(), fabricEvent);
             }
             case null, default ->
                     throw new IllegalArgumentException("First argument to Events.register must be a MQS event class, a Fabric Event object, or an MQS Event from Events.");
@@ -403,30 +397,13 @@ public class EventsAPI implements ProxyObject {
         eventManager.unregister(owner, eventType);
     }
 
-    private Value registerEventHandle(RunningScript owner, Events event, EventPhase phase, Value callback) {
-        EventHandle handle = new EventHandle(owner, event, event.getEventClass(), phase, callback, null);
-        Value disposer = contextHelper.createIdempotentDisposer(owner, () -> {
-            handle.dispose();
-            eventTracker.remove(owner, handle);
-        });
-        handle.attachDisposer(disposer);
-        eventTracker.track(owner, handle);
-        return disposer;
-    }
-
-    private Value registerEventClassHandle(RunningScript owner, Class<? extends Event> eventClass, EventPhase phase, Value callback) {
-        EventHandle handle = new EventHandle(owner, null, eventClass, phase, callback, null);
-        Value disposer = contextHelper.createIdempotentDisposer(owner, () -> {
-            handle.dispose();
-            eventTracker.remove(owner, handle);
-        });
-        handle.attachDisposer(disposer);
-        eventTracker.track(owner, handle);
-        return disposer;
-    }
-
-    private Value registerFabricHandle(RunningScript owner, net.fabricmc.fabric.api.event.Event<?> fabricEvent, Value callback) {
-        EventHandle handle = new EventHandle(owner, null, null, null, callback, fabricEvent);
+    private Value registerHandle(RunningScript owner,
+                                 Events event,
+                                 Class<? extends Event> eventClass,
+                                 EventPhase phase,
+                                 Value callback,
+                                 net.fabricmc.fabric.api.event.Event<?> fabricEvent) {
+        EventHandle handle = new EventHandle(owner, event, eventClass, phase, callback, fabricEvent);
         Value disposer = contextHelper.createIdempotentDisposer(owner, () -> {
             handle.dispose();
             eventTracker.remove(owner, handle);
@@ -490,6 +467,15 @@ public class EventsAPI implements ProxyObject {
                 throw new UnsupportedOperationException("Cannot modify the EventPhase enum object.");
             }
         };
+    }
+
+    private record Registration(Object eventTarget, EventPhase phase, Value callback) {
+    }
+
+    private record UnregisterFilters(EventPhase phase, Value callback) {
+    }
+
+    private record UnregisterCall(Object eventTarget, EventPhase phase, Value callback) {
     }
 
     private final class EventHandle {
@@ -594,26 +580,7 @@ public class EventsAPI implements ProxyObject {
                     return true;
                 }
             }
-            if (a.isProxyObject() && b.isProxyObject() && a.asProxyObject() == b.asProxyObject()) {
-                return true;
-            }
-            try {
-                if (a.hashCode() == b.hashCode()) {
-                    return true;
-                }
-            } catch (Exception ignored) {
-                return false;
-            }
-            return false;
+            return a.isProxyObject() && b.isProxyObject() && a.asProxyObject() == b.asProxyObject();
         }
-    }
-
-    private record Registration(Object eventTarget, EventPhase phase, Value callback) {
-    }
-
-    private record UnregisterFilters(EventPhase phase, Value callback) {
-    }
-
-    private record UnregisterCall(Object eventTarget, EventPhase phase, Value callback) {
     }
 }

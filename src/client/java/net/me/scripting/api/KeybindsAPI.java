@@ -33,9 +33,18 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static net.me.scripting.api.ApiConstants.*;
-
 public class KeybindsAPI implements ProxyObject {
+    private static final String API_NAME = "Keybinds API";
+    private static final String REGISTER = "register";
+    private static final String UNREGISTER = "unregister";
+    private static final String UNREGISTER_ALL = "unregisterAll";
+    private static final String KEYS = "Keys";
+    private static final String KEY_KEYS = "keys";
+    private static final String KEYBIND_BIND = "bind";
+    private static final String KEYBIND_BIND_TOGGLE = "bindToggle";
+    private static final String KEYBIND_UNBIND = "unbind";
+    private static final String KEYBIND_UNBIND_ALL = "unbindAll";
+    private static final String OPTIONS = "options";
     private static final String REGISTER_USAGE = "Usage: MQS.keybinds.register('name', actionFunction, { key, repeatable, debounce })";
     private static final Set<String> MEMBER_KEYS = Set.of(
             KEYBIND_BIND,
@@ -65,10 +74,11 @@ public class KeybindsAPI implements ProxyObject {
     public Object getMember(String key) {
         return switch (key) {
             case KEY_KEYS, KEYS -> keysProxy;
-            case OPTIONS -> (ProxyExecutable) ignored -> contextHelper.require("Keybinds API").getContext().asValue(KeybindOptions.builder());
+            case OPTIONS ->
+                    (ProxyExecutable) ignored -> contextHelper.require(API_NAME).getContext().asValue(KeybindOptions.builder());
             case KEYBIND_BIND -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCountAtLeast(args, 3, "Usage: MQS.keybinds.bind(name, key, handler, options?)");
-                RunningScript owner = contextHelper.require("Keybinds API");
+                RunningScript owner = contextHelper.require(API_NAME);
                 String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
                 int keyCode = extractKeyCode(args[1]);
                 Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
@@ -79,7 +89,7 @@ public class KeybindsAPI implements ProxyObject {
             };
             case KEYBIND_BIND_TOGGLE -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCountAtLeast(args, 3, "Usage: MQS.keybinds.bindToggle(name, key, handler, options?)");
-                RunningScript owner = contextHelper.require("Keybinds API");
+                RunningScript owner = contextHelper.require(API_NAME);
                 String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
                 int keyCode = extractKeyCode(args[1]);
                 Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
@@ -100,14 +110,14 @@ public class KeybindsAPI implements ProxyObject {
             case KEYBIND_UNBIND -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCount(args, 1, "Usage: MQS.keybinds.unbind(name)");
                 String name = ApiArgumentChecks.requireString(args, 0, "Usage: MQS.keybinds.unbind(name)");
-                RunningScript owner = contextHelper.require("Keybinds API");
+                RunningScript owner = contextHelper.require(API_NAME);
                 keybindManager.unregister(owner, name);
                 keybindTracker.remove(owner, name);
                 return null;
             };
             case KEYBIND_UNBIND_ALL -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCount(args, 0, "Usage: MQS.keybinds.unbindAll()");
-                RunningScript owner = contextHelper.require("Keybinds API");
+                RunningScript owner = contextHelper.require(API_NAME);
                 keybindManager.unregister(owner);
                 keybindTracker.disposeAll(owner, ignored -> {
                 });
@@ -115,7 +125,7 @@ public class KeybindsAPI implements ProxyObject {
             };
             case REGISTER -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCountAtLeast(args, 2, REGISTER_USAGE);
-                RunningScript owner = contextHelper.require("Keybinds API");
+                RunningScript owner = contextHelper.require(API_NAME);
                 String name = ApiArgumentChecks.requireString(args, 0, REGISTER_USAGE);
                 Value action = ApiArgumentChecks.requireExecutable(args, 1, REGISTER_USAGE);
                 Value optionsArg = args.length > 2 ? args[2] : null;
@@ -125,14 +135,14 @@ public class KeybindsAPI implements ProxyObject {
             case UNREGISTER -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCount(args, 1, "Usage: MQS.keybinds.unregister('name')");
                 String name = ApiArgumentChecks.requireString(args, 0, "Usage: MQS.keybinds.unregister('name')");
-                RunningScript owner = contextHelper.require("Keybinds API");
+                RunningScript owner = contextHelper.require(API_NAME);
                 keybindManager.unregister(owner, name);
                 keybindTracker.remove(owner, name);
                 return null;
             };
             case UNREGISTER_ALL -> (ProxyExecutable) args -> {
                 ApiArgumentChecks.requireArgCount(args, 0, "Usage: MQS.keybinds.unregisterAll()");
-                RunningScript owner = contextHelper.require("Keybinds API");
+                RunningScript owner = contextHelper.require(API_NAME);
                 keybindManager.unregister(owner);
                 keybindTracker.disposeAll(owner, ignored -> {
                 });

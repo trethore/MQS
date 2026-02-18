@@ -33,9 +33,14 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.Set;
 
-import static net.me.scripting.api.ApiConstants.*;
-
 public class HooksAPI implements ProxyObject {
+    private static final String API_NAME = "Hooks API";
+    private static final String HOOK = "hook";
+    private static final String UNHOOK = "unhook";
+    private static final String UNHOOK_ALL = "unhookAll";
+    private static final String HOOK_BEFORE = "before";
+    private static final String HOOK_AFTER = "after";
+    private static final String HOOK_INSTEAD = "instead";
     private static final String HOOK_USAGE_PREFIX = "Usage: MQS.hooks.";
     private static final String HOOK_METHOD_USAGE = "(Class, 'methodName', handler, options?)";
     private static final Set<String> MEMBER_KEYS = Set.of(
@@ -65,9 +70,9 @@ public class HooksAPI implements ProxyObject {
             case HOOK_BEFORE -> createHookExecutable(HookExecutionMode.BEFORE);
             case HOOK_AFTER -> createHookExecutable(HookExecutionMode.AFTER);
             case HOOK_INSTEAD -> createHookExecutable(HookExecutionMode.INSTEAD);
-            case HOOK -> (ProxyExecutable) args -> hook(contextHelper.require("Hooks API"), args);
-            case UNHOOK -> (ProxyExecutable) args -> unhook(contextHelper.require("Hooks API"), args);
-            case UNHOOK_ALL -> (ProxyExecutable) args -> unhookAll(contextHelper.require("Hooks API"), args);
+            case HOOK -> (ProxyExecutable) args -> hook(contextHelper.require(API_NAME), args);
+            case UNHOOK -> (ProxyExecutable) args -> unhook(contextHelper.require(API_NAME), args);
+            case UNHOOK_ALL -> (ProxyExecutable) args -> unhookAll(contextHelper.require(API_NAME), args);
             default -> null;
         };
     }
@@ -90,7 +95,7 @@ public class HooksAPI implements ProxyObject {
     private ProxyExecutable createHookExecutable(HookExecutionMode mode) {
         return args -> {
             ApiArgumentChecks.requireArgCountAtLeast(args, 2, HOOK_USAGE_PREFIX + mode.name().toLowerCase() + "(target, methodOrHandler, handler?, options?)");
-            RunningScript owner = contextHelper.require("Hooks API");
+            RunningScript owner = contextHelper.require(API_NAME);
             HookCall call = parseArgs(args, mode);
             hookManager.hook(owner, call.targetClass(), call.methodName(), call.callback(), call.options());
             HookHandle handle = new HookHandle(call.targetClass(), call.methodName(), call.options().argCount(), mode);
