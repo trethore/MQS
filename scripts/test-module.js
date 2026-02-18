@@ -1,4 +1,4 @@
-const Text = net.minecraft.text.Text;
+const Component = net.minecraft.network.chat.Component;
 // @module(main=TestModule, name=Test Module, version=0.0.1)
 class TestModule {
     onEnable() {
@@ -6,7 +6,7 @@ class TestModule {
         println("Hello from Test Module!");
         const player = MQS.utils.mc.player();
         if (player) {
-            player.sendMessage(Text.literal("Hello from Test Module!"), false);
+            player.displayClientMessage(Component.literal("Boom !"), false);
         }
     }
 

@@ -2,7 +2,7 @@
 
 const Optional = importClass('java.util.Optional');
 const Double = importClass('java.lang.Double');
-const DoubleSliderCallbacks = importClass('net.minecraft.client.option.SimpleOption$DoubleSliderCallbacks');
+const UnitDouble = importClass('net.minecraft.client.OptionInstance$UnitDouble');
 
 const KEY_TOGGLE = MQS.keybinds.keys.G;
 const FULLBRIGHT_VALUE = 10.0;
@@ -11,7 +11,7 @@ const KEYBIND_NAME = 'Toggle FullBright';
 const CONFIG_KEY_ENABLED = 'isFullBrightActive';
 const CONFIG_KEY_GAMMA = 'originalGamma';
 
-const HOOK_METHOD_NAME = 'validate';
+const HOOK_METHOD_NAME = 'validateValue';
 
 const MESSAGES = {
     ENABLED: "FullBright enabled. Press your bound key to toggle.",
@@ -19,7 +19,7 @@ const MESSAGES = {
     HOOK_INSTALLED: "Gamma validation hook installed.",
     HOOK_REMOVED: "Gamma validation hook removed.",
     BRIGHTNESS_ON: `FullBright ON (Value: ${FULLBRIGHT_VALUE})`,
-    BRIGHTNESS_OFF: (gamma) => `FullBright OFF (Restored to ${gamma.toFixed(2)})`
+    BRIGHTNESS_OFF: (gamma) => `FullBright OFF (Restored to ${Number(gamma).toFixed(2)})`
 };
 
 class FullBrightHookModule {
@@ -74,7 +74,7 @@ class FullBrightHookModule {
         if (this.isHookActive) return;
 
         this.hookDisposer = MQS.hooks.before(
-            DoubleSliderCallbacks,
+            UnitDouble,
             HOOK_METHOD_NAME,
             this.onVerify.bind(this),
             { args: 1 }
@@ -87,7 +87,24 @@ class FullBrightHookModule {
 
     onVerify(context, args, next) {
         const valueToValidate = args[0];
-        return valueToValidate == null ? Optional.empty() : Optional.of(valueToValidate);
+        if (valueToValidate == null) {
+            return Optional.empty();
+        }
+
+        const numericValue = Number(valueToValidate);
+        if (!Number.isFinite(numericValue)) {
+            return Optional.empty();
+        }
+
+        if (numericValue >= 0.0 && numericValue <= 1.0) {
+            return next(...args);
+        }
+
+        if (numericValue > 1.0) {
+            return Optional.of(Double.valueOf(numericValue));
+        }
+
+        return Optional.empty();
     }
 
     removeHook() {
@@ -114,10 +131,10 @@ class FullBrightHookModule {
     activateFullBright() {
         if (!this.options) return;
 
-        this.originalGamma = this.options.getGamma().getValue();
+        this.originalGamma = this.options.gamma().get();
         MQS.config.set(CONFIG_KEY_GAMMA, this.originalGamma);
 
-        this.options.getGamma().setValue(Double.valueOf(FULLBRIGHT_VALUE));
+        this.options.gamma().set(Double.valueOf(FULLBRIGHT_VALUE));
         this.log(MESSAGES.BRIGHTNESS_ON);
         this.isFullBrightActive = true;
     }
@@ -126,7 +143,7 @@ class FullBrightHookModule {
         if (!this.options) return;
 
         if (this.originalGamma != null) {
-            this.options.getGamma().setValue(Double.valueOf(this.originalGamma));
+            this.options.gamma().set(Double.valueOf(this.originalGamma));
             this.log(MESSAGES.BRIGHTNESS_OFF(this.originalGamma));
         }
         this.isFullBrightActive = false;

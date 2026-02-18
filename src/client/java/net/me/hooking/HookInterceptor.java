@@ -39,7 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 
-@SuppressWarnings({"unused","java:S2386"}) // Sonar, this is a js context hook interceptor, stop complaining about making this protected...
+@SuppressWarnings({"unused", "java:S2386"})
+// Sonar, this is a js context hook interceptor, stop complaining about making this protected...
 public class HookInterceptor {
     // Must remain public: Byte Buddy inlines advice into target classes that access these members directly.
     public static final ThreadLocal<Deque<AdviceContext>> adviceContextStack = ThreadLocal.withInitial(ArrayDeque::new);

@@ -1,4 +1,3 @@
-const Text = net.minecraft.text.Text;
 // @module(main=TestEvent, name=Test MQS Event, version=0.0.1)
 class TestEvent {
     disposer = null;
@@ -21,7 +20,7 @@ class TestEvent {
     onTick(event) { // Mqs events return the event instance
         const player = MQS.utils.mc.player();
         if (player) {
-            player.sendMessage(Text.literal("Hello from Test Event!"), false);
+           MQS.utils.chat.addInfoChatMessage("Hello from Test Event!", true);
         }
     }
 }

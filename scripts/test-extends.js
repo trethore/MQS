@@ -1,5 +1,5 @@
-const Text = net.minecraft.text.Text;
-const Screen = net.minecraft.client.gui.screen.Screen;
+const Component = net.minecraft.network.chat.Component;
+const Screen = net.minecraft.client.gui.screens.Screen;
 const Runnable = importClass("java.lang.Runnable");
 
 function createCustomScreen(name) {
@@ -22,9 +22,9 @@ function createCustomScreen(name) {
         open: function () {
             const mc = MQS.utils.mc.client();
             if (mc) {
-                mc.send(() => {
+                MQS.utils.mc.runOnClientThread(() => {
                     mc.setScreen(this);
-                    if (customScreen.equals(mc.currentScreen)) {
+                    if (customScreen.equals(mc.screen)) {
                         println("equals is true");
                     }
                 });
@@ -44,7 +44,7 @@ function createCustomScreen(name) {
     });
 
     // Step 2: Instantiate the class, passing only constructor arguments
-    const customScreen = new CustomScreen(Text.literal(name));
+    const customScreen = new CustomScreen(Component.literal(name));
 
     return customScreen;
 }
@@ -60,7 +60,7 @@ class TestExtends {
             println("Player is null, try loading the script later");
             return;
         }
-        mc.player.sendMessage(Text.literal("Hello from Test Extends Module!"), false);
+        mc.player.displayClientMessage(Component.literal("Hello from Test Extends Module!"), false);
         const customScreen = createCustomScreen("My Custom Screen");
         customScreen.open();
         if (customScreen._instanceof(Runnable)) {

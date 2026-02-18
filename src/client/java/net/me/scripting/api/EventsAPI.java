@@ -203,12 +203,20 @@ public class EventsAPI implements ProxyObject {
     }
 
     private String buildHandlerName(Events event) {
-        String rawName = event.name();
-        int idx = rawName.lastIndexOf("Event");
-        if (idx >= 0) {
-            rawName = rawName.substring(0, idx) + rawName.substring(idx + "Event".length());
+        String[] parts = event.name().split("_");
+        StringBuilder builder = new StringBuilder("on");
+
+        for (String part : parts) {
+            if (!part.isEmpty() && !"EVENT".equals(part)) {
+                String normalizedPart = part.toLowerCase(Locale.ROOT);
+                builder.append(Character.toUpperCase(normalizedPart.charAt(0)));
+                if (normalizedPart.length() > 1) {
+                    builder.append(normalizedPart, 1, normalizedPart.length());
+                }
+            }
         }
-        return "on" + rawName;
+
+        return builder.toString();
     }
 
     private ProxyExecutable createOffExecutable() {

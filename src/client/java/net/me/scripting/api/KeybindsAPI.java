@@ -18,8 +18,8 @@
 
 package net.me.scripting.api;
 
-import net.me.keybinds.KeybindManager;
 import net.me.keybinds.KeyBinding;
+import net.me.keybinds.KeybindManager;
 import net.me.keybinds.KeybindOptions;
 import net.me.keybinds.Keys;
 import net.me.scripting.ScriptManager;
@@ -72,6 +72,36 @@ public class KeybindsAPI implements ProxyObject {
         this.keybindManager = keybindManager;
         this.contextHelper = new ScriptContextHelper(scriptManager);
         this.keybindTracker = new HandleTracker<>();
+    }
+
+    private static String normalizeKeyName(String keyName) {
+        return keyName.trim()
+                .toLowerCase(Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+    }
+
+    private static Map<String, Integer> createKeyCodeLookup() {
+        Map<String, Integer> keyCodesByName = new HashMap<>();
+        for (Keys key : Keys.values()) {
+            int keyCode = key.getCode();
+            String enumName = key.name().toLowerCase(Locale.ROOT);
+            String friendlyName = key.toString().toLowerCase(Locale.ROOT);
+            keyCodesByName.put(enumName, keyCode);
+            keyCodesByName.put(normalizeKeyName(enumName), keyCode);
+            keyCodesByName.put(friendlyName, keyCode);
+            keyCodesByName.put(normalizeKeyName(friendlyName), keyCode);
+        }
+        return Map.copyOf(keyCodesByName);
+    }
+
+    private static String[] createKeyNameArray() {
+        Keys[] values = Keys.values();
+        String[] names = new String[values.length];
+        for (int index = 0; index < values.length; index++) {
+            names[index] = values[index].name();
+        }
+        return names;
     }
 
     @Override
@@ -247,36 +277,6 @@ public class KeybindsAPI implements ProxyObject {
 
         String normalizedVariant = normalizeKeyName(keyName);
         return KEY_CODES_BY_NAME.get(normalizedVariant);
-    }
-
-    private static String normalizeKeyName(String keyName) {
-        return keyName.trim()
-                .toLowerCase(Locale.ROOT)
-                .replace('-', '_')
-                .replace(' ', '_');
-    }
-
-    private static Map<String, Integer> createKeyCodeLookup() {
-        Map<String, Integer> keyCodesByName = new HashMap<>();
-        for (Keys key : Keys.values()) {
-            int keyCode = key.getCode();
-            String enumName = key.name().toLowerCase(Locale.ROOT);
-            String friendlyName = key.toString().toLowerCase(Locale.ROOT);
-            keyCodesByName.put(enumName, keyCode);
-            keyCodesByName.put(normalizeKeyName(enumName), keyCode);
-            keyCodesByName.put(friendlyName, keyCode);
-            keyCodesByName.put(normalizeKeyName(friendlyName), keyCode);
-        }
-        return Map.copyOf(keyCodesByName);
-    }
-
-    private static String[] createKeyNameArray() {
-        Keys[] values = Keys.values();
-        String[] names = new String[values.length];
-        for (int index = 0; index < values.length; index++) {
-            names[index] = values[index].name();
-        }
-        return names;
     }
 
     private ProxyObject createKeysProxy() {

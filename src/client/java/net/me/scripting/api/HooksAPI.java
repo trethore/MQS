@@ -72,6 +72,31 @@ public class HooksAPI implements ProxyObject {
         this.hookTracker = new HandleTracker<>();
     }
 
+    private static HookOptions resolveHookOptions(Value optionsValue, HookExecutionMode mode, boolean enforceMode) {
+        if (enforceMode) {
+            return HookOptions.withEnforcedMode(optionsValue, mode);
+        }
+        return HookOptions.fromScript(optionsValue, mode);
+    }
+
+    private static String buildModeUsage(HookExecutionMode mode, String signature) {
+        return HOOK_USAGE_PREFIX + mode.name().toLowerCase(Locale.ROOT) + signature;
+    }
+
+    private static String requireDescriptor(String descriptor) {
+        if (descriptor == null || descriptor.isEmpty()) {
+            throw new IllegalArgumentException(DESCRIPTOR_EMPTY_MESSAGE);
+        }
+        return descriptor;
+    }
+
+    private static Value requireExecutable(Value value, String message) {
+        if (value == null || !value.canExecute()) {
+            throw new IllegalArgumentException(message);
+        }
+        return value;
+    }
+
     @Override
     public Object getMember(String key) {
         return switch (key) {
@@ -210,13 +235,6 @@ public class HooksAPI implements ProxyObject {
         return new HookCall(targetClass, methodName, callback, options);
     }
 
-    private static HookOptions resolveHookOptions(Value optionsValue, HookExecutionMode mode, boolean enforceMode) {
-        if (enforceMode) {
-            return HookOptions.withEnforcedMode(optionsValue, mode);
-        }
-        return HookOptions.fromScript(optionsValue, mode);
-    }
-
     private UnhookInvocation parseUnhookInvocation(Value[] args) {
         Value options = args.length > 1 ? args[1] : null;
         boolean descriptorForm = args.length >= 1 && args[0] != null && args[0].isString();
@@ -241,24 +259,6 @@ public class HooksAPI implements ProxyObject {
         Integer argCount = HookOptions.extractArgCount(optionsValue);
         HookExecutionMode mode = HookOptions.extractMode(optionsValue, null);
         return new UnhookInvocation(targetClass, methodName, argCount, mode);
-    }
-
-    private static String buildModeUsage(HookExecutionMode mode, String signature) {
-        return HOOK_USAGE_PREFIX + mode.name().toLowerCase(Locale.ROOT) + signature;
-    }
-
-    private static String requireDescriptor(String descriptor) {
-        if (descriptor == null || descriptor.isEmpty()) {
-            throw new IllegalArgumentException(DESCRIPTOR_EMPTY_MESSAGE);
-        }
-        return descriptor;
-    }
-
-    private static Value requireExecutable(Value value, String message) {
-        if (value == null || !value.canExecute()) {
-            throw new IllegalArgumentException(message);
-        }
-        return value;
     }
 
     private record HookHandle(Class<?> targetClass, String methodName, Integer argCount, HookExecutionMode mode) {
