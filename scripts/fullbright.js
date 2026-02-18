@@ -150,7 +150,7 @@ class FullBrightHookModule {
     }
 
     getGameOptions() {
-        const client = MQS.utils.mc.client();
+        const client = MQS.utils.mc();
         return client ? client.options : null;
     }
 

@@ -10,7 +10,7 @@ class TestCommand {
         const rootBuilder = MQS.cmd.lit('greet', cmd => {
             cmd.run(ctx => {
                 const message = "Please provide a name!";
-                const player = MQS.utils.mc.player();
+                const player = MQS.utils.player();
                 if (player) {
                     player.displayClientMessage(Component.literal(message), false);
                 }
@@ -22,7 +22,7 @@ class TestCommand {
                 .run(ctx => {
                     const name = String(ctx.arg('name'));
                     const message = `Hello ${name}! Welcome!`;
-                    const player = MQS.utils.mc.player();
+                    const player = MQS.utils.player();
                     if (player) {
                         player.displayClientMessage(Component.literal(message), false);
                     }

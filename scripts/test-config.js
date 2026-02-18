@@ -5,7 +5,7 @@ class TestConfigModule {
         // triggered when the module is enabled
         println("Hello from Test Config Module!");
         const name = MQS.config.getString("name", "Toto");
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
             const message = `Hello ${name}`;
             player.displayClientMessage(Component.literal(message), false);

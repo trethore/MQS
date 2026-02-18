@@ -18,7 +18,7 @@ class TestEvent {
     }
 
     onTick(event) { // Mqs events return the event instance
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
            MQS.utils.chat.addInfoChatMessage("Hello from Test Event!", true);
         }

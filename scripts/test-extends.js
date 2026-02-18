@@ -20,9 +20,9 @@ function createCustomScreen(name) {
 
         // This is an addon method
         open: function () {
-            const mc = MQS.utils.mc.client();
+            const mc = MQS.utils.mc();
             if (mc) {
-                MQS.utils.mc.runOnClientThread(() => {
+                MQS.utils.runOnClientThread(() => {
                     mc.setScreen(this);
                     if (customScreen.equals(mc.screen)) {
                         println("equals is true");
@@ -55,7 +55,7 @@ class TestExtends {
     onEnable() {
         // triggered when the module is enabled
         println("Hello from Test Extends Module!");
-        const mc = MQS.utils.mc.client();
+        const mc = MQS.utils.mc();
         if (!mc || mc.player == null) {
             println("Player is null, try loading the script later");
             return;

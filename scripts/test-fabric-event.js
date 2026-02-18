@@ -5,7 +5,7 @@ class TestEvent {
     onEnable() {
         // triggered when the module is enabled
         println("Hello from Test Event!");
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
             const message = "Hello from Test Module!";
             player.displayClientMessage(Component.literal(message), false);
@@ -23,7 +23,7 @@ class TestEvent {
     }
 
     onTick(client) { // ClientTickEvents.END_CLIENT_TICK return the client instance
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
             const message = "Hello from Test Event!";
             player.displayClientMessage(Component.literal(message), false);

@@ -4,7 +4,7 @@ class TestModule {
     onEnable() {
         // triggered when the module is enabled
         println("Hello from Test Module!");
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
             player.displayClientMessage(Component.literal("Boom !"), false);
         }
