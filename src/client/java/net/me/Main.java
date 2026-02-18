@@ -44,8 +44,6 @@ import java.nio.file.Path;
 public class Main implements ClientModInitializer {
     public static final String MOD_ID = "myqolscripts";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-    @SuppressWarnings("unused")
-    public static final String MC_VERSION = "1.21.4";
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
 
     @Getter

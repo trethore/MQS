@@ -53,7 +53,7 @@ Here is the structure of the repository:
 
 ## General Coding Conventions
 
-- Target Java 21, use 4-space indentation, and keep packages under `tytoo.grapheneui*`.
+- Target Java 21, use 4-space indentation, and keep packages under `net.me*`.
 - Use PascalCase for classes, camelCase for methods and fields, and UPPER_SNAKE_CASE for constants.
 - Use explicit types instead of `var`, and prefer descriptive names over one-letter identifiers.
 - Keep member order consistent in Java classes: static constants, static fields, instance fields, constructors, overridden
@@ -70,7 +70,6 @@ Here is the structure of the repository:
 - Assume Java 21 at runtime; use only stable features and avoid preview or incubator APIs.
 - Use modern Java 21 standard-library utilities (Streams, Optional, records) when they improve clarity.
 - Use descriptive names like `ignored` for intentionally unused variables, parameters, and caught exceptions.
-- When intentionally ignoring a caught exception, keep a short explanatory comment in the catch block.
 - Maintain explicit, readable control flow; avoid clever constructs that harm comprehension.
 
 ## Minecraft Integration Rules
