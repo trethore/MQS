@@ -32,6 +32,7 @@ import net.me.scripting.module.RunningScript;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientSuggestionProvider;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -88,10 +89,13 @@ public class CommandAPIService {
 
         if (dispatcher == null) {
             Main.LOGGER.warn("Dispatcher not available. Queuing command '{}' for later registration.", literalBuilder.getLiteral());
+            removeOwnershipForName(literalBuilder.getLiteral());
             commandQueue.add(new QueuedCommand(owner, literalBuilder));
+            reconcileManagedCommandName(literalBuilder.getLiteral());
             return;
         }
 
+        commandQueue.removeIf(qc -> qc.builder().getLiteral().equals(literalBuilder.getLiteral()));
         registerInternal(dispatcher, owner, literalBuilder);
         pushCommandTree(dispatcher);
     }
@@ -102,9 +106,10 @@ public class CommandAPIService {
             Main.LOGGER.warn("Command '{}' already exists. It will be replaced.", name);
             removeNode(name);
         }
+        removeOwnershipFromMaps(name);
         dispatcher.register(literalBuilder);
         scriptCommands.computeIfAbsent(owner, ignored -> new ConcurrentHashMap<>()).put(name, literalBuilder);
-        allManagedCommandNames.add(name);
+        reconcileManagedCommandName(name);
     }
 
     public void unregister(RunningScript owner, String name) {
@@ -113,41 +118,95 @@ public class CommandAPIService {
         Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = scriptCommands.get(owner);
         if (owned == null || !owned.containsKey(name)) {
             Main.LOGGER.warn("Script '{}' tried to unregister '{}' which it does not own or wasn’t found.", owner.getName(), name);
+            reconcileManagedCommandName(name);
             return;
         }
 
-        if (removeNode(name)) {
+        removeNode(name);
+        owned.remove(name);
+        if (owned.isEmpty()) {
+            scriptCommands.remove(owner);
+        }
+
+        CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
+        if (dispatcher != null) {
+            pushCommandTree(dispatcher);
+        }
+        reconcileManagedCommandName(name);
+    }
+
+    public void unregisterAllFor(RunningScript owner) {
+        Set<String> touchedNames = new HashSet<>();
+        commandQueue.removeIf(qc -> {
+            if (!qc.owner().equals(owner)) {
+                return false;
+            }
+            touchedNames.add(qc.builder().getLiteral());
+            return true;
+        });
+
+        Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = scriptCommands.remove(owner);
+        if (owned != null) {
+            touchedNames.addAll(owned.keySet());
+        }
+        if (touchedNames.isEmpty()) {
+            return;
+        }
+
+        if (owned != null) {
+            for (String name : owned.keySet()) {
+                if (removeNode(name)) {
+                    Main.LOGGER.info("Unregistered '{}' from disabled script '{}'", name, owner.getName());
+                }
+            }
+        }
+
+        CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
+        if (dispatcher != null && owned != null && !owned.isEmpty()) {
+            pushCommandTree(dispatcher);
+        }
+
+        for (String name : touchedNames) {
+            reconcileManagedCommandName(name);
+        }
+    }
+
+    private void removeOwnershipForName(String name) {
+        removeOwnershipFromMaps(name);
+        commandQueue.removeIf(qc -> qc.builder().getLiteral().equals(name));
+        reconcileManagedCommandName(name);
+    }
+
+    private void removeOwnershipFromMaps(String name) {
+        for (Map.Entry<RunningScript, Map<String, LiteralArgumentBuilder<FabricClientCommandSource>>> entry : scriptCommands.entrySet()) {
+            Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = entry.getValue();
             owned.remove(name);
             if (owned.isEmpty()) {
-                scriptCommands.remove(owner);
-            }
-            CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
-            if (dispatcher != null) {
-                pushCommandTree(dispatcher);
+                scriptCommands.remove(entry.getKey(), owned);
             }
         }
     }
 
-    public void unregisterAllFor(RunningScript owner) {
-        commandQueue.removeIf(qc -> qc.owner().equals(owner));
+    private void reconcileManagedCommandName(String name) {
+        if (isNameManaged(name)) {
+            allManagedCommandNames.add(name);
+        } else {
+            allManagedCommandNames.remove(name);
+        }
+    }
 
-        Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = scriptCommands.remove(owner);
-        if (owned == null) return;
-
-        boolean changed = false;
-        for (String name : owned.keySet()) {
-            if (removeNode(name)) {
-                Main.LOGGER.info("Unregistered '{}' from disabled script '{}'", name, owner.getName());
-                changed = true;
+    private boolean isNameManaged(String name) {
+        for (Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned : scriptCommands.values()) {
+            if (owned.containsKey(name)) {
+                return true;
             }
         }
-
-        if (changed) {
-            CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
-            if (dispatcher != null) {
-                pushCommandTree(dispatcher);
+        for (QueuedCommand queuedCommand : commandQueue) {
+            if (queuedCommand.builder().getLiteral().equals(name)) {
+                return true;
             }
         }
+        return false;
     }
 
     private boolean removeNode(String name) {
@@ -171,6 +230,8 @@ public class CommandAPIService {
             return;
         }
 
+        Set<String> managedNamesSnapshot = Set.copyOf(allManagedCommandNames);
+
         client.execute(() -> {
             final CommandDispatcher<ClientSuggestionProvider> suggestionDispatcher = client.getConnection().getCommands();
             final RootCommandNode<ClientSuggestionProvider> suggestionRoot = suggestionDispatcher.getRoot();
@@ -179,13 +240,13 @@ public class CommandAPIService {
             final Map<String, CommandNode<ClientSuggestionProvider>> children = rootAccessor.getChildrenMap();
             final Map<String, LiteralCommandNode<ClientSuggestionProvider>> literals = rootAccessor.getLiteralsMap();
 
-            for (String commandName : allManagedCommandNames) {
+            for (String commandName : managedNamesSnapshot) {
                 children.remove(commandName);
                 literals.remove(commandName);
             }
 
             for (CommandNode<FabricClientCommandSource> node : dispatcher.getRoot().getChildren()) {
-                if (allManagedCommandNames.contains(node.getName())) {
+                if (managedNamesSnapshot.contains(node.getName())) {
                     @SuppressWarnings("unchecked")
                     CommandNode<ClientSuggestionProvider> castedNode = (CommandNode<ClientSuggestionProvider>) (Object) node;
                     suggestionRoot.addChild(castedNode);

@@ -57,7 +57,25 @@ public class CommandBuilder {
     }
 
     @HostAccess.Export
-    public CommandBuilder executes(Value callback) {
+    public CommandBuilder lit(String name) {
+        CommandBuilder child = new CommandBuilder(ClientCommandManager.literal(name), owner, scriptManager);
+        this.builder.then(child.builder);
+        return child;
+    }
+
+    @HostAccess.Export
+    public CommandBuilder arg(String name, String typeName) {
+        ScriptArgumentType type = ScriptArgumentType.fromString(typeName);
+        CommandBuilder child = new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, scriptManager);
+        this.builder.then(child.builder);
+        return child;
+    }
+
+    @HostAccess.Export
+    public CommandBuilder run(Value callback) {
+        if (callback == null || !callback.canExecute()) {
+            throw new IllegalArgumentException("Command handler must be executable.");
+        }
         this.builder.executes(context -> {
             withScriptContext(() -> invokeCallback(callback, context));
             return CommandManager.COMMAND_SUCCESS;
@@ -66,12 +84,7 @@ public class CommandBuilder {
     }
 
     @HostAccess.Export
-    public CommandBuilder exec(Value callback) {
-        return executes(callback);
-    }
-
-    @HostAccess.Export
-    public CommandBuilder suggests(Value callback) {
+    public CommandBuilder suggest(Value callback) {
         if (callback == null) {
             throw new IllegalArgumentException("Suggestion source cannot be null.");
         }
@@ -86,11 +99,6 @@ public class CommandBuilder {
             return suggestionsBuilder.buildFuture();
         });
         return this;
-    }
-
-    @HostAccess.Export
-    public CommandBuilder suggest(Value callback) {
-        return suggests(callback);
     }
 
     private void withScriptContext(Runnable action) {
@@ -210,7 +218,7 @@ public class CommandBuilder {
 
     private RequiredArgumentBuilder<FabricClientCommandSource, ?> requireArgumentBuilder() {
         if (!(this.builder instanceof RequiredArgumentBuilder<?, ?> rawArgBuilder)) {
-            throw new IllegalStateException("'.suggests()' can only be called on an argument node created with '.arg()'");
+            throw new IllegalStateException("'.suggest()' can only be called on an argument node created with '.arg()'");
         }
         @SuppressWarnings("unchecked")
         RequiredArgumentBuilder<FabricClientCommandSource, ?> argBuilder =

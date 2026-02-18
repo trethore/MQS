@@ -23,12 +23,6 @@ public final class ApiConstants {
     public static final String REGISTER = "register";
     public static final String UNREGISTER = "unregister";
     public static final String UNREGISTER_ALL = "unregisterAll";
-    public static final String BUILDER = "builder";
-    // Commands API
-    public static final String LITERAL = "literal";
-    public static final String ARGUMENT = "argument";
-    public static final String ARG_TYPE = "ArgType";
-    public static final String COMMAND_ARGUMENT_USAGE = "commands.argument(name, type) requires two string arguments.";
     // Config API
     public static final String GET = "get";
     public static final String SET = "set";
@@ -59,8 +53,6 @@ public final class ApiConstants {
     public static final String KEYBIND_BIND_TOGGLE = "bindToggle";
     public static final String KEYBIND_UNBIND = "unbind";
     public static final String KEYBIND_UNBIND_ALL = "unbindAll";
-    // Commands helper
-    public static final String REGISTER_LITERAL = "registerLiteral";
     // MQS utils
     public static final String MATH = "math";
     public static final String MC = "mc";

@@ -50,13 +50,24 @@ public enum ScriptArgumentType {
         this.supplier = supplier;
     }
 
-    public static ScriptArgumentType fromString(String name) {
+    public static ScriptArgumentType resolve(String name) {
+        if (name == null) {
+            return null;
+        }
         for (ScriptArgumentType type : values()) {
             for (String typeName : type.names) {
                 if (typeName.equalsIgnoreCase(name)) {
                     return type;
                 }
             }
+        }
+        return null;
+    }
+
+    public static ScriptArgumentType fromString(String name) {
+        ScriptArgumentType resolved = resolve(name);
+        if (resolved != null) {
+            return resolved;
         }
         throw new IllegalArgumentException("Unknown argument type: " + name + ". Available: " + Arrays.toString(values()));
     }

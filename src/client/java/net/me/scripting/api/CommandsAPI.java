@@ -33,21 +33,27 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import java.util.Arrays;
 import java.util.Set;
 
-import static net.me.scripting.api.ApiConstants.*;
-
 public class CommandsAPI implements ProxyObject {
 
+    private static final String LIT = "lit";
+    private static final String ARG = "arg";
+    private static final String REG = "reg";
+    private static final String UNREG = "unreg";
+    private static final String CLEAR = "clear";
+    private static final String TYPES = "types";
+    private static final String QUICK = "quick";
+    private static final String ARG_USAGE = "cmd.arg(name, type) requires two string arguments.";
+
     private static final Set<String> MEMBER_KEYS = Set.of(
-            BUILDER,
-            LITERAL,
-            ARGUMENT,
-            REGISTER,
-            UNREGISTER,
-            UNREGISTER_ALL,
-            ARG_TYPE,
-            REGISTER_LITERAL
+            LIT,
+            ARG,
+            REG,
+            UNREG,
+            CLEAR,
+            TYPES,
+            QUICK
     );
-    private static final ProxyObject ARG_TYPE_PROXY = createArgTypeProxy();
+    private static final ProxyObject TYPES_PROXY = createTypesProxy();
     private final CommandAPIService service;
     private final ScriptManager scriptManager;
     private final ScriptContextHelper contextHelper;
@@ -60,40 +66,41 @@ public class CommandsAPI implements ProxyObject {
         this.commandTracker = new HandleTracker<>();
     }
 
-    private static ProxyObject createArgTypeProxy() {
+    private static ProxyObject createTypesProxy() {
         return new ProxyObject() {
             @Override
             public Object getMember(String key) {
-                return Arrays.stream(ScriptArgumentType.values())
-                        .filter(type -> type.name().equals(key))
-                        .findFirst()
-                        .map(ScriptArgumentType::toString)
-                        .orElse(null);
+                ScriptArgumentType type = ScriptArgumentType.resolve(key);
+                return type != null ? type.toString() : null;
             }
 
             @Override
             public Object getMemberKeys() {
-                return Arrays.stream(ScriptArgumentType.values()).map(Enum::name).toArray(String[]::new);
+                return Arrays.stream(ScriptArgumentType.values())
+                        .map(ScriptArgumentType::toString)
+                        .toArray(String[]::new);
             }
 
             @Override
             public boolean hasMember(String key) {
-                return Arrays.stream(ScriptArgumentType.values()).anyMatch(type -> type.name().equals(key));
+                return ScriptArgumentType.resolve(key) != null;
             }
 
             @Override
             public void putMember(String key, Value value) {
-                throw new UnsupportedOperationException("Cannot modify the ArgType object.");
+                throw new UnsupportedOperationException("Cannot modify cmd.types.");
             }
         };
     }
 
     @Override
     public Object getMember(String key) {
-        if (ARG_TYPE.equals(key)) {
-            return ARG_TYPE_PROXY;
+        if (TYPES.equals(key)) {
+            return TYPES_PROXY;
         }
-
+        if (!MEMBER_KEYS.contains(key)) {
+            return null;
+        }
         return (ProxyExecutable) args -> executeCommand(key, args, contextHelper.require("Commands API"));
     }
 
@@ -114,26 +121,19 @@ public class CommandsAPI implements ProxyObject {
 
     private Object executeCommand(String key, Value[] args, RunningScript owner) {
         return switch (key) {
-            case BUILDER -> buildNamed(args, owner);
-            case LITERAL -> buildLiteral(args, owner);
-            case ARGUMENT -> buildArgument(args, owner);
-            case REGISTER -> register(args, owner);
-            case UNREGISTER -> unregister(args, owner);
-            case UNREGISTER_ALL -> unregisterAll(args, owner);
-            case REGISTER_LITERAL -> registerLiteral(args, owner);
+            case LIT -> buildLiteral(args, owner);
+            case ARG -> buildArgument(args, owner);
+            case REG -> register(args, owner);
+            case UNREG -> unregister(args, owner);
+            case CLEAR -> clear(args, owner);
+            case QUICK -> quick(args, owner);
             default -> throw new UnsupportedOperationException("Unsupported Commands operation: " + key);
         };
     }
 
-    private CommandBuilder buildNamed(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 1, "Commands.builder(name) requires one string argument.");
-        String name = ApiArgumentChecks.requireString(args, 0, "Commands.builder(name) requires one string argument.");
-        return new CommandBuilder(name, owner, this.scriptManager);
-    }
-
     private CommandBuilder buildLiteral(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCountAtLeast(args, 1, "Commands.literal(name) requires one string argument.");
-        String name = ApiArgumentChecks.requireString(args, 0, "Commands.literal(name) requires one string argument.");
+        ApiArgumentChecks.requireArgCountAtLeast(args, 1, "cmd.lit(name) requires one string argument.");
+        String name = ApiArgumentChecks.requireString(args, 0, "cmd.lit(name) requires one string argument.");
         CommandBuilder builder = new CommandBuilder(ClientCommandManager.literal(name), owner, this.scriptManager);
         if (args.length > 1) {
             Value configure = args[1];
@@ -148,15 +148,15 @@ public class CommandsAPI implements ProxyObject {
     }
 
     private CommandBuilder buildArgument(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 2, COMMAND_ARGUMENT_USAGE);
-        String name = ApiArgumentChecks.requireString(args, 0, COMMAND_ARGUMENT_USAGE);
-        String typeStr = ApiArgumentChecks.requireString(args, 1, COMMAND_ARGUMENT_USAGE);
+        ApiArgumentChecks.requireArgCount(args, 2, ARG_USAGE);
+        String name = ApiArgumentChecks.requireString(args, 0, ARG_USAGE);
+        String typeStr = ApiArgumentChecks.requireString(args, 1, ARG_USAGE);
         ScriptArgumentType type = ScriptArgumentType.fromString(typeStr);
         return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, this.scriptManager);
     }
 
     private Value register(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 1, "Commands.register(builder) requires one argument.");
+        ApiArgumentChecks.requireArgCount(args, 1, "cmd.reg(builder) requires one argument.");
         CommandBuilder builder = ApiArgumentChecks.requireHostObject(args, 0, CommandBuilder.class, "Argument must be a CommandBuilder instance.");
         service.register(owner, builder);
         String commandName = builder.getRootBuilder().getLiteral();
@@ -168,27 +168,27 @@ public class CommandsAPI implements ProxyObject {
     }
 
     private Void unregister(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 1, "Commands.unregister(commandName) requires one string argument.");
-        String commandName = ApiArgumentChecks.requireString(args, 0, "Commands.unregister(commandName) requires one string argument.");
+        ApiArgumentChecks.requireArgCount(args, 1, "cmd.unreg(commandName) requires one string argument.");
+        String commandName = ApiArgumentChecks.requireString(args, 0, "cmd.unreg(commandName) requires one string argument.");
         service.unregister(owner, commandName);
         commandTracker.remove(owner, commandName);
         return null;
     }
 
-    private Void unregisterAll(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 0, "Commands.unregisterAll() takes no arguments.");
+    private Void clear(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 0, "cmd.clear() takes no arguments.");
         service.unregisterAllFor(owner);
         commandTracker.disposeAll(owner, ignored -> {
         });
         return null;
     }
 
-    private Value registerLiteral(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCountAtLeast(args, 2, "Commands.registerLiteral(name, handler) requires a name and handler.");
-        String name = ApiArgumentChecks.requireString(args, 0, "Commands.registerLiteral(name, handler) requires a name and handler.");
+    private Value quick(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCountAtLeast(args, 2, "cmd.quick(name, handler) requires a name and handler.");
+        String name = ApiArgumentChecks.requireString(args, 0, "cmd.quick(name, handler) requires a name and handler.");
         Value handler = ApiArgumentChecks.requireExecutable(args, 1, "Handler must be executable.");
         CommandBuilder builder = new CommandBuilder(name, owner, scriptManager);
-        builder.executes(handler);
+        builder.run(handler);
         service.register(owner, builder);
         commandTracker.track(owner, name);
         return contextHelper.createIdempotentDisposer(owner, () -> {

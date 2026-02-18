@@ -132,7 +132,7 @@ public class ScriptContextFactory {
         mqsMembers.put("events", eventsApi);
         mqsMembers.put("config", configApi);
         mqsMembers.put("keybinds", keybindsApi);
-        mqsMembers.put("commands", commandsApi);
+        mqsMembers.put("cmd", commandsApi);
         mqsMembers.put("hooks", hooksApi);
         mqsMembers.put("utils", new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler));
 
