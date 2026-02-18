@@ -47,23 +47,44 @@ public class ScriptingApi {
     public static ProxyExecutable createImportClassProxy(ScriptingClassResolver resolver, Context context) {
         return args -> {
             if (args.length == 0 || !args[0].isString()) {
-                throw new IllegalArgumentException("importClass requires a FQCN string argument (named mappings).");
+                throw new IllegalArgumentException("importClass requires a class name string argument.");
             }
-            String name = args[0].asString();
-            if (!resolver.isClassAllowed(name)) {
-                throw new SecurityException("Class not allowed: " + name);
+            String requestedName = args[0].asString().trim();
+            if (requestedName.isEmpty()) {
+                throw new IllegalArgumentException("importClass requires a non-empty class name.");
             }
 
-            String runtime = resolver.getRuntimeName(name);
+            String resolvedName = resolveImportClassName(requestedName, resolver);
+            if (!resolver.isClassAllowed(resolvedName)) {
+                throw new SecurityException("Class not allowed: " + resolvedName);
+            }
+
+            String runtime = resolver.getRuntimeName(resolvedName);
             if (runtime != null) {
                 return resolver.getOrCreateWrapper(runtime);
             }
             try {
-                return context.eval(ScriptConstants.JS, "Java.type('" + name + "')");
+                Value javaInterop = context.getBindings(ScriptConstants.JS).getMember("Java");
+                return javaInterop.invokeMember("type", resolvedName);
             } catch (PolyglotException e) {
-                throw new IllegalArgumentException("Unknown class or could not load host class: " + name, e);
+                throw new IllegalArgumentException("Unknown class or could not load host class: " + resolvedName, e);
             }
         };
+    }
+
+    private static String resolveImportClassName(String requestedName, ScriptingClassResolver resolver) {
+        if (requestedName.indexOf('.') >= 0) {
+            return requestedName;
+        }
+
+        List<String> matches = resolver.findNamedClassesBySimpleName(requestedName);
+        if (matches.isEmpty()) {
+            throw new IllegalArgumentException("Unknown class name '" + requestedName + "'. Use a fully qualified class name.");
+        }
+        if (matches.size() > 1) {
+            throw new IllegalArgumentException("Ambiguous class name '" + requestedName + "'. Possible matches: " + String.join(", ", matches) + ". Use a fully qualified class name.");
+        }
+        return matches.getFirst();
     }
 
     public static ProxyExecutable createWrapProxy(ScriptingClassResolver resolver) {

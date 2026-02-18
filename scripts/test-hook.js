@@ -1,4 +1,4 @@
-const MinecraftClient = net.minecraft.client.Minecraft;
+const Minecraft = importClass("Minecraft");
 // @module(main=TestHookModule, name=Test Hook Module, version=0.0.1)
 class TestHookModule {
     hookDisposer = null;
@@ -9,7 +9,7 @@ class TestHookModule {
         MQS.utils.chat.addInfoChatMessage("Hello from Test Event Module!", true);
 
         this.hookDisposer = MQS.hooks.before(
-            MinecraftClient,
+            Minecraft,
             "setScreen",
             this.myHookCallback.bind(this)
         );

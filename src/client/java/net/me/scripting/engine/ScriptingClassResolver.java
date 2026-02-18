@@ -55,6 +55,7 @@ public class ScriptingClassResolver {
     private Map<String, Map<String, String>> fieldMap;
     private Map<String, String> runtimeToNamed;
     private Set<String> knownPackagePrefixes;
+    private Map<String, List<String>> simpleNameToNamedClasses;
 
     private ScriptingClassResolver() {
     }
@@ -69,6 +70,7 @@ public class ScriptingClassResolver {
         this.mappingsManager = mappingsManager;
         this.scriptManager = scriptManager;
         loadMappings(mappingsManager);
+        precomputeSimpleNameLookup();
         precomputePackagePrefixes();
     }
 
@@ -89,6 +91,55 @@ public class ScriptingClassResolver {
                 knownPackagePrefixes.add(fqcn.substring(0, lastDotIndex));
             }
         }
+    }
+
+    private void precomputeSimpleNameLookup() {
+        Map<String, LinkedHashSet<String>> simpleNameLookup = new HashMap<>();
+        if (classMap == null) {
+            simpleNameToNamedClasses = Collections.emptyMap();
+            return;
+        }
+
+        for (String namedClassName : classMap.keySet()) {
+            String simpleName = extractSimpleName(namedClassName);
+            indexSimpleName(simpleNameLookup, simpleName, namedClassName);
+
+            String innerSimpleName = extractInnerSimpleName(simpleName);
+            if (innerSimpleName != null) {
+                indexSimpleName(simpleNameLookup, innerSimpleName, namedClassName);
+            }
+        }
+
+        Map<String, List<String>> finalizedLookup = new HashMap<>();
+        for (Map.Entry<String, LinkedHashSet<String>> entry : simpleNameLookup.entrySet()) {
+            List<String> classes = new ArrayList<>(entry.getValue());
+            classes.sort(String::compareTo);
+            finalizedLookup.put(entry.getKey(), Collections.unmodifiableList(classes));
+        }
+        simpleNameToNamedClasses = Collections.unmodifiableMap(finalizedLookup);
+    }
+
+    private void indexSimpleName(Map<String, LinkedHashSet<String>> simpleNameLookup, String simpleName, String namedClassName) {
+        if (simpleName == null || simpleName.isBlank()) {
+            return;
+        }
+        simpleNameLookup.computeIfAbsent(simpleName, ignored -> new LinkedHashSet<>()).add(namedClassName);
+    }
+
+    private String extractSimpleName(String className) {
+        int lastDot = className.lastIndexOf('.');
+        if (lastDot < 0 || lastDot == className.length() - 1) {
+            return className;
+        }
+        return className.substring(lastDot + 1);
+    }
+
+    private String extractInnerSimpleName(String simpleName) {
+        int lastDollar = simpleName.lastIndexOf('$');
+        if (lastDollar < 0 || lastDollar == simpleName.length() - 1) {
+            return null;
+        }
+        return simpleName.substring(lastDollar + 1);
     }
 
     public boolean isMcRelated(Class<?> cls) {
@@ -163,6 +214,13 @@ public class ScriptingClassResolver {
 
     public String getRuntimeName(String namedName) {
         return classMap.get(namedName);
+    }
+
+    public List<String> findNamedClassesBySimpleName(String simpleName) {
+        if (simpleName == null || simpleName.isBlank()) {
+            return Collections.emptyList();
+        }
+        return simpleNameToNamedClasses.getOrDefault(simpleName, Collections.emptyList());
     }
 
     public Map<String, String> getRuntimeToNamedMap() {
