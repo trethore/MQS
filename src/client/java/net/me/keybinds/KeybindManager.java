@@ -107,9 +107,8 @@ public class KeybindManager {
         processInput(button, action);
     }
 
-    public void register(String name, Value action, RunningScript owner, KeybindOptions options) {
-        KeybindOptions resolved = options != null ? options : KeybindOptions.builder().keyCode(Keys.UNBOUND.getCode()).build();
-        int defaultKey = resolved.keyCode();
+    public KeyBinding register(String name, Value action, RunningScript owner, int defaultKeyCode, KeybindOptions options) {
+        KeybindOptions resolved = options != null ? options : KeybindOptions.builder().build();
         boolean repeatable = resolved.repeatable();
         int debounceTime = resolved.debounceMillis();
 
@@ -119,7 +118,7 @@ public class KeybindManager {
             this.unregister(owner, name);
         }
 
-        int finalKey = configManager.getKeybind(owner.getId(), name).orElse(defaultKey);
+        int finalKey = configManager.getKeybind(owner.getId(), name).orElse(defaultKeyCode);
 
         KeyBinding keyBinding = new KeyBinding(name, finalKey, repeatable, owner, action, debounceTime, scriptManager);
 
@@ -127,6 +126,8 @@ public class KeybindManager {
         if (finalKey >= 0) {
             keybindsByKeycode.computeIfAbsent(finalKey, ignored -> new CopyOnWriteArrayList<>()).add(keyBinding);
         }
+
+        return keyBinding;
     }
 
     public HostKeyBinding registerHost(String name, Runnable action, int defaultKey, boolean repeatable, int debounceTime) {
@@ -147,14 +148,33 @@ public class KeybindManager {
         return binding;
     }
 
-    public void unregister(RunningScript owner, String name) {
+    public boolean unregister(RunningScript owner, String name) {
         String uniqueName = owner.getId() + "::" + name;
         KeyBinding keyBinding = keybindsByName.remove(uniqueName);
         if (keyBinding == null) {
             Main.LOGGER.warn("Script '{}' attempted to unregister keybind '{}', which was not found.", owner.getName(), name);
-            return;
+            return false;
         }
         detachBinding(keyBinding);
+        return true;
+    }
+
+    public boolean unregister(RunningScript owner, String name, KeyBinding expectedBinding) {
+        if (expectedBinding == null) {
+            return false;
+        }
+
+        String uniqueName = owner.getId() + "::" + name;
+        KeyBinding currentBinding = keybindsByName.get(uniqueName);
+        if (currentBinding != expectedBinding) {
+            return false;
+        }
+        if (!keybindsByName.remove(uniqueName, expectedBinding)) {
+            return false;
+        }
+
+        detachBinding(expectedBinding);
+        return true;
     }
 
     public void unregister(RunningScript owner) {

@@ -22,16 +22,13 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
 public final class KeybindOptions {
-    private static final String KEY_PROP = "key";
     private static final String REPEATABLE_PROP = "repeatable";
     private static final String DEBOUNCE_PROP = "debounce";
 
-    private final int keyCode;
     private final boolean repeatable;
     private final int debounceMillis;
 
-    private KeybindOptions(int keyCode, boolean repeatable, int debounceMillis) {
-        this.keyCode = keyCode;
+    private KeybindOptions(boolean repeatable, int debounceMillis) {
         this.repeatable = repeatable;
         this.debounceMillis = debounceMillis;
     }
@@ -40,73 +37,63 @@ public final class KeybindOptions {
         return new Builder();
     }
 
-    public static KeybindOptions fromScript(Value optionsValue, int defaultKeyCode) {
+    public static KeybindOptions fromScript(Value optionsValue) {
         if (optionsValue == null) {
-            return builder().keyCode(defaultKeyCode).build();
+            return builder().build();
         }
-        KeybindOptions hostOptions = fromHostObject(optionsValue, defaultKeyCode);
+        KeybindOptions hostOptions = fromHostObject(optionsValue);
         if (hostOptions != null) {
             return hostOptions;
         }
 
-        int keyCode = defaultKeyCode;
         boolean repeatable = false;
         int debounceMillis = 100;
 
         if (!optionsValue.hasMembers()) {
-            return new KeybindOptions(keyCode, repeatable, debounceMillis);
+            return new KeybindOptions(repeatable, debounceMillis);
         }
 
-        keyCode = readIntMember(optionsValue, KEY_PROP, keyCode);
-        repeatable = readBooleanMember(optionsValue, REPEATABLE_PROP, repeatable);
-        debounceMillis = readNonNegativeIntMember(optionsValue, DEBOUNCE_PROP, debounceMillis);
+        repeatable = readRepeatableMember(optionsValue, repeatable);
+        debounceMillis = readDebounceMember(optionsValue, debounceMillis);
 
-        return new KeybindOptions(keyCode, repeatable, debounceMillis);
+        return new KeybindOptions(repeatable, debounceMillis);
     }
 
-    private static KeybindOptions fromHostObject(Value optionsValue, int defaultKeyCode) {
+    private static KeybindOptions fromHostObject(Value optionsValue) {
         if (!optionsValue.isHostObject()) {
             return null;
         }
         Object hostObject = optionsValue.asHostObject();
         if (hostObject instanceof KeybindOptions options) {
-            return options.withKeyCode(defaultKeyCode);
+            return options;
         }
         if (hostObject instanceof KeybindOptions.Builder builder) {
-            return builder.buildWithDefaultKey(defaultKeyCode);
+            return builder.build();
         }
         return null;
     }
 
-    private static int readIntMember(Value optionsValue, String member, int defaultValue) {
-        if (!optionsValue.hasMember(member)) {
+    private static boolean readRepeatableMember(Value optionsValue, boolean defaultValue) {
+        if (!optionsValue.hasMember(REPEATABLE_PROP)) {
             return defaultValue;
         }
-        Value memberValue = optionsValue.getMember(member);
-        if (!memberValue.isNumber()) {
-            return defaultValue;
-        }
-        return memberValue.asInt();
-    }
-
-    private static boolean readBooleanMember(Value optionsValue, String member, boolean defaultValue) {
-        if (!optionsValue.hasMember(member)) {
-            return defaultValue;
-        }
-        Value memberValue = optionsValue.getMember(member);
+        Value memberValue = optionsValue.getMember(REPEATABLE_PROP);
         if (!memberValue.isBoolean()) {
             return defaultValue;
         }
         return memberValue.asBoolean();
     }
 
-    private static int readNonNegativeIntMember(Value optionsValue, String member, int defaultValue) {
-        int value = readIntMember(optionsValue, member, defaultValue);
+    private static int readDebounceMember(Value optionsValue, int defaultValue) {
+        if (!optionsValue.hasMember(DEBOUNCE_PROP)) {
+            return defaultValue;
+        }
+        Value memberValue = optionsValue.getMember(DEBOUNCE_PROP);
+        if (!memberValue.isNumber()) {
+            return defaultValue;
+        }
+        int value = memberValue.asInt();
         return Math.max(0, value);
-    }
-
-    public int keyCode() {
-        return keyCode;
     }
 
     public boolean repeatable() {
@@ -117,26 +104,14 @@ public final class KeybindOptions {
         return debounceMillis;
     }
 
-    public KeybindOptions withKeyCode(int keyCode) {
-        if (this.keyCode == keyCode) {
-            return this;
-        }
-        return new KeybindOptions(keyCode, repeatable, debounceMillis);
-    }
-
     public static final class Builder {
-        private int keyCode = Keys.UNBOUND.getCode();
         private boolean repeatable;
         private int debounceMillis = 100;
 
         @HostAccess.Export
-        public Builder key(int keyCode) {
-            this.keyCode = keyCode;
+        public Builder repeatable() {
+            this.repeatable = true;
             return this;
-        }
-
-        public Builder keyCode(int keyCode) {
-            return key(keyCode);
         }
 
         @HostAccess.Export
@@ -161,14 +136,7 @@ public final class KeybindOptions {
 
         @HostAccess.Export
         public KeybindOptions build() {
-            return new KeybindOptions(keyCode, repeatable, debounceMillis);
-        }
-
-        public KeybindOptions buildWithDefaultKey(int defaultKeyCode) {
-            if (keyCode == Keys.UNBOUND.getCode()) {
-                return build().withKeyCode(defaultKeyCode);
-            }
-            return build();
+            return new KeybindOptions(repeatable, debounceMillis);
         }
     }
 }

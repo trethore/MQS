@@ -1,5 +1,4 @@
 const MinecraftClient = net.minecraft.client.Minecraft;
-const Component = net.minecraft.network.chat.Component;
 // @module(main=TestHookModule, name=Test Hook Module, version=0.0.1)
 class TestHookModule {
     hookDisposer = null;
