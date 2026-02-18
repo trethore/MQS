@@ -64,6 +64,7 @@ public class Main implements ClientModInitializer {
     private GlobalConfigManager globalConfigManager;
     @Getter
     private KeybindManager keybindManager;
+    private Engine scriptEngine;
 
     private static void setInstance(Main instance) {
         Main.instance = instance;
@@ -97,13 +98,24 @@ public class Main implements ClientModInitializer {
         this.registerClientCommands();
 
         mappingsManager.init();
-        try (Engine scriptEngine = Engine.create()) {
-            mappingsManager.whenReady(() -> McUtils.getMc().execute(() -> {
-                scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
-                scriptManager.loadAndEnableScriptsFromConfig();
+        this.scriptEngine = Engine.create();
+        mappingsManager.whenReady(() -> McUtils.getMc().execute(() -> {
+            if (this.scriptEngine == null) {
+                LOGGER.warn("Skipping script initialization because engine has already been shut down.");
+                return;
+            }
+            scriptManager.init(this.scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
+            scriptManager.loadAndEnableScriptsFromConfig();
 
-                LOGGER.info("MyQOLScripts initialization complete! Hello !");
-            }));
+            LOGGER.info("MyQOLScripts initialization complete! Hello !");
+        }));
+    }
+
+    public void shutdown() {
+        Engine engine = this.scriptEngine;
+        this.scriptEngine = null;
+        if (engine != null) {
+            engine.close();
         }
     }
 

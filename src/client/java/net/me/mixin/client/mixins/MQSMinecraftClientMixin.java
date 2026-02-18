@@ -44,6 +44,7 @@ public class MQSMinecraftClientMixin {
         main.getGlobalConfigManager().save();
         main.getConfigManager().saveAllConfigs();
         MQSEventBus.post(new MinecraftClientStopEvent());
+        main.shutdown();
     }
 
     @Inject(method = "setLevel", at = @At("HEAD"))
