@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class ExtendedInstanceProxy implements ProxyObject {
+    private static final String ARGUMENT_MUST_BE_CLASS = "The argument to _instanceof must be a class.";
     private final Map<String, Object> properties;
     @Getter
     private final Object baseInstance;
@@ -129,23 +130,23 @@ public class ExtendedInstanceProxy implements ProxyObject {
         if (unwrapped instanceof Class<?> clazz) {
             return clazz;
         }
-        throw new IllegalArgumentException("The argument to _instanceof must be a class.");
+        throw new IllegalArgumentException(ARGUMENT_MUST_BE_CLASS);
     }
 
     private Class<?> resolveTargetClassFromWrapper(JsClassWrapper wrapper) {
         if (wrapper == null || wrapper.getTargetClass() == null) {
-            throw new IllegalArgumentException("The argument to _instanceof must be a class.");
+            throw new IllegalArgumentException(ARGUMENT_MUST_BE_CLASS);
         }
         return wrapper.getTargetClass();
     }
 
     private Class<?> resolveTargetClassFromHolder(LazyJsClassHolder holder) {
         if (holder == null) {
-            throw new IllegalArgumentException("The argument to _instanceof must be a class.");
+            throw new IllegalArgumentException(ARGUMENT_MUST_BE_CLASS);
         }
         JsClassWrapper wrapper = holder.getWrapper();
         if (wrapper == null) {
-            throw new IllegalArgumentException("The argument to _instanceof must be a class.");
+            throw new IllegalArgumentException(ARGUMENT_MUST_BE_CLASS);
         }
         return resolveTargetClassFromWrapper(wrapper);
     }

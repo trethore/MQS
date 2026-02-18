@@ -55,6 +55,7 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     private final MappingsManager mappingsManager;
     private final ScriptManager scriptManager;
 
+    @SuppressWarnings("java:S3011") // Accessibility bypass is intentional for this reflection utility
     public JsClassWrapper(String runtimeFqcn,
                           Map<String, List<String>> methodLookup,
                           Map<String, String> fieldLookup,

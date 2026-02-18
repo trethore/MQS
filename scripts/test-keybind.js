@@ -1,4 +1,4 @@
-const Text = net.minecraft.text.Text;
+const Component = net.minecraft.network.chat.Component;
 const KEY_CODE = 66;
 // @module(main=TestKeybind, name=Test Keybind Module, version=0.0.1)
 class TestKeybind {

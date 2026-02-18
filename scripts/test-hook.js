@@ -1,5 +1,5 @@
-const MinecraftClient = net.minecraft.client.MinecraftClient;
-const Text = net.minecraft.text.Text;
+const MinecraftClient = net.minecraft.client.Minecraft;
+const Component = net.minecraft.network.chat.Component;
 // @module(main=TestHookModule, name=Test Hook Module, version=0.0.1)
 class TestHookModule {
     hookDisposer = null;
@@ -27,10 +27,11 @@ class TestHookModule {
 
     myHookCallback(context, args, next) {
         const screen = args[0];
-        if (!screen) {
-            println("Screen closed (setScreen was called with null).");
+
+        if (screen) {
+           println("Screen opened: " + screen.getTitle().getString());
         } else {
-            println("Screen opened: " + screen.getTitle().getString());
+           println("Screen closed (setScreen was called with null).");
         }
 
         return next(...args)

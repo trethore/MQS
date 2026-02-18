@@ -39,12 +39,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused","java:S2386"}) // Sonar, this is a js context hook interceptor, stop complaining about making this protected...
 public class HookInterceptor {
+    // Must remain public: Byte Buddy inlines advice into target classes that access these members directly.
     public static final ThreadLocal<Deque<AdviceContext>> adviceContextStack = ThreadLocal.withInitial(ArrayDeque::new);
     public static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-    protected static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
-    protected static final Map<CacheKey, ProxyExecutable> CHAIN_CACHE = new ConcurrentHashMap<>();
+    public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
+    public static final Map<CacheKey, ProxyExecutable> CHAIN_CACHE = new ConcurrentHashMap<>();
 
     public static ProxyExecutable createEmptyChainProxy() {
         return passedArgs -> {
@@ -131,19 +132,22 @@ public class HookInterceptor {
         }
     }
 
-    private static ProxyExecutable getOrCreateChain(String hookId, int argCount, List<HookData> allHooksForName, ScriptManager scriptManager, MappingsManager mappingsManager) {
+    // Must remain public for inlined advice access.
+    public static ProxyExecutable getOrCreateChain(String hookId, int argCount, List<HookData> allHooksForName, ScriptManager scriptManager, MappingsManager mappingsManager) {
         CacheKey cacheKey = new CacheKey(hookId, argCount);
         ChainFactory factory = new ChainFactory(allHooksForName, scriptManager, mappingsManager);
         return CHAIN_CACHE.computeIfAbsent(cacheKey, factory);
     }
 
-    private static AdviceContext createAdviceContext(Object thiz, Method method, MappingsManager mappingsManager, ScriptManager scriptManager) {
+    // Must remain public for inlined advice access.
+    public static AdviceContext createAdviceContext(Object thiz, Method method, MappingsManager mappingsManager, ScriptManager scriptManager) {
         AdviceContext adviceContext = new AdviceContext();
         adviceContext.setHookContext(new HookContext(thiz, method, STACK_WALKER, mappingsManager, scriptManager));
         return adviceContext;
     }
 
-    private static Value[] wrapArgsAsValues(Object[] args) {
+    // Must remain public for inlined advice access.
+    public static Value[] wrapArgsAsValues(Object[] args) {
         Value[] values = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
             values[i] = Value.asValue(args[i]);
@@ -151,7 +155,8 @@ public class HookInterceptor {
         return values;
     }
 
-    private static void setupAfterChain(AdviceContext adviceContext, List<HookData> allHooksForName, int argCount, MappingsManager mappingsManager, ScriptManager scriptManager) {
+    // Must remain public for inlined advice access.
+    public static void setupAfterChain(AdviceContext adviceContext, List<HookData> allHooksForName, int argCount, MappingsManager mappingsManager, ScriptManager scriptManager) {
         List<HookData> afterHooks = allHooksForName.stream()
                 .filter(data -> (data.argCount() == null || data.argCount() == argCount) && data.mode() == HookExecutionMode.AFTER)
                 .toList();
@@ -161,7 +166,8 @@ public class HookInterceptor {
         }
     }
 
-    private static void applyModifiedArgs(AdviceContext context, Object[] args, Class<?>[] paramTypes) {
+    // Must remain public for inlined advice access.
+    public static void applyModifiedArgs(AdviceContext context, Object[] args, Class<?>[] paramTypes) {
         if (context.shouldSkipOriginal()) {
             return;
         }
@@ -174,7 +180,8 @@ public class HookInterceptor {
         }
     }
 
-    private static void handleChainError(Method method, Exception e) {
+    // Must remain public for inlined advice access.
+    public static void handleChainError(Method method, Exception e) {
         Main.LOGGER.error("JS hook chain error in {}#{}", method.getDeclaringClass().getSimpleName(), method.getName(), e);
         AdviceContext context = adviceContextStack.get().peek();
         if (context != null) {
@@ -210,7 +217,8 @@ public class HookInterceptor {
         returnValue = unwrapScriptReturnValue(currentContext, method.getReturnType(), returnValue);
     }
 
-    private static Object unwrapScriptReturnValue(AdviceContext context, Class<?> returnType, Object originalValue) {
+    // Must remain public for inlined advice access.
+    public static Object unwrapScriptReturnValue(AdviceContext context, Class<?> returnType, Object originalValue) {
         if (!context.hasScriptReturnValue()) {
             return originalValue;
         }
@@ -220,7 +228,8 @@ public class HookInterceptor {
         )[0];
     }
 
-    private static void executeAfterChain(AdviceContext context, Method method) {
+    // Must remain public for inlined advice access.
+    public static void executeAfterChain(AdviceContext context, Method method) {
         if (context.getAfterChain() == null) {
             return;
         }
