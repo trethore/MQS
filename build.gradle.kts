@@ -6,7 +6,7 @@ import tytoo.myqolscripts.UnpackSourcesTask
 import java.time.Year
 import java.util.Date
 
-// Plugins
+// --- Plugins ---
 
 plugins {
     id("fabric-loom")
@@ -14,25 +14,23 @@ plugins {
     `maven-publish`
 }
 
-// Project Metadata
+// --- Project Properties ---
 
 version = property("mod_version")!!
 group = property("maven_group")!!
 
-val archivesBaseName: String = property("archives_base_name") as String
-val sourceDepsConfigurationName = "sourceDeps"
-val shadowConfigurationName = "shadow"
-val shadowJarTaskName = "shadowJar"
-val helpTaskGroup = "help"
-val licenseFileName = "LICENSE"
+val archivesBaseName = property("archives_base_name") as String
+base.archivesName.set(archivesBaseName)
+
+val graalVersion: String by project
+val bytebuddyVersion: String by project
+val lombokVersion: String by project
+
+// --- Constants ---
+
+val shadowConfigName = "shadow"
+val sourceDepsConfigName = "sourceDeps"
 val licenseArchiveName = "$archivesBaseName-LICENSE.txt"
-val fabricModMetadataFile = "fabric.mod.json"
-val processResourceTaskNames = listOf("processResources", "processClientResources")
-val javaSourceExtension = "java"
-val graalRelocationFrom = "org.graalvm"
-val graalRelocationTo = "net.me.libs.graalvm"
-val byteBuddyRelocationFrom = "net.bytebuddy"
-val byteBuddyRelocationTo = "net.me.libs.bytebuddy"
 
 val graalModules = listOf(
     "org.graalvm.sdk" to "graal-sdk",
@@ -40,34 +38,37 @@ val graalModules = listOf(
     "org.graalvm.js" to "js-language",
     "org.graalvm.js" to "js-scriptengine"
 )
+
 val byteBuddyModules = listOf(
     "net.bytebuddy" to "byte-buddy",
     "net.bytebuddy" to "byte-buddy-agent"
 )
+
 val shadedModules = graalModules + byteBuddyModules
 
-base {
-    archivesName.set(archivesBaseName)
-}
+// --- Configurations ---
 
-// Dependency Versions (from gradle.properties)
+val sourceDeps: Configuration by configurations.creating
 
-val graalVersion: String by project
-val bytebuddyVersion: String by project
-val lombokVersion: String by project
-
-// Repositories
+// --- Repositories ---
 
 repositories {
     mavenCentral()
+    maven {
+        name = "GitHubPackagesGraphene"
+        url = uri("https://maven.pkg.github.com/trethore/graphene")
+        credentials {
+            username = project.findProperty("gpr.user") as String?
+            password = project.findProperty("gpr.key") as String?
+        }
+    }
     maven { url = uri("https://packages.graalvm.org/maven") }
 }
 
-// Loom Configuration
+// --- Loom & Environment ---
 
 loom {
     splitEnvironmentSourceSets()
-
     mods {
         register("myqolscripts") {
             sourceSet(sourceSets["client"])
@@ -75,11 +76,17 @@ loom {
     }
 }
 
-// Configurations
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
 
-val sourceDeps: Configuration by configurations.creating
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(21)
+}
 
-// Dependencies
+// --- Dependencies ---
 
 dependencies {
     // Minecraft & Fabric
@@ -87,6 +94,9 @@ dependencies {
     mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:${property("loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
+
+    // Graphene UI
+    modImplementation("tytoo.grapheneui:graphene-ui:${property("graphene_version")}")
 
     // GraalVM (shaded)
     graalModules.forEach { (moduleGroup, moduleName) ->
@@ -107,23 +117,11 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")
     "clientCompileOnly"("org.projectlombok:lombok:$lombokVersion")
     "clientAnnotationProcessor"("org.projectlombok:lombok:$lombokVersion")
-
 }
 
-// Java Toolchain
+// --- Tasks ---
 
-java {
-    withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-}
-
-tasks.withType<JavaCompile>().configureEach {
-    options.release.set(21)
-}
-
-// License Headers
-
+// 1. License Headers
 val applyLicenseHeaders by tasks.registering {
     doLast {
         val headerFile = file("HEADER")
@@ -132,43 +130,38 @@ val applyLicenseHeaders by tasks.registering {
             return@doLast
         }
 
-        val headerContent = headerFile.readText(Charsets.UTF_8)
-            .replace("<year>", Year.now().value.toString())
-        val firstHeaderLine = headerContent.lines().first()
+        val headerContent = headerFile.readText(Charsets.UTF_8).replace("<year>", Year.now().value.toString())
+        val firstHeaderLine = headerContent.substringBefore('\n')
 
-        val javaSourceFiles = sourceSets.asSequence()
-            .flatMap { sourceSet -> sourceSet.java.srcDirs.asSequence() }
-            .filter { srcDir -> srcDir.exists() }
-            .flatMap { srcDir -> srcDir.walkTopDown() }
-            .filter { sourceFile -> sourceFile.isFile && sourceFile.extension == javaSourceExtension }
-
-        javaSourceFiles.forEach { sourceFile ->
-            val content = sourceFile.readText(Charsets.UTF_8)
-            if (content.startsWith(firstHeaderLine)) {
-                return@forEach
+        sourceSets.asSequence()
+            .flatMap { it.java.srcDirs.asSequence() }
+            .filter { it.exists() }
+            .flatMap { it.walkTopDown() }
+            .filter { it.isFile && it.extension == "java" }
+            .forEach { sourceFile ->
+                val content = sourceFile.readText(Charsets.UTF_8)
+                if (!content.startsWith(firstHeaderLine)) {
+                    println("Adding license header to: ${sourceFile.path}")
+                    sourceFile.writeText("$headerContent\n\n$content", Charsets.UTF_8)
+                }
             }
-            println("Adding license header to: ${sourceFile.path}")
-            sourceFile.writeText(headerContent + "\n\n" + content, Charsets.UTF_8)
-        }
     }
 }
 
-// Resource Processing
-
-processResourceTaskNames.forEach { taskName ->
+// 2. Resource Processing
+listOf("processResources", "processClientResources").forEach { taskName ->
     tasks.named<ProcessResources>(taskName) {
         dependsOn(applyLicenseHeaders)
         inputs.property("version", project.version)
 
-        filesMatching(fabricModMetadataFile) {
+        filesMatching("fabric.mod.json") {
             expand("version" to project.version)
         }
     }
 }
 
-// JAR Packaging
-
-fun manifestAttributes(): Map<String, Any> = mapOf(
+// 3. Packaging
+val sharedManifestAttributes = mapOf(
     "Implementation-Title" to project.name,
     "Implementation-Version" to project.version,
     "Built-By" to System.getProperty("user.name"),
@@ -177,38 +170,33 @@ fun manifestAttributes(): Map<String, Any> = mapOf(
 )
 
 tasks.jar {
-    from(licenseFileName) {
+    from("LICENSE") {
         into("")
         rename { licenseArchiveName }
     }
-
-    manifest {
-        attributes(manifestAttributes())
-    }
+    manifest { attributes(sharedManifestAttributes) }
 }
 
-tasks.shadowJar {
+val shadowJarProvider = tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("dev")
-    configurations = listOf(project.configurations[shadowConfigurationName])
+    configurations = listOf(project.configurations[shadowConfigName])
     from(sourceSets["client"].output)
 
-    from(licenseFileName) {
+    from("LICENSE") {
         into("META-INF")
         rename { licenseArchiveName }
     }
 
     mergeServiceFiles()
-    relocate(graalRelocationFrom, graalRelocationTo)
-    relocate(byteBuddyRelocationFrom, byteBuddyRelocationTo)
+    relocate("org.graalvm", "net.me.libs.graalvm")
+    relocate("net.bytebuddy", "net.me.libs.bytebuddy")
 
-    manifest {
-        attributes(manifestAttributes())
-    }
+    manifest { attributes(sharedManifestAttributes) }
 }
 
 val shadowLibsJar by tasks.registering(ShadowJar::class) {
     archiveClassifier.set("libs-only")
-    configurations = listOf(project.configurations[shadowConfigurationName])
+    configurations = listOf(project.configurations[shadowConfigName])
     dependencies {
         shadedModules.forEach { (moduleGroup, moduleName) ->
             include { it.moduleGroup == moduleGroup && it.moduleName == moduleName }
@@ -216,23 +204,41 @@ val shadowLibsJar by tasks.registering(ShadowJar::class) {
     }
     from(files())
     mergeServiceFiles()
-    relocate(graalRelocationFrom, graalRelocationTo)
-    relocate(byteBuddyRelocationFrom, byteBuddyRelocationTo)
+    relocate("org.graalvm", "net.me.libs.graalvm")
+    relocate("net.bytebuddy", "net.me.libs.bytebuddy")
 }
-
-val shadowJarProvider = tasks.named<ShadowJar>(shadowJarTaskName)
 
 tasks.named<RemapJarTask>("remapJar") {
     dependsOn(shadowJarProvider)
-    inputFile.set(shadowJarProvider.flatMap { shadowJarTask -> shadowJarTask.archiveFile })
+    inputFile.set(shadowJarProvider.flatMap { it.archiveFile })
 
-    from(licenseFileName) {
+    from("LICENSE") {
         into("META-INF")
         rename { licenseArchiveName }
     }
 }
 
-// Publishing
+// --- Source Browsing Helpers ---
+
+val unpackedSourcesDir: Directory = layout.projectDirectory.dir("libs-src")
+
+val cleanSources by tasks.registering(Delete::class) {
+    group = "help"
+    description = "Deletes unpacked sources in libs-src/"
+    delete(unpackedSourcesDir)
+}
+
+val unpackSources by tasks.registering(UnpackSourcesTask::class) {
+    group = "help"
+    description = "Unpacks library, Minecraft, and Fabric sources into libs-src/"
+    dependsOn(cleanSources)
+    sourceDeps.from(configurations.named(sourceDepsConfigName))
+    outputDir.set(unpackedSourcesDir)
+    minecraftCacheDir.set(layout.projectDirectory.dir(".gradle/loom-cache/minecraftMaven"))
+    fabricCacheDir.set(layout.projectDirectory.dir(".gradle/loom-cache/remapped_mods/remapped/net/fabricmc/fabric-api"))
+}
+
+// --- Publishing ---
 
 publishing {
     publications {
@@ -244,26 +250,4 @@ publishing {
     repositories {
         // Configure your publish repos here
     }
-}
-
-// Source Browsing Helpers
-
-val unpackedSourcesDir: Directory = layout.projectDirectory.dir("libs-src")
-val minecraftCacheDirProvider: Directory = layout.projectDirectory.dir(".gradle/loom-cache/minecraftMaven")
-val fabricCacheDirProvider: Directory = layout.projectDirectory.dir(".gradle/loom-cache/remapped_mods/remapped/net/fabricmc/fabric-api")
-
-val cleanSources by tasks.registering(Delete::class) {
-    group = helpTaskGroup
-    description = "Deletes unpacked sources in libs-src/"
-    delete(unpackedSourcesDir)
-}
-
-val unpackSources by tasks.registering(UnpackSourcesTask::class) {
-    group = helpTaskGroup
-    description = "Unpacks library, Minecraft, and Fabric sources into libs-src/"
-    dependsOn(cleanSources)
-    sourceDeps.from(configurations.named(sourceDepsConfigurationName))
-    outputDir.set(unpackedSourcesDir)
-    minecraftCacheDir.set(minecraftCacheDirProvider)
-    fabricCacheDir.set(fabricCacheDirProvider)
 }
