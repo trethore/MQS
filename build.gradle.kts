@@ -48,7 +48,11 @@ val shadedModules = graalModules + byteBuddyModules
 
 // --- Configurations ---
 
-val sourceDeps: Configuration by configurations.creating
+val sourceDeps: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
 
 // --- Repositories ---
 
@@ -97,6 +101,7 @@ dependencies {
 
     // Graphene UI
     modImplementation("tytoo.grapheneui:graphene-ui:${property("graphene_version")}")
+    sourceDeps("tytoo.grapheneui:graphene-ui:${property("graphene_version")}")
 
     // GraalVM (shaded)
     graalModules.forEach { (moduleGroup, moduleName) ->

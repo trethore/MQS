@@ -156,8 +156,15 @@ abstract class UnpackSourcesTask : DefaultTask() {
     private fun findFabricSourceJars(): List<File> {
         val root = existingDirectory(fabricCacheDir) ?: return emptyList()
 
-        return root.walkTopDown()
-            .filter { it.isFile && it.name.endsWith(SOURCES_JAR_SUFFIX) }
+        val remappedModuleDirectories = root.listFiles()
+            ?.asSequence()
+            ?.filter { it.isDirectory }
+            ?: emptySequence()
+
+        return remappedModuleDirectories
+            .flatMap { directory -> directory.walkTopDown() }
+            .filter { it.isFile }
+            .filter { file -> file.name.endsWith(SOURCES_JAR_SUFFIX) && !file.name.endsWith(BACKUP_JAR_SUFFIX) }
             .toList()
     }
 

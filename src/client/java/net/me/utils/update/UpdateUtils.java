@@ -32,6 +32,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -194,7 +195,7 @@ public class UpdateUtils {
         }
         try {
             Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (java.nio.file.FileSystemException e) {
+        } catch (FileSystemException e) {
             Main.LOGGER.warn("Standard copy failed, trying with FileChannel transfer. Error: {}", e.getMessage());
             copyFileWithChannel(sourceFile, destFile);
         }
