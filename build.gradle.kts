@@ -101,7 +101,7 @@ dependencies {
 
     // Graphene UI
     modImplementation("tytoo.grapheneui:graphene-ui:${property("graphene_version")}")
-    sourceDeps("tytoo.grapheneui:graphene-ui:${property("graphene_version")}")
+    sourceDeps("tytoo.grapheneui:graphene-ui:${property("graphene_version")}:sources@jar")
 
     // GraalVM (shaded)
     graalModules.forEach { (moduleGroup, moduleName) ->

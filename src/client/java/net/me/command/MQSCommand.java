@@ -19,25 +19,45 @@
 package net.me.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.me.Main;
 import net.me.command.commands.ScriptCommand;
 import net.me.command.commands.UpdateCommand;
 import net.me.scripting.ScriptingService;
+import net.me.ui.UiManager;
+import net.me.utils.ChatUtils;
 
 public class MQSCommand extends Command {
     private final ScriptCommand scriptCommand;
     private final UpdateCommand updateCommand;
+    private final UiManager uiManager;
 
-    public MQSCommand(ScriptingService scriptingService) {
+    public MQSCommand(ScriptingService scriptingService, UiManager uiManager) {
         this.scriptCommand = new ScriptCommand(scriptingService);
         this.updateCommand = new UpdateCommand();
+        this.uiManager = uiManager;
     }
 
     @Override
     protected LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
         return ClientCommandManager.literal("mqs")
+                .executes(this::openUi)
+                .then(ClientCommandManager.literal("ui")
+                        .executes(this::openUi))
                 .then(scriptCommand.buildCommand())
                 .then(updateCommand.buildCommand());
+    }
+
+    private int openUi(CommandContext<FabricClientCommandSource> ignored) {
+        try {
+            uiManager.openUi();
+            return CommandManager.COMMAND_SUCCESS;
+        } catch (RuntimeException exception) {
+            Main.LOGGER.error("Failed to open MQS UI.", exception);
+            ChatUtils.addErrorChatMessage("Failed to open MQS UI. Check logs for details.", true);
+            return CommandManager.COMMAND_FAILURE;
+        }
     }
 }

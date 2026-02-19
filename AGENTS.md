@@ -23,6 +23,7 @@ Here is the structure of the repository:
 │       │   ├── command/                       # `/mqs` command tree and command integration.
 │       │   ├── keybinds/                      # Script-defined keybind registration and dispatch.
 │       │   ├── config/                        # Global host config (`mqs_config.json`) and config keys.
+│       │   ├── ui/                            # Graphene-based web UI.
 │       │   ├── utils/                         # Shared host-side utilities.
 │       │   └── mixin/                         # Mixins exposing Minecraft internals required by scripting APIs.
 │       └── resources/
@@ -88,6 +89,7 @@ Here is the structure of the repository:
 - GraalVM JavaScript artifacts (`graal-sdk`, `truffle-api`, `js-language`, `js-scriptengine`) are bundled through
   Shadow, relocated to `net.me.libs.graalvm`, and used by the scripting engine.
 - Byte Buddy (`byte-buddy`, `byte-buddy-agent`) is shaded to `net.me.libs.bytebuddy` and powers runtime interception in `HookManager`.
+- Graphene (`graphene-ui`) is a modern, Chromium-based UI library for Minecraft.
 - Lombok ships as a dependency; prefer its annotations to reduce boilerplate.
 - Library sources are fetched through the `sourceDeps` configuration (see `build.gradle.kts`) and unpacked per library using
   `./gradlew unpackSources` into `libs-src/<library>`. Use these sources to explore library source code.

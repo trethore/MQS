@@ -34,10 +34,12 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
+import net.me.ui.UiManager;
 import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tytoo.grapheneui.api.GrapheneCore;
 
 import java.nio.file.Path;
 
@@ -62,6 +64,7 @@ public class Main implements ClientModInitializer {
     private GlobalConfigManager globalConfigManager;
     @Getter
     private KeybindManager keybindManager;
+    private UiManager uiManager;
     private Engine scriptEngine;
 
     private static void setInstance(Main instance) {
@@ -71,7 +74,7 @@ public class Main implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         setInstance(this);
-
+        GrapheneCore.init();
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
         this.scriptManager = new ScriptManager();
@@ -79,6 +82,7 @@ public class Main implements ClientModInitializer {
         this.commandManager = new CommandManager();
         this.consoleManager = new ConsoleManager();
         this.globalConfigManager = new GlobalConfigManager(consoleManager);
+        this.uiManager = new UiManager();
 
         EventManager eventManager = new EventManager(scriptManager);
         MQSEventBus.setManager(eventManager);
@@ -118,7 +122,7 @@ public class Main implements ClientModInitializer {
     }
 
     private void registerClientCommands() {
-        this.commandManager.addCommand(new MQSCommand(this.scriptingService));
+        this.commandManager.addCommand(new MQSCommand(this.scriptingService, this.uiManager));
     }
 
     private void registerConsoleCommands() {
