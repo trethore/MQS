@@ -24,7 +24,7 @@ import tytoo.grapheneui.api.GrapheneCore;
 import tytoo.grapheneui.api.url.GrapheneClasspathUrls;
 
 public class UiManager {
-    private static final String DEFAULT_UI_URL = GrapheneClasspathUrls.asset(Main.MOD_ID, "pages/html/scripts.html");
+    private static final String DEFAULT_UI_URL = GrapheneClasspathUrls.asset(Main.MOD_ID, "pages/index.html");
 
     public void openUi() {
         if (!GrapheneCore.isInitialized()) {
