@@ -1,0 +1,26 @@
+---
+import { ThemeSwitcher } from '@/components/react/ThemeSwitcher';
+import { NavLinks } from '@/components/react/NavLinks';
+
+interface Props {
+	currentPath?: string;
+}
+
+const { currentPath = '/scripts/' } = Astro.props;
+---
+
+<header class="fixed inset-x-0 top-4 z-20 flex justify-center px-3">
+	<nav class="mqs-glass-nav flex w-full max-w-5xl items-center rounded-2xl px-3 py-2 sm:px-4">
+		<div class="flex flex-1 items-center">
+			<a href="/scripts/" class="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-[color:var(--mqs-nav-brand)]">
+				My QOL Scripts
+			</a>
+		</div>
+
+		<NavLinks currentPath={currentPath} client:load />
+
+		<div class="flex items-center justify-end sm:flex-1">
+			<ThemeSwitcher client:load />
+		</div>
+	</nav>
+</header>
