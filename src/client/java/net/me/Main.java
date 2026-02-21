@@ -39,7 +39,9 @@ import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tytoo.grapheneui.api.GrapheneConfig;
 import tytoo.grapheneui.api.GrapheneCore;
+import tytoo.grapheneui.api.GrapheneHttpConfig;
 
 import java.nio.file.Path;
 
@@ -47,6 +49,7 @@ public class Main implements ClientModInitializer {
     public static final String MOD_ID = "myqolscripts";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
+    private static final int DEV_UI_HTTP_PORT = 41795;
 
     @Getter
     private static Main instance;
@@ -74,7 +77,9 @@ public class Main implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         setInstance(this);
-        GrapheneCore.init();
+        GrapheneCore.register(Main.MOD_ID, createGrapheneConfig());
+
+
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
         this.scriptManager = new ScriptManager();
@@ -119,6 +124,20 @@ public class Main implements ClientModInitializer {
         if (engine != null) {
             engine.close();
         }
+    }
+
+    private GrapheneConfig createGrapheneConfig() {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
+            return GrapheneConfig.defaults();
+        }
+
+        GrapheneHttpConfig httpConfig = GrapheneHttpConfig.builder()
+                .port(DEV_UI_HTTP_PORT)
+                .build();
+
+        return GrapheneConfig.builder()
+                .http(httpConfig)
+                .build();
     }
 
     private void registerClientCommands() {

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "build:graphene": "npm run build && node ./scripts/publish-pages.mjs",
+    "build:graphene": "npm run build && node ./scripts/publish-pages.mjs prod",
+    "build:graphenedev": "npm run build && node ./scripts/publish-pages.mjs dev",
     "preview": "astro preview",
     "astro": "astro"
   },

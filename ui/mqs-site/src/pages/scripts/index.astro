@@ -1,7 +1,13 @@
 ---
 import Layout from '../../layouts/main.astro';
+import { ScriptsPanel } from '@/components/react/ScriptsPanel';
 ---
 
 <Layout title="MQS - Scripts" currentPath="/scripts/">
-	<h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">Scripts</h1>
+	<section class="mqs-glass-nav mx-auto mt-[5em] w-full max-w-5xl rounded-2xl px-6 py-8 sm:px-8 sm:py-10">
+		<h1 class="text-3xl font-semibold tracking-tight sm:text-5xl">
+			All your <span class="mqs-primary-gradient">QOL</span> Scripts
+		</h1>
+		<ScriptsPanel client:load />
+	</section>
 </Layout>

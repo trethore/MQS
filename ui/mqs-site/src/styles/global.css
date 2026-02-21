@@ -177,6 +177,86 @@
     color: var(--foreground);
   }
 
+  .mqs-primary-gradient {
+    background: linear-gradient(120deg, var(--mqs-primary-1), var(--mqs-primary-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .mqs-script-search {
+    background: color-mix(in srgb, var(--card) 92%, transparent 8%);
+    border-color: color-mix(in srgb, var(--border) 85%, transparent 15%);
+  }
+
+  .mqs-script-action {
+    background: color-mix(in srgb, var(--card) 92%, transparent 8%);
+    border: 1px solid color-mix(in srgb, var(--border) 85%, transparent 15%);
+    transition: transform 170ms ease, border-color 170ms ease;
+  }
+
+  .mqs-script-action:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--mqs-primary-1) 44%, var(--border) 56%);
+  }
+
+  .mqs-script-item {
+    background: color-mix(in srgb, var(--card) 90%, transparent 10%);
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent 16%);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
+    backdrop-filter: blur(12px) saturate(125%);
+    -webkit-backdrop-filter: blur(12px) saturate(125%);
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .mqs-script-item:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--mqs-primary-1) 36%, var(--border) 64%);
+    box-shadow: 0 20px 36px rgba(0, 0, 0, 0.2);
+  }
+
+  .mqs-script-item:focus-visible {
+    outline: none;
+    border-color: color-mix(in srgb, var(--mqs-primary-1) 48%, var(--border) 52%);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mqs-primary-1) 22%, transparent 78%);
+  }
+
+  .mqs-script-toggle {
+    display: inline-flex;
+    height: 1.75rem;
+    width: 3rem;
+    align-items: center;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background: var(--input);
+    padding: 0;
+    transition: background-color 170ms ease, box-shadow 170ms ease;
+  }
+
+  .mqs-script-toggle[data-state="checked"] {
+    background: var(--primary);
+  }
+
+  .mqs-script-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mqs-primary-1) 28%, transparent 72%);
+  }
+
+  .mqs-script-toggle-thumb {
+    pointer-events: none;
+    display: block;
+    height: 1.25rem;
+    width: 1.25rem;
+    border-radius: 9999px;
+    background: var(--background);
+    transform: translateX(2px);
+    transition: transform 170ms ease;
+  }
+
+  .mqs-script-toggle[data-state="checked"] .mqs-script-toggle-thumb {
+    transform: translateX(26px);
+  }
+
   .mqs-theme-menu {
     background: color-mix(in srgb, var(--card) 92%, transparent 8%);
     border: 1px solid color-mix(in srgb, var(--border) 88%, transparent 12%);

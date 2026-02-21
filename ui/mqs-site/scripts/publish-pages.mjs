@@ -13,17 +13,25 @@ import { fileURLToPath } from "node:url";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, "..");
 const distDir = path.join(projectRoot, "dist");
-const pagesDir = path.resolve(
-    projectRoot,
-    "..",
-    "..",
-    "src",
-    "client",
-    "resources",
-    "assets",
-    "myqolscripts",
-    "pages",
-);
+const publishTarget = process.argv[2] ?? "prod";
+
+if (publishTarget !== "prod" && publishTarget !== "dev") {
+    throw new Error(`Unknown publish target '${publishTarget}'. Use 'prod' or 'dev'.`);
+}
+
+const pagesDir = publishTarget === "dev"
+    ? path.resolve(projectRoot, "..", "out")
+    : path.resolve(
+        projectRoot,
+        "..",
+        "..",
+        "src",
+        "client",
+        "resources",
+        "assets",
+        "myqolscripts",
+        "pages",
+    );
 
 if (!existsSync(distDir)) {
     throw new Error("Astro dist directory not found. Run astro build first.");
@@ -35,7 +43,7 @@ cpSync(distDir, pagesDir, { recursive: true, force: true });
 
 rewriteHtmlLinks(pagesDir);
 
-console.log(`Published UI pages to ${pagesDir}`);
+console.log(`Published UI pages (${publishTarget}) to ${pagesDir}`);
 
 function rewriteHtmlLinks(rootDir) {
     const htmlFiles = collectHtmlFiles(rootDir);
@@ -46,12 +54,8 @@ function rewriteHtmlLinks(rootDir) {
 
         const htmlContent = readFileSync(htmlFilePath, "utf8");
         const rewrittenContent = htmlContent.replace(
-            /(\b(?:href|src)=["'])\/([^"']*)(["'])/g,
+            /(\b(?:href|src|component-url|renderer-url|before-hydration-url)=["'])\/([^"']*)(["'])/g,
             (fullMatch, attributeStart, rawPath, attributeEnd) => {
-                if (rawPath.startsWith("/")) {
-                    return fullMatch;
-                }
-
                 const normalizedPath = normalizeAbsolutePath(rawPath);
                 return `${attributeStart}${prefix}${normalizedPath}${attributeEnd}`;
             },

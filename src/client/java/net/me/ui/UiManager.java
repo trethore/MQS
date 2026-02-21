@@ -18,20 +18,22 @@
 
 package net.me.ui;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
 import net.minecraft.client.Minecraft;
-import tytoo.grapheneui.api.GrapheneCore;
-import tytoo.grapheneui.api.url.GrapheneClasspathUrls;
+import tytoo.grapheneui.api.url.GrapheneAppUrls;
 
 public class UiManager {
-    private static final String DEFAULT_UI_URL = GrapheneClasspathUrls.asset(Main.MOD_ID, "pages/index.html");
+    private static final String DEFAULT_DEV_UI_PATH = GrapheneAppUrls.asset(Main.MOD_ID,"pages/scripts/index.html");
+    private static final String DEFAULT_PROD_UI_URL = GrapheneAppUrls.asset(Main.MOD_ID, "pages/scripts/index.html");
 
     public void openUi() {
-        if (!GrapheneCore.isInitialized()) {
-            GrapheneCore.init();
-        }
-
         Minecraft minecraft = Minecraft.getInstance();
-        minecraft.execute(() -> minecraft.setScreen(new MQSWebScreen(DEFAULT_UI_URL)));
+
+        if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+            minecraft.execute(() -> minecraft.setScreen(new MQSWebScreen(DEFAULT_DEV_UI_PATH)));
+        } else {
+            minecraft.execute(() -> minecraft.setScreen(new MQSWebScreen(DEFAULT_PROD_UI_URL)));
+        }
     }
 }
