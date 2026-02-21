@@ -1,0 +1,32 @@
+{
+  "name": "mqs-ui",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "build:graphene:prod": "astro build && node scripts/copy-build.js prod",
+    "build:graphene:dev": "astro build && node scripts/copy-build.js dev",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.3.13",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "astro": "^5.17.1",
+    "canvas-confetti": "^1.9.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.1.18"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.58.0",
+    "@rollup/rollup-win32-x64-msvc": "^4.58.0"
+  },
+  "devDependencies": {
+    "@astrojs/react": "^4.4.2"
+  }
+}

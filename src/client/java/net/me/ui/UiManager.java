@@ -24,8 +24,8 @@ import net.minecraft.client.Minecraft;
 import tytoo.grapheneui.api.url.GrapheneAppUrls;
 
 public class UiManager {
-    private static final String DEFAULT_DEV_UI_PATH = GrapheneAppUrls.asset(Main.MOD_ID,"pages/scripts/index.html");
-    private static final String DEFAULT_PROD_UI_URL = GrapheneAppUrls.asset(Main.MOD_ID, "pages/scripts/index.html");
+    private static final String DEFAULT_DEV_UI_PATH = GrapheneAppUrls.asset(Main.MOD_ID,"pages/index.html");
+    private static final String DEFAULT_PROD_UI_URL = GrapheneAppUrls.asset(Main.MOD_ID, "pages/index.html");
 
     public void openUi() {
         Minecraft minecraft = Minecraft.getInstance();

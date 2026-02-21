@@ -31,7 +31,7 @@ Here is the structure of the repository:
 │           └── myqolscripts.client.mixins.json
 ├── scripts/                                   # User-controlled scripts loaded by MQS.
 ├── ui/
-│   └── mqs-site/                              # Astro + React + shadcn + Tailwind project for Graphene pages.
+│   └── mqs-ui/                                # Astro + React + shadcn + Tailwind project for Graphene pages.
 ├── docs/
 ├── build.gradle.kts
 ├── gradle.properties
@@ -83,14 +83,6 @@ Here is the structure of the repository:
 - Place new assets, mixin configs, and JSON metadata within `src/client/resources/`, keeping identifiers in the `Main.MOD_ID` namespace.
 - Integrate through established abstractions unless explicitly extending them.
 - Never reference loaders, mappings, or game versions beyond the configured target without explicit user approval.
-
-## Graphene UI Integration Rules
-
-- Treat `ui/mqs-site/` as the source of truth for the in-game web UI loaded by Graphene.
-- MQS opens `asset(myqolscripts, "pages/index.html")`, so published files must exist under `src/client/resources/assets/myqolscripts/pages/`.
-- For UI edits, run `npm run build:graphene` from `ui/mqs-site/` to build static pages and publish them into MQS assets.
-- Keep generated pages Graphene-friendly: use relative links/assets and explicit file routes such as `markdown-page/index.html` instead of relying on directory fallback.
-- Prefer adding UI components through shadcn conventions (`src/components/ui/`) and keep project config (`components.json`, Tailwind, Astro config) aligned with existing setup.
 
 ## Dependencies & External Sources
 
