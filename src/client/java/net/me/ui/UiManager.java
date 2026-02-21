@@ -20,20 +20,37 @@ package net.me.ui;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
+import net.me.utils.McUtils;
 import net.minecraft.client.Minecraft;
+import tytoo.grapheneui.api.GrapheneCore;
+import tytoo.grapheneui.api.runtime.GrapheneHttpServer;
 import tytoo.grapheneui.api.url.GrapheneAppUrls;
 
 public class UiManager {
-    private static final String DEFAULT_DEV_UI_PATH = GrapheneAppUrls.asset(Main.MOD_ID,"pages/index.html");
+    private static final String DEV_UI_ENTRYPOINT = "/index.html";
     private static final String DEFAULT_PROD_UI_URL = GrapheneAppUrls.asset(Main.MOD_ID, "pages/index.html");
 
     public void openUi() {
-        Minecraft minecraft = Minecraft.getInstance();
+        Minecraft mc = McUtils.getMc();
+        String targetUrl;
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
-            minecraft.execute(() -> minecraft.setScreen(new MQSWebScreen(DEFAULT_DEV_UI_PATH)));
+            targetUrl = resolveDevelopmentUiUrl();
         } else {
-            minecraft.execute(() -> minecraft.setScreen(new MQSWebScreen(DEFAULT_PROD_UI_URL)));
+            targetUrl = DEFAULT_PROD_UI_URL;
         }
+
+        String finalTargetUrl = targetUrl;
+        mc.execute(() -> mc.setScreen(new MQSWebScreen(finalTargetUrl)));
+    }
+
+    private String resolveDevelopmentUiUrl() {
+        GrapheneHttpServer httpServer = GrapheneCore.runtime().httpServer();
+        if (!httpServer.isRunning()) {
+            Main.LOGGER.warn("Graphene HTTP server is not running in dev, falling back to bundled UI.");
+            return DEFAULT_PROD_UI_URL;
+        }
+
+        return httpServer.baseUrl() + DEV_UI_ENTRYPOINT + "?v=" + System.nanoTime();
     }
 }

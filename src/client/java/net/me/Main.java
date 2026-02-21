@@ -133,6 +133,7 @@ public class Main implements ClientModInitializer {
 
         GrapheneHttpConfig httpConfig = GrapheneHttpConfig.builder()
                 .port(DEV_UI_HTTP_PORT)
+                .fileRoot(FabricLoader.getInstance().getGameDir().resolve("../ui/out/"))
                 .build();
 
         return GrapheneConfig.builder()
