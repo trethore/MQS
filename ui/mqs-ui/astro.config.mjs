@@ -14,6 +14,11 @@ export default defineConfig({
   vite: {
     // @ts-expect-error - Version mismatch between @tailwindcss/vite and astro vite types
     plugins: [tailwindcss()],
+    resolve: {
+      alias: {
+        '@': new URL('./src', import.meta.url).pathname,
+      },
+    },
   },
 
   integrations: [react()],

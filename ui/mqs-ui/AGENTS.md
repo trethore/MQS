@@ -16,7 +16,8 @@ ui/mqs-ui/
 ├── src/
 │   ├── components/
 │   │   ├── astro/                  # Astro-only reusable components.
-│   │   └── react/                  # React reusable components.
+│   │   ├── react/                  # React reusable components.
+│   │   └── ui/                     # shadcn/ui reusable components.
 │   ├── layouts/                    # Shared page shell/layout.
 │   ├── pages/                      # Astro pages (build to static HTML files).
 │   └── styles/
