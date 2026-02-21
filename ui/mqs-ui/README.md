@@ -1,13 +1,20 @@
-# Astro with Tailwind
+# MQS UI
 
-```sh
-npm create astro@latest -- --template with-tailwindcss
-```
+This atro project is used to build the UI for the MQS project.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/with-tailwindcss)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/with-tailwindcss)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/with-tailwindcss/devcontainer.json)
+## Commands
 
-Astro comes with [Tailwind](https://tailwindcss.com) support out of the box. This example showcases how to style your Astro project with Tailwind.
+- `npm run dev` - Runs the app in development mode.
+- `npm run build:graphene:dev` - Builds the app in the dev folder for graphene.
+- `npm run build:graphene:prod` - Builds the app in the prod folder for graphene.
 
-For complete setup instructions, please see our [Tailwind Styling Guide](https://docs.astro.build/en/guides/styling/#tailwind).
+## Dependencies
+
+- Astro
+- React
+- Tailwind CSS
+- Shadcn UI
+
+For more details, please refer to the `package.json` file.
+
+
