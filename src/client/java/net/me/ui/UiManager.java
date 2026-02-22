@@ -44,6 +44,11 @@ public class UiManager {
         mc.execute(() -> mc.setScreen(new MQSWebScreen(finalTargetUrl)));
     }
 
+    /**
+     * In development, we want to load the UI from the Graphene HTTP server, which serves the files directly from the filesystem.
+     * This allows for hot-reloading and faster development.
+     * Fall back to the bundled UI if the HTTP server is not running for some reason (e.g. port already in use).
+     */
     private String resolveDevelopmentUiUrl() {
         GrapheneHttpServer httpServer = GrapheneCore.runtime().httpServer();
         if (!httpServer.isRunning()) {
