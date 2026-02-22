@@ -1,5 +1,6 @@
 ---
 import "../styles/globals.css";
+import { AppNavbar } from "../components/react/AppNavbar";
 import { HelloWorldToggle } from "../components/react/HelloWorldToggle";
 ---
 
@@ -41,7 +42,10 @@ import { HelloWorldToggle } from "../components/react/HelloWorldToggle";
   </head>
   <body class="mqs-app-shell">
     <main class="mqs-app-window">
-      <HelloWorldToggle client:load />
+      <AppNavbar client:load />
+      <section class="mqs-app-content">
+        <HelloWorldToggle client:load />
+      </section>
     </main>
   </body>
 </html>
