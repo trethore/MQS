@@ -1,0 +1,58 @@
+---
+import { AppNavbar } from "../components/react/AppNavbar";
+import "../styles/globals.css";
+
+type NavItemId = "scripts" | "console" | "options";
+
+interface Props {
+  activeItem: NavItemId;
+}
+
+const { activeItem } = Astro.props as Props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MQS UI</title>
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const getStoredTheme = () => {
+          try {
+            return window.localStorage.getItem("theme");
+          } catch (ignored) {
+            return null;
+          }
+        };
+
+        const applyTheme = () => {
+          const storedTheme = getStoredTheme();
+          const useDark = storedTheme === "dark" || (storedTheme !== "light" && mediaQuery.matches);
+
+          root.classList.toggle("dark", useDark);
+        };
+
+        applyTheme();
+
+        mediaQuery.addEventListener("change", () => {
+          const storedTheme = getStoredTheme();
+
+          if (storedTheme !== "light" && storedTheme !== "dark") {
+            applyTheme();
+          }
+        });
+      })();
+    </script>
+  </head>
+  <body class="mqs-app-shell">
+    <main class="mqs-app-window">
+      <AppNavbar client:load activeItem={activeItem} />
+      <section class="mqs-app-content">
+        <slot />
+      </section>
+    </main>
+  </body>
+</html>

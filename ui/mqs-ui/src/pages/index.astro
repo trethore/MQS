@@ -1,51 +1,12 @@
----
-import "../styles/globals.css";
-import { AppNavbar } from "../components/react/AppNavbar";
-import { HelloWorldToggle } from "../components/react/HelloWorldToggle";
----
-
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MQS UI</title>
+    <title>MQS UI Redirect</title>
+    <meta http-equiv="refresh" content="0;url=./scripts/index.html" />
     <script is:inline>
-      (() => {
-        const root = document.documentElement;
-        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        const getStoredTheme = () => {
-          try {
-            return window.localStorage.getItem("theme");
-          } catch (ignored) {
-            return null;
-          }
-        };
-
-        const applyTheme = () => {
-          const storedTheme = getStoredTheme();
-          const useDark = storedTheme === "dark" || (storedTheme !== "light" && mediaQuery.matches);
-
-          root.classList.toggle("dark", useDark);
-        };
-
-        applyTheme();
-
-        mediaQuery.addEventListener("change", () => {
-          const storedTheme = getStoredTheme();
-
-          if (storedTheme !== "light" && storedTheme !== "dark") {
-            applyTheme();
-          }
-        });
-      })();
+      window.location.replace("./scripts/index.html");
     </script>
   </head>
-  <body class="mqs-app-shell">
-    <main class="mqs-app-window">
-      <AppNavbar client:load />
-      <section class="mqs-app-content">
-        <HelloWorldToggle client:load />
-      </section>
-    </main>
-  </body>
+  <body></body>
 </html>

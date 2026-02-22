@@ -54,6 +54,44 @@ function rewriteAbsoluteUrlsToRelative(htmlContent, relativeHtmlPath) {
   });
 }
 
+function shouldLeaveUrlUnchanged(urlPath) {
+  return (
+    urlPath.startsWith('/') ||
+    urlPath.startsWith('#') ||
+    urlPath.startsWith('http://') ||
+    urlPath.startsWith('https://') ||
+    urlPath.startsWith('//') ||
+    urlPath.startsWith('mailto:') ||
+    urlPath.startsWith('tel:') ||
+    urlPath.startsWith('data:') ||
+    urlPath.startsWith('javascript:')
+  );
+}
+
+function rebaseRelativeUrls(htmlContent, sourceRelativeHtmlPath, destinationRelativeHtmlPath) {
+  return htmlContent.replace(/\b(href|src|component-url|renderer-url|before-hydration-url)=(['"])([^'"]*)\2/g, (match, attribute, quote, urlPath) => {
+    if (shouldLeaveUrlUnchanged(urlPath)) {
+      return match;
+    }
+
+    const [pathname, suffix = ''] = urlPath.match(/^([^?#]*)([?#].*)?$/)?.slice(1) ?? [urlPath, ''];
+    const sourceDirectory = path.posix.dirname(sourceRelativeHtmlPath);
+    const destinationDirectory = path.posix.dirname(destinationRelativeHtmlPath);
+    const absoluteTarget = path.posix.normalize(path.posix.join(sourceDirectory, pathname));
+    let rebasedTarget = path.posix.relative(destinationDirectory, absoluteTarget);
+
+    if (rebasedTarget === '') {
+      rebasedTarget = path.posix.basename(destinationRelativeHtmlPath);
+    }
+
+    if (!rebasedTarget.startsWith('.')) {
+      rebasedTarget = `./${rebasedTarget}`;
+    }
+
+    return `${attribute}=${quote}${rebasedTarget}${suffix}${quote}`;
+  });
+}
+
 async function listHtmlFiles(directory) {
   const entries = await fs.readdir(directory, { withFileTypes: true });
   const htmlFiles = [];
@@ -89,6 +127,39 @@ async function rewriteCopiedHtmlLinks(outDir) {
   }
 }
 
+function toDirectoryAliasPath(relativeHtmlPath) {
+  if (!relativeHtmlPath.endsWith('.html')) {
+    return null;
+  }
+
+  if (path.posix.basename(relativeHtmlPath) === 'index.html') {
+    return null;
+  }
+
+  const withoutExtension = relativeHtmlPath.slice(0, -'.html'.length);
+  return `${withoutExtension}/index.html`;
+}
+
+async function createDirectoryRouteAliases(outDir) {
+  const htmlFiles = await listHtmlFiles(outDir);
+
+  for (const htmlFile of htmlFiles) {
+    const relativeHtmlPath = path.relative(outDir, htmlFile).split(path.sep).join('/');
+    const aliasPath = toDirectoryAliasPath(relativeHtmlPath);
+
+    if (aliasPath === null) {
+      continue;
+    }
+
+    const aliasAbsolutePath = path.join(outDir, ...aliasPath.split('/'));
+    const sourceHtmlContent = await fs.readFile(htmlFile, 'utf8');
+    const rebasedHtmlContent = rebaseRelativeUrls(sourceHtmlContent, relativeHtmlPath, aliasPath);
+
+    await fs.mkdir(path.dirname(aliasAbsolutePath), { recursive: true });
+    await fs.writeFile(aliasAbsolutePath, rebasedHtmlContent, 'utf8');
+  }
+}
+
 async function main() {
   const target = process.argv[2];
   const distDir = path.join(__dirname, '../dist');
@@ -110,8 +181,9 @@ async function main() {
     await fs.mkdir(outDir, { recursive: true });
     await fs.cp(distDir, outDir, { recursive: true });
     await rewriteCopiedHtmlLinks(outDir);
+    await createDirectoryRouteAliases(outDir);
 
-    console.log(`[MQS Build] Successfully copied dist/ to ${target} directory and rewrote absolute links.`);
+    console.log(`[MQS Build] Successfully copied dist/ to ${target} directory, rewrote absolute links, and generated directory route aliases.`);
   } catch (err) {
     console.error(`[MQS Build] Failed to copy files: ${err.message}`);
     process.exit(1);

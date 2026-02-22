@@ -27,8 +27,8 @@ import tytoo.grapheneui.api.runtime.GrapheneHttpServer;
 import tytoo.grapheneui.api.url.GrapheneAppUrls;
 
 public class UiManager {
-    private static final String DEV_UI_ENTRYPOINT = "/index.html";
-    private static final String DEFAULT_PROD_UI_URL = GrapheneAppUrls.asset(Main.MOD_ID, "pages/index.html");
+    private static final String DEV_UI_ENTRYPOINT = "/scripts/index.html";
+    private static final String DEFAULT_PROD_UI_URL = GrapheneAppUrls.asset(Main.MOD_ID, "pages/scripts/index.html");
 
     public void openUi() {
         Minecraft mc = McUtils.getMc();
