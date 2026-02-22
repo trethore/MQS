@@ -10,41 +10,37 @@ import { PowerOff, RefreshCcw } from "lucide-react";
 ---
 
 <AppLayout activeItem="scripts">
-  <div class="flex min-h-0 flex-1 p-4">
-    <article class="mqs-elevated flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 pb-0">
-      <h1 class="text-left text-3xl font-semibold text-foreground">
-        All your <span class="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">QOL</span>
-        Scripts!
-      </h1>
+  <h1 class="text-left text-3xl font-semibold text-foreground">
+    All your <span class="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">QOL</span>
+    Scripts!
+  </h1>
 
-      <div class="mt-5 flex items-center gap-3">
-        <InputGroup className="flex-1">
-          <InputGroupInput placeholder="Search scripts..." aria-label="Search scripts" />
-        </InputGroup>
+  <div class="mt-5 flex items-center gap-3">
+    <InputGroup className="flex-1">
+      <InputGroupInput placeholder="Search scripts..." aria-label="Search scripts" />
+    </InputGroup>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Refresh scripts"
-          className="shrink-0"
-        >
-          <RefreshCcw />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Disable all scripts"
-          className="shrink-0"
-        >
-          <PowerOff />
-        </Button>
-      </div>
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      aria-label="Refresh scripts"
+      className="shrink-0"
+    >
+      <RefreshCcw />
+    </Button>
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      aria-label="Disable all scripts"
+      className="shrink-0"
+    >
+      <PowerOff />
+    </Button>
+  </div>
 
-      <div class="mt-3 flex min-h-0 flex-1 w-full overflow-hidden pb-3">
-        <ScriptListWidget client:load />
-      </div>
-    </article>
+  <div class="mt-3 flex min-h-0 flex-1 w-full overflow-hidden pb-3">
+    <ScriptListWidget client:load />
   </div>
 </AppLayout>

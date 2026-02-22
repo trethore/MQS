@@ -37,7 +37,7 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
                   href={item.href}
                   aria-current={item.id === activeItem ? "page" : undefined}
                   className={cn(
-                    "inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors",
+                    "inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     item.id === activeItem
                       ? "bg-accent/90 text-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"

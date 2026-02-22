@@ -41,7 +41,7 @@ function storeThemePreference(themePreference: ThemePreference): void {
 export function ThemeSwitcher() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
-  const [darkTheme, setDarkTheme] = useState(false);
+  const [darkTheme, setDarkTheme] = useState<boolean | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -116,9 +116,12 @@ export function ThemeSwitcher() {
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((previous) => !previous)}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {darkTheme ? <Moon className="size-4" /> : <Sun className="size-4" />}
+        <span className="sr-only">Toggle theme</span>
+        <div className="flex h-4 w-4 items-center justify-center">
+          {darkTheme === null ? null : darkTheme ? <Moon className="size-4" /> : <Sun className="size-4" />}
+        </div>
       </button>
 
       {menuOpen ? (
@@ -137,7 +140,7 @@ export function ThemeSwitcher() {
                 role="menuitemradio"
                 aria-checked={selected}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors",
+                  "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:bg-accent focus-visible:text-accent-foreground",
                   selected
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"

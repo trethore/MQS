@@ -51,7 +51,11 @@ const { activeItem } = Astro.props as Props;
     <main class="mqs-app-window">
       <AppNavbar client:load activeItem={activeItem} />
       <section class="mqs-app-content">
-        <slot />
+        <div class="flex min-h-0 flex-1 p-4">
+          <article class="mqs-elevated flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 pb-0">
+            <slot />
+          </article>
+        </div>
       </section>
     </main>
   </body>
