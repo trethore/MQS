@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "copy:graphene:prod": "node scripts/copy-build.js prod",
+    "copy:graphene:dev": "node scripts/copy-build.js dev",
     "build:graphene:prod": "astro build && node scripts/copy-build.js prod",
     "build:graphene:dev": "astro build && node scripts/copy-build.js dev",
+    "build:graphene:all": "astro build && node scripts/copy-build.js dev && node scripts/copy-build.js prod",
     "preview": "astro preview",
     "astro": "astro"
   },

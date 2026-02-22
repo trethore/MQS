@@ -3,6 +3,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const URL_ATTRIBUTES = ['href', 'src', 'component-url', 'renderer-url', 'before-hydration-url'];
+const ABSOLUTE_URL_REGEX = new RegExp(`\\b(${URL_ATTRIBUTES.join('|')})=(['\"])\\/(?!\\/)([^'\"]*)\\2`, 'g');
+const GENERIC_URL_REGEX = new RegExp(`\\b(${URL_ATTRIBUTES.join('|')})=(['\"])([^'\"]*)\\2`, 'g');
+const URL_SPLIT_REGEX = /^([^?#]*)([?#].*)?$/;
+const SCHEME_REGEX = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
+const MAX_FILE_CONCURRENCY = 32;
+
+function toPosixPath(filePath) {
+  return filePath.split(path.sep).join('/');
+}
 
 function hasFileExtension(pathname) {
   const lastSegment = pathname.split('/').pop() ?? '';
@@ -10,7 +20,9 @@ function hasFileExtension(pathname) {
 }
 
 function normalizeLinkPath(pathname, attribute) {
-  const normalized = path.posix.normalize(pathname).replace(/^\/+/, '');
+  const normalizedPathname = pathname === '' ? '' : path.posix.normalize(pathname).replace(/^\/+/, '');
+  const normalized = normalizedPathname === '.' ? '' : normalizedPathname;
+
   if (attribute !== 'href') {
     return normalized;
   }
@@ -31,7 +43,7 @@ function normalizeLinkPath(pathname, attribute) {
 }
 
 function absolutishUrlToRelative(urlPath, attribute, relativeHtmlPath) {
-  const [pathname, suffix = ''] = urlPath.match(/^([^?#]*)([?#].*)?$/)?.slice(1) ?? [urlPath, ''];
+  const [pathname, suffix = ''] = urlPath.match(URL_SPLIT_REGEX)?.slice(1) ?? [urlPath, ''];
   const normalizedTarget = normalizeLinkPath(pathname, attribute);
   const htmlDirectory = path.posix.dirname(relativeHtmlPath);
   let relativeTarget = path.posix.relative(htmlDirectory, normalizedTarget);
@@ -48,7 +60,7 @@ function absolutishUrlToRelative(urlPath, attribute, relativeHtmlPath) {
 }
 
 function rewriteAbsoluteUrlsToRelative(htmlContent, relativeHtmlPath) {
-  return htmlContent.replace(/\b(href|src)=(['"])\/(?!\/)([^'"]*)\2/g, (match, attribute, quote, urlPath) => {
+  return htmlContent.replace(ABSOLUTE_URL_REGEX, (match, attribute, quote, urlPath) => {
     const rewritten = absolutishUrlToRelative(urlPath, attribute, relativeHtmlPath);
     return `${attribute}=${quote}${rewritten}${quote}`;
   });
@@ -56,25 +68,22 @@ function rewriteAbsoluteUrlsToRelative(htmlContent, relativeHtmlPath) {
 
 function shouldLeaveUrlUnchanged(urlPath) {
   return (
+    urlPath === '' ||
     urlPath.startsWith('/') ||
     urlPath.startsWith('#') ||
-    urlPath.startsWith('http://') ||
-    urlPath.startsWith('https://') ||
+    urlPath.startsWith('?') ||
     urlPath.startsWith('//') ||
-    urlPath.startsWith('mailto:') ||
-    urlPath.startsWith('tel:') ||
-    urlPath.startsWith('data:') ||
-    urlPath.startsWith('javascript:')
+    SCHEME_REGEX.test(urlPath)
   );
 }
 
 function rebaseRelativeUrls(htmlContent, sourceRelativeHtmlPath, destinationRelativeHtmlPath) {
-  return htmlContent.replace(/\b(href|src|component-url|renderer-url|before-hydration-url)=(['"])([^'"]*)\2/g, (match, attribute, quote, urlPath) => {
+  return htmlContent.replace(GENERIC_URL_REGEX, (match, attribute, quote, urlPath) => {
     if (shouldLeaveUrlUnchanged(urlPath)) {
       return match;
     }
 
-    const [pathname, suffix = ''] = urlPath.match(/^([^?#]*)([?#].*)?$/)?.slice(1) ?? [urlPath, ''];
+    const [pathname, suffix = ''] = urlPath.match(URL_SPLIT_REGEX)?.slice(1) ?? [urlPath, ''];
     const sourceDirectory = path.posix.dirname(sourceRelativeHtmlPath);
     const destinationDirectory = path.posix.dirname(destinationRelativeHtmlPath);
     const absoluteTarget = path.posix.normalize(path.posix.join(sourceDirectory, pathname));
@@ -93,38 +102,76 @@ function rebaseRelativeUrls(htmlContent, sourceRelativeHtmlPath, destinationRela
 }
 
 async function listHtmlFiles(directory) {
-  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const directoryStack = [directory];
   const htmlFiles = [];
 
-  for (const entry of entries) {
-    const fullPath = path.join(directory, entry.name);
-
-    if (entry.isDirectory()) {
-      const nestedHtmlFiles = await listHtmlFiles(fullPath);
-      htmlFiles.push(...nestedHtmlFiles);
+  while (directoryStack.length > 0) {
+    const currentDirectory = directoryStack.pop();
+    if (currentDirectory === undefined) {
       continue;
     }
 
-    if (entry.isFile() && entry.name.endsWith('.html')) {
-      htmlFiles.push(fullPath);
+    const entries = await fs.readdir(currentDirectory, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(currentDirectory, entry.name);
+
+      if (entry.isDirectory()) {
+        directoryStack.push(fullPath);
+        continue;
+      }
+
+      if (entry.isFile() && entry.name.endsWith('.html')) {
+        htmlFiles.push(fullPath);
+      }
     }
   }
 
   return htmlFiles;
 }
 
-async function rewriteCopiedHtmlLinks(outDir) {
-  const htmlFiles = await listHtmlFiles(outDir);
+async function mapWithConcurrency(items, mapper, maxConcurrency = MAX_FILE_CONCURRENCY) {
+  if (items.length === 0) {
+    return [];
+  }
 
-  for (const htmlFile of htmlFiles) {
-    const relativeHtmlPath = path.relative(outDir, htmlFile).split(path.sep).join('/');
-    const htmlContent = await fs.readFile(htmlFile, 'utf8');
-    const rewrittenHtml = rewriteAbsoluteUrlsToRelative(htmlContent, relativeHtmlPath);
+  const results = new Array(items.length);
+  let nextIndex = 0;
 
-    if (rewrittenHtml !== htmlContent) {
-      await fs.writeFile(htmlFile, rewrittenHtml, 'utf8');
+  async function worker() {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+
+      if (currentIndex >= items.length) {
+        return;
+      }
+
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
     }
   }
+
+  const workerCount = Math.min(maxConcurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+async function rewriteCopiedHtmlLinks(outDir, htmlRelativePaths) {
+  const rewrittenHtmlByPath = new Map();
+
+  await mapWithConcurrency(htmlRelativePaths, async (relativeHtmlPath) => {
+    const htmlFilePath = path.join(outDir, ...relativeHtmlPath.split('/'));
+    const htmlContent = await fs.readFile(htmlFilePath, 'utf8');
+    const rewrittenHtml = rewriteAbsoluteUrlsToRelative(htmlContent, relativeHtmlPath);
+
+    rewrittenHtmlByPath.set(relativeHtmlPath, rewrittenHtml);
+
+    if (rewrittenHtml !== htmlContent) {
+      await fs.writeFile(htmlFilePath, rewrittenHtml, 'utf8');
+    }
+  });
+
+  return rewrittenHtmlByPath;
 }
 
 function toDirectoryAliasPath(relativeHtmlPath) {
@@ -140,24 +187,38 @@ function toDirectoryAliasPath(relativeHtmlPath) {
   return `${withoutExtension}/index.html`;
 }
 
-async function createDirectoryRouteAliases(outDir) {
-  const htmlFiles = await listHtmlFiles(outDir);
+async function createDirectoryRouteAliases(outDir, htmlRelativePaths, rewrittenHtmlByPath) {
+  const aliasEntries = htmlRelativePaths
+    .map((relativeHtmlPath) => {
+      const aliasPath = toDirectoryAliasPath(relativeHtmlPath);
+      if (aliasPath === null) {
+        return null;
+      }
 
-  for (const htmlFile of htmlFiles) {
-    const relativeHtmlPath = path.relative(outDir, htmlFile).split(path.sep).join('/');
-    const aliasPath = toDirectoryAliasPath(relativeHtmlPath);
+      return { aliasPath, sourcePath: relativeHtmlPath };
+    })
+    .filter((entry) => entry !== null);
 
-    if (aliasPath === null) {
-      continue;
+  await mapWithConcurrency(aliasEntries, async (entry) => {
+    const sourceHtmlContent = rewrittenHtmlByPath.get(entry.sourcePath);
+    if (sourceHtmlContent === undefined) {
+      return;
     }
 
-    const aliasAbsolutePath = path.join(outDir, ...aliasPath.split('/'));
-    const sourceHtmlContent = await fs.readFile(htmlFile, 'utf8');
-    const rebasedHtmlContent = rebaseRelativeUrls(sourceHtmlContent, relativeHtmlPath, aliasPath);
+    const aliasAbsolutePath = path.join(outDir, ...entry.aliasPath.split('/'));
+    const rebasedHtmlContent = rebaseRelativeUrls(sourceHtmlContent, entry.sourcePath, entry.aliasPath);
 
     await fs.mkdir(path.dirname(aliasAbsolutePath), { recursive: true });
     await fs.writeFile(aliasAbsolutePath, rebasedHtmlContent, 'utf8');
-  }
+  });
+}
+
+async function rewriteAndAliasHtml(outDir) {
+  const htmlFiles = await listHtmlFiles(outDir);
+  const htmlRelativePaths = htmlFiles.map((htmlFile) => toPosixPath(path.relative(outDir, htmlFile)));
+  const rewrittenHtmlByPath = await rewriteCopiedHtmlLinks(outDir, htmlRelativePaths);
+
+  await createDirectoryRouteAliases(outDir, htmlRelativePaths, rewrittenHtmlByPath);
 }
 
 async function main() {
@@ -177,11 +238,11 @@ async function main() {
   console.log(`[MQS Build] Preparing to copy files to ${outDir}...`);
 
   try {
+    await fs.access(distDir);
     await fs.rm(outDir, { recursive: true, force: true });
     await fs.mkdir(outDir, { recursive: true });
     await fs.cp(distDir, outDir, { recursive: true });
-    await rewriteCopiedHtmlLinks(outDir);
-    await createDirectoryRouteAliases(outDir);
+    await rewriteAndAliasHtml(outDir);
 
     console.log(`[MQS Build] Successfully copied dist/ to ${target} directory, rewrote absolute links, and generated directory route aliases.`);
   } catch (err) {
