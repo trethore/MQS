@@ -8,8 +8,40 @@ import { HelloWorldToggle } from "../components/react/HelloWorldToggle";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MQS UI</title>
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const getStoredTheme = () => {
+          try {
+            return window.localStorage.getItem("theme");
+          } catch (ignored) {
+            return null;
+          }
+        };
+
+        const applyTheme = () => {
+          const storedTheme = getStoredTheme();
+          const useDark = storedTheme === "dark" || (storedTheme !== "light" && mediaQuery.matches);
+
+          root.classList.toggle("dark", useDark);
+        };
+
+        applyTheme();
+
+        mediaQuery.addEventListener("change", () => {
+          const storedTheme = getStoredTheme();
+
+          if (storedTheme !== "light" && storedTheme !== "dark") {
+            applyTheme();
+          }
+        });
+      })();
+    </script>
   </head>
-  <body>
-    <HelloWorldToggle client:load />
+  <body class="mqs-app-shell">
+    <main class="mqs-app-window">
+      <HelloWorldToggle client:load />
+    </main>
   </body>
 </html>
