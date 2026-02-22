@@ -40,8 +40,7 @@ public class UiManager {
             targetUrl = DEFAULT_PROD_UI_URL;
         }
 
-        String finalTargetUrl = targetUrl;
-        mc.execute(() -> mc.setScreen(new MQSWebScreen(finalTargetUrl)));
+        mc.execute(() -> mc.setScreen(new MQSWebScreen(targetUrl)));
     }
 
     /**

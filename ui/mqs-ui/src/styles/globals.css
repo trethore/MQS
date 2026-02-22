@@ -169,16 +169,19 @@
 @layer components {
     .mqs-app-shell {
         display: flex;
-        min-height: 100vh;
+        min-height: 100dvh;
+        height: 100dvh;
         align-items: center;
         justify-content: center;
         padding: 1rem;
+        overflow: hidden;
     }
 
     .mqs-app-window {
         display: flex;
-        min-height: min(42rem, calc(100vh - 2rem));
-        max-height: calc(100vh - 2rem);
+        height: min(42rem, calc(100dvh - 2rem));
+        min-height: min(42rem, calc(100dvh - 2rem));
+        max-height: calc(100dvh - 2rem);
         width: min(100%, 72rem);
         flex-direction: column;
         border: 1px solid var(--border);
@@ -191,6 +194,32 @@
 
     .mqs-elevated {
         box-shadow: var(--elevation-shadow);
+    }
+
+    .mqs-scrollbar {
+        scrollbar-gutter: stable;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
+    }
+
+    .mqs-scrollbar::-webkit-scrollbar {
+        width: 0.625rem;
+    }
+
+    .mqs-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .mqs-scrollbar::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+        border-radius: 9999px;
+        background: color-mix(in oklab, var(--foreground) 34%, transparent);
+        background-clip: content-box;
+    }
+
+    .mqs-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: color-mix(in oklab, var(--foreground) 48%, transparent);
+        background-clip: content-box;
     }
 
     .mqs-app-content {
