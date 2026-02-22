@@ -18,31 +18,77 @@ const { activeItem } = Astro.props as Props;
     <title>MQS UI</title>
     <script is:inline>
       (() => {
+        const THEME_KEY = "theme";
         const root = document.documentElement;
         const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        const getStoredTheme = () => {
+
+        const parseThemePreference = (value) => {
+          if (value === "dark" || value === "light" || value === "system") {
+            return value;
+          }
+
+          return "system";
+        };
+
+        const getThemePreference = () => {
           try {
-            return window.localStorage.getItem("theme");
+            return parseThemePreference(window.localStorage.getItem(THEME_KEY));
           } catch (ignored) {
-            return null;
+            return "system";
           }
         };
 
-        const applyTheme = () => {
-          const storedTheme = getStoredTheme();
-          const useDark = storedTheme === "dark" || (storedTheme !== "light" && mediaQuery.matches);
+        const resolveDarkTheme = (themePreference) => {
+          return themePreference === "dark" || (themePreference === "system" && mediaQuery.matches);
+        };
 
-          root.classList.toggle("dark", useDark);
+        const applyTheme = (themePreference = getThemePreference()) => {
+          const darkTheme = resolveDarkTheme(themePreference);
+
+          root.classList.toggle("dark", darkTheme);
+
+          return {
+            themePreference,
+            darkTheme,
+          };
+        };
+
+        const emitThemeChange = (themeState) => {
+          window.dispatchEvent(
+            new CustomEvent("mqs-themechange", {
+              detail: themeState,
+            }),
+          );
+        };
+
+        const setThemePreference = (themePreference) => {
+          const normalizedThemePreference = parseThemePreference(themePreference);
+
+          try {
+            window.localStorage.setItem(THEME_KEY, normalizedThemePreference);
+          } catch (ignored) {}
+
+          const themeState = applyTheme(normalizedThemePreference);
+          emitThemeChange(themeState);
+
+          return themeState;
+        };
+
+        window.__mqsTheme = {
+          getThemePreference,
+          applyTheme,
+          setThemePreference,
         };
 
         applyTheme();
 
         mediaQuery.addEventListener("change", () => {
-          const storedTheme = getStoredTheme();
-
-          if (storedTheme !== "light" && storedTheme !== "dark") {
-            applyTheme();
+          if (getThemePreference() !== "system") {
+            return;
           }
+
+          const themeState = applyTheme("system");
+          emitThemeChange(themeState);
         });
       })();
     </script>
@@ -52,7 +98,9 @@ const { activeItem } = Astro.props as Props;
       <AppNavbar client:load activeItem={activeItem} />
       <section class="mqs-app-content">
         <div class="flex min-h-0 flex-1 p-4">
-          <article class="mqs-elevated flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 pb-0">
+          <article
+            class="mqs-elevated flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 pb-0"
+          >
             <slot />
           </article>
         </div>
