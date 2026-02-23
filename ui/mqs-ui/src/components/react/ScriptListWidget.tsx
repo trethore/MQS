@@ -26,7 +26,10 @@ export function ScriptListWidget() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <h1 className="text-left text-3xl font-semibold text-foreground">
-        All your <span className="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">QOL</span>{" "}
+        All your{" "}
+        <span className="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">
+          QOL
+        </span>{" "}
         Scripts!
       </h1>
 

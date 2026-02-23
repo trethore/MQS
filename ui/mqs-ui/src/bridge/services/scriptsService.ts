@@ -23,7 +23,9 @@ export async function fetchScriptsSnapshot(): Promise<ScriptsSnapshot> {
   return snapshot;
 }
 
-export function subscribeToScriptsUpdated(listener: (snapshot: ScriptsSnapshot) => void): () => void {
+export function subscribeToScriptsUpdated(
+  listener: (snapshot: ScriptsSnapshot) => void,
+): () => void {
   return subscribeBridge(SCRIPTS_EVENT_UPDATED, (rawSnapshot) => {
     const snapshot = parseScriptsSnapshot(rawSnapshot);
     if (!snapshot) {

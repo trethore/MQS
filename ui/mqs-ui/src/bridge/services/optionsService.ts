@@ -33,7 +33,9 @@ export async function updateOptions(
   return response;
 }
 
-export function subscribeToOptionsUpdated(listener: (snapshot: OptionsSnapshot) => void): () => void {
+export function subscribeToOptionsUpdated(
+  listener: (snapshot: OptionsSnapshot) => void,
+): () => void {
   return subscribeBridge(OPTIONS_EVENT_UPDATED, (rawSnapshot) => {
     const snapshot = parseOptionsSnapshot(rawSnapshot);
     if (!snapshot) {

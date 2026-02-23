@@ -73,7 +73,9 @@ export function subscribeToConsoleMessage(listener: (message: ConsoleMessage) =>
   });
 }
 
-export function subscribeToConsoleCleared(listener: (event: ConsoleClearedEvent) => void): () => void {
+export function subscribeToConsoleCleared(
+  listener: (event: ConsoleClearedEvent) => void,
+): () => void {
   return subscribeBridge(CONSOLE_EVENT_CLEARED, (rawEvent) => {
     const event = parseConsoleClearedEvent(rawEvent);
     if (!event) {

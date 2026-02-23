@@ -51,7 +51,9 @@ export function deleteKeybind(request: KeybindMutationRequest): Promise<KeybindM
   return runKeybindMutation(KEYBINDS_CHANNEL_DELETE, request);
 }
 
-export function subscribeToKeybindsUpdated(listener: (snapshot: KeybindSnapshot) => void): () => void {
+export function subscribeToKeybindsUpdated(
+  listener: (snapshot: KeybindSnapshot) => void,
+): () => void {
   return subscribeBridge(KEYBINDS_EVENT_UPDATED, (rawEvent) => {
     const snapshot = parseKeybindSnapshot(rawEvent);
     if (!snapshot) {
