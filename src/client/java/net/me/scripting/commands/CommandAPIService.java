@@ -32,7 +32,10 @@ import net.me.scripting.module.RunningScript;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientSuggestionProvider;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -254,6 +257,35 @@ public class CommandAPIService {
             }
             Main.LOGGER.info("Patched client suggestion command tree in-memory.");
         });
+    }
+
+    public List<ManagedCommandInfo> getManagedCommandsSnapshot() {
+        List<ManagedCommandInfo> commands = new ArrayList<>();
+
+        scriptCommands.forEach((owner, ownedCommands) ->
+                ownedCommands.keySet().forEach(commandName ->
+                        commands.add(new ManagedCommandInfo(commandName, owner.getId(), owner.getName(), false))
+                )
+        );
+
+        for (QueuedCommand queuedCommand : commandQueue) {
+            commands.add(new ManagedCommandInfo(
+                    queuedCommand.builder().getLiteral(),
+                    queuedCommand.owner().getId(),
+                    queuedCommand.owner().getName(),
+                    true
+            ));
+        }
+
+        return commands.stream()
+                .sorted(
+                        Comparator.comparing(ManagedCommandInfo::name, String.CASE_INSENSITIVE_ORDER)
+                                .thenComparing(ManagedCommandInfo::ownerScriptName, String.CASE_INSENSITIVE_ORDER)
+                )
+                .toList();
+    }
+
+    public record ManagedCommandInfo(String name, String ownerScriptId, String ownerScriptName, boolean queued) {
     }
 
     private record QueuedCommand(RunningScript owner, LiteralArgumentBuilder<FabricClientCommandSource> builder) {

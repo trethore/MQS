@@ -48,6 +48,8 @@ public class ScriptManager {
     private ScriptDiscoverer scriptDiscoverer;
     private ScriptContextManager contextManager;
     private ScriptLifecycleManager lifecycleManager;
+    @Getter
+    private CommandAPIService commandApiService;
 
     public ScriptManager() {
         // 2 step initialization
@@ -58,14 +60,14 @@ public class ScriptManager {
 
         this.classResolver = ScriptingClassResolver.create(mappingsManager, this);
 
-        CommandAPIService commandApiService = new CommandAPIService();
-        commandApiService.init();
+        this.commandApiService = new CommandAPIService();
+        this.commandApiService.init();
 
         ScriptScheduler scheduler = new ScriptScheduler(this);
 
-        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, commandApiService, hookManager, keybindManager, scheduler);
+        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, this.commandApiService, hookManager, keybindManager, scheduler);
         this.contextManager = ScriptContextManager.create(contextFactory);
-        this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, scheduler, contextManager);
+        this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, this.commandApiService, scheduler, contextManager);
 
         this.scriptDiscoverer = new ScriptDiscoverer(globalConfigManager);
 

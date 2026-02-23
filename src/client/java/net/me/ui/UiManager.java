@@ -20,15 +20,41 @@ package net.me.ui;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
+import net.me.console.ConsoleManager;
+import net.me.config.GlobalConfigManager;
+import net.me.keybinds.KeybindManager;
+import net.me.scripting.ScriptManager;
+import net.me.scripting.ScriptingService;
 import net.me.utils.McUtils;
 import net.minecraft.client.Minecraft;
 import tytoo.grapheneui.api.GrapheneCore;
 import tytoo.grapheneui.api.runtime.GrapheneHttpServer;
 import tytoo.grapheneui.api.url.GrapheneAppUrls;
 
+import java.util.Objects;
+
 public class UiManager {
     private static final String DEV_UI_ENTRYPOINT = "/scripts/index.html";
     private static final String DEFAULT_PROD_UI_URL = GrapheneAppUrls.asset(Main.MOD_ID, "pages/scripts/index.html");
+    private final ScriptingService scriptingService;
+    private final ConsoleManager consoleManager;
+    private final KeybindManager keybindManager;
+    private final ScriptManager scriptManager;
+    private final GlobalConfigManager globalConfigManager;
+
+    public UiManager(
+            ScriptingService scriptingService,
+            ConsoleManager consoleManager,
+            KeybindManager keybindManager,
+            ScriptManager scriptManager,
+            GlobalConfigManager globalConfigManager
+    ) {
+        this.scriptingService = Objects.requireNonNull(scriptingService, "scriptingService");
+        this.consoleManager = Objects.requireNonNull(consoleManager, "consoleManager");
+        this.keybindManager = Objects.requireNonNull(keybindManager, "keybindManager");
+        this.scriptManager = Objects.requireNonNull(scriptManager, "scriptManager");
+        this.globalConfigManager = Objects.requireNonNull(globalConfigManager, "globalConfigManager");
+    }
 
     public void openUi() {
         Minecraft mc = McUtils.getMc();
@@ -40,7 +66,14 @@ public class UiManager {
             targetUrl = DEFAULT_PROD_UI_URL;
         }
 
-        mc.execute(() -> mc.setScreen(new MQSWebScreen(targetUrl)));
+        mc.execute(() -> mc.setScreen(new MQSWebScreen(
+                targetUrl,
+                this.scriptingService,
+                this.consoleManager,
+                this.keybindManager,
+                this.scriptManager,
+                this.globalConfigManager
+        )));
     }
 
     /**

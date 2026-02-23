@@ -87,7 +87,6 @@ public class Main implements ClientModInitializer {
         this.commandManager = new CommandManager();
         this.consoleManager = new ConsoleManager();
         this.globalConfigManager = new GlobalConfigManager(consoleManager);
-        this.uiManager = new UiManager();
 
         EventManager eventManager = new EventManager(scriptManager);
         MQSEventBus.setManager(eventManager);
@@ -95,6 +94,7 @@ public class Main implements ClientModInitializer {
 
         HookManager hookManager = new HookManager(scriptManager, mappingsManager);
         this.scriptingService = new ScriptingService(scriptManager, configManager);
+        this.uiManager = new UiManager(this.scriptingService, this.consoleManager, this.keybindManager, this.scriptManager, this.globalConfigManager);
 
         configManager.init();
         consoleManager.init();

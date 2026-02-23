@@ -33,6 +33,7 @@ public class ConsoleManager {
     private final List<ConsoleMessage> messages = new CopyOnWriteArrayList<>();
     private final Map<String, ConsoleCommand> commands = new HashMap<>();
     private final List<String> commandHistory = new ArrayList<>();
+    private final List<ConsoleListener> listeners = new CopyOnWriteArrayList<>();
 
     private ConsoleManagerAppender slf4jAppender;
 
@@ -112,7 +113,9 @@ public class ConsoleManager {
 
     public void log(String message, ConsoleMessage.MessageType type) {
         for (String line : message.split("\\r?\\n")) {
-            messages.add(new ConsoleMessage(line, type));
+            ConsoleMessage consoleMessage = new ConsoleMessage(line, type);
+            messages.add(consoleMessage);
+            notifyMessageAdded(consoleMessage);
         }
     }
 
@@ -130,6 +133,7 @@ public class ConsoleManager {
 
     public void clear() {
         this.messages.clear();
+        notifyCleared();
     }
 
     public List<ConsoleMessage> getMessages() {
@@ -142,6 +146,14 @@ public class ConsoleManager {
 
     public List<String> getCommandHistory() {
         return Collections.unmodifiableList(commandHistory);
+    }
+
+    public void addListener(ConsoleListener listener) {
+        listeners.add(Objects.requireNonNull(listener, "listener"));
+    }
+
+    public void removeListener(ConsoleListener listener) {
+        listeners.remove(Objects.requireNonNull(listener, "listener"));
     }
 
     public void setLogRedirect(boolean enable) {
@@ -169,6 +181,30 @@ public class ConsoleManager {
             System.setOut(originalOut);
             System.setErr(originalErr);
         }
+    }
+
+    private void notifyMessageAdded(ConsoleMessage message) {
+        for (ConsoleListener listener : listeners) {
+            try {
+                listener.onMessageAdded(message);
+            } catch (RuntimeException ignored) {
+            }
+        }
+    }
+
+    private void notifyCleared() {
+        for (ConsoleListener listener : listeners) {
+            try {
+                listener.onCleared();
+            } catch (RuntimeException ignored) {
+            }
+        }
+    }
+
+    public interface ConsoleListener {
+        void onMessageAdded(ConsoleMessage message);
+
+        void onCleared();
     }
 
     private static class ConsoleOutputStream extends ByteArrayOutputStream {

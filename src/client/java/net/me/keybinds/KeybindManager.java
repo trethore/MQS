@@ -30,6 +30,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -238,5 +239,42 @@ public class KeybindManager {
 
     public List<HostKeyBinding> getHostKeybinds() {
         return List.copyOf(hostKeybindsByName.values());
+    }
+
+    public List<KeyBinding> getScriptKeybinds() {
+        return List.copyOf(keybindsByName.values());
+    }
+
+    public KeyBinding findScriptKeybind(String scriptId, String keybindName) {
+        String normalizedScriptId = normalizeKey(scriptId);
+        String normalizedName = normalizeKey(keybindName);
+
+        for (KeyBinding keyBinding : keybindsByName.values()) {
+            if (keyBinding.getOwner().getId().equals(normalizedScriptId) && keyBinding.getName().equals(normalizedName)) {
+                return keyBinding;
+            }
+        }
+
+        return null;
+    }
+
+    public HostKeyBinding findHostKeybind(String keybindName) {
+        String uniqueName = HOST_ID + "::" + normalizeKey(keybindName);
+        return hostKeybindsByName.get(uniqueName);
+    }
+
+    public boolean unregisterHost(String keybindName) {
+        String uniqueName = HOST_ID + "::" + normalizeKey(keybindName);
+        HostKeyBinding binding = hostKeybindsByName.remove(uniqueName);
+        if (binding == null) {
+            return false;
+        }
+
+        detachBinding(binding);
+        return true;
+    }
+
+    private String normalizeKey(String value) {
+        return Objects.requireNonNull(value, "value");
     }
 }
