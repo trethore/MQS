@@ -8,6 +8,8 @@ import { ScriptEntryWidget } from "./ScriptEntryWidget";
 import { ScrollbarWidget } from "./ScrollbarWidget";
 
 export function ScriptListWidget() {
+  const controlShadowClassName = "shadow-[0_0.35rem_1rem_-0.7rem_rgb(0_0_0_/_75%)]";
+
   const {
     disableAllScripts,
     filteredScripts,
@@ -31,13 +33,13 @@ export function ScriptListWidget() {
       </h1>
 
       <div className="mt-5 flex items-center gap-3">
-        <InputGroup className="flex-1">
+        <InputGroup className={`flex-1 ${controlShadowClassName}`}>
           <InputGroupInput
             value={searchQuery}
             onChange={(event) => {
               setSearchQuery(event.target.value);
             }}
-            placeholder="Search scripts..."
+            placeholder="Search a QOL script..."
             aria-label="Search scripts"
           />
         </InputGroup>
@@ -47,7 +49,7 @@ export function ScriptListWidget() {
           variant="outline"
           size="icon"
           aria-label="Refresh and re-enable scripts"
-          className="shrink-0"
+          className={`shrink-0 text-success hover:bg-success/10 hover:text-success ${controlShadowClassName}`}
           onClick={() => {
             void refreshAndReenableScripts();
           }}
@@ -60,7 +62,7 @@ export function ScriptListWidget() {
           variant="outline"
           size="icon"
           aria-label="Disable all scripts"
-          className="shrink-0"
+          className={`shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive ${controlShadowClassName}`}
           onClick={() => {
             void disableAllScripts();
           }}
@@ -105,7 +107,7 @@ export function ScriptListWidget() {
 
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 right-3 h-7 bg-linear-to-b from-card/0 via-card/30 to-card/70"
+          className="pointer-events-none absolute bottom-0 left-0 right-3 h-11 bg-linear-to-b from-card/0 via-card/65 to-card"
         />
       </section>
     </div>
