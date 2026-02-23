@@ -18,50 +18,38 @@
 
 package net.me.ui.bridges;
 
-import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.commands.CommandAPIService;
+import net.me.ui.bridges.utils.BridgeRequests;
+import net.me.ui.bridges.utils.BridgeSubscriptions;
 import tytoo.grapheneui.api.bridge.GrapheneBridge;
-import tytoo.grapheneui.api.bridge.GrapheneBridgeSubscription;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 public final class MQSCommandsBridge implements AutoCloseable {
     public static final String CHANNEL_LIST = "mqs:commands:list";
 
+    private static final String BRIDGE_NAME = "MQS commands";
+
     private final ScriptManager scriptManager;
-    private final List<GrapheneBridgeSubscription> subscriptions;
+    private final BridgeSubscriptions subscriptions;
 
     public MQSCommandsBridge(ScriptManager scriptManager) {
         this.scriptManager = Objects.requireNonNull(scriptManager, "scriptManager");
-        this.subscriptions = new ArrayList<>();
+        this.subscriptions = new BridgeSubscriptions(BRIDGE_NAME);
     }
 
     public void attach(GrapheneBridge bridge) {
         close();
         GrapheneBridge validatedBridge = Objects.requireNonNull(bridge, "bridge");
 
-        this.subscriptions.add(validatedBridge.onRequestJson(
-                CHANNEL_LIST,
-                Object.class,
-                (ignoredChannel, ignoredPayload) -> CompletableFuture.completedFuture(buildSnapshot())
-        ));
+        this.subscriptions.add(BridgeRequests.onRequestJson(validatedBridge, CHANNEL_LIST, this::buildSnapshot));
     }
 
     @Override
     public void close() {
-        for (GrapheneBridgeSubscription subscription : this.subscriptions) {
-            try {
-                subscription.unsubscribe();
-            } catch (RuntimeException exception) {
-                Main.LOGGER.debug("Failed to unsubscribe MQS commands bridge handler.", exception);
-            }
-        }
-
-        this.subscriptions.clear();
+        this.subscriptions.close();
     }
 
     private CommandsSnapshotResponse buildSnapshot() {

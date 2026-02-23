@@ -22,22 +22,23 @@ import net.me.Main;
 import net.me.keybinds.HostKeyBinding;
 import net.me.keybinds.KeyBinding;
 import net.me.keybinds.KeybindManager;
-import net.me.utils.McUtils;
+import net.me.ui.bridges.utils.BridgeEmitter;
+import net.me.ui.bridges.utils.BridgeRequests;
+import net.me.ui.bridges.utils.BridgeSubscriptions;
 import tytoo.grapheneui.api.bridge.GrapheneBridge;
-import tytoo.grapheneui.api.bridge.GrapheneBridgeSubscription;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
+import java.util.*;
 
 public final class MQSKeybindsBridge implements AutoCloseable {
+    public static final String CHANNEL_LIST = "mqs:keybinds:list";
+    public static final String CHANNEL_CREATE = "mqs:keybinds:create";
+    public static final String CHANNEL_UPDATE = "mqs:keybinds:update";
+    public static final String CHANNEL_DELETE = "mqs:keybinds:delete";
+    public static final String EVENT_UPDATED = "mqs:keybinds:updated";
+    public static final String EVENT_TRIGGERED = "mqs:keybinds:triggered";
     private static final String ACTION_CREATE = "create";
     private static final String ACTION_UPDATE = "update";
     private static final String ACTION_DELETE = "delete";
-
     private static final String MESSAGE_PAYLOAD_REQUIRED = "payload is required";
     private static final String MESSAGE_NAME_REQUIRED = "name is required";
     private static final String MESSAGE_KEY_CODE_REQUIRED = "keyCode is required";
@@ -46,25 +47,16 @@ public final class MQSKeybindsBridge implements AutoCloseable {
     private static final String MESSAGE_HOST_KEYBIND_NOT_FOUND = "host keybind not found";
     private static final String MESSAGE_KEYBIND_NOT_FOUND = "keybind not found";
     private static final String MESSAGE_SCRIPT_KEYBINDS_ARE_SCRIPT_OWNED = "script keybinds are created by scripts";
-
     private static final String SCOPE_SCRIPT = "script";
     private static final String SCOPE_HOST = "host";
-
-    public static final String CHANNEL_LIST = "mqs:keybinds:list";
-    public static final String CHANNEL_CREATE = "mqs:keybinds:create";
-    public static final String CHANNEL_UPDATE = "mqs:keybinds:update";
-    public static final String CHANNEL_DELETE = "mqs:keybinds:delete";
-
-    public static final String EVENT_UPDATED = "mqs:keybinds:updated";
-    public static final String EVENT_TRIGGERED = "mqs:keybinds:triggered";
-
+    private static final String BRIDGE_NAME = "MQS keybinds";
     private final KeybindManager keybindManager;
-    private final List<GrapheneBridgeSubscription> subscriptions;
+    private final BridgeSubscriptions subscriptions;
     private GrapheneBridge bridge;
 
     public MQSKeybindsBridge(KeybindManager keybindManager) {
         this.keybindManager = Objects.requireNonNull(keybindManager, "keybindManager");
-        this.subscriptions = new ArrayList<>();
+        this.subscriptions = new BridgeSubscriptions(BRIDGE_NAME);
     }
 
     public void attach(GrapheneBridge bridge) {
@@ -72,39 +64,30 @@ public final class MQSKeybindsBridge implements AutoCloseable {
         this.bridge = Objects.requireNonNull(bridge, "bridge");
 
         this.subscriptions.add(this.bridge.onReady(this::emitUpdated));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_LIST,
-                Object.class,
-                (ignoredChannel, ignoredPayload) -> CompletableFuture.completedFuture(buildSnapshot())
-        ));
-        this.subscriptions.add(this.bridge.onRequestJson(
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_LIST, this::buildSnapshot));
+        this.subscriptions.add(BridgeRequests.onRequestJson(
+                this.bridge,
                 CHANNEL_CREATE,
                 KeybindMutationRequest.class,
-                (ignoredChannel, payload) -> CompletableFuture.completedFuture(handleCreate(payload))
+                this::handleCreate
         ));
-        this.subscriptions.add(this.bridge.onRequestJson(
+        this.subscriptions.add(BridgeRequests.onRequestJson(
+                this.bridge,
                 CHANNEL_UPDATE,
                 KeybindMutationRequest.class,
-                (ignoredChannel, payload) -> CompletableFuture.completedFuture(handleUpdate(payload))
+                this::handleUpdate
         ));
-        this.subscriptions.add(this.bridge.onRequestJson(
+        this.subscriptions.add(BridgeRequests.onRequestJson(
+                this.bridge,
                 CHANNEL_DELETE,
                 KeybindMutationRequest.class,
-                (ignoredChannel, payload) -> CompletableFuture.completedFuture(handleDelete(payload))
+                this::handleDelete
         ));
     }
 
     @Override
     public void close() {
-        for (GrapheneBridgeSubscription subscription : this.subscriptions) {
-            try {
-                subscription.unsubscribe();
-            } catch (RuntimeException exception) {
-                Main.LOGGER.debug("Failed to unsubscribe MQS keybinds bridge handler.", exception);
-            }
-        }
-
-        this.subscriptions.clear();
+        this.subscriptions.close();
         this.bridge = null;
     }
 
@@ -119,17 +102,24 @@ public final class MQSKeybindsBridge implements AutoCloseable {
             return failure(ACTION_CREATE, MESSAGE_SCRIPT_KEYBINDS_ARE_SCRIPT_OWNED);
         }
 
-        boolean repeatable = payload.repeatable() != null && payload.repeatable();
-        int debounceMillis = payload.debounceMillis() == null ? 100 : Math.max(0, payload.debounceMillis());
-        this.keybindManager.registerHost(
-                request.name(),
-                () -> emitTriggered(request.name()),
-                request.keyCode(),
-                repeatable,
-                debounceMillis
-        );
+        KeybindStateResponse created;
+        try {
+            boolean repeatable = payload.repeatable() != null && payload.repeatable();
+            int debounceMillis = payload.debounceMillis() == null ? 100 : Math.max(0, payload.debounceMillis());
+            this.keybindManager.registerHost(
+                    request.name(),
+                    () -> emitTriggered(request.name()),
+                    request.keyCode(),
+                    repeatable,
+                    debounceMillis
+            );
 
-        KeybindStateResponse created = toHostResponse(this.keybindManager.findHostKeybind(request.name()));
+            created = toHostResponse(this.keybindManager.findHostKeybind(request.name()));
+        } catch (RuntimeException exception) {
+            Main.LOGGER.error("Failed to create host keybind from UI bridge.", exception);
+            return failure(ACTION_CREATE, exception.getMessage());
+        }
+
         if (created == null) {
             return failure(ACTION_CREATE, "failed to create host keybind");
         }
@@ -145,23 +135,28 @@ public final class MQSKeybindsBridge implements AutoCloseable {
 
         ValidatedRequest request = validationResult.request();
         KeybindStateResponse updated;
-        if (SCOPE_SCRIPT.equals(request.scope())) {
-            ScriptBindingResolution scriptBindingResolution = resolveScriptBinding(ACTION_UPDATE, request);
-            if (scriptBindingResolution.hasFailure()) {
-                return scriptBindingResolution.failure();
-            }
+        try {
+            if (SCOPE_SCRIPT.equals(request.scope())) {
+                ScriptBindingResolution scriptBindingResolution = resolveScriptBinding(ACTION_UPDATE, request);
+                if (scriptBindingResolution.hasFailure()) {
+                    return scriptBindingResolution.failure();
+                }
 
-            KeyBinding scriptBinding = scriptBindingResolution.binding();
-            this.keybindManager.rebindKey(scriptBinding, request.keyCode());
-            updated = toScriptResponse(scriptBinding);
-        } else {
-            HostKeyBinding hostBinding = this.keybindManager.findHostKeybind(request.name());
-            if (hostBinding == null) {
-                return failure(ACTION_UPDATE, MESSAGE_HOST_KEYBIND_NOT_FOUND);
-            }
+                KeyBinding scriptBinding = scriptBindingResolution.binding();
+                this.keybindManager.rebindKey(scriptBinding, request.keyCode());
+                updated = toScriptResponse(scriptBinding);
+            } else {
+                HostKeyBinding hostBinding = this.keybindManager.findHostKeybind(request.name());
+                if (hostBinding == null) {
+                    return failure(ACTION_UPDATE, MESSAGE_HOST_KEYBIND_NOT_FOUND);
+                }
 
-            this.keybindManager.rebindHostKey(hostBinding, request.keyCode());
-            updated = toHostResponse(hostBinding);
+                this.keybindManager.rebindHostKey(hostBinding, request.keyCode());
+                updated = toHostResponse(hostBinding);
+            }
+        } catch (RuntimeException exception) {
+            Main.LOGGER.error("Failed to update keybind from UI bridge.", exception);
+            return failure(ACTION_UPDATE, exception.getMessage());
         }
 
         return success(ACTION_UPDATE, "keybind updated", updated);
@@ -175,16 +170,21 @@ public final class MQSKeybindsBridge implements AutoCloseable {
 
         ValidatedRequest request = validationResult.request();
         boolean deleted;
-        if (SCOPE_SCRIPT.equals(request.scope())) {
-            ScriptBindingResolution scriptBindingResolution = resolveScriptBinding(ACTION_DELETE, request);
-            if (scriptBindingResolution.hasFailure()) {
-                return scriptBindingResolution.failure();
-            }
+        try {
+            if (SCOPE_SCRIPT.equals(request.scope())) {
+                ScriptBindingResolution scriptBindingResolution = resolveScriptBinding(ACTION_DELETE, request);
+                if (scriptBindingResolution.hasFailure()) {
+                    return scriptBindingResolution.failure();
+                }
 
-            KeyBinding scriptBinding = scriptBindingResolution.binding();
-            deleted = this.keybindManager.unregister(scriptBinding.getOwner(), scriptBinding.getName());
-        } else {
-            deleted = this.keybindManager.unregisterHost(request.name());
+                KeyBinding scriptBinding = scriptBindingResolution.binding();
+                deleted = this.keybindManager.unregister(scriptBinding.getOwner(), scriptBinding.getName());
+            } else {
+                deleted = this.keybindManager.unregisterHost(request.name());
+            }
+        } catch (RuntimeException exception) {
+            Main.LOGGER.error("Failed to delete keybind from UI bridge.", exception);
+            return failure(ACTION_DELETE, exception.getMessage());
         }
 
         if (!deleted) {
@@ -311,34 +311,15 @@ public final class MQSKeybindsBridge implements AutoCloseable {
     }
 
     private void emitUpdated(KeybindSnapshotResponse snapshot) {
-        GrapheneBridge activeBridge = this.bridge;
-        if (activeBridge == null) {
-            return;
-        }
-
-        try {
-            activeBridge.emitJson(EVENT_UPDATED, snapshot);
-        } catch (RuntimeException exception) {
-            Main.LOGGER.debug("Failed to emit keybind update bridge event.", exception);
-        }
+        BridgeEmitter.emitJsonOnClientThread(() -> this.bridge, BRIDGE_NAME, EVENT_UPDATED, snapshot);
     }
 
     private void emitTriggered(String keybindName) {
-        McUtils.getMc().execute(() -> {
-            GrapheneBridge activeBridge = this.bridge;
-            if (activeBridge == null) {
-                return;
-            }
-
+        BridgeEmitter.emitJsonOnClientThread(() -> this.bridge, BRIDGE_NAME, EVENT_TRIGGERED, () -> {
             HostKeyBinding keybind = this.keybindManager.findHostKeybind(keybindName);
             int keyCode = keybind == null ? -1 : keybind.getKey();
             String keyName = keybind == null ? "Unknown" : keybind.getKeyName();
-
-            try {
-                activeBridge.emitJson(EVENT_TRIGGERED, new KeybindTriggeredEvent(keybindName, keyCode, keyName));
-            } catch (RuntimeException exception) {
-                Main.LOGGER.debug("Failed to emit keybind triggered bridge event.", exception);
-            }
+            return new KeybindTriggeredEvent(keybindName, keyCode, keyName);
         });
     }
 

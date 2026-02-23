@@ -22,38 +22,37 @@ import net.me.Main;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.ui.bridges.utils.BridgeEmitter;
+import net.me.ui.bridges.utils.BridgeRequests;
+import net.me.ui.bridges.utils.BridgeSubscriptions;
 import tytoo.grapheneui.api.bridge.GrapheneBridge;
-import tytoo.grapheneui.api.bridge.GrapheneBridgeSubscription;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public final class MQSScriptsBridge implements AutoCloseable {
-    private static final String ACTION_INFO = "info";
-    private static final String ACTION_TOGGLE = "toggle";
-    private static final String ACTION_REFRESH = "refresh";
-    private static final String ACTION_REFRESH_AND_REENABLE = "refresh-and-reenable";
-    private static final String MESSAGE_INVALID_SCRIPT_ID = "payload must include a non-empty scriptId";
-
     public static final String CHANNEL_LIST = "mqs:scripts:list";
     public static final String CHANNEL_INFO = "mqs:scripts:info";
     public static final String CHANNEL_TOGGLE = "mqs:scripts:toggle";
     public static final String CHANNEL_REFRESH = "mqs:scripts:refresh";
     public static final String CHANNEL_REFRESH_AND_REENABLE = "mqs:scripts:refresh-and-reenable";
     public static final String EVENT_UPDATED = "mqs:scripts:updated";
-
+    private static final String ACTION_INFO = "info";
+    private static final String ACTION_TOGGLE = "toggle";
+    private static final String ACTION_REFRESH = "refresh";
+    private static final String ACTION_REFRESH_AND_REENABLE = "refresh-and-reenable";
+    private static final String MESSAGE_INVALID_SCRIPT_ID = "payload must include a non-empty scriptId";
+    private static final String BRIDGE_NAME = "MQS scripts";
     private final ScriptingService scriptingService;
-    private final List<GrapheneBridgeSubscription> subscriptions;
+    private final BridgeSubscriptions subscriptions;
     private GrapheneBridge bridge;
 
     public MQSScriptsBridge(ScriptingService scriptingService) {
         this.scriptingService = Objects.requireNonNull(scriptingService, "scriptingService");
-        this.subscriptions = new ArrayList<>();
+        this.subscriptions = new BridgeSubscriptions(BRIDGE_NAME);
     }
 
     public void attach(GrapheneBridge bridge) {
@@ -61,44 +60,20 @@ public final class MQSScriptsBridge implements AutoCloseable {
         this.bridge = Objects.requireNonNull(bridge, "bridge");
 
         this.subscriptions.add(this.bridge.onReady(this::emitScriptsUpdated));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_LIST,
-                Object.class,
-                (ignoredChannel, ignoredPayload) -> CompletableFuture.completedFuture(buildSnapshot())
-        ));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_INFO,
-                ScriptIdRequest.class,
-                (ignoredChannel, payload) -> CompletableFuture.completedFuture(handleInfo(payload))
-        ));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_TOGGLE,
-                ScriptIdRequest.class,
-                (ignoredChannel, payload) -> CompletableFuture.completedFuture(handleToggle(payload))
-        ));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_REFRESH,
-                Object.class,
-                (ignoredChannel, ignoredPayload) -> CompletableFuture.completedFuture(handleRefresh())
-        ));
-        this.subscriptions.add(this.bridge.onRequestJson(
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_LIST, this::buildSnapshot));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_INFO, ScriptIdRequest.class, this::handleInfo));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_TOGGLE, ScriptIdRequest.class, this::handleToggle));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_REFRESH, this::handleRefresh));
+        this.subscriptions.add(BridgeRequests.onRequestJson(
+                this.bridge,
                 CHANNEL_REFRESH_AND_REENABLE,
-                Object.class,
-                (ignoredChannel, ignoredPayload) -> CompletableFuture.completedFuture(handleRefreshAndReenable())
+                this::handleRefreshAndReenable
         ));
     }
 
     @Override
     public void close() {
-        for (GrapheneBridgeSubscription subscription : this.subscriptions) {
-            try {
-                subscription.unsubscribe();
-            } catch (RuntimeException exception) {
-                Main.LOGGER.debug("Failed to unsubscribe MQS scripts bridge handler.", exception);
-            }
-        }
-
-        this.subscriptions.clear();
+        this.subscriptions.close();
         this.bridge = null;
     }
 
@@ -234,15 +209,7 @@ public final class MQSScriptsBridge implements AutoCloseable {
     }
 
     private void emitScriptsUpdated(ScriptsSnapshotResponse snapshot) {
-        if (this.bridge == null) {
-            return;
-        }
-
-        try {
-            this.bridge.emitJson(EVENT_UPDATED, snapshot);
-        } catch (RuntimeException exception) {
-            Main.LOGGER.debug("Failed to emit scripts update bridge event.", exception);
-        }
+        BridgeEmitter.emitJsonOnClientThread(() -> this.bridge, BRIDGE_NAME, EVENT_UPDATED, snapshot);
     }
 
     public record ScriptIdRequest(String scriptId) {

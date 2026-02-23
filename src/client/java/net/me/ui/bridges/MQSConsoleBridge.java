@@ -22,15 +22,14 @@ import net.me.Main;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 import net.me.console.ConsoleMessage;
-import net.me.utils.McUtils;
+import net.me.ui.bridges.utils.BridgeEmitter;
+import net.me.ui.bridges.utils.BridgeRequests;
+import net.me.ui.bridges.utils.BridgeSubscriptions;
 import tytoo.grapheneui.api.bridge.GrapheneBridge;
-import tytoo.grapheneui.api.bridge.GrapheneBridgeSubscription;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 public final class MQSConsoleBridge implements AutoCloseable {
     public static final String CHANNEL_SNAPSHOT = "mqs:console:snapshot";
@@ -42,8 +41,10 @@ public final class MQSConsoleBridge implements AutoCloseable {
     public static final String EVENT_CLEARED = "mqs:console:cleared";
     public static final String EVENT_SNAPSHOT_UPDATED = "mqs:console:snapshot:updated";
 
+    private static final String BRIDGE_NAME = "MQS console";
+
     private final ConsoleManager consoleManager;
-    private final List<GrapheneBridgeSubscription> subscriptions;
+    private final BridgeSubscriptions subscriptions;
     private final ConsoleManager.ConsoleListener consoleListener;
 
     private GrapheneBridge bridge;
@@ -51,16 +52,26 @@ public final class MQSConsoleBridge implements AutoCloseable {
 
     public MQSConsoleBridge(ConsoleManager consoleManager) {
         this.consoleManager = Objects.requireNonNull(consoleManager, "consoleManager");
-        this.subscriptions = new ArrayList<>();
+        this.subscriptions = new BridgeSubscriptions(BRIDGE_NAME);
         this.consoleListener = new ConsoleManager.ConsoleListener() {
             @Override
             public void onMessageAdded(ConsoleMessage message) {
-                emitOnClientThread(EVENT_MESSAGE, toMessageResponse(message));
+                BridgeEmitter.emitJsonOnClientThread(
+                        () -> MQSConsoleBridge.this.bridge,
+                        BRIDGE_NAME,
+                        EVENT_MESSAGE,
+                        toMessageResponse(message)
+                );
             }
 
             @Override
             public void onCleared() {
-                emitOnClientThread(EVENT_CLEARED, new ConsoleClearedResponse(true));
+                BridgeEmitter.emitJsonOnClientThread(
+                        () -> MQSConsoleBridge.this.bridge,
+                        BRIDGE_NAME,
+                        EVENT_CLEARED,
+                        new ConsoleClearedResponse(true)
+                );
             }
         };
     }
@@ -69,27 +80,16 @@ public final class MQSConsoleBridge implements AutoCloseable {
         close();
         this.bridge = Objects.requireNonNull(bridge, "bridge");
 
-        this.subscriptions.add(this.bridge.onReady(() -> emitOnClientThread(EVENT_SNAPSHOT_UPDATED, buildSnapshot())));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_SNAPSHOT,
-                Object.class,
-                (ignoredChannel, ignoredPayload) -> CompletableFuture.completedFuture(buildSnapshot())
-        ));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_COMMANDS,
-                Object.class,
-                (ignoredChannel, ignoredPayload) -> CompletableFuture.completedFuture(buildCommandsResponse())
-        ));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_EXECUTE,
-                ConsoleExecuteRequest.class,
-                (ignoredChannel, payload) -> CompletableFuture.completedFuture(handleExecute(payload))
-        ));
-        this.subscriptions.add(this.bridge.onRequestJson(
-                CHANNEL_CLEAR,
-                Object.class,
-                (ignoredChannel, ignoredPayload) -> CompletableFuture.completedFuture(handleClear())
-        ));
+        this.subscriptions.add(this.bridge.onReady(() -> BridgeEmitter.emitJsonOnClientThread(
+                () -> this.bridge,
+                BRIDGE_NAME,
+                EVENT_SNAPSHOT_UPDATED,
+                buildSnapshot()
+        )));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_SNAPSHOT, this::buildSnapshot));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_COMMANDS, this::buildCommandsResponse));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_EXECUTE, ConsoleExecuteRequest.class, this::handleExecute));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_CLEAR, this::handleClear));
 
         this.consoleManager.addListener(this.consoleListener);
         this.listening = true;
@@ -97,15 +97,7 @@ public final class MQSConsoleBridge implements AutoCloseable {
 
     @Override
     public void close() {
-        for (GrapheneBridgeSubscription subscription : this.subscriptions) {
-            try {
-                subscription.unsubscribe();
-            } catch (RuntimeException exception) {
-                Main.LOGGER.debug("Failed to unsubscribe MQS console bridge handler.", exception);
-            }
-        }
-
-        this.subscriptions.clear();
+        this.subscriptions.close();
         if (this.listening) {
             this.consoleManager.removeListener(this.consoleListener);
             this.listening = false;
@@ -165,21 +157,6 @@ public final class MQSConsoleBridge implements AutoCloseable {
                 message.type().name(),
                 message.timestamp()
         );
-    }
-
-    private void emitOnClientThread(String channel, Object payload) {
-        McUtils.getMc().execute(() -> {
-            GrapheneBridge activeBridge = this.bridge;
-            if (activeBridge == null) {
-                return;
-            }
-
-            try {
-                activeBridge.emitJson(channel, payload);
-            } catch (RuntimeException exception) {
-                Main.LOGGER.debug("Failed to emit console bridge event on channel '{}'.", channel, exception);
-            }
-        });
     }
 
     public record ConsoleExecuteRequest(String input) {

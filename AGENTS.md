@@ -57,7 +57,6 @@ Here is the structure of the repository:
 ## General Coding Conventions
 
 - Target Java 21, use 4-space indentation, and keep packages under `net.me*`.
-- Use PascalCase for classes, camelCase for methods and fields, and UPPER_SNAKE_CASE for constants.
 - Use explicit types instead of `var`, and prefer descriptive names over one-letter identifiers.
 - Keep member order consistent in Java classes: static constants, static fields, instance fields, constructors, overridden
   methods, public methods, protected and private helper methods, then getters and setters at the bottom.
