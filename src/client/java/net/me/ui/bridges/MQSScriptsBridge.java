@@ -39,11 +39,13 @@ public final class MQSScriptsBridge implements AutoCloseable {
     public static final String CHANNEL_TOGGLE = "mqs:scripts:toggle";
     public static final String CHANNEL_REFRESH = "mqs:scripts:refresh";
     public static final String CHANNEL_REFRESH_AND_REENABLE = "mqs:scripts:refresh-and-reenable";
+    public static final String CHANNEL_DISABLE_ALL = "mqs:scripts:disable-all";
     public static final String EVENT_UPDATED = "mqs:scripts:updated";
     private static final String ACTION_INFO = "info";
     private static final String ACTION_TOGGLE = "toggle";
     private static final String ACTION_REFRESH = "refresh";
     private static final String ACTION_REFRESH_AND_REENABLE = "refresh-and-reenable";
+    private static final String ACTION_DISABLE_ALL = "disable-all";
     private static final String MESSAGE_INVALID_SCRIPT_ID = "payload must include a non-empty scriptId";
     private static final String BRIDGE_NAME = "MQS scripts";
     private final ScriptingService scriptingService;
@@ -69,6 +71,7 @@ public final class MQSScriptsBridge implements AutoCloseable {
                 CHANNEL_REFRESH_AND_REENABLE,
                 this::handleRefreshAndReenable
         ));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_DISABLE_ALL, this::handleDisableAll));
     }
 
     @Override
@@ -151,6 +154,25 @@ public final class MQSScriptsBridge implements AutoCloseable {
         ScriptsSnapshotResponse snapshot = buildSnapshot();
         emitScriptsUpdated(snapshot);
         return ScriptOperationResponse.success(ACTION_REFRESH_AND_REENABLE, "scripts refreshed and re-enabled", null, snapshot);
+    }
+
+    private ScriptOperationResponse handleDisableAll() {
+        int disabledCount;
+        try {
+            disabledCount = scriptingService.disableAll();
+        } catch (RuntimeException exception) {
+            Main.LOGGER.error("Failed to disable all scripts from UI bridge.", exception);
+            return ScriptOperationResponse.failure(ACTION_DISABLE_ALL, exception.getMessage(), buildSnapshot());
+        }
+
+        ScriptsSnapshotResponse snapshot = buildSnapshot();
+        emitScriptsUpdated(snapshot);
+
+        String message = disabledCount == 0
+                ? "no running scripts to disable"
+                : "disabled " + disabledCount + " running script" + (disabledCount == 1 ? "" : "s");
+
+        return ScriptOperationResponse.success(ACTION_DISABLE_ALL, message, null, snapshot);
     }
 
     private ScriptsSnapshotResponse buildSnapshot() {

@@ -1,6 +1,7 @@
 import { BridgeError } from "@/bridge/core/bridgeError";
 import { requestBridge, subscribeBridge } from "@/bridge/core/bridgeTransport";
 import {
+  SCRIPTS_CHANNEL_DISABLE_ALL,
   SCRIPTS_CHANNEL_INFO,
   parseScriptOperation,
   parseScriptsSnapshot,
@@ -60,4 +61,8 @@ export function refreshScripts(): Promise<ScriptOperation> {
 
 export function refreshAndReenableScripts(): Promise<ScriptOperation> {
   return runScriptOperation(SCRIPTS_CHANNEL_REFRESH_AND_REENABLE, null);
+}
+
+export function disableAllScripts(): Promise<ScriptOperation> {
+  return runScriptOperation(SCRIPTS_CHANNEL_DISABLE_ALL, null);
 }

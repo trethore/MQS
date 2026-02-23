@@ -5,6 +5,7 @@ export const SCRIPTS_CHANNEL_INFO = "mqs:scripts:info";
 export const SCRIPTS_CHANNEL_TOGGLE = "mqs:scripts:toggle";
 export const SCRIPTS_CHANNEL_REFRESH = "mqs:scripts:refresh";
 export const SCRIPTS_CHANNEL_REFRESH_AND_REENABLE = "mqs:scripts:refresh-and-reenable";
+export const SCRIPTS_CHANNEL_DISABLE_ALL = "mqs:scripts:disable-all";
 export const SCRIPTS_EVENT_UPDATED = "mqs:scripts:updated";
 
 export interface ScriptState {

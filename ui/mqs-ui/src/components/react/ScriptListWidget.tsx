@@ -9,15 +9,12 @@ import { ScrollbarWidget } from "./ScrollbarWidget";
 
 export function ScriptListWidget() {
   const {
-    errorMessage,
+    disableAllScripts,
     filteredScripts,
     loading,
-    noticeMessage,
     refreshAndReenableScripts,
-    refreshScripts,
     searchQuery,
     setSearchQuery,
-    snapshot,
     toggleScript,
     updatingAll,
     updatingScriptId,
@@ -49,10 +46,10 @@ export function ScriptListWidget() {
           type="button"
           variant="outline"
           size="icon"
-          aria-label="Refresh scripts"
+          aria-label="Refresh and re-enable scripts"
           className="shrink-0"
           onClick={() => {
-            void refreshScripts();
+            void refreshAndReenableScripts();
           }}
           disabled={loading || updatingAll}
         >
@@ -62,22 +59,16 @@ export function ScriptListWidget() {
           type="button"
           variant="outline"
           size="icon"
-          aria-label="Refresh and re-enable scripts"
+          aria-label="Disable all scripts"
           className="shrink-0"
           onClick={() => {
-            void refreshAndReenableScripts();
+            void disableAllScripts();
           }}
           disabled={loading || updatingAll}
         >
           <PowerOff />
         </Button>
       </div>
-
-      <p className="mt-2 min-h-5 text-sm text-muted-foreground" role="status">
-        {errorMessage
-          ? errorMessage
-          : noticeMessage || `${snapshot.runningCount} / ${snapshot.totalCount} scripts running`}
-      </p>
 
       <section className="relative mt-1 flex min-h-0 w-full flex-1 flex-col overflow-hidden pb-3">
         {loading ? (

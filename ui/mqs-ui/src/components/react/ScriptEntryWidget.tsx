@@ -25,7 +25,7 @@ export function ScriptEntryWidget({
       aria-pressed={running}
       onClick={onToggle}
       disabled={disabled}
-      className="flex w-full items-center justify-between gap-5 rounded-xl border border-border bg-background/50 px-5 py-4 text-left shadow-[0_0.75rem_1.75rem_-1.15rem_rgb(0_0_0_/_0.78)] transition-colors duration-150 hover:bg-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70"
+      className="flex w-full items-center justify-between gap-5 rounded-xl border border-border bg-background/50 px-5 py-4 text-left shadow-[0_0.75rem_1.75rem_-1.15rem_rgb(0_0_0_/_0.78)] transition-colors duration-150 enabled:hover:bg-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed"
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate text-2xl font-semibold leading-tight text-foreground">

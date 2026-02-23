@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getBridgeErrorMessage } from "@/bridge/core/bridgeError";
 import type { ScriptOperation, ScriptsSnapshot } from "@/bridge/contracts/scripts";
 import {
+  disableAllScripts as requestDisableAllScripts,
   fetchScriptsSnapshot,
   refreshAndReenableScripts as requestRefreshAndReenableScripts,
   refreshScripts as requestRefreshScripts,
@@ -15,6 +16,34 @@ const EMPTY_SNAPSHOT: ScriptsSnapshot = {
   runningCount: 0,
   totalCount: 0,
 };
+
+function areSnapshotsEqual(leftSnapshot: ScriptsSnapshot, rightSnapshot: ScriptsSnapshot): boolean {
+  if (
+    leftSnapshot.runningCount !== rightSnapshot.runningCount ||
+    leftSnapshot.totalCount !== rightSnapshot.totalCount ||
+    leftSnapshot.scripts.length !== rightSnapshot.scripts.length
+  ) {
+    return false;
+  }
+
+  for (let index = 0; index < leftSnapshot.scripts.length; index += 1) {
+    const leftScript = leftSnapshot.scripts[index];
+    const rightScript = rightSnapshot.scripts[index];
+
+    if (
+      leftScript.id !== rightScript.id ||
+      leftScript.moduleName !== rightScript.moduleName ||
+      leftScript.version !== rightScript.version ||
+      leftScript.mainClass !== rightScript.mainClass ||
+      leftScript.path !== rightScript.path ||
+      leftScript.running !== rightScript.running
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 export function useScriptsController() {
   const [snapshot, setSnapshot] = useState<ScriptsSnapshot>(EMPTY_SNAPSHOT);
@@ -42,7 +71,9 @@ export function useScriptsController() {
   }, [searchQuery, snapshot.scripts]);
 
   const applySnapshot = useCallback((nextSnapshot: ScriptsSnapshot) => {
-    setSnapshot(nextSnapshot);
+    setSnapshot((previousSnapshot) => {
+      return areSnapshotsEqual(previousSnapshot, nextSnapshot) ? previousSnapshot : nextSnapshot;
+    });
     setErrorMessage(null);
   }, []);
 
@@ -124,7 +155,15 @@ export function useScriptsController() {
     setUpdatingAll(false);
   }, [runOperation]);
 
+  const disableAllScripts = useCallback(async () => {
+    setUpdatingAll(true);
+    setNoticeMessage(null);
+    await runOperation(requestDisableAllScripts, "All running scripts disabled.");
+    setUpdatingAll(false);
+  }, [runOperation]);
+
   return {
+    disableAllScripts,
     errorMessage,
     filteredScripts,
     loading,
