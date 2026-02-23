@@ -14,11 +14,17 @@ ui/mqs-ui/
 │   └── copy-build.js               # Copies dist output to Graphene target folders and rewrites absolute links.
 ├── public/                         # Static assets copied as-is.
 ├── src/
+│   ├── bridge/
+│   │   ├── core/                   # Graphene bridge access, transport helpers, and shared bridge errors.
+│   │   ├── contracts/              # Channel constants, payload types, and parsers per Java bridge.
+│   │   └── services/               # Bridge service layer used by hooks/components.
 │   ├── components/
 │   │   ├── astro/                  # Astro-only reusable components.
 │   │   ├── react/                  # React reusable components.
 │   │   └── ui/                     # shadcn/ui reusable components.
+│   ├── hooks/                      # Feature controllers (state + side effects) consumed by components.
 │   ├── layouts/                    # Shared page shell/layout.
+│   ├── lib/                        # Generic UI utilities.
 │   ├── pages/                      # Astro pages (build to static HTML files).
 │   └── styles/
 │       └── global.css              # Global styles and Tailwind imports.
