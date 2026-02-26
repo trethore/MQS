@@ -58,14 +58,6 @@ val sourceDeps: Configuration by configurations.creating {
 
 repositories {
     mavenCentral()
-    maven {
-        name = "GitHubPackagesGraphene"
-        url = uri("https://maven.pkg.github.com/trethore/graphene")
-        credentials {
-            username = project.findProperty("gpr.user") as String?
-            password = project.findProperty("gpr.key") as String?
-        }
-    }
     maven { url = uri("https://packages.graalvm.org/maven") }
 }
 
@@ -100,8 +92,8 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
 
     // Graphene UI
-    modImplementation("tytoo.grapheneui:graphene-ui:${property("graphene_version")}")
-    sourceDeps("tytoo.grapheneui:graphene-ui:${property("graphene_version")}:sources@jar")
+    modImplementation("io.github.trethore:graphene-ui:${property("graphene_version")}")
+    sourceDeps("io.github.trethore:graphene-ui:${property("graphene_version")}:sources@jar")
 
     // GraalVM (shaded)
     graalModules.forEach { (moduleGroup, moduleName) ->
