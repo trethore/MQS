@@ -1,20 +1,67 @@
+import type { MouseEvent } from "react";
+import { useCallback, useState } from "react";
+
+import { prepareCodeWorkspace } from "@/bridge/services/codeService";
 import { cn } from "@/lib/utils";
 
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 type NavItemId = "scripts" | "console" | "options";
+type NavLinkId = NavItemId | "code";
 
 interface AppNavbarProps {
   activeItem: NavItemId;
 }
 
-const NAV_ITEMS: Array<{ id: NavItemId; label: string; href: string }> = [
+const CODE_EDITOR_URL = "https://vscode.dev/";
+
+const NAV_ITEMS: Array<{ id: NavLinkId; label: string; href: string }> = [
   { id: "scripts", label: "Scripts", href: "../scripts/index.html" },
   { id: "console", label: "Console", href: "../console/index.html" },
   { id: "options", label: "Options", href: "../options/index.html" },
+  { id: "code", label: "Code", href: CODE_EDITOR_URL },
 ];
 
 export function AppNavbar({ activeItem }: AppNavbarProps) {
+  const [preparingCodeLink, setPreparingCodeLink] = useState(false);
+
+  const copyWorkspacePathWithBrowserClipboard = useCallback(async (workspacePath: string) => {
+    if (!workspacePath) {
+      return;
+    }
+
+    if (!globalThis.navigator?.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await globalThis.navigator.clipboard.writeText(workspacePath);
+    } catch (ignored) {}
+  }, []);
+
+  const handleCodeClick = useCallback(
+    async (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      if (preparingCodeLink) {
+        return;
+      }
+
+      setPreparingCodeLink(true);
+
+      try {
+        const response = await prepareCodeWorkspace();
+        if (!response.copied) {
+          await copyWorkspacePathWithBrowserClipboard(response.modDirPath);
+        }
+      } catch (ignored) {
+      } finally {
+        setPreparingCodeLink(false);
+        globalThis.window.location.assign(CODE_EDITOR_URL);
+      }
+    },
+    [copyWorkspacePathWithBrowserClipboard, preparingCodeLink],
+  );
+
   return (
     <header className="p-4 pb-0">
       <div className="mqs-elevated grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3">
@@ -28,28 +75,36 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
 
         <nav aria-label="Primary" className="justify-self-center">
           <ul className="flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={item.href}
-                  aria-current={item.id === activeItem ? "page" : undefined}
-                  className={cn(
-                    "mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors",
-                    item.id === activeItem
-                      ? "bg-accent/90 text-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  {item.id === activeItem ? (
-                    <span className="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">
-                      {item.label}
-                    </span>
-                  ) : (
-                    item.label
-                  )}
-                </a>
-              </li>
-            ))}
+            {NAV_ITEMS.map((item) => {
+              const active = item.id === activeItem;
+              const codeLink = item.id === "code";
+
+              return (
+                <li key={item.id}>
+                  <a
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    aria-disabled={codeLink && preparingCodeLink ? "true" : undefined}
+                    onClick={codeLink ? handleCodeClick : undefined}
+                    className={cn(
+                      "mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors",
+                      active
+                        ? "bg-accent/90 text-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                      codeLink && preparingCodeLink ? "opacity-70" : null,
+                    )}
+                  >
+                    {active ? (
+                      <span className="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">
+                        {item.label}
+                      </span>
+                    ) : (
+                      item.label
+                    )}
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 

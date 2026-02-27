@@ -1,3 +1,4 @@
+export * from "./codeService";
 export * from "./commandsService";
 export * from "./consoleService";
 export * from "./keybindsService";

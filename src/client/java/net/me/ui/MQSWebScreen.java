@@ -24,6 +24,7 @@ import net.me.keybinds.KeybindManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.ui.bridges.MQSCommandsBridge;
+import net.me.ui.bridges.MQSCodeBridge;
 import net.me.ui.bridges.MQSConsoleBridge;
 import net.me.ui.bridges.MQSKeybindsBridge;
 import net.me.ui.bridges.MQSOptionsBridge;
@@ -43,6 +44,7 @@ public class MQSWebScreen extends Screen {
     private final MQSKeybindsBridge keybindsBridge;
     private final MQSCommandsBridge commandsBridge;
     private final MQSOptionsBridge optionsBridge;
+    private final MQSCodeBridge codeBridge;
     private GrapheneWebViewWidget webViewWidget;
 
     public MQSWebScreen(
@@ -60,6 +62,7 @@ public class MQSWebScreen extends Screen {
         this.keybindsBridge = new MQSKeybindsBridge(Objects.requireNonNull(keybindManager, "keybindManager"));
         this.commandsBridge = new MQSCommandsBridge(Objects.requireNonNull(scriptManager, "scriptManager"));
         this.optionsBridge = new MQSOptionsBridge(Objects.requireNonNull(globalConfigManager, "globalConfigManager"));
+        this.codeBridge = new MQSCodeBridge();
     }
 
     @Override
@@ -80,6 +83,7 @@ public class MQSWebScreen extends Screen {
         this.keybindsBridge.attach(this.webViewWidget.bridge());
         this.commandsBridge.attach(this.webViewWidget.bridge());
         this.optionsBridge.attach(this.webViewWidget.bridge());
+        this.codeBridge.attach(this.webViewWidget.bridge());
     }
 
     @Override
@@ -105,6 +109,7 @@ public class MQSWebScreen extends Screen {
         this.keybindsBridge.close();
         this.commandsBridge.close();
         this.optionsBridge.close();
+        this.codeBridge.close();
 
         if (this.webViewWidget == null) {
             return;
