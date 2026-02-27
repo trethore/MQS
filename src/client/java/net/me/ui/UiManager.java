@@ -60,7 +60,7 @@ public class UiManager {
         Minecraft mc = McUtils.getMc();
         String targetUrl;
 
-        if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
             targetUrl = resolveDevelopmentUiUrl();
         } else {
             targetUrl = DEFAULT_PROD_UI_URL;
