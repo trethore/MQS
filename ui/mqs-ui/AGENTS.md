@@ -50,7 +50,7 @@ ui/mqs-ui/
 - Use CSS variables for theme-related values that may be reused or adjusted globally.
 - Avoid hardcoding absolute root links in page content when a relative or static-safe path is sufficient.
 - When using shadcn/ui components, do not modify vendor components directly unless absolutely necessary; instead, wrap or
-compose them within your own components to implement project-specific behavior.
+  compose them within your own components to implement project-specific behavior.
 
 ## Routing And Static Output Conventions
 

@@ -29,7 +29,6 @@ import java.util.Objects;
 
 public final class MQSCommandsBridge implements AutoCloseable {
     public static final String CHANNEL_LIST = "mqs:commands:list";
-
     private static final String BRIDGE_NAME = "MQS commands";
 
     private final ScriptManager scriptManager;
