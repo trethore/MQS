@@ -235,7 +235,7 @@ export function ThemeSwitcher() {
         aria-expanded={menuOpen}
         aria-controls={menuOpen ? menuId : undefined}
         onClick={() => setMenuOpen((previous) => !previous)}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="mqs-focus-highlight inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         <span className="sr-only">Toggle theme</span>
         <div className="flex h-4 w-4 items-center justify-center">
@@ -268,7 +268,7 @@ export function ThemeSwitcher() {
                 role="menuitemradio"
                 aria-checked={selected}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:bg-accent focus-visible:text-accent-foreground",
+                  "mqs-focus-highlight flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:bg-accent focus-visible:text-accent-foreground",
                   selected
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
