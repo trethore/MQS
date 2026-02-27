@@ -5,6 +5,14 @@ import { defineConfig } from "astro/config";
 
 import react from "@astrojs/react";
 
+/**
+ * @param {{ pathname: string }} fileUrl
+ */
+function toSafeFilePath(fileUrl) {
+  const decodedPathname = decodeURIComponent(fileUrl.pathname);
+  return decodedPathname.replace(/^\/([A-Za-z]:\/)/, "$1");
+}
+
 export default defineConfig({
   build: {
     assetsPrefix: ".",
@@ -16,7 +24,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
     resolve: {
       alias: {
-        "@": new URL("./src", import.meta.url).pathname,
+        "@": toSafeFilePath(new URL("./src", import.meta.url)),
       },
     },
   },

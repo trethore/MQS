@@ -8,10 +8,9 @@ import { ScriptEntryWidget } from "./ScriptEntryWidget";
 import { ScrollbarWidget } from "./ScrollbarWidget";
 
 export function ScriptListWidget() {
-  const controlShadowClassName = "shadow-[0_0.35rem_1rem_-0.7rem_rgb(0_0_0_/_75%)]";
-
   const {
     disableAllScripts,
+    errorMessage,
     filteredScripts,
     loading,
     refreshAndReenableScripts,
@@ -33,7 +32,7 @@ export function ScriptListWidget() {
       </h1>
 
       <div className="mt-5 flex items-center gap-3">
-        <InputGroup className={`flex-1 ${controlShadowClassName}`}>
+        <InputGroup className="mqs-control-shadow flex-1">
           <InputGroupInput
             value={searchQuery}
             onChange={(event) => {
@@ -49,7 +48,7 @@ export function ScriptListWidget() {
           variant="outline"
           size="icon"
           aria-label="Refresh and re-enable scripts"
-          className={`shrink-0 text-success hover:bg-success/10 hover:text-success ${controlShadowClassName}`}
+          className="mqs-control-shadow shrink-0 text-success hover:bg-success/10 hover:text-success"
           onClick={() => {
             void refreshAndReenableScripts();
           }}
@@ -62,7 +61,7 @@ export function ScriptListWidget() {
           variant="outline"
           size="icon"
           aria-label="Disable all scripts"
-          className={`shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive ${controlShadowClassName}`}
+          className="mqs-control-shadow shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={() => {
             void disableAllScripts();
           }}
@@ -71,6 +70,15 @@ export function ScriptListWidget() {
           <PowerOff />
         </Button>
       </div>
+
+      {errorMessage ? (
+        <p
+          role="alert"
+          className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          {errorMessage}
+        </p>
+      ) : null}
 
       <section className="relative mt-3 flex min-h-0 w-full flex-1 flex-col overflow-hidden pb-3">
         {loading ? (
@@ -106,7 +114,7 @@ export function ScriptListWidget() {
 
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 right-3 h-11 bg-linear-to-b from-card/0 via-card/65 to-card"
+          className="mqs-list-bottom-fade pointer-events-none absolute bottom-0 left-0"
         />
       </section>
     </div>

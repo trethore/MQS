@@ -52,7 +52,6 @@ export function useScriptsController() {
   const [updatingAll, setUpdatingAll] = useState(false);
   const [updatingScriptId, setUpdatingScriptId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
 
   const filteredScripts = useMemo(() => {
     const trimmedQuery = searchQuery.trim().toLowerCase();
@@ -111,7 +110,9 @@ export function useScriptsController() {
   }, [applySnapshot, requestSnapshot]);
 
   const runOperation = useCallback(
-    async (operationRequest: () => Promise<ScriptOperation>, successNotice: string) => {
+    async (operationRequest: () => Promise<ScriptOperation>) => {
+      setErrorMessage(null);
+
       try {
         const operation = await operationRequest();
 
@@ -122,8 +123,6 @@ export function useScriptsController() {
         if (!operation.success) {
           throw new Error(operation.message || "Script operation failed.");
         }
-
-        setNoticeMessage(operation.message || successNotice);
       } catch (error) {
         setErrorMessage(getBridgeErrorMessage(error));
       }
@@ -134,8 +133,7 @@ export function useScriptsController() {
   const toggleScript = useCallback(
     async (scriptId: string) => {
       setUpdatingScriptId(scriptId);
-      setNoticeMessage(null);
-      await runOperation(() => requestToggleScript(scriptId), "Script toggled.");
+      await runOperation(() => requestToggleScript(scriptId));
       setUpdatingScriptId(null);
     },
     [runOperation],
@@ -143,22 +141,19 @@ export function useScriptsController() {
 
   const refreshScripts = useCallback(async () => {
     setUpdatingAll(true);
-    setNoticeMessage(null);
-    await runOperation(requestRefreshScripts, "Scripts refreshed.");
+    await runOperation(requestRefreshScripts);
     setUpdatingAll(false);
   }, [runOperation]);
 
   const refreshAndReenableScripts = useCallback(async () => {
     setUpdatingAll(true);
-    setNoticeMessage(null);
-    await runOperation(requestRefreshAndReenableScripts, "Scripts refreshed and re-enabled.");
+    await runOperation(requestRefreshAndReenableScripts);
     setUpdatingAll(false);
   }, [runOperation]);
 
   const disableAllScripts = useCallback(async () => {
     setUpdatingAll(true);
-    setNoticeMessage(null);
-    await runOperation(requestDisableAllScripts, "All running scripts disabled.");
+    await runOperation(requestDisableAllScripts);
     setUpdatingAll(false);
   }, [runOperation]);
 
@@ -167,7 +162,6 @@ export function useScriptsController() {
     errorMessage,
     filteredScripts,
     loading,
-    noticeMessage,
     refreshAndReenableScripts,
     refreshScripts,
     searchQuery,
