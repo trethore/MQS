@@ -9,9 +9,9 @@ interface AppNavbarProps {
 }
 
 const NAV_ITEMS: Array<{ id: NavItemId; label: string; href: string }> = [
-  { id: "scripts", label: "Scripts", href: "/scripts/index.html" },
-  { id: "console", label: "Console", href: "/console/index.html" },
-  { id: "options", label: "Options", href: "/options/index.html" },
+  { id: "scripts", label: "Scripts", href: "../scripts/index.html" },
+  { id: "console", label: "Console", href: "../console/index.html" },
+  { id: "options", label: "Options", href: "../options/index.html" },
 ];
 
 export function AppNavbar({ activeItem }: AppNavbarProps) {
