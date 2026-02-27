@@ -14,16 +14,24 @@ declare global {
   }
 }
 
+function isStorageAccessError(error_: unknown): boolean {
+  return error_ instanceof DOMException;
+}
+
 function getStoredThemePreference(): ThemePreference {
   try {
-    return parseThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY));
-  } catch (ignored) {
-    return "system";
+    return parseThemePreference(globalThis.window.localStorage.getItem(THEME_STORAGE_KEY));
+  } catch (error_) {
+    if (isStorageAccessError(error_)) {
+      return "system";
+    }
+
+    throw error_;
   }
 }
 
 function emitThemeChange(themeState: ThemeState): void {
-  window.dispatchEvent(
+  globalThis.dispatchEvent(
     new CustomEvent(THEME_CHANGE_EVENT, {
       detail: themeState,
     }),
@@ -31,15 +39,15 @@ function emitThemeChange(themeState: ThemeState): void {
 }
 
 export function getThemeApi(): ThemeApi | null {
-  if (typeof window === "undefined") {
+  if (globalThis.window === undefined) {
     return null;
   }
 
-  return window.__mqsTheme ?? null;
+  return globalThis.window.__mqsTheme ?? null;
 }
 
 export function installThemeRuntime(): ThemeApi | null {
-  if (typeof window === "undefined") {
+  if (globalThis.window === undefined) {
     return null;
   }
 
@@ -49,7 +57,7 @@ export function installThemeRuntime(): ThemeApi | null {
   }
 
   const root = document.documentElement;
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const mediaQuery = globalThis.window.matchMedia("(prefers-color-scheme: dark)");
 
   const getThemePreference = (): ThemePreference => {
     return getStoredThemePreference();
@@ -71,8 +79,12 @@ export function installThemeRuntime(): ThemeApi | null {
     const normalizedThemePreference = parseThemePreference(themePreference);
 
     try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, normalizedThemePreference);
-    } catch (ignored) {}
+      globalThis.window.localStorage.setItem(THEME_STORAGE_KEY, normalizedThemePreference);
+    } catch (error_) {
+      if (!isStorageAccessError(error_)) {
+        throw error_;
+      }
+    }
 
     const themeState = applyTheme(normalizedThemePreference);
     emitThemeChange(themeState);
@@ -86,7 +98,7 @@ export function installThemeRuntime(): ThemeApi | null {
     setThemePreference,
   };
 
-  window.__mqsTheme = themeApi;
+  globalThis.window.__mqsTheme = themeApi;
   themeApi.applyTheme();
 
   mediaQuery.addEventListener("change", () => {

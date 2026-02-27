@@ -38,10 +38,10 @@ export function useThemePreference(): UseThemePreferenceResult {
       setThemeState(themeApi.applyTheme());
     };
 
-    window.addEventListener(THEME_CHANGE_EVENT, onThemeChange);
+    globalThis.addEventListener(THEME_CHANGE_EVENT, onThemeChange);
 
     return () => {
-      window.removeEventListener(THEME_CHANGE_EVENT, onThemeChange);
+      globalThis.removeEventListener(THEME_CHANGE_EVENT, onThemeChange);
     };
   }, []);
 

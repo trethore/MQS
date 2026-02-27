@@ -12,11 +12,11 @@ declare global {
 }
 
 export function getGrapheneBridge(): GrapheneBridgeApi | null {
-  if (typeof window === "undefined") {
+  if (globalThis.window === undefined) {
     return null;
   }
 
-  const bridge = window.grapheneBridge;
+  const bridge = globalThis.window.grapheneBridge;
   if (!bridge) {
     return null;
   }
