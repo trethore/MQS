@@ -25,6 +25,17 @@ export function ThemeSwitcher() {
     0,
     THEME_OPTIONS.findIndex((option) => option.value === themePreference),
   );
+  const themeIcon = (() => {
+    if (darkTheme === true) {
+      return <Moon className="size-4" />;
+    }
+
+    if (darkTheme === false) {
+      return <Sun className="size-4" />;
+    }
+
+    return null;
+  })();
 
   useEffect(() => {
     if (!menuOpen) {
@@ -58,12 +69,12 @@ export function ThemeSwitcher() {
       return;
     }
 
-    const focusSelectedOption = window.requestAnimationFrame(() => {
+    const focusSelectedOption = globalThis.requestAnimationFrame(() => {
       itemRefs.current[selectedOptionIndex]?.focus();
     });
 
     return () => {
-      window.cancelAnimationFrame(focusSelectedOption);
+      globalThis.cancelAnimationFrame(focusSelectedOption);
     };
   }, [menuOpen, selectedOptionIndex]);
 
@@ -85,7 +96,10 @@ export function ThemeSwitcher() {
 
     event.preventDefault();
 
-    const focusedIndex = itemRefs.current.findIndex((item) => item === document.activeElement);
+    const focusedIndex =
+      document.activeElement instanceof HTMLButtonElement
+        ? itemRefs.current.indexOf(document.activeElement)
+        : -1;
     const currentIndex = focusedIndex === -1 ? selectedOptionIndex : focusedIndex;
     const lastIndex = THEME_OPTIONS.length - 1;
 
@@ -125,11 +139,7 @@ export function ThemeSwitcher() {
       >
         <span className="sr-only">Toggle theme</span>
         <div className="flex h-4 w-4 items-center justify-center">
-          {darkTheme === null ? null : darkTheme ? (
-            <Moon className="size-4" />
-          ) : (
-            <Sun className="size-4" />
-          )}
+          {themeIcon}
         </div>
       </button>
 

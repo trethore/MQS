@@ -86,7 +86,7 @@ export function ScriptListWidget() {
             Loading scripts...
           </div>
         ) : (
-          <ScrollbarWidget className="-mx-3 px-3 pt-1 pb-0">
+          <ScrollbarWidget className="-ml-3 pl-3 pt-1 pb-0">
             <ul className="flex min-h-full flex-col gap-3 pb-5 pr-2">
               {filteredScripts.map((script) => (
                 <li key={script.id} className="w-full">
