@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 
 import {
   InputGroup,
@@ -22,6 +22,14 @@ export function ConsoleCommandInputWidget({
   onInputValueChange,
   onSubmit,
 }: ConsoleCommandInputWidgetProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!disabled) {
+      inputRef.current?.focus();
+    }
+  }, [disabled]);
+
   return (
     <form
       className="mt-3 pb-3"
@@ -35,6 +43,7 @@ export function ConsoleCommandInputWidget({
           <InputGroupText className="font-mono text-foreground">{">"}</InputGroupText>
         </InputGroupAddon>
         <InputGroupInput
+          ref={inputRef}
           value={inputValue}
           onChange={(event) => {
             onInputValueChange(event.target.value);

@@ -59,14 +59,14 @@ export function ConsoleOutputWidget({ loading, messages }: ConsoleOutputWidgetPr
             {messages.map((message, index) => (
               <li
                 key={`${message.timestamp}-${index}`}
-                className="grid grid-cols-[auto_1fr] items-start gap-2 rounded-md px-2 py-0.5 text-sm leading-tight"
+                className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-md px-2 py-0.5 text-sm leading-tight"
               >
                 <span className="font-mono text-[0.7rem] leading-tight text-muted-foreground">
                   {message.timestamp}
                 </span>
                 <span
                   className={cn(
-                    "font-mono whitespace-pre-wrap wrap-break-word leading-tight",
+                    "min-w-0 font-mono whitespace-pre-wrap wrap-break-word leading-tight",
                     MESSAGE_TYPE_CLASSNAME[message.type] ?? "text-foreground",
                   )}
                 >

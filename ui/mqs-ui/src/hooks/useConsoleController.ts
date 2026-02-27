@@ -220,6 +220,16 @@ export function useConsoleController() {
         return;
       }
 
+      const responseSnapshot = response.snapshot;
+      if (responseSnapshot) {
+        setSnapshot((previousSnapshot) => {
+          return {
+            ...previousSnapshot,
+            commandHistory: responseSnapshot.commandHistory,
+          };
+        });
+      }
+
       setInputValue("");
       setDraftInput("");
       setHistoryCursor(-1);

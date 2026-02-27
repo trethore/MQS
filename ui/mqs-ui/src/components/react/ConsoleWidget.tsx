@@ -6,7 +6,6 @@ export function ConsoleWidget() {
   const {
     errorMessage,
     executeInput,
-    executing,
     handleInputKeyDown,
     inputValue,
     loading,
@@ -28,7 +27,7 @@ export function ConsoleWidget() {
       <ConsoleOutputWidget loading={loading} messages={snapshot.messages} />
 
       <ConsoleCommandInputWidget
-        disabled={loading || executing}
+        disabled={loading}
         inputValue={inputValue}
         onInputKeyDown={handleInputKeyDown}
         onInputValueChange={setCommandInput}
