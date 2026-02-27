@@ -72,7 +72,7 @@ export function ScriptListWidget() {
         </Button>
       </div>
 
-      <section className="relative mt-1 flex min-h-0 w-full flex-1 flex-col overflow-hidden pb-3">
+      <section className="relative mt-3 flex min-h-0 w-full flex-1 flex-col overflow-hidden pb-3">
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             Loading scripts...
@@ -86,7 +86,6 @@ export function ScriptListWidget() {
                     title={script.moduleName}
                     path={script.path}
                     version={script.version}
-                    scriptId={script.id}
                     running={script.running}
                     disabled={updatingAll || updatingScriptId === script.id}
                     onToggle={() => {
