@@ -65,8 +65,7 @@
   --mqs-app-window-height: 42rem;
   --mqs-app-window-max-width: 72rem;
   --mqs-app-window-radius: var(--radius-3xl);
-  --mqs-control-shadow: 0 0.35rem 1rem -0.7rem rgb(0 0 0 / 0.75);
-  --mqs-script-entry-shadow: 0 0.75rem 1.75rem -1.15rem rgb(0 0 0 / 0.78);
+  --mqs-surface-shadow: 0 0.5rem 1.25rem -0.5rem rgb(0 0 0 / 0.3);
   --mqs-menu-shadow: rgb(0 0 0 / 0.24) 0 0.1875rem 0.5rem;
   --mqs-list-overlay-height: 2.75rem;
   --mqs-list-overlay-right-inset: 0.75rem;
@@ -117,8 +116,7 @@
 .dark {
   --elevation-shadow:
     0 0.875rem 2rem -0.875rem rgb(0 0 0 / 58%), 0 0.375rem 0.875rem -0.5rem rgb(0 0 0 / 50%);
-  --mqs-control-shadow: 0 0.35rem 1rem -0.7rem rgb(0 0 0 / 0.82);
-  --mqs-script-entry-shadow: 0 0.75rem 1.75rem -1.15rem rgb(0 0 0 / 0.86);
+  --mqs-surface-shadow: 0 0.5rem 1.25rem -0.5rem rgb(0 0 0 / 0.4);
   --mqs-menu-shadow: rgb(0 0 0 / 0.45) 0 0.1875rem 0.5rem;
   --background: #1a1a1a;
   --foreground: #ffffff;
@@ -208,12 +206,14 @@
     overflow: hidden;
   }
 
-  .mqs-control-shadow {
-    box-shadow: var(--mqs-control-shadow);
+  .mqs-surface-shadow {
+    position: relative;
+    z-index: 1;
+    box-shadow: var(--mqs-surface-shadow) !important;
   }
 
-  .mqs-script-entry-shadow {
-    box-shadow: var(--mqs-script-entry-shadow);
+  .mqs-surface-shadow-front {
+    z-index: 3;
   }
 
   .mqs-menu-shadow {
@@ -221,6 +221,7 @@
   }
 
   .mqs-list-bottom-fade {
+    z-index: 2;
     right: var(--mqs-list-overlay-right-inset);
     height: var(--mqs-list-overlay-height);
     background: linear-gradient(

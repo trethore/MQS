@@ -31,8 +31,8 @@ export function ScriptListWidget() {
         Scripts!
       </h1>
 
-      <div className="mt-5 flex items-center gap-3">
-        <InputGroup className="mqs-control-shadow flex-1">
+      <div className="relative z-10 mt-5 flex items-center gap-3">
+        <InputGroup className="mqs-surface-shadow mqs-surface-shadow-front flex-1">
           <InputGroupInput
             value={searchQuery}
             onChange={(event) => {
@@ -48,7 +48,7 @@ export function ScriptListWidget() {
           variant="outline"
           size="icon"
           aria-label="Refresh and re-enable scripts"
-          className="mqs-control-shadow shrink-0 text-success hover:bg-success/10 hover:text-success"
+          className="mqs-surface-shadow mqs-surface-shadow-front shrink-0 text-success hover:bg-success/10 hover:text-success"
           onClick={() => {
             void refreshAndReenableScripts();
           }}
@@ -61,7 +61,7 @@ export function ScriptListWidget() {
           variant="outline"
           size="icon"
           aria-label="Disable all scripts"
-          className="mqs-control-shadow shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className="mqs-surface-shadow mqs-surface-shadow-front shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={() => {
             void disableAllScripts();
           }}
@@ -80,13 +80,13 @@ export function ScriptListWidget() {
         </p>
       ) : null}
 
-      <section className="relative mt-3 flex min-h-0 w-full flex-1 flex-col overflow-hidden pb-3">
+      <section className="relative z-0 mt-3 flex min-h-0 w-full flex-1 flex-col overflow-visible pb-3">
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             Loading scripts...
           </div>
         ) : (
-          <ScrollbarWidget className="pl-0 pr-0 pt-1 pb-0">
+          <ScrollbarWidget className="-mx-3 px-3 pt-1 pb-0">
             <ul className="flex min-h-full flex-col gap-3 pb-5 pr-2">
               {filteredScripts.map((script) => (
                 <li key={script.id} className="w-full">
