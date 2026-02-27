@@ -1,6 +1,7 @@
 # MQS UI
 
-This Astro project builds the Graphene web UI used by MQS.
+MQS-UI is a subproject of My QOL Scripts (MQS) that provides a web-based user interface for interacting with the mod’s features.  
+Once compiled, the source code is served by the Graphene library as an in-game UI.
 
 ## Overview
 
@@ -32,26 +33,24 @@ ui/mqs-ui/
 └── out/                            # Dev copy target consumed by Graphene in local development.
 ```
 
-## Project Notes
+## Project Insights
 
-- The UI is built as static files and copied into Graphene asset folders.
-- Runtime target is Graphene WebView (file-based loading), not a traditional web server.
-- Keep pages and assets robust in static-file contexts.
+- The UI is built as static files and copied into the Graphene asset folders.
+- The runtime target is Graphene WebView (file-based loading), not a traditional web server.
+- Ensure pages and assets are robust and fully functional in static-file environments.
 
 ## General Coding Conventions
 
-- Keep components small and composable; prefer extracting reusable UI blocks over duplicating markup.
-- Preserve existing behavior when refactoring; avoid replacing working components without a clear reason.
-- Use TypeScript-friendly patterns in Astro/React files (typed props, explicit interfaces for public component APIs).
-- Prefer semantic HTML first, then Tailwind utilities for styling.
-- Use relative sizing units (`rem`, `em`, `%`, `vh`, `vw`) for layout and typography.
-- Keep spacing, radii, shadows, and font sizes consistent with existing design tokens and utility patterns.
-- Avoid inline styles unless values are dynamic and cannot be represented with utilities.
-- Keep class lists readable: structure utilities by layout -> spacing -> typography -> visual state.
-- Prefer CSS variables for theme-like values that may be reused or adjusted globally.
-- Avoid hardcoding absolute root links in page content when a relative/static-safe path is practical.
-- Keep files ASCII unless a file already uses non-ASCII content.
-- Do not add comments unless a block is non-obvious and benefits from short clarification.
+- Keep components small and composable; prefer extracting reusable UI blocks instead of duplicating markup.
+- Start with semantic HTML, then use Tailwind utilities for styling.
+- Use relative sizing units (`rem`, `em`, `%`, `vh`, `vw`) for layout and typography whenever possible.
+- Keep spacing, border radii, shadows, and font sizes consistent with existing design tokens and utility patterns.
+- Avoid inline styles unless the values are dynamic and cannot be represented with utilities.
+- Keep class lists readable by organizing utilities in this order: layout → spacing → typography → visual state.
+- Use CSS variables for theme-related values that may be reused or adjusted globally.
+- Avoid hardcoding absolute root links in page content when a relative or static-safe path is sufficient.
+- When using shadcn/ui components, do not modify vendor components directly unless absolutely necessary; instead, wrap or
+compose them within your own components to implement project-specific behavior.
 
 ## Routing And Static Output Conventions
 
@@ -66,10 +65,10 @@ ui/mqs-ui/
 - Tailwind CSS
 - shadcn/ui components (when present in the codebase)
 
-See `package.json` for exact versions.
+Refer to `package.json` for the exact versions.
 
 ## Testing & Verification
 
-- Do not run `npm run build*` commands yourself; provide commands for the user to run.
+- Do not run `npm run*` commands yourself; provide commands for the user to run such as linting, format or building.
 - Recommend `npm run build:graphene:dev` after UI changes.
 - For release validation, recommend `npm run build:graphene:prod` and manual navigation checks in Graphene.
