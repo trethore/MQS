@@ -54,7 +54,9 @@ export function ScriptEntryWidget({
             </span>
           ) : null}
         </span>
-        <span className="mt-0.5 block truncate text-sm text-muted-foreground">{pathBreadcrumb}</span>
+        <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+          {pathBreadcrumb}
+        </span>
       </span>
 
       <ScriptEntrySwitch checked={running} className="scale-125" />

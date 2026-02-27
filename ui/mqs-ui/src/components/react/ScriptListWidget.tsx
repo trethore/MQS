@@ -108,7 +108,6 @@ export function ScriptListWidget() {
           aria-hidden="true"
           className="pointer-events-none absolute bottom-0 left-0 right-3 h-11 bg-linear-to-b from-card/0 via-card/65 to-card"
         />
-
       </section>
     </div>
   );
