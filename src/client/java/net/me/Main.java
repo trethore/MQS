@@ -34,6 +34,7 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
+import net.me.scripting.typings.TypeDefinitionGenerator;
 import net.me.ui.UiManager;
 import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
@@ -147,7 +148,7 @@ public class Main implements ClientModInitializer {
     }
 
     private void registerClientCommands() {
-        this.commandManager.addCommand(new MQSCommand(this.scriptingService, this.uiManager));
+        this.commandManager.addCommand(new MQSCommand(this.scriptingService, this.uiManager, new TypeDefinitionGenerator(this.mappingsManager)));
     }
 
     private void registerConsoleCommands() {
