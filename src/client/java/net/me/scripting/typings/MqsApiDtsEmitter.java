@@ -23,6 +23,13 @@ import net.me.scripting.typings.schema.*;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Responsible for generating TypeScript declaration content for the My QOL Scripts API based on the provided schema.
+ * <p>
+ * This class uses the {@link MqsApiSchema} to retrieve the necessary information about the API's objects, properties,
+ * and methods, and generates corresponding TypeScript declarations. The generated content is appended to a provided
+ * StringBuilder, which can then be written to a .d.ts file.
+ */
 final class MqsApiDtsEmitter {
     private static final String INDENT = TypingsFormat.INDENT;
     private static final String READONLY = TypingsFormat.READONLY;
@@ -42,7 +49,9 @@ final class MqsApiDtsEmitter {
         appendTypeAliases(builder);
         appendSchemaObjects(builder);
     }
-
+    /**
+     * Appends core TypeScript declarations and utility functions for the My QOL Scripts API.
+     */
     private void appendCoreDeclarations(StringBuilder builder) {
         builder.append("type JavaClass<T = JavaInstance> = {\n");
         builder.append(INDENT).append("new (...args: any[]): T;\n");
@@ -76,6 +85,9 @@ final class MqsApiDtsEmitter {
         builder.append("declare const MQS: MQSApi;\n\n");
     }
 
+    /**
+     * Appends type aliases for common types used in the My QOL Scripts API.
+     */
     private void appendTypeAliases(StringBuilder builder) {
         builder.append("type MQSEventPhase = \"PRE\" | \"POST\";\n");
         builder.append("type MQSEventCallback<T = any> = (event: T) => unknown;\n");

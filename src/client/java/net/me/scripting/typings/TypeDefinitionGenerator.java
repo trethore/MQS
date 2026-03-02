@@ -30,6 +30,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+/**
+ * Generates TypeScript declaration files (.d.ts) for the My QOL Scripts API and Minecraft mappings.
+ * <p>
+ * This class relies on the {@link MappingsManager} to retrieve the necessary mappings data and uses
+ * the {@link MqsApiDtsEmitter} and {@link MinecraftMappingsDtsEmitter} to generate the appropriate TypeScript
+ * declarations. The generated file is saved myqolscripts/scripts/mqs.d.ts.
+ */
 public class TypeDefinitionGenerator {
     private static final Path OUTPUT_DIRECTORY = Main.MOD_DIR.resolve("scripts");
     private static final String OUTPUT_FILE_NAME = "mqs.d.ts";
