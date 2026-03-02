@@ -39,9 +39,10 @@ import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tytoo.grapheneui.api.GrapheneConfig;
 import tytoo.grapheneui.api.GrapheneCore;
-import tytoo.grapheneui.api.GrapheneHttpConfig;
+import tytoo.grapheneui.api.config.GrapheneConfig;
+import tytoo.grapheneui.api.config.GrapheneHttpConfig;
+
 
 import java.nio.file.Path;
 
@@ -128,15 +129,19 @@ public class Main implements ClientModInitializer {
 
     private GrapheneConfig createGrapheneConfig() {
         if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
-            return GrapheneConfig.defaults();
+            return GrapheneConfig.builder()
+                    .allowFileSystemAccess()
+                    .build();
         }
 
+        // In development, we want to serve the UI from the source folder for easier development and hot reloading.
         GrapheneHttpConfig httpConfig = GrapheneHttpConfig.builder()
                 .port(DEV_UI_HTTP_PORT)
                 .fileRoot(FabricLoader.getInstance().getGameDir().resolve("../ui/out/"))
                 .build();
 
         return GrapheneConfig.builder()
+                .allowFileSystemAccess()
                 .http(httpConfig)
                 .build();
     }
