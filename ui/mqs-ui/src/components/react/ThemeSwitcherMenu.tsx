@@ -23,6 +23,7 @@ export function ThemeSwitcherMenu({
     <div
       id={menuId}
       role="menu"
+      tabIndex={-1}
       aria-label="Theme"
       onKeyDown={onMenuKeyDown}
       className="mqs-menu-shadow absolute right-0 top-[calc(100%+0.5rem)] z-50 min-w-32 rounded-lg border border-border bg-popover p-1 text-popover-foreground"

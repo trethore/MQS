@@ -23,9 +23,23 @@ export function ConsoleCommandInputWidget({
   onSubmit,
 }: ConsoleCommandInputWidgetProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const hasInitializedEnabledStateRef = useRef(false);
+  const previousDisabledRef = useRef(disabled);
 
   useEffect(() => {
-    if (!disabled) {
+    const wasDisabled = previousDisabledRef.current;
+    previousDisabledRef.current = disabled;
+
+    if (disabled) {
+      return;
+    }
+
+    if (!hasInitializedEnabledStateRef.current) {
+      hasInitializedEnabledStateRef.current = true;
+      return;
+    }
+
+    if (wasDisabled) {
       inputRef.current?.focus();
     }
   }, [disabled]);

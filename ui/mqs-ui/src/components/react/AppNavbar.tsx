@@ -25,6 +25,10 @@ const NAV_ITEMS: Array<{ id: NavLinkId; label: string; href: string }> = [
 export function AppNavbar({ activeItem }: AppNavbarProps) {
   const [preparingCodeLink, setPreparingCodeLink] = useState(false);
 
+  const handleActiveNavigationClick = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+  }, []);
+
   const copyWorkspacePathWithBrowserClipboard = useCallback(async (workspacePath: string) => {
     if (!workspacePath) {
       return;
@@ -34,9 +38,7 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
       return;
     }
 
-    try {
-      await globalThis.navigator.clipboard.writeText(workspacePath);
-    } catch (ignored) {}
+    await globalThis.navigator.clipboard.writeText(workspacePath);
   }, []);
 
   const handleCodeClick = useCallback(
@@ -53,7 +55,8 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
         if (!response.copied) {
           await copyWorkspacePathWithBrowserClipboard(response.modDirPath);
         }
-      } catch (ignored) {
+      } catch (error_) {
+        globalThis.console.warn("[MQS UI] Failed to prepare code workspace.", error_);
       } finally {
         setPreparingCodeLink(false);
         globalThis.window.location.assign(CODE_EDITOR_URL);
@@ -78,6 +81,15 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
             {NAV_ITEMS.map((item) => {
               const active = item.id === activeItem;
               const codeLink = item.id === "code";
+              let onClick:
+                | ((event: MouseEvent<HTMLAnchorElement>) => void | Promise<void>)
+                | undefined;
+
+              if (codeLink) {
+                onClick = handleCodeClick;
+              } else if (active) {
+                onClick = handleActiveNavigationClick;
+              }
 
               return (
                 <li key={item.id}>
@@ -85,7 +97,7 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     aria-disabled={codeLink && preparingCodeLink ? "true" : undefined}
-                    onClick={codeLink ? handleCodeClick : undefined}
+                    onClick={onClick}
                     className={cn(
                       "mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors",
                       active

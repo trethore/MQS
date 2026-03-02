@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import type { ConsoleMessage } from "@/bridge/contracts/console";
 import { ScrollbarWidget } from "@/components/react/ScrollbarWidget";
@@ -29,16 +29,8 @@ export function ConsoleOutputWidget({ loading, messages }: ConsoleOutputWidgetPr
     container.scrollTop = container.scrollHeight;
   }, [messages.length]);
 
-  const emptyStateText = useMemo(() => {
-    if (loading) {
-      return "Loading console...";
-    }
-
-    return "No console output yet.";
-  }, [loading]);
-
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background/40">
+    <section className="mqs-surface-shadow flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background/40">
       <div className="flex items-center border-b border-border px-3 py-2">
         <p className="text-sm font-semibold text-foreground">Console</p>
       </div>
@@ -53,7 +45,9 @@ export function ConsoleOutputWidget({ loading, messages }: ConsoleOutputWidgetPr
         }}
       >
         {messages.length === 0 ? (
-          <p className="pt-2 text-sm text-muted-foreground">{emptyStateText}</p>
+          <p className="pt-2 text-sm text-muted-foreground">
+            {loading ? "Loading console..." : "No console output yet."}
+          </p>
         ) : (
           <ul className="flex min-h-full flex-col gap-0 pb-2">
             {messages.map((message, index) => (
