@@ -41,9 +41,25 @@ final class MinecraftMappingsDtsEmitter {
             Map<String, Map<String, List<String>>> methodMap,
             Map<String, Map<String, String>> fieldMap
     ) {
+        appendCoreDeclarations(builder);
         NamespaceNode rootNode = buildNamespaceTree(classNames);
         appendNamespaceDeclarations(builder, rootNode, "", 0, methodMap, fieldMap);
         appendClassRegistry(builder, classNames);
+    }
+
+    private void appendCoreDeclarations(StringBuilder builder) {
+        builder.append("interface JavaClass<T = JavaInstance> {\n");
+        builder.append(INDENT).append("new (...args: any[]): T;\n");
+        builder.append(INDENT).append("readonly _class: unknown;\n");
+        builder.append(INDENT).append("[member: string]: any;\n");
+        builder.append(BLOCK_END);
+
+        builder.append("interface JavaInstance {\n");
+        builder.append(INDENT).append("readonly _self: unknown;\n");
+        builder.append(INDENT).append("_instanceof(target: JavaClass<any>): boolean;\n");
+        builder.append(INDENT).append("equals(other: unknown): boolean;\n");
+        builder.append(INDENT).append("[member: string]: any;\n");
+        builder.append(BLOCK_END);
     }
 
     private NamespaceNode buildNamespaceTree(Set<String> classNames) {
@@ -51,7 +67,7 @@ final class MinecraftMappingsDtsEmitter {
 
         for (String className : classNames) {
             String[] parts = className.split("\\.");
-            if (parts.length < 2) {
+            if (parts.length < 2 || !hasDeclarableNamespace(parts)) {
                 continue;
             }
 
@@ -79,7 +95,12 @@ final class MinecraftMappingsDtsEmitter {
             String packageName = parentPackage.isEmpty() ? namespaceName : parentPackage + "." + namespaceName;
 
             appendIndent(builder, depth);
-            builder.append("declare namespace ").append(namespaceName).append(" {\n");
+            if (depth == 0) {
+                builder.append("declare namespace ");
+            } else {
+                builder.append("namespace ");
+            }
+            builder.append(namespaceName).append(" {\n");
 
             appendClassDeclarations(builder, packageName, namespaceNode.classes, depth + 1, methodMap, fieldMap);
             appendNamespaceDeclarations(builder, namespaceNode, packageName, depth + 1, methodMap, fieldMap);
@@ -98,6 +119,10 @@ final class MinecraftMappingsDtsEmitter {
             Map<String, Map<String, String>> fieldMap
     ) {
         for (String className : classes) {
+            if (!isAccessibleIdentifier(className)) {
+                continue;
+            }
+
             String fullClassName = packageName + "." + className;
             String instanceTypeName = className + "$Instance";
 
@@ -159,11 +184,12 @@ final class MinecraftMappingsDtsEmitter {
         builder.append("interface MQSClassRegistry {\n");
 
         for (String className : new TreeSet<>(classNames)) {
+            boolean hasTypedAccess = hasDeclarableTypeAccess(className);
             builder.append(INDENT)
                     .append("\"")
                     .append(className)
-                    .append("\": typeof ")
-                    .append(buildTypeAccess(className))
+                    .append("\": ")
+                    .append(hasTypedAccess ? "typeof " + buildTypeAccess(className) : "JavaClass<any>")
                     .append(";\n");
         }
 
@@ -200,6 +226,28 @@ final class MinecraftMappingsDtsEmitter {
 
     private boolean isAccessibleIdentifier(String value) {
         return TypingsNamingUtils.isValidIdentifier(value) && !TS_RESERVED_KEYWORDS.contains(value);
+    }
+
+    private boolean hasDeclarableNamespace(String[] parts) {
+        for (int index = 0; index < parts.length - 1; index++) {
+            if (!isAccessibleIdentifier(parts[index])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasDeclarableTypeAccess(String className) {
+        String[] parts = className.split("\\.");
+        if (parts.length < 2) {
+            return false;
+        }
+        for (String part : parts) {
+            if (!isAccessibleIdentifier(part)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String renderMemberName(String memberName) {

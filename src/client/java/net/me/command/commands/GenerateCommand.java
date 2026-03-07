@@ -26,10 +26,12 @@ import net.me.Main;
 import net.me.command.Command;
 import net.me.command.CommandManager;
 import net.me.scripting.typings.TypeDefinitionGenerator;
+import net.me.scripting.typings.TypeDefinitionGenerator.GenerationTarget;
 import net.me.utils.ChatUtils;
 import net.minecraft.client.Minecraft;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class GenerateCommand extends Command {
@@ -42,37 +44,62 @@ public class GenerateCommand extends Command {
     @Override
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
         return ClientCommandManager.literal("generate")
-                .executes(this::executeGenerate);
+                .executes(context -> executeGenerate(context, GenerationTarget.BOTH))
+                .then(ClientCommandManager.literal("api")
+                        .executes(context -> executeGenerate(context, GenerationTarget.API)))
+                .then(ClientCommandManager.literal("mc")
+                        .executes(context -> executeGenerate(context, GenerationTarget.MC)));
     }
 
-    private int executeGenerate(CommandContext<FabricClientCommandSource> context) {
-        if (!typeDefinitionGenerator.isReady()) {
+    private int executeGenerate(CommandContext<FabricClientCommandSource> context, GenerationTarget target) {
+        if (!typeDefinitionGenerator.isReady(target)) {
             ChatUtils.addErrorChatMessage("Mappings are still loading. Try /mqs generate again in a moment.", true);
             return CommandManager.COMMAND_FAILURE;
         }
 
-        ChatUtils.addInfoChatMessage("Generating TypeScript definitions for MQS and Minecraft mappings...", true);
+        ChatUtils.addInfoChatMessage(buildGenerationMessage(target), true);
         Minecraft client = context.getSource().getClient();
 
-        CompletableFuture.runAsync(() -> generateDefinitions(client));
+        CompletableFuture.runAsync(() -> generateDefinitions(client, target));
         return CommandManager.COMMAND_SUCCESS;
     }
 
-    private void generateDefinitions(Minecraft client) {
+    private void generateDefinitions(Minecraft client, GenerationTarget target) {
         try {
-            TypeDefinitionGenerator.GenerationResult result = typeDefinitionGenerator.generate();
+            List<TypeDefinitionGenerator.GenerationResult> results = typeDefinitionGenerator.generate(target);
             client.execute(() -> {
-                ChatUtils.addSuccessChatMessage("Generated TypeScript definitions.", true);
-                ChatUtils.addInfoChatMessage("File: " + formatPath(result.outputPath()), false);
-                ChatUtils.addInfoChatMessage(
-                        "Classes: " + result.classCount() + ", methods: " + result.methodCount() + ", fields: " + result.fieldCount(),
-                        false
-                );
+                ChatUtils.addSuccessChatMessage(buildSuccessMessage(target), true);
+                for (TypeDefinitionGenerator.GenerationResult result : results) {
+                    ChatUtils.addInfoChatMessage("File: " + formatPath(result.outputPath()), false);
+                    if (result.target() == GenerationTarget.MC) {
+                        ChatUtils.addInfoChatMessage(
+                                "Classes: " + result.classCount() + ", methods: " + result.methodCount() + ", fields: " + result.fieldCount(),
+                                false
+                        );
+                    }
+                }
+                ChatUtils.addInfoChatMessage("File: " + formatPath(typeDefinitionGenerator.getTsConfigPath()), false);
             });
         } catch (Exception exception) {
-            Main.LOGGER.error("Failed to generate TypeScript definitions.", exception);
+            Main.LOGGER.error("Failed to generate TypeScript definitions for target {}.", target, exception);
             client.execute(() -> ChatUtils.addErrorChatMessage("Failed to generate TypeScript definitions. Check logs for details.", true));
         }
+    }
+
+    private String buildGenerationMessage(GenerationTarget target) {
+        return switch (target) {
+            case API -> "Generating TypeScript definitions for MQS API...";
+            case MC -> "Generating TypeScript definitions for Minecraft mappings...";
+            case BOTH -> "Generating TypeScript definitions for MQS API and Minecraft mappings...";
+        };
+    }
+
+    private String buildSuccessMessage(GenerationTarget target) {
+        return switch (target) {
+            case API -> "Generated MQS API TypeScript definitions.";
+            case MC -> "Generated Minecraft mappings TypeScript definitions.";
+            case BOTH -> "Generated MQS API and Minecraft mappings TypeScript definitions.";
+        };
     }
 
     private String formatPath(Path outputPath) {

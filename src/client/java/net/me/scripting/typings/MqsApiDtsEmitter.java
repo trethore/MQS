@@ -53,11 +53,11 @@ final class MqsApiDtsEmitter {
      * Appends core TypeScript declarations and utility functions for the My QOL Scripts API.
      */
     private void appendCoreDeclarations(StringBuilder builder) {
-        builder.append("type JavaClass<T = JavaInstance> = {\n");
+        builder.append("interface JavaClass<T = JavaInstance> {\n");
         builder.append(INDENT).append("new (...args: any[]): T;\n");
         builder.append(INDENT).append(READONLY).append("_class: unknown;\n");
         builder.append(INDENT).append("[member: string]: any;\n");
-        builder.append("};\n\n");
+        builder.append(BLOCK_END);
 
         builder.append("interface JavaInstance {\n");
         builder.append(INDENT).append(READONLY).append("_self: unknown;\n");
@@ -73,6 +73,8 @@ final class MqsApiDtsEmitter {
         builder.append(INDENT).append("extends: unknown;\n");
         builder.append(INDENT).append("implements?: unknown | unknown[];\n");
         builder.append(BLOCK_END);
+
+        builder.append("interface MQSClassRegistry {}\n");
 
         builder.append("declare function importClass<K extends keyof MQSClassRegistry>(name: K): MQSClassRegistry[K];\n");
         builder.append("declare function importClass(name: string): JavaClass<any>;\n");
@@ -92,7 +94,7 @@ final class MqsApiDtsEmitter {
         builder.append("type MQSEventPhase = \"PRE\" | \"POST\";\n");
         builder.append("type MQSEventCallback<T = any> = (event: T) => unknown;\n");
         builder.append("type MQSEventOptionsLike = MQSEventSubscriptionOptions | MQSEventOptionsBuilder | MQSEventPhase | string;\n");
-        builder.append("type MQSCommandSuggestions = string | string[] | Iterable<unknown> | Promise<string | string[] | Iterable<unknown> | null> | null;\n");
+        builder.append("type MQSCommandSuggestions = string | string[] | ArrayLike<unknown> | Promise<string | string[] | ArrayLike<unknown> | null> | null;\n");
         builder.append("type MQSCommandSuggestionProvider = ((context: MQSCommandContext) => MQSCommandSuggestions) | MQSCommandSuggestions;\n");
         builder.append("type MQSHookMode = \"BEFORE\" | \"AFTER\" | \"INSTEAD\" | \"before\" | \"after\" | \"instead\";\n");
         builder.append("type MQSHookHandler = (...args: any[]) => unknown;\n\n");
