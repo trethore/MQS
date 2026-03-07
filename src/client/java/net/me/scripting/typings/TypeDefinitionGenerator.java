@@ -114,7 +114,7 @@ public class TypeDefinitionGenerator {
 
         StringBuilder builder = new StringBuilder(2_000_000);
         appendHeader(builder, MC_OUTPUT_FILE_NAME, sortedClassMap.size());
-        minecraftMappingsDtsEmitter.append(builder, sortedClassMap.keySet(), methodMap, fieldMap);
+        minecraftMappingsDtsEmitter.append(builder, sortedClassMap, methodMap, fieldMap);
 
         Path outputPath = OUTPUT_DIRECTORY.resolve(MC_OUTPUT_FILE_NAME);
         writeOutput(outputPath, builder);

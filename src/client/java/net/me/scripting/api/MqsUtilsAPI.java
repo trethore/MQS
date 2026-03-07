@@ -48,6 +48,11 @@ public class MqsUtilsAPI implements ProxyObject {
     private static final String SCHEDULER_INTERVAL = "interval";
     private static final String CHAT = "chat";
     private static final String MATH = "math";
+    private static final String MINECRAFT_CLASS = "net.minecraft.client.Minecraft";
+    private static final String CLIENT_LEVEL_CLASS = "net.minecraft.client.multiplayer.ClientLevel";
+    private static final String LOCAL_PLAYER_CLASS = "net.minecraft.client.player.LocalPlayer";
+    private static final String MAPPED_INSTANCE_PREFIX = "MQSMappedInstance<\"";
+    private static final String MAPPED_INSTANCE_SUFFIX = "\">";
 
     private final ScriptingClassResolver classResolver;
     private final ScriptManager scriptManager;
@@ -94,15 +99,19 @@ public class MqsUtilsAPI implements ProxyObject {
         return new TsObject(
                 "MQSUtilsApi",
                 List.of(
-                        method(MC, fn("JavaInstance | any")),
+                        method(MC, fn(mappedInstanceType(MINECRAFT_CLASS))),
                         method(RUN_ON_CLIENT_THREAD, fn(TypingsConstants.VOID, p(TypingsConstants.CALLBACK, TypingsConstants.MQS_ANY_FUNCTION))),
-                        method(WORLD, fn("JavaInstance | any | null")),
-                        method(PLAYER, fn("JavaInstance | any | null")),
+                        method(WORLD, fn(mappedInstanceType(CLIENT_LEVEL_CLASS) + " | null")),
+                        method(PLAYER, fn(mappedInstanceType(LOCAL_PLAYER_CLASS) + " | null")),
                         ro(SCHEDULER, "MQSUtilsSchedulerApi"),
                         ro(CHAT, "JavaClass<any>"),
                         ro(MATH, "JavaClass<any>")
                 )
         );
+    }
+
+    private static String mappedInstanceType(String className) {
+        return MAPPED_INSTANCE_PREFIX + className + MAPPED_INSTANCE_SUFFIX;
     }
 
     @Override
