@@ -26,6 +26,7 @@ import net.me.Main;
 import net.me.command.commands.GenerateCommand;
 import net.me.command.commands.ScriptCommand;
 import net.me.command.commands.UpdateCommand;
+import net.me.command.commands.VscodeCommand;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.typings.TypeDefinitionGenerator;
 import net.me.ui.UiManager;
@@ -35,12 +36,14 @@ public class MQSCommand extends Command {
     private final ScriptCommand scriptCommand;
     private final GenerateCommand generateCommand;
     private final UpdateCommand updateCommand;
+    private final VscodeCommand vscodeCommand;
     private final UiManager uiManager;
 
     public MQSCommand(ScriptingService scriptingService, UiManager uiManager, TypeDefinitionGenerator typeDefinitionGenerator) {
         this.scriptCommand = new ScriptCommand(scriptingService);
         this.generateCommand = new GenerateCommand(typeDefinitionGenerator);
         this.updateCommand = new UpdateCommand();
+        this.vscodeCommand = new VscodeCommand(uiManager);
         this.uiManager = uiManager;
     }
 
@@ -52,6 +55,7 @@ public class MQSCommand extends Command {
                         .executes(this::openUi))
                 .then(scriptCommand.buildCommand())
                 .then(generateCommand.buildCommand())
+                .then(vscodeCommand.buildCommand())
                 .then(updateCommand.buildCommand());
     }
 

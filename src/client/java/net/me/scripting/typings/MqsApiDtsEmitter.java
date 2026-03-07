@@ -21,7 +21,6 @@ package net.me.scripting.typings;
 import net.me.scripting.typings.schema.*;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * Responsible for generating TypeScript declaration content for the My QOL Scripts API from shared runtime descriptors.
@@ -30,43 +29,16 @@ final class MqsApiDtsEmitter {
     private static final String INDENT = TypingsFormat.INDENT;
     private static final String READONLY = TypingsFormat.READONLY;
     private static final String BLOCK_END = TypingsFormat.BLOCK_END;
-    private static final Set<String> TS_RESERVED_KEYWORDS = Set.of(
-            "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do",
-            "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "import",
-            "in", "instanceof", "new", "null", "return", "super", "switch", "this", "throw", "true",
-            "try", "typeof", "var", "void", "while", "with", "as", "implements", "interface", "let",
-            "package", "private", "protected", "public", "static", "yield", "any", "boolean", "constructor",
-            "declare", "get", "module", "require", "number", "set", "string", "symbol", "type", "from",
-            "of", "readonly", "keyof", "unique", "unknown", "never", "asserts", "infer", "is", "object"
-    );
 
     public void append(StringBuilder builder) {
         append(builder, MqsApiTypeDescriptors.describe());
     }
 
     public void append(StringBuilder builder, MqsApiFragment fragment) {
-        appendCoreDeclarations(builder);
         appendTypeAliases(builder, fragment.typeAliases());
         appendGlobalFunctions(builder, fragment.globalFunctions());
         appendGlobalConstants(builder, fragment.globalConstants());
         appendSchemaObjects(builder, fragment.objects());
-    }
-
-    private void appendCoreDeclarations(StringBuilder builder) {
-        builder.append("interface JavaClass<T = JavaInstance> {\n");
-        builder.append(INDENT).append("new (...args: any[]): T;\n");
-        builder.append(INDENT).append(READONLY).append("_class: unknown;\n");
-        builder.append(INDENT).append("[member: string]: any;\n");
-        builder.append(BLOCK_END);
-
-        builder.append("interface JavaInstance {\n");
-        builder.append(INDENT).append(READONLY).append("_self: unknown;\n");
-        builder.append(INDENT).append("_instanceof(target: JavaClass<any>): boolean;\n");
-        builder.append(INDENT).append("equals(other: unknown): boolean;\n");
-        builder.append(INDENT).append("[member: string]: any;\n");
-        builder.append(BLOCK_END);
-
-        builder.append("\n");
     }
 
     private void appendTypeAliases(StringBuilder builder, List<TsTypeAlias> typeAliases) {
@@ -174,7 +146,12 @@ final class MqsApiDtsEmitter {
             if (parameter.optional() && !parameter.rest()) {
                 builder.append("?");
             }
-            builder.append(": ").append(parameter.type());
+            builder.append(": ");
+            if (parameter.rest()) {
+                builder.append("Array<").append(parameter.type()).append(">");
+            } else {
+                builder.append(parameter.type());
+            }
         }
         return builder.toString();
     }
@@ -187,7 +164,7 @@ final class MqsApiDtsEmitter {
         if (isIndexSignature(memberName)) {
             return memberName;
         }
-        if (TypingsNamingUtils.isValidIdentifier(memberName) && !TS_RESERVED_KEYWORDS.contains(memberName)) {
+        if (TypingsDeclarationUtils.isAccessibleIdentifier(memberName)) {
             return memberName;
         }
         return "'" + TypingsNamingUtils.escapeSingleQuotedString(memberName) + "'";

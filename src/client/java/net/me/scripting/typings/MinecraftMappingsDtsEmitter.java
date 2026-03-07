@@ -23,20 +23,12 @@ import net.me.scripting.WrapperConstants;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.util.*;
 
 final class MinecraftMappingsDtsEmitter {
     private static final String INDENT = TypingsFormat.INDENT;
     private static final String BLOCK_END = TypingsFormat.BLOCK_END;
-    private static final Set<String> TS_RESERVED_KEYWORDS = Set.of(
-            "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do",
-            "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "import",
-            "in", "instanceof", "new", "null", "return", "super", "switch", "this", "throw", "true",
-            "try", "typeof", "var", "void", "while", "with", "as", "implements", "interface", "let",
-            "package", "private", "protected", "public", "static", "yield", "any", "boolean", "constructor",
-            "declare", "get", "module", "require", "number", "set", "string", "symbol", "type", "from",
-            "of", "readonly", "keyof", "unique", "unknown", "never", "asserts", "infer", "is", "object"
-    );
     private Map<String, String> currentClassMap = Collections.emptyMap();
     private Map<String, String> reflectedNamedClassesCache = Collections.emptyMap();
 
@@ -48,27 +40,11 @@ final class MinecraftMappingsDtsEmitter {
     ) {
         this.currentClassMap = classMap;
         this.reflectedNamedClassesCache = new HashMap<>();
-        appendCoreDeclarations(builder);
         Map<String, ReflectedClassMembers> reflectedMembers = buildReflectedMembers(classMap, methodMap, fieldMap);
         Set<String> classNames = classMap.keySet();
         NamespaceNode rootNode = buildNamespaceTree(classNames);
         appendNamespaceDeclarations(builder, rootNode, "", 0, methodMap, fieldMap, reflectedMembers);
         appendClassRegistry(builder, classNames);
-    }
-
-    private void appendCoreDeclarations(StringBuilder builder) {
-        builder.append("interface JavaClass<T = JavaInstance> {\n");
-        builder.append(INDENT).append("new (...args: any[]): T;\n");
-        builder.append(INDENT).append("readonly _class: unknown;\n");
-        builder.append(INDENT).append("[member: string]: any;\n");
-        builder.append(BLOCK_END);
-
-        builder.append("interface JavaInstance {\n");
-        builder.append(INDENT).append("readonly _self: unknown;\n");
-        builder.append(INDENT).append("_instanceof(target: JavaClass<any>): boolean;\n");
-        builder.append(INDENT).append("equals(other: unknown): boolean;\n");
-        builder.append(INDENT).append("[member: string]: any;\n");
-        builder.append(BLOCK_END);
     }
 
     private NamespaceNode buildNamespaceTree(Set<String> classNames) {
@@ -146,6 +122,8 @@ final class MinecraftMappingsDtsEmitter {
             appendIndent(builder, depth);
             builder.append("interface ").append(staticTypeName).append(" extends JavaClass<").append(instanceTypeName).append("> {\n");
 
+            appendConstructSignatures(builder, reflectionData.constructorSignatures(), instanceTypeName, depth + 1);
+
             Map<String, List<String>> classMethods = methodMap.getOrDefault(fullClassName, Collections.emptyMap());
             Map<String, String> classFields = fieldMap.getOrDefault(fullClassName, Collections.emptyMap());
             appendMappedMembers(builder, classMethods, classFields, staticMethodNames, staticFieldNames, reflectionData.staticMethodTypes(), reflectionData.staticFieldTypes(), depth + 1);
@@ -218,6 +196,25 @@ final class MinecraftMappingsDtsEmitter {
         }
     }
 
+    private void appendConstructSignatures(StringBuilder builder, List<String> constructorSignatures, String instanceTypeName, int depth) {
+        if (constructorSignatures.isEmpty()) {
+            appendIndent(builder, depth);
+            builder.append("new (...args: any[]): ")
+                    .append(instanceTypeName)
+                    .append(";\n");
+            return;
+        }
+
+        for (String constructorSignature : constructorSignatures) {
+            appendIndent(builder, depth);
+            builder.append("new (")
+                    .append(constructorSignature)
+                    .append("): ")
+                    .append(instanceTypeName)
+                    .append(";\n");
+        }
+    }
+
     private boolean shouldIncludeMember(String memberName, Set<String> allowedMemberNames) {
         return allowedMemberNames == null || allowedMemberNames.contains(memberName);
     }
@@ -256,6 +253,7 @@ final class MinecraftMappingsDtsEmitter {
             Class<?> runtimeClass = Class.forName(runtimeClassName, false, classLoader);
             return new ReflectedClassMembers(
                     true,
+                    collectConstructorSignatures(runtimeClass),
                     collectMethodNames(runtimeClass, classMethods, true),
                     collectMethodNames(runtimeClass, classMethods, false),
                     collectFieldNames(runtimeClass, classFields, true),
@@ -268,6 +266,15 @@ final class MinecraftMappingsDtsEmitter {
         } catch (LinkageError | ClassNotFoundException ignored) {
             return ReflectedClassMembers.empty();
         }
+    }
+
+    private List<String> collectConstructorSignatures(Class<?> runtimeClass) {
+        List<String> constructorSignatures = new ArrayList<>();
+        for (java.lang.reflect.Constructor<?> constructor : runtimeClass.getConstructors()) {
+            constructorSignatures.add(renderExecutableParameters(constructor.getParameterTypes(), constructor.getParameters()));
+        }
+        constructorSignatures.sort(Comparator.comparingInt(this::countRenderedParameters).thenComparing(String::compareTo));
+        return List.copyOf(constructorSignatures);
     }
 
     private Set<String> collectMethodNames(Class<?> runtimeClass, Map<String, List<String>> classMethods, boolean staticMembers) {
@@ -369,6 +376,36 @@ final class MinecraftMappingsDtsEmitter {
             }
         }
         return resolvedTypes;
+    }
+
+    private String renderExecutableParameters(Class<?>[] parameterTypes, Parameter[] parameters) {
+        if (parameterTypes.length == 0) {
+            return "";
+        }
+
+        List<String> renderedParameters = new ArrayList<>(parameterTypes.length);
+        for (int index = 0; index < parameterTypes.length; index++) {
+            renderedParameters.add(renderParameter(index, parameterTypes[index], parameters));
+        }
+        return String.join(", ", renderedParameters);
+    }
+
+    private String renderParameter(int index, Class<?> parameterType, Parameter[] parameters) {
+        String parameterName = "arg" + index;
+        if (parameters != null && index < parameters.length) {
+            String reflectedName = parameters[index].getName();
+            if (TypingsDeclarationUtils.isAccessibleIdentifier(reflectedName)) {
+                parameterName = reflectedName;
+            }
+        }
+        return parameterName + ": " + renderJavaType(parameterType);
+    }
+
+    private int countRenderedParameters(String signature) {
+        if (signature.isEmpty()) {
+            return 0;
+        }
+        return signature.split(", ").length;
     }
 
     private String renderJavaType(Class<?> type) {
@@ -490,7 +527,7 @@ final class MinecraftMappingsDtsEmitter {
     }
 
     private boolean isAccessibleIdentifier(String value) {
-        return TypingsNamingUtils.isValidIdentifier(value) && !TS_RESERVED_KEYWORDS.contains(value);
+        return TypingsDeclarationUtils.isAccessibleIdentifier(value);
     }
 
     private boolean hasDeclarableNamespace(String[] parts) {
@@ -516,7 +553,7 @@ final class MinecraftMappingsDtsEmitter {
     }
 
     private String renderMemberName(String memberName) {
-        if (TypingsNamingUtils.isValidIdentifier(memberName) && !TS_RESERVED_KEYWORDS.contains(memberName)) {
+        if (TypingsDeclarationUtils.isAccessibleIdentifier(memberName)) {
             return memberName;
         }
         return "'" + TypingsNamingUtils.escapeSingleQuotedString(memberName) + "'";
@@ -542,6 +579,7 @@ final class MinecraftMappingsDtsEmitter {
 
     private record ReflectedClassMembers(
             boolean available,
+            List<String> constructorSignatures,
             Set<String> staticMethodNames,
             Set<String> instanceMethodNames,
             Set<String> staticFieldNames,
@@ -552,6 +590,7 @@ final class MinecraftMappingsDtsEmitter {
             Map<String, String> instanceFieldTypes
     ) {
         private ReflectedClassMembers {
+            constructorSignatures = List.copyOf(constructorSignatures);
             staticMethodNames = Set.copyOf(staticMethodNames);
             instanceMethodNames = Set.copyOf(instanceMethodNames);
             staticFieldNames = Set.copyOf(staticFieldNames);
@@ -563,7 +602,7 @@ final class MinecraftMappingsDtsEmitter {
         }
 
         private static ReflectedClassMembers empty() {
-            return new ReflectedClassMembers(false, Set.of(), Set.of(), Set.of(), Set.of(), Map.of(), Map.of(), Map.of(), Map.of());
+            return new ReflectedClassMembers(false, List.of(), Set.of(), Set.of(), Set.of(), Set.of(), Map.of(), Map.of(), Map.of(), Map.of());
         }
     }
 }

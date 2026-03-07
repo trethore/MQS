@@ -22,6 +22,7 @@ import net.me.Main;
 import net.me.ui.bridges.utils.BridgeRequests;
 import net.me.ui.bridges.utils.BridgeSubscriptions;
 import net.me.utils.McUtils;
+import net.me.utils.VscodeWebUtils;
 import net.minecraft.client.Minecraft;
 import tytoo.grapheneui.api.bridge.GrapheneBridge;
 
@@ -50,18 +51,16 @@ public final class MQSCodeBridge implements AutoCloseable {
     }
 
     private CodePrepareResponse handlePrepare() {
-        String modDirPath = Main.MOD_DIR.toAbsolutePath().normalize().toString();
-        boolean copied = false;
+        String modDirPath = VscodeWebUtils.getModDirPath();
         Minecraft minecraft = McUtils.getMc();
 
         try {
-            minecraft.execute(() -> minecraft.keyboardHandler.setClipboard(modDirPath));
-            copied = true;
+            boolean copied = VscodeWebUtils.copyModDirToClipboard(minecraft);
+            return new CodePrepareResponse(copied, modDirPath);
         } catch (RuntimeException exception) {
             Main.LOGGER.error("Failed to copy MQS mod directory to clipboard from UI bridge.", exception);
+            return new CodePrepareResponse(false, modDirPath);
         }
-
-        return new CodePrepareResponse(copied, modDirPath);
     }
 
     public record CodePrepareResponse(boolean copied, String modDirPath) {

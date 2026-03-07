@@ -48,6 +48,12 @@ public class MqsUtilsAPI implements ProxyObject {
     private static final String SCHEDULER_INTERVAL = "interval";
     private static final String CHAT = "chat";
     private static final String MATH = "math";
+    private static final String MESSAGE = "message";
+    private static final String PREFIX = "prefix";
+    private static final String COMMAND = "command";
+    private static final String LEVEL = "Level";
+    private static final String CHAT_LEVEL_API = "MQSUtilsChatLevelApi";
+    private static final String CHAT_LEVEL_INSTANCE = "MQSUtilsChatLevelInstance";
     private static final String MINECRAFT_CLASS = "net.minecraft.client.Minecraft";
     private static final String CLIENT_LEVEL_CLASS = "net.minecraft.client.multiplayer.ClientLevel";
     private static final String LOCAL_PLAYER_CLASS = "net.minecraft.client.player.LocalPlayer";
@@ -78,10 +84,16 @@ public class MqsUtilsAPI implements ProxyObject {
 
     public static MqsApiFragment describeTypeScript() {
         return new MqsApiFragment(
+                List.of(
+                        alias(CHAT_LEVEL_INSTANCE, "JavaInstance"),
+                        alias(
+                                CHAT_LEVEL_API,
+                                "JavaClass<" + CHAT_LEVEL_INSTANCE + "> & { readonly ERROR: " + CHAT_LEVEL_INSTANCE + "; readonly INFO: " + CHAT_LEVEL_INSTANCE + "; readonly WARN: " + CHAT_LEVEL_INSTANCE + "; readonly SUCCESS: " + CHAT_LEVEL_INSTANCE + "; }"
+                        )
+                ),
                 List.of(),
                 List.of(),
-                List.of(),
-                List.of(describeSchedulerApi(), describeUtilsApi())
+                List.of(describeSchedulerApi(), describeChatApi(), describeUtilsApi())
         );
     }
 
@@ -104,8 +116,26 @@ public class MqsUtilsAPI implements ProxyObject {
                         method(WORLD, fn(mappedInstanceType(CLIENT_LEVEL_CLASS) + " | null")),
                         method(PLAYER, fn(mappedInstanceType(LOCAL_PLAYER_CLASS) + " | null")),
                         ro(SCHEDULER, "MQSUtilsSchedulerApi"),
-                        ro(CHAT, "JavaClass<any>"),
+                        ro(CHAT, "MQSUtilsChatApi"),
                         ro(MATH, "JavaClass<any>")
+                )
+        );
+    }
+
+    private static TsObject describeChatApi() {
+        return new TsObject(
+                "MQSUtilsChatApi",
+                List.of(
+                        ro("TAG", TypingsConstants.STRING),
+                        ro(LEVEL, CHAT_LEVEL_API),
+                        method("sendChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING))),
+                        method("sendChatCommand", fn(TypingsConstants.VOID, p(COMMAND, TypingsConstants.STRING))),
+                        method("addInfoChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p(PREFIX, TypingsConstants.BOOLEAN))),
+                        method("addWarnChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p(PREFIX, TypingsConstants.BOOLEAN))),
+                        method("addErrorChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p(PREFIX, TypingsConstants.BOOLEAN))),
+                        method("addSuccessChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p(PREFIX, TypingsConstants.BOOLEAN))),
+                        method("addRawMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING))),
+                        method("addChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p("level", CHAT_LEVEL_INSTANCE), p(PREFIX, TypingsConstants.BOOLEAN)))
                 )
         );
     }

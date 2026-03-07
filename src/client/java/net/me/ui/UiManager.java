@@ -26,6 +26,7 @@ import net.me.keybinds.KeybindManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.utils.McUtils;
+import net.me.utils.VscodeWebUtils;
 import net.minecraft.client.Minecraft;
 import tytoo.grapheneui.api.GrapheneCore;
 import tytoo.grapheneui.api.runtime.GrapheneHttpServer;
@@ -57,7 +58,6 @@ public class UiManager {
     }
 
     public void openUi() {
-        Minecraft mc = McUtils.getMc();
         String targetUrl;
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
@@ -66,14 +66,11 @@ public class UiManager {
             targetUrl = DEFAULT_PROD_UI_URL;
         }
 
-        mc.execute(() -> mc.setScreen(new MQSWebScreen(
-                targetUrl,
-                this.scriptingService,
-                this.consoleManager,
-                this.keybindManager,
-                this.scriptManager,
-                this.globalConfigManager
-        )));
+        openUrl(targetUrl);
+    }
+
+    public void openVscodeWeb() {
+        openUrl(VscodeWebUtils.CODE_EDITOR_URL);
     }
 
     /**
@@ -89,5 +86,17 @@ public class UiManager {
         }
 
         return httpServer.baseUrl() + DEV_UI_ENTRYPOINT + "?v=" + System.nanoTime();
+    }
+
+    private void openUrl(String targetUrl) {
+        Minecraft mc = McUtils.getMc();
+        mc.execute(() -> mc.setScreen(new MQSWebScreen(
+                targetUrl,
+                this.scriptingService,
+                this.consoleManager,
+                this.keybindManager,
+                this.scriptManager,
+                this.globalConfigManager
+        )));
     }
 }
