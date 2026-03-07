@@ -20,8 +20,8 @@ package net.me.ui;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
-import net.me.console.ConsoleManager;
 import net.me.config.GlobalConfigManager;
+import net.me.console.ConsoleManager;
 import net.me.keybinds.KeybindManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;

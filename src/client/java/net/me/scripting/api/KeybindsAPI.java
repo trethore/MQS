@@ -26,15 +26,18 @@ import net.me.scripting.ScriptManager;
 import net.me.scripting.api.internal.HandleTracker;
 import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsMember;
+import net.me.scripting.typings.schema.TsObject;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class KeybindsAPI implements ProxyObject {
     private static final String API_NAME = "Keybinds API";
@@ -45,6 +48,11 @@ public class KeybindsAPI implements ProxyObject {
     private static final String KEYBIND_UNBIND = "unbind";
     private static final String KEYBIND_UNBIND_ALL = "unbindAll";
     private static final String OPTIONS = "options";
+    private static final String DEBOUNCE = "debounce";
+    private static final String MQS_KEYBIND_OPTIONS = "MQSKeybindOptions";
+    private static final String NAME = "name";
+    private static final String KEY = "key";
+    private static final String HANDLER = "handler";
 
     private static final String BIND_USAGE = "Usage: MQS.keybinds.bind(name, key, handler, options?)";
     private static final String BIND_TOGGLE_USAGE = "Usage: MQS.keybinds.bindToggle(name, key, handler, options?)";
@@ -72,6 +80,83 @@ public class KeybindsAPI implements ProxyObject {
         this.keybindManager = keybindManager;
         this.contextHelper = new ScriptContextHelper(scriptManager);
         this.keybindTracker = new HandleTracker<>();
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                        describeKeybindOptions(),
+                        describeKeybindOptionsBuilder(),
+                        describeKeyCodeMap(),
+                        describeKeybindsApi()
+                )
+        );
+    }
+
+    private static TsObject describeKeybindOptions() {
+        return new TsObject(
+                MQS_KEYBIND_OPTIONS,
+                List.of(
+                        prop(TypingsConstants.REPEATABLE, TypingsConstants.BOOLEAN),
+                        prop(DEBOUNCE, TypingsConstants.NUMBER)
+                )
+        );
+    }
+
+    private static TsObject describeKeybindOptionsBuilder() {
+        return new TsObject(
+                TypingsConstants.KEYBIND_OPTIONS_BUILDER,
+                List.of(
+                        method(TypingsConstants.REPEATABLE, fn(TypingsConstants.KEYBIND_OPTIONS_BUILDER), fn(TypingsConstants.KEYBIND_OPTIONS_BUILDER, p(TypingsConstants.REPEATABLE, TypingsConstants.BOOLEAN))),
+                        method(DEBOUNCE, fn(TypingsConstants.KEYBIND_OPTIONS_BUILDER, p("debounceMillis", TypingsConstants.NUMBER))),
+                        method("build", fn(MQS_KEYBIND_OPTIONS))
+                )
+        );
+    }
+
+    private static TsObject describeKeyCodeMap() {
+        List<TsMember> members = new ArrayList<>();
+        for (Keys key : Keys.values()) {
+            members.add(ro(key.name(), TypingsConstants.NUMBER));
+        }
+        members.add(ro("[key: string]", TypingsConstants.NUMBER + " | undefined"));
+        return new TsObject(TypingsConstants.KEY_CODE_MAP, List.copyOf(members));
+    }
+
+    private static TsObject describeKeybindsApi() {
+        return new TsObject(
+                "MQSKeybindsApi",
+                List.of(
+                        ro(KEY_KEYS, TypingsConstants.KEY_CODE_MAP),
+                        ro(KEYS, TypingsConstants.KEY_CODE_MAP),
+                        method(OPTIONS, fn(TypingsConstants.KEYBIND_OPTIONS_BUILDER)),
+                        method(
+                                KEYBIND_BIND,
+                                fn(
+                                        TypingsConstants.MQS_DISPOSER,
+                                        p(NAME, TypingsConstants.STRING),
+                                        p(KEY, TypingsConstants.NUMBER + " | " + TypingsConstants.STRING),
+                                        p(HANDLER, TypingsConstants.MQS_ANY_FUNCTION),
+                                        opt(OPTIONS, MQS_KEYBIND_OPTIONS + " | " + TypingsConstants.KEYBIND_OPTIONS_BUILDER + " | Record<string, unknown>")
+                                )
+                        ),
+                        method(
+                                KEYBIND_BIND_TOGGLE,
+                                fn(
+                                        TypingsConstants.MQS_DISPOSER,
+                                        p(NAME, TypingsConstants.STRING),
+                                        p(KEY, TypingsConstants.NUMBER + " | " + TypingsConstants.STRING),
+                                        p(HANDLER, "(enabled: " + TypingsConstants.BOOLEAN + ") => " + TypingsConstants.UNKNOWN),
+                                        opt(OPTIONS, MQS_KEYBIND_OPTIONS + " | " + TypingsConstants.KEYBIND_OPTIONS_BUILDER + " | Record<string, unknown>")
+                                )
+                        ),
+                        method(KEYBIND_UNBIND, fn(TypingsConstants.BOOLEAN, p(NAME, TypingsConstants.STRING))),
+                        method(KEYBIND_UNBIND_ALL, fn(TypingsConstants.VOID))
+                )
+        );
     }
 
     private static String normalizeKeyName(String keyName) {
@@ -102,6 +187,16 @@ public class KeybindsAPI implements ProxyObject {
             names[index] = values[index].name();
         }
         return names;
+    }
+
+    private KeybindRegistrationArgs parseKeybindRegistrationArgs(Value[] args, String usage) {
+        ApiArgumentChecks.requireArgCountRange(args, 3, 4, usage);
+        RunningScript owner = contextHelper.require(API_NAME);
+        String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
+        int keyCode = extractKeyCode(args[1]);
+        Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
+        KeybindOptions options = resolveOptions(args.length > 3 ? args[3] : null);
+        return new KeybindRegistrationArgs(owner, name, keyCode, handler, options);
     }
 
     @Override
@@ -169,35 +264,25 @@ public class KeybindsAPI implements ProxyObject {
 
     private ProxyExecutable createBindExecutable() {
         return args -> {
-            ApiArgumentChecks.requireArgCountRange(args, 3, 4, BIND_USAGE);
-            RunningScript owner = contextHelper.require(API_NAME);
-            String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
-            int keyCode = extractKeyCode(args[1]);
-            Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
-            KeybindOptions options = resolveOptions(args.length > 3 ? args[3] : null);
-            return registerKeybind(owner, name, keyCode, handler, options);
+            KeybindRegistrationArgs registration = parseKeybindRegistrationArgs(args, BIND_USAGE);
+            return registerKeybind(registration.owner(), registration.name(), registration.keyCode(), registration.handler(), registration.options());
         };
     }
 
     private ProxyExecutable createBindToggleExecutable() {
         return args -> {
-            ApiArgumentChecks.requireArgCountRange(args, 3, 4, BIND_TOGGLE_USAGE);
-            RunningScript owner = contextHelper.require(API_NAME);
-            String name = ApiArgumentChecks.requireString(args, 0, "Keybind name must be a string.");
-            int keyCode = extractKeyCode(args[1]);
-            Value handler = ApiArgumentChecks.requireExecutable(args, 2, "Handler must be executable.");
+            KeybindRegistrationArgs registration = parseKeybindRegistrationArgs(args, BIND_TOGGLE_USAGE);
 
             AtomicBoolean state = new AtomicBoolean(false);
             ProxyExecutable toggleExecutable = ignored -> {
                 boolean next = !state.get();
                 state.set(next);
-                handler.execute(next);
+                registration.handler().execute(next);
                 return null;
             };
 
-            Value toggleHandler = owner.getContext().asValue(toggleExecutable);
-            KeybindOptions options = resolveOptions(args.length > 3 ? args[3] : null);
-            return registerKeybind(owner, name, keyCode, toggleHandler, options);
+            Value toggleHandler = registration.owner().getContext().asValue(toggleExecutable);
+            return registerKeybind(registration.owner(), registration.name(), registration.keyCode(), toggleHandler, registration.options());
         };
     }
 
@@ -301,5 +386,9 @@ public class KeybindsAPI implements ProxyObject {
                 throw new UnsupportedOperationException("Cannot modify MQS.keybinds.keys.");
             }
         };
+    }
+
+    private record KeybindRegistrationArgs(RunningScript owner, String name, int keyCode, Value handler,
+                                           KeybindOptions options) {
     }
 }

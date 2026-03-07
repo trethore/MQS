@@ -28,6 +28,8 @@ import net.me.scripting.api.*;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.schema.TsObject;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import net.me.scripting.wrappers.LazyPackageProxy;
 import net.me.utils.ScriptScheduler;
@@ -41,7 +43,15 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.*;
 
+import static net.me.scripting.typings.schema.TsDescriptors.*;
+
 public class ScriptContextFactory {
+    private static final String EVENTS = "events";
+    private static final String CONFIG = "config";
+    private static final String KEYBINDS = "keybinds";
+    private static final String CMD = "cmd";
+    private static final String HOOKS = "hooks";
+    private static final String UTILS = "utils";
 
     private final ScriptingClassResolver classResolver;
     private final Engine sharedEngine;
@@ -88,6 +98,32 @@ public class ScriptContextFactory {
                 .build();
     }
 
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(),
+                List.of(
+                        globalFunction("print", fn("void", rest("args", "unknown"))),
+                        globalFunction("println", fn("void", rest("args", "unknown")))
+                ),
+                List.of(globalConstant("MQS", "MQSApi")),
+                List.of(describeMqsApi())
+        );
+    }
+
+    private static TsObject describeMqsApi() {
+        return new TsObject(
+                "MQSApi",
+                List.of(
+                        ro(EVENTS, "MQSEventsApi"),
+                        ro(CONFIG, "MQSConfigApi"),
+                        ro(KEYBINDS, "MQSKeybindsApi"),
+                        ro(CMD, "MQSCommandApi"),
+                        ro(HOOKS, "MQSHooksApi"),
+                        ro(UTILS, "MQSUtilsApi")
+                )
+        );
+    }
+
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
         Main.LOGGER.info("Creating new script context (ECMAScript 2024)...");
         long startTime = System.currentTimeMillis();
@@ -129,12 +165,12 @@ public class ScriptContextFactory {
         CommandsAPI commandsApi = new CommandsAPI(this.scriptManager, this.commandApiService);
         HooksAPI hooksApi = new HooksAPI(this.hookManager, this.scriptManager, this.classResolver);
 
-        mqsMembers.put("events", eventsApi);
-        mqsMembers.put("config", configsApi);
-        mqsMembers.put("keybinds", keybindsApi);
-        mqsMembers.put("cmd", commandsApi);
-        mqsMembers.put("hooks", hooksApi);
-        mqsMembers.put("utils", new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler));
+        mqsMembers.put(EVENTS, eventsApi);
+        mqsMembers.put(CONFIG, configsApi);
+        mqsMembers.put(KEYBINDS, keybindsApi);
+        mqsMembers.put(CMD, commandsApi);
+        mqsMembers.put(HOOKS, hooksApi);
+        mqsMembers.put(UTILS, new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler));
 
         addApiMember(bindings, "MQS", ProxyObject.fromMap(mqsMembers));
 

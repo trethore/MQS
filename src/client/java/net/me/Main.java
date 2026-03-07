@@ -44,7 +44,6 @@ import tytoo.grapheneui.api.GrapheneCore;
 import tytoo.grapheneui.api.config.GrapheneConfig;
 import tytoo.grapheneui.api.config.GrapheneHttpConfig;
 
-
 import java.nio.file.Path;
 
 public class Main implements ClientModInitializer {

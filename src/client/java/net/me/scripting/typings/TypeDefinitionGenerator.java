@@ -184,6 +184,7 @@ public class TypeDefinitionGenerator {
         }
     }
 
-    public record GenerationResult(GenerationTarget target, Path outputPath, int classCount, int methodCount, int fieldCount) {
+    public record GenerationResult(GenerationTarget target, Path outputPath, int classCount, int methodCount,
+                                   int fieldCount) {
     }
 }

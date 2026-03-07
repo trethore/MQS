@@ -22,6 +22,9 @@ import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsObject;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.utils.ChatUtils;
 import net.me.utils.McUtils;
@@ -30,7 +33,10 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.List;
 import java.util.Set;
+
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class MqsUtilsAPI implements ProxyObject {
     private static final String MC = "mc";
@@ -62,6 +68,40 @@ public class MqsUtilsAPI implements ProxyObject {
                 SCHEDULER,
                 CHAT,
                 MATH
+        );
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(describeSchedulerApi(), describeUtilsApi())
+        );
+    }
+
+    private static TsObject describeSchedulerApi() {
+        return new TsObject(
+                "MQSUtilsSchedulerApi",
+                List.of(
+                        method(SCHEDULER_TIMEOUT, fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.MQS_ANY_FUNCTION), opt("delayTicks", TypingsConstants.NUMBER))),
+                        method(SCHEDULER_INTERVAL, fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.MQS_ANY_FUNCTION), p("intervalTicks", TypingsConstants.NUMBER)))
+                )
+        );
+    }
+
+    private static TsObject describeUtilsApi() {
+        return new TsObject(
+                "MQSUtilsApi",
+                List.of(
+                        method(MC, fn("JavaInstance | any")),
+                        method(RUN_ON_CLIENT_THREAD, fn(TypingsConstants.VOID, p(TypingsConstants.CALLBACK, TypingsConstants.MQS_ANY_FUNCTION))),
+                        method(WORLD, fn("JavaInstance | any | null")),
+                        method(PLAYER, fn("JavaInstance | any | null")),
+                        ro(SCHEDULER, "MQSUtilsSchedulerApi"),
+                        ro(CHAT, "JavaClass<any>"),
+                        ro(MATH, "JavaClass<any>")
+                )
         );
     }
 

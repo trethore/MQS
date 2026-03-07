@@ -24,11 +24,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Responsible for generating TypeScript declaration content for the My QOL Scripts API based on the provided schema.
- * <p>
- * This class uses the {@link MqsApiSchema} to retrieve the necessary information about the API's objects, properties,
- * and methods, and generates corresponding TypeScript declarations. The generated content is appended to a provided
- * StringBuilder, which can then be written to a .d.ts file.
+ * Responsible for generating TypeScript declaration content for the My QOL Scripts API from shared runtime descriptors.
  */
 final class MqsApiDtsEmitter {
     private static final String INDENT = TypingsFormat.INDENT;
@@ -45,13 +41,17 @@ final class MqsApiDtsEmitter {
     );
 
     public void append(StringBuilder builder) {
-        appendCoreDeclarations(builder);
-        appendTypeAliases(builder);
-        appendSchemaObjects(builder);
+        append(builder, MqsApiTypeDescriptors.describe());
     }
-    /**
-     * Appends core TypeScript declarations and utility functions for the My QOL Scripts API.
-     */
+
+    public void append(StringBuilder builder, MqsApiFragment fragment) {
+        appendCoreDeclarations(builder);
+        appendTypeAliases(builder, fragment.typeAliases());
+        appendGlobalFunctions(builder, fragment.globalFunctions());
+        appendGlobalConstants(builder, fragment.globalConstants());
+        appendSchemaObjects(builder, fragment.objects());
+    }
+
     private void appendCoreDeclarations(StringBuilder builder) {
         builder.append("interface JavaClass<T = JavaInstance> {\n");
         builder.append(INDENT).append("new (...args: any[]): T;\n");
@@ -66,42 +66,55 @@ final class MqsApiDtsEmitter {
         builder.append(INDENT).append("[member: string]: any;\n");
         builder.append(BLOCK_END);
 
-        builder.append("type MQSDisposer = () => void;\n");
-        builder.append("type MQSAnyFunction = (...args: any[]) => unknown;\n\n");
-
-        builder.append("interface MQSExtendMappedConfig {\n");
-        builder.append(INDENT).append("extends: unknown;\n");
-        builder.append(INDENT).append("implements?: unknown | unknown[];\n");
-        builder.append(BLOCK_END);
-
-        builder.append("interface MQSClassRegistry {}\n");
-
-        builder.append("declare function importClass<K extends keyof MQSClassRegistry>(name: K): MQSClassRegistry[K];\n");
-        builder.append("declare function importClass(name: string): JavaClass<any>;\n");
-        builder.append("declare function wrap<T = JavaInstance>(instance: unknown): T;\n");
-        builder.append("declare function extendMapped(config: MQSExtendMappedConfig, implementation: Record<string, unknown>): JavaClass<any>;\n");
-        builder.append("declare function exportModule(...modules: (JavaClass<any> | JavaClass<any>[])[]): void;\n");
-        builder.append("declare function isInstanceOf(instance: unknown, clazz: JavaClass<any>): boolean;\n");
-        builder.append("declare function print(...args: unknown[]): void;\n");
-        builder.append("declare function println(...args: unknown[]): void;\n");
-        builder.append("declare const MQS: MQSApi;\n\n");
+        builder.append("\n");
     }
 
-    /**
-     * Appends type aliases for common types used in the My QOL Scripts API.
-     */
-    private void appendTypeAliases(StringBuilder builder) {
-        builder.append("type MQSEventPhase = \"PRE\" | \"POST\";\n");
-        builder.append("type MQSEventCallback<T = any> = (event: T) => unknown;\n");
-        builder.append("type MQSEventOptionsLike = MQSEventSubscriptionOptions | MQSEventOptionsBuilder | MQSEventPhase | string;\n");
-        builder.append("type MQSCommandSuggestions = string | string[] | ArrayLike<unknown> | Promise<string | string[] | ArrayLike<unknown> | null> | null;\n");
-        builder.append("type MQSCommandSuggestionProvider = ((context: MQSCommandContext) => MQSCommandSuggestions) | MQSCommandSuggestions;\n");
-        builder.append("type MQSHookMode = \"BEFORE\" | \"AFTER\" | \"INSTEAD\" | \"before\" | \"after\" | \"instead\";\n");
-        builder.append("type MQSHookHandler = (...args: any[]) => unknown;\n\n");
+    private void appendTypeAliases(StringBuilder builder, List<TsTypeAlias> typeAliases) {
+        for (TsTypeAlias typeAlias : typeAliases) {
+            builder.append("type ").append(typeAlias.name());
+            if (typeAlias.typeParameters() != null) {
+                builder.append(typeAlias.typeParameters());
+            }
+            builder.append(" = ").append(typeAlias.definition()).append(";\n");
+        }
+        if (!typeAliases.isEmpty()) {
+            builder.append("\n");
+        }
     }
 
-    private void appendSchemaObjects(StringBuilder builder) {
-        for (TsObject object : MqsApiSchema.objects()) {
+    private void appendGlobalFunctions(StringBuilder builder, List<TsGlobalFunction> globalFunctions) {
+        for (TsGlobalFunction globalFunction : globalFunctions) {
+            for (TsFunction overload : globalFunction.overloads()) {
+                builder.append("declare function ")
+                        .append(globalFunction.name())
+                        .append(renderTypeParameters(overload))
+                        .append("(")
+                        .append(renderParams(overload.params()))
+                        .append("): ")
+                        .append(overload.returnType())
+                        .append(";\n");
+            }
+        }
+        if (!globalFunctions.isEmpty()) {
+            builder.append("\n");
+        }
+    }
+
+    private void appendGlobalConstants(StringBuilder builder, List<TsGlobalConstant> globalConstants) {
+        for (TsGlobalConstant globalConstant : globalConstants) {
+            builder.append("declare const ")
+                    .append(globalConstant.name())
+                    .append(": ")
+                    .append(globalConstant.type())
+                    .append(";\n");
+        }
+        if (!globalConstants.isEmpty()) {
+            builder.append("\n");
+        }
+    }
+
+    private void appendSchemaObjects(StringBuilder builder, List<TsObject> objects) {
+        for (TsObject object : objects) {
             appendObject(builder, object);
         }
     }
@@ -134,6 +147,7 @@ final class MqsApiDtsEmitter {
         for (TsFunction overload : method.overloads()) {
             builder.append(INDENT)
                     .append(renderMemberName(method.name()))
+                    .append(renderTypeParameters(overload))
                     .append("(")
                     .append(renderParams(overload.params()))
                     .append("): ")
@@ -163,6 +177,10 @@ final class MqsApiDtsEmitter {
             builder.append(": ").append(parameter.type());
         }
         return builder.toString();
+    }
+
+    private String renderTypeParameters(TsFunction function) {
+        return function.typeParameters() != null ? function.typeParameters() : "";
     }
 
     private String renderMemberName(String memberName) {

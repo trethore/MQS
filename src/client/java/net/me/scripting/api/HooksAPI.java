@@ -27,12 +27,18 @@ import net.me.scripting.api.internal.HandleTracker;
 import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsObject;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class HooksAPI implements ProxyObject {
     private static final String API_NAME = "Hooks API";
@@ -42,6 +48,7 @@ public class HooksAPI implements ProxyObject {
     private static final String HOOK_BEFORE = "before";
     private static final String HOOK_AFTER = "after";
     private static final String HOOK_INSTEAD = "instead";
+    private static final String OPTIONS = "options";
     private static final String HOOK_USAGE_PREFIX = "Usage: MQS.hooks.";
     private static final String MODE_HOOK_USAGE_SUFFIX = "(target, methodOrHandler, handler?, options?)";
     private static final String HOOK_METHOD_USAGE = "(Class, 'methodName', handler, options?)";
@@ -70,6 +77,65 @@ public class HooksAPI implements ProxyObject {
         this.contextHelper = new ScriptContextHelper(scriptManager);
         this.classHelper = new ClassResolverHelper(classResolver);
         this.hookTracker = new HandleTracker<>();
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(
+                        alias("MQSHookMode", "\"BEFORE\" | \"AFTER\" | \"INSTEAD\" | \"before\" | \"after\" | \"instead\""),
+                        alias(TypingsConstants.HOOK_HANDLER, "(...args: any[]) => " + TypingsConstants.UNKNOWN)
+                ),
+                List.of(),
+                List.of(),
+                List.of(describeHookOptions(), describeHooksApi())
+        );
+    }
+
+    private static TsObject describeHookOptions() {
+        return new TsObject(
+                TypingsConstants.HOOK_OPTIONS,
+                List.of(
+                        optProp("args", TypingsConstants.NUMBER),
+                        optProp("mode", "MQSHookMode")
+                )
+        );
+    }
+
+    private static TsObject describeHooksApi() {
+        return new TsObject(
+                "MQSHooksApi",
+                List.of(
+                        method(HOOK_BEFORE, describeDescriptorHookOverload(), describeClassHookOverload()),
+                        method(HOOK_AFTER, describeDescriptorHookOverload(), describeClassHookOverload()),
+                        method(HOOK_INSTEAD, describeDescriptorHookOverload(), describeClassHookOverload()),
+                        method(HOOK, describeDescriptorHookOverload(), describeClassHookOverload()),
+                        method(
+                                UNHOOK,
+                                fn(TypingsConstants.VOID, p("target", TypingsConstants.STRING), opt(OPTIONS, TypingsConstants.HOOK_OPTIONS)),
+                                fn(TypingsConstants.VOID, p("targetClass", TypingsConstants.UNKNOWN), p("methodName", TypingsConstants.STRING), opt(OPTIONS, TypingsConstants.HOOK_OPTIONS))
+                        ),
+                        method(UNHOOK_ALL, fn(TypingsConstants.VOID))
+                )
+        );
+    }
+
+    private static net.me.scripting.typings.schema.TsFunction describeDescriptorHookOverload() {
+        return fn(
+                TypingsConstants.MQS_DISPOSER,
+                p("target", TypingsConstants.STRING),
+                p("handler", TypingsConstants.HOOK_HANDLER),
+                opt(OPTIONS, TypingsConstants.HOOK_OPTIONS)
+        );
+    }
+
+    private static net.me.scripting.typings.schema.TsFunction describeClassHookOverload() {
+        return fn(
+                TypingsConstants.MQS_DISPOSER,
+                p("targetClass", TypingsConstants.UNKNOWN),
+                p("methodName", TypingsConstants.STRING),
+                p("handler", TypingsConstants.HOOK_HANDLER),
+                opt(OPTIONS, TypingsConstants.HOOK_OPTIONS)
+        );
     }
 
     private static HookOptions resolveHookOptions(Value optionsValue, HookExecutionMode mode, boolean enforceMode) {

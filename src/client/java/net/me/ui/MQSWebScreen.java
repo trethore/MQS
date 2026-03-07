@@ -18,17 +18,12 @@
 
 package net.me.ui;
 
-import net.me.console.ConsoleManager;
 import net.me.config.GlobalConfigManager;
+import net.me.console.ConsoleManager;
 import net.me.keybinds.KeybindManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
-import net.me.ui.bridges.MQSCommandsBridge;
-import net.me.ui.bridges.MQSCodeBridge;
-import net.me.ui.bridges.MQSConsoleBridge;
-import net.me.ui.bridges.MQSKeybindsBridge;
-import net.me.ui.bridges.MQSOptionsBridge;
-import net.me.ui.bridges.MQSScriptsBridge;
+import net.me.ui.bridges.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import tytoo.grapheneui.api.widget.GrapheneWebViewWidget;

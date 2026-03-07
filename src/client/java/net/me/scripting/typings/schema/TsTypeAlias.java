@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2026 Titouan Réthoré
+ * Copyright (C) 2026 Titouan Rethore
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -16,7 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.utils.math;
+package net.me.scripting.typings.schema;
 
-public record Vec2i(int x, int y) {
+public record TsTypeAlias(String name, String definition, String typeParameters) {
+    public TsTypeAlias(String name, String definition) {
+        this(name, definition, null);
+    }
 }

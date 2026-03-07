@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2026 Titouan Réthoré
+ * Copyright (C) 2026 Titouan Rethore
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -16,17 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.utils.math;
+package net.me.scripting.typings.schema;
 
-@SuppressWarnings("unused")
-public interface Boxable<T> extends Cloneable {
-    T clone();
+import java.util.List;
 
-    T translate(double dx, double dy, double dz);
-
-    T mirror();
-
-    T add(double ox1, double oy1, double oz1, double ox2, double oy2, double oz2);
-
-    T add(T other);
+public record TsGlobalFunction(String name, List<TsFunction> overloads) {
 }

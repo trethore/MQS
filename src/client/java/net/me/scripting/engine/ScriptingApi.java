@@ -25,6 +25,9 @@ import net.me.scripting.config.MappedClassInfo;
 import net.me.scripting.extenders.MappedClassExtender;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsObject;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
@@ -37,11 +40,45 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 import java.util.*;
 
+import static net.me.scripting.typings.schema.TsDescriptors.*;
+
 public class ScriptingApi {
     private static final String EXTENDS = "extends";
     private static final String IMPLEMENTS = "implements";
 
     private ScriptingApi() {
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(
+                        alias("MQSDisposer", "() => void"),
+                        alias("MQSAnyFunction", "(...args: any[]) => unknown")
+                ),
+                List.of(
+                        globalFunction("importClass", fn("<K extends keyof MQSClassRegistry>", "MQSClassRegistry[K]", p("name", "K"))),
+                        globalFunction("importClass", fn(TypingsConstants.JAVA_CLASS_ANY, p("name", TypingsConstants.STRING))),
+                        globalFunction("wrap", fn("<T = JavaInstance>", "T", p("instance", TypingsConstants.UNKNOWN))),
+                        globalFunction("extendMapped", fn(TypingsConstants.JAVA_CLASS_ANY, p("config", "MQSExtendMappedConfig"), p("implementation", "Record<string, unknown>"))),
+                        globalFunction("exportModule", fn(TypingsConstants.VOID, rest("modules", TypingsConstants.JAVA_CLASS_ANY + " | " + TypingsConstants.JAVA_CLASS_ANY + "[]"))),
+                        globalFunction("isInstanceOf", fn(TypingsConstants.BOOLEAN, p("instance", TypingsConstants.UNKNOWN), p("clazz", TypingsConstants.JAVA_CLASS_ANY)))
+                ),
+                List.of(),
+                List.of(
+                        describeExtendMappedConfig(),
+                        new TsObject("MQSClassRegistry", List.of())
+                )
+        );
+    }
+
+    private static TsObject describeExtendMappedConfig() {
+        return new TsObject(
+                "MQSExtendMappedConfig",
+                List.of(
+                        prop(EXTENDS, TypingsConstants.UNKNOWN),
+                        optProp(IMPLEMENTS, TypingsConstants.UNKNOWN + " | " + TypingsConstants.UNKNOWN + "[]")
+                )
+        );
     }
 
     public static ProxyExecutable createImportClassProxy(ScriptingClassResolver resolver, Context context) {

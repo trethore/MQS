@@ -26,12 +26,20 @@ import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.commands.CommandBuilder;
 import net.me.scripting.commands.ScriptArgumentType;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsMember;
+import net.me.scripting.typings.schema.TsObject;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
+
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class CommandsAPI implements ProxyObject {
 
@@ -43,6 +51,7 @@ public class CommandsAPI implements ProxyObject {
     private static final String TYPES = "types";
     private static final String QUICK = "quick";
     private static final String ARG_USAGE = "cmd.arg(name, type) requires two string arguments.";
+    private static final String COMMAND_BUILDER_TYPE = "MQSCommandBuilder";
 
     private static final Set<String> MEMBER_KEYS = Set.of(
             LIT,
@@ -64,6 +73,71 @@ public class CommandsAPI implements ProxyObject {
         this.service = service;
         this.contextHelper = new ScriptContextHelper(scriptManager);
         this.commandTracker = new HandleTracker<>();
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(
+                        alias("MQSCommandSuggestions", TypingsConstants.STRING + " | " + TypingsConstants.STRING + "[] | ArrayLike<" + TypingsConstants.UNKNOWN + "> | Promise<" + TypingsConstants.STRING + " | " + TypingsConstants.STRING + "[] | ArrayLike<" + TypingsConstants.UNKNOWN + "> | null> | null"),
+                        alias("MQSCommandSuggestionProvider", "((context: MQSCommandContext) => MQSCommandSuggestions) | MQSCommandSuggestions")
+                ),
+                List.of(),
+                List.of(),
+                List.of(
+                        describeCommandContext(),
+                        describeCommandBuilder(),
+                        describeCommandTypes(),
+                        describeCommandApi()
+                )
+        );
+    }
+
+    private static TsObject describeCommandContext() {
+        return new TsObject(
+                "MQSCommandContext",
+                List.of(
+                        method("source", fn("any")),
+                        method("arg", fn(TypingsConstants.UNKNOWN, p("name", TypingsConstants.STRING))),
+                        method("str", fn(TypingsConstants.STRING, p("name", TypingsConstants.STRING)))
+                )
+        );
+    }
+
+    private static TsObject describeCommandBuilder() {
+        return new TsObject(
+                COMMAND_BUILDER_TYPE,
+                List.of(
+                        method("then", fn(COMMAND_BUILDER_TYPE, p("child", COMMAND_BUILDER_TYPE))),
+                        method(LIT, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING))),
+                        method(ARG, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING), p("typeName", TypingsConstants.STRING))),
+                        method("run", fn(COMMAND_BUILDER_TYPE, p("handler", "(context: MQSCommandContext) => " + TypingsConstants.UNKNOWN))),
+                        method("suggest", fn(COMMAND_BUILDER_TYPE, p("suggestions", "MQSCommandSuggestionProvider")))
+                )
+        );
+    }
+
+    private static TsObject describeCommandTypes() {
+        List<TsMember> members = new ArrayList<>();
+        for (ScriptArgumentType argumentType : ScriptArgumentType.values()) {
+            String typeName = argumentType.toString();
+            members.add(ro(typeName, "\"" + typeName + "\""));
+        }
+        return new TsObject("MQSCommandTypes", List.copyOf(members));
+    }
+
+    private static TsObject describeCommandApi() {
+        return new TsObject(
+                "MQSCommandApi",
+                List.of(
+                        ro(TYPES, "MQSCommandTypes"),
+                        method(LIT, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING), opt("configure", "(builder: " + COMMAND_BUILDER_TYPE + ") => " + TypingsConstants.UNKNOWN))),
+                        method(ARG, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING), p("type", TypingsConstants.STRING))),
+                        method(REG, fn(TypingsConstants.MQS_DISPOSER, p("builder", COMMAND_BUILDER_TYPE))),
+                        method(UNREG, fn(TypingsConstants.VOID, p("commandName", TypingsConstants.STRING))),
+                        method(CLEAR, fn(TypingsConstants.VOID)),
+                        method(QUICK, fn(TypingsConstants.MQS_DISPOSER, p("name", TypingsConstants.STRING), p("handler", "(context: MQSCommandContext) => " + TypingsConstants.UNKNOWN)))
+                )
+        );
     }
 
     private static ProxyObject createTypesProxy() {

@@ -20,5 +20,8 @@ package net.me.scripting.typings.schema;
 
 import java.util.List;
 
-public record TsFunction(List<TsParam> params, String returnType) {
+public record TsFunction(List<TsParam> params, String returnType, String typeParameters) {
+    public TsFunction(List<TsParam> params, String returnType) {
+        this(params, returnType, null);
+    }
 }

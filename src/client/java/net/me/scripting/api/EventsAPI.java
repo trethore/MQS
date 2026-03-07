@@ -24,6 +24,10 @@ import net.me.scripting.ScriptManager;
 import net.me.scripting.api.internal.HandleTracker;
 import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsMember;
+import net.me.scripting.typings.schema.TsObject;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.LazyJsClassHolder;
@@ -33,6 +37,8 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class EventsAPI implements ProxyObject {
     private static final String API_NAME = "Events API";
@@ -44,6 +50,8 @@ public class EventsAPI implements ProxyObject {
     private static final String FABRIC = "fabric";
     private static final String OFF = "off";
     private static final String OPTIONS = "options";
+    private static final String TARGET = "target";
+    private static final String EVENT_OPTIONS_LIKE = "MQSEventOptionsLike";
 
     private static final Set<String> MEMBER_KEYS = Set.of(
             FABRIC,
@@ -74,6 +82,97 @@ public class EventsAPI implements ProxyObject {
         }
     }
 
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(
+                        alias("MQSEventPhase", "\"PRE\" | \"POST\""),
+                        alias(TypingsConstants.EVENT_CALLBACK, "<T = any>", "(event: T) => " + TypingsConstants.UNKNOWN),
+                        alias(EVENT_OPTIONS_LIKE, "MQSEventSubscriptionOptions | " + TypingsConstants.EVENT_OPTIONS_BUILDER + " | MQSEventPhase | " + TypingsConstants.STRING)
+                ),
+                List.of(),
+                List.of(),
+                List.of(
+                        describePhaseValues(),
+                        describeEventsEnum(),
+                        describeEventSubscriptionOptions(),
+                        describeEventOptionsBuilder(),
+                        describeFabricEventsApi(),
+                        describeEventsApi()
+                )
+        );
+    }
+
+    private static TsObject describePhaseValues() {
+        return new TsObject(
+                "MQSEventPhaseValues",
+                List.of(
+                        ro("PRE", "\"PRE\""),
+                        ro("POST", "\"POST\"")
+                )
+        );
+    }
+
+    private static TsObject describeEventsEnum() {
+        List<TsMember> members = new ArrayList<>();
+        for (Events event : Events.values()) {
+            members.add(ro(event.name(), "\"" + event.name() + "\""));
+        }
+        return new TsObject("MQSEventsEnum", List.copyOf(members));
+    }
+
+    private static TsObject describeEventSubscriptionOptions() {
+        return new TsObject(
+                "MQSEventSubscriptionOptions",
+                List.of(prop(TypingsConstants.PHASE, "MQSEventPhase"))
+        );
+    }
+
+    private static TsObject describeEventOptionsBuilder() {
+        return new TsObject(
+                TypingsConstants.EVENT_OPTIONS_BUILDER,
+                List.of(
+                        method(TypingsConstants.PHASE, fn(TypingsConstants.EVENT_OPTIONS_BUILDER, p(TypingsConstants.PHASE, "MQSEventPhase | " + TypingsConstants.STRING))),
+                        method("build", fn("MQSEventSubscriptionOptions"))
+                )
+        );
+    }
+
+    private static TsObject describeFabricEventsApi() {
+        return new TsObject(
+                "MQSFabricEventsApi",
+                List.of(
+                        method("clientTickStart", fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK))),
+                        method("clientTickEnd", fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK)))
+                )
+        );
+    }
+
+    private static TsObject describeEventsApi() {
+        List<TsMember> members = new ArrayList<>(List.of(
+                ro(FABRIC, "MQSFabricEventsApi"),
+                ro(EVENTS, "MQSEventsEnum"),
+                ro(PHASE, "MQSEventPhaseValues"),
+                method(OPTIONS, fn(TypingsConstants.EVENT_OPTIONS_BUILDER)),
+                method(OFF, fn(TypingsConstants.VOID, opt(TARGET, TypingsConstants.MQS_DISPOSER + " | " + TypingsConstants.EVENT_CALLBACK))),
+                method(
+                        REGISTER,
+                        fn(TypingsConstants.MQS_DISPOSER, p("eventType", TypingsConstants.UNKNOWN), p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK)),
+                        fn(TypingsConstants.MQS_DISPOSER, p("eventType", TypingsConstants.UNKNOWN), p(TypingsConstants.PHASE, "MQSEventPhase | " + TypingsConstants.STRING), p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK))
+                ),
+                method(UNREGISTER, fn(TypingsConstants.VOID, p("eventTarget", TypingsConstants.UNKNOWN), opt("phaseOrCallback", TypingsConstants.UNKNOWN), opt(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK))),
+                method(UNREGISTER_ALL, fn(TypingsConstants.VOID))
+        ));
+
+        for (Events event : Events.values()) {
+            members.add(method(
+                    buildHandlerName(event),
+                    fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK), opt(OPTIONS, EVENT_OPTIONS_LIKE))
+            ));
+        }
+
+        return new TsObject("MQSEventsApi", List.copyOf(members));
+    }
+
     private static Class<? extends Event> getEventClass(Object eventTarget) {
         return switch (eventTarget) {
             case Events eventEnum -> eventEnum.getEventClass();
@@ -83,6 +182,23 @@ public class EventsAPI implements ProxyObject {
             case null, default ->
                     throw new IllegalArgumentException("First argument to Events.unregister must be an MQS event class, a Fabric Event, or an MQS Event from Events.");
         };
+    }
+
+    private static String buildHandlerName(Events event) {
+        String[] parts = event.name().split("_");
+        StringBuilder builder = new StringBuilder("on");
+
+        for (String part : parts) {
+            if (!part.isEmpty() && !"EVENT".equals(part)) {
+                String normalizedPart = part.toLowerCase(Locale.ROOT);
+                builder.append(Character.toUpperCase(normalizedPart.charAt(0)));
+                if (normalizedPart.length() > 1) {
+                    builder.append(normalizedPart, 1, normalizedPart.length());
+                }
+            }
+        }
+
+        return builder.toString();
     }
 
     @Override
@@ -200,23 +316,6 @@ public class EventsAPI implements ProxyObject {
                 throw new UnsupportedOperationException("Cannot modify MQS.events.fabric.");
             }
         };
-    }
-
-    private String buildHandlerName(Events event) {
-        String[] parts = event.name().split("_");
-        StringBuilder builder = new StringBuilder("on");
-
-        for (String part : parts) {
-            if (!part.isEmpty() && !"EVENT".equals(part)) {
-                String normalizedPart = part.toLowerCase(Locale.ROOT);
-                builder.append(Character.toUpperCase(normalizedPart.charAt(0)));
-                if (normalizedPart.length() > 1) {
-                    builder.append(normalizedPart, 1, normalizedPart.length());
-                }
-            }
-        }
-
-        return builder.toString();
     }
 
     private ProxyExecutable createOffExecutable() {

@@ -22,11 +22,16 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.module.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsObject;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.*;
+
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class ConfigsAPI implements ProxyObject {
 
@@ -57,6 +62,32 @@ public class ConfigsAPI implements ProxyObject {
     public ConfigsAPI(ConfigManager configManager, ScriptManager scriptManager) {
         this.configManager = configManager;
         this.contextHelper = new ScriptContextHelper(scriptManager);
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(describeApi())
+        );
+    }
+
+    private static TsObject describeApi() {
+        return new TsObject(
+                "MQSConfigApi",
+                List.of(
+                        method(GET, fn(TypingsConstants.UNKNOWN, p("key", TypingsConstants.STRING), opt(TypingsConstants.DEFAULT_VALUE, TypingsConstants.UNKNOWN))),
+                        method(SET, fn(TypingsConstants.VOID, p("key", TypingsConstants.STRING), p("value", TypingsConstants.UNKNOWN))),
+                        method(HAS, fn(TypingsConstants.BOOLEAN, p("key", TypingsConstants.STRING))),
+                        method(SAVE, fn(TypingsConstants.VOID)),
+                        method(LOAD, fn(TypingsConstants.VOID)),
+                        method(GET_ALL, fn("Record<string, unknown>")),
+                        method(GET_BOOL, fn(TypingsConstants.BOOLEAN, p("key", TypingsConstants.STRING), opt(TypingsConstants.DEFAULT_VALUE, TypingsConstants.BOOLEAN))),
+                        method(GET_NUMBER, fn(TypingsConstants.NUMBER, p("key", TypingsConstants.STRING), opt(TypingsConstants.DEFAULT_VALUE, TypingsConstants.NUMBER))),
+                        method(GET_STRING, fn(TypingsConstants.STRING + " | null", p("key", TypingsConstants.STRING), opt(TypingsConstants.DEFAULT_VALUE, TypingsConstants.STRING)))
+                )
+        );
     }
 
     public static Object toSerializableObject(Value value) {
