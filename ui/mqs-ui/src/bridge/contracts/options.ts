@@ -2,6 +2,7 @@ import { asBoolean, asString, asStringArray, isObject } from "@/bridge/contracts
 
 export const OPTIONS_CHANNEL_GET = "mqs:options:get";
 export const OPTIONS_CHANNEL_SET = "mqs:options:set";
+export const OPTIONS_CHANNEL_OPEN_PATH = "mqs:options:open-path";
 export const OPTIONS_EVENT_UPDATED = "mqs:options:updated";
 
 export interface OptionsSnapshot {
@@ -9,12 +10,14 @@ export interface OptionsSnapshot {
   allowAllClasses: boolean;
   defaultIdeCommand: string;
   additionalScriptDirectories: string[];
+  defaultScriptDirectory: string;
 }
 
 export interface OptionsUpdateRequest {
   logRedirect?: boolean;
   allowAllClasses?: boolean;
   defaultIdeCommand?: string;
+  additionalScriptDirectories?: string[];
 }
 
 export interface OptionsUpdateResponse {
@@ -22,6 +25,18 @@ export interface OptionsUpdateResponse {
   action: string;
   message: string;
   options: OptionsSnapshot | null;
+}
+
+export interface OptionsOpenPathRequest {
+  path?: string;
+  defaultIdeCommand?: string;
+}
+
+export interface OptionsOpenPathResponse {
+  success: boolean;
+  action: string;
+  message: string;
+  openedPath: string;
 }
 
 export function parseOptionsSnapshot(rawSnapshot: unknown): OptionsSnapshot | null {
@@ -34,6 +49,7 @@ export function parseOptionsSnapshot(rawSnapshot: unknown): OptionsSnapshot | nu
     allowAllClasses: asBoolean(rawSnapshot.allowAllClasses),
     defaultIdeCommand: asString(rawSnapshot.defaultIdeCommand),
     additionalScriptDirectories: asStringArray(rawSnapshot.additionalScriptDirectories),
+    defaultScriptDirectory: asString(rawSnapshot.defaultScriptDirectory),
   };
 }
 
@@ -47,5 +63,18 @@ export function parseOptionsUpdateResponse(rawResponse: unknown): OptionsUpdateR
     action: asString(rawResponse.action),
     message: asString(rawResponse.message),
     options: parseOptionsSnapshot(rawResponse.options),
+  };
+}
+
+export function parseOptionsOpenPathResponse(rawResponse: unknown): OptionsOpenPathResponse | null {
+  if (!isObject(rawResponse)) {
+    return null;
+  }
+
+  return {
+    success: asBoolean(rawResponse.success),
+    action: asString(rawResponse.action),
+    message: asString(rawResponse.message),
+    openedPath: asString(rawResponse.openedPath),
   };
 }

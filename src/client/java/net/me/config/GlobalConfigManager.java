@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 public class GlobalConfigManager {
@@ -101,6 +102,15 @@ public class GlobalConfigManager {
         return Collections.unmodifiableList(data.additionalScriptDirs);
     }
 
+    public void setAdditionalScriptDirectories(List<String> directories) {
+        data.ensureDefaults();
+        List<String> sanitizedDirectories = sanitizeAdditionalScriptDirectories(directories);
+        if (!sanitizedDirectories.equals(data.additionalScriptDirs)) {
+            data.additionalScriptDirs = sanitizedDirectories;
+            save();
+        }
+    }
+
     public String getDefaultIdeCommand() {
         data.ensureDefaults();
         return data.defaultIdeCommand;
@@ -122,6 +132,26 @@ public class GlobalConfigManager {
                 List.copyOf(data.additionalScriptDirs),
                 data.defaultIdeCommand
         );
+    }
+
+    private List<String> sanitizeAdditionalScriptDirectories(List<String> directories) {
+        if (directories == null || directories.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        LinkedHashSet<String> sanitizedDirectories = new LinkedHashSet<>();
+        for (String directory : directories) {
+            if (directory == null) {
+                continue;
+            }
+
+            String trimmedDirectory = directory.trim();
+            if (!trimmedDirectory.isEmpty()) {
+                sanitizedDirectories.add(trimmedDirectory);
+            }
+        }
+
+        return new ArrayList<>(sanitizedDirectories);
     }
 
     private static class ConfigData {

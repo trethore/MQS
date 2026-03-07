@@ -22,8 +22,8 @@ import net.me.Main;
 import net.me.config.ConfigKeys;
 import net.me.config.GlobalConfigManager;
 import net.me.scripting.module.ScriptDescriptor;
+import net.me.utils.PathUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -167,7 +167,7 @@ public class ScriptDiscoverer {
             return null;
         }
 
-        String expanded = expandHomeDirectory(trimmed);
+        String expanded = PathUtils.expandHomeDirectory(trimmed);
         Path candidate;
         try {
             candidate = Path.of(expanded);
@@ -180,32 +180,5 @@ public class ScriptDiscoverer {
             candidate = Main.MOD_DIR.resolve(candidate);
         }
         return candidate.normalize();
-    }
-
-    private String expandHomeDirectory(String path) {
-        if (!path.startsWith("~")) {
-            return path;
-        }
-
-        String home = System.getProperty("user.home");
-        if (home == null || home.isBlank()) {
-            return path;
-        }
-
-        if (path.equals("~")) {
-            return home;
-        }
-
-        if (startsWithHomePrefix(path)) {
-            return home + path.substring(1);
-        }
-
-        return path;
-    }
-
-    private boolean startsWithHomePrefix(String path) {
-        return path.startsWith("~" + File.separator)
-                || path.startsWith("~/")
-                || path.startsWith("~\\");
     }
 }

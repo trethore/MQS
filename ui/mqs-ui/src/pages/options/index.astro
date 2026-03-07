@@ -1,5 +1,8 @@
 ---
 import AppLayout from "../../layouts/AppLayout.astro";
+import { OptionsWidget } from "../../components/react/OptionsWidget";
 ---
 
-<AppLayout activeItem="settings" />
+<AppLayout activeItem="settings" articleClassName="pb-6">
+  <OptionsWidget client:load />
+</AppLayout>

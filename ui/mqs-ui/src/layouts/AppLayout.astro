@@ -6,9 +6,10 @@ type NavItemId = "scripts" | "console" | "settings";
 
 interface Props {
   activeItem: NavItemId;
+  articleClassName?: string;
 }
 
-const { activeItem } = Astro.props as Props;
+const { activeItem, articleClassName = "" } = Astro.props as Props;
 ---
 
 <html lang="en">
@@ -47,7 +48,7 @@ const { activeItem } = Astro.props as Props;
       <section class="mqs-app-content">
         <div class="flex min-h-0 flex-1 p-4">
           <article
-            class="mqs-elevated flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 pb-0"
+            class={`mqs-elevated flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 pb-0 ${articleClassName}`}
           >
             <slot />
           </article>

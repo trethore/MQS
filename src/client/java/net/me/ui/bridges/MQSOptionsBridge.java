@@ -23,16 +23,20 @@ import net.me.config.GlobalConfigManager;
 import net.me.ui.bridges.utils.BridgeEmitter;
 import net.me.ui.bridges.utils.BridgeRequests;
 import net.me.ui.bridges.utils.BridgeSubscriptions;
+import net.me.utils.IdeCommandUtils;
 import tytoo.grapheneui.api.bridge.GrapheneBridge;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
 public final class MQSOptionsBridge implements AutoCloseable {
     public static final String CHANNEL_GET = "mqs:options:get";
     public static final String CHANNEL_SET = "mqs:options:set";
+    public static final String CHANNEL_OPEN_PATH = "mqs:options:open-path";
     public static final String EVENT_UPDATED = "mqs:options:updated";
     private static final String ACTION_UPDATE = "update";
+    private static final String ACTION_OPEN_PATH = "openPath";
     private static final String BRIDGE_NAME = "MQS options";
     private final GlobalConfigManager globalConfigManager;
     private final BridgeSubscriptions subscriptions;
@@ -50,6 +54,7 @@ public final class MQSOptionsBridge implements AutoCloseable {
         this.subscriptions.add(this.bridge.onReady(this::emitUpdated));
         this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_GET, this::buildSnapshot));
         this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_SET, OptionsUpdateRequest.class, this::handleSet));
+        this.subscriptions.add(BridgeRequests.onRequestJson(this.bridge, CHANNEL_OPEN_PATH, OptionsOpenPathRequest.class, this::handleOpenPath));
     }
 
     @Override
@@ -73,6 +78,9 @@ public final class MQSOptionsBridge implements AutoCloseable {
             if (payload.defaultIdeCommand() != null) {
                 this.globalConfigManager.setDefaultIdeCommand(payload.defaultIdeCommand());
             }
+            if (payload.additionalScriptDirectories() != null) {
+                this.globalConfigManager.setAdditionalScriptDirectories(payload.additionalScriptDirectories());
+            }
         } catch (RuntimeException exception) {
             Main.LOGGER.error("Failed to update options from UI bridge.", exception);
             return OptionsUpdateResponse.failure(ACTION_UPDATE, exception.getMessage(), buildSnapshot());
@@ -83,12 +91,31 @@ public final class MQSOptionsBridge implements AutoCloseable {
         return OptionsUpdateResponse.success(ACTION_UPDATE, "options updated", snapshot);
     }
 
+    private OptionsOpenPathResponse handleOpenPath(OptionsOpenPathRequest payload) {
+        if (payload == null) {
+            return OptionsOpenPathResponse.failure(ACTION_OPEN_PATH, "payload is required", null);
+        }
+
+        String ideCommand = payload.defaultIdeCommand() != null
+                ? payload.defaultIdeCommand()
+                : this.globalConfigManager.getDefaultIdeCommand();
+
+        try {
+            String openedPath = IdeCommandUtils.openPath(ideCommand, payload.path()).toString();
+            return OptionsOpenPathResponse.success(ACTION_OPEN_PATH, "path opened", openedPath);
+        } catch (IllegalArgumentException | IOException exception) {
+            Main.LOGGER.error("Failed to open path from options UI bridge.", exception);
+            return OptionsOpenPathResponse.failure(ACTION_OPEN_PATH, exception.getMessage(), null);
+        }
+    }
+
     private OptionsSnapshotResponse buildSnapshot() {
         return new OptionsSnapshotResponse(
                 this.globalConfigManager.isLogRedirectEnabled(),
                 this.globalConfigManager.areAllClassesAllowed(),
                 this.globalConfigManager.getDefaultIdeCommand(),
-                this.globalConfigManager.getAdditionalScriptDirectories()
+                this.globalConfigManager.getAdditionalScriptDirectories(),
+                IdeCommandUtils.getDefaultScriptsDirectory().toString()
         );
     }
 
@@ -100,14 +127,23 @@ public final class MQSOptionsBridge implements AutoCloseable {
         BridgeEmitter.emitJsonOnClientThread(() -> this.bridge, BRIDGE_NAME, EVENT_UPDATED, snapshot);
     }
 
-    public record OptionsUpdateRequest(Boolean logRedirect, Boolean allowAllClasses, String defaultIdeCommand) {
+    public record OptionsUpdateRequest(
+            Boolean logRedirect,
+            Boolean allowAllClasses,
+            String defaultIdeCommand,
+            List<String> additionalScriptDirectories
+    ) {
+    }
+
+    public record OptionsOpenPathRequest(String path, String defaultIdeCommand) {
     }
 
     public record OptionsSnapshotResponse(
             boolean logRedirect,
             boolean allowAllClasses,
             String defaultIdeCommand,
-            List<String> additionalScriptDirectories
+            List<String> additionalScriptDirectories,
+            String defaultScriptDirectory
     ) {
     }
 
@@ -119,6 +155,16 @@ public final class MQSOptionsBridge implements AutoCloseable {
 
         public static OptionsUpdateResponse failure(String action, String message, OptionsSnapshotResponse options) {
             return new OptionsUpdateResponse(false, action, message, options);
+        }
+    }
+
+    public record OptionsOpenPathResponse(boolean success, String action, String message, String openedPath) {
+        public static OptionsOpenPathResponse success(String action, String message, String openedPath) {
+            return new OptionsOpenPathResponse(true, action, message, openedPath);
+        }
+
+        public static OptionsOpenPathResponse failure(String action, String message, String openedPath) {
+            return new OptionsOpenPathResponse(false, action, message, openedPath);
         }
     }
 }
