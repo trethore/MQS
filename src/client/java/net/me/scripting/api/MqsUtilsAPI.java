@@ -19,6 +19,7 @@
 package net.me.scripting.api;
 
 import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
@@ -30,6 +31,7 @@ import net.me.utils.ChatUtils;
 import net.me.utils.McUtils;
 import net.me.utils.ScriptScheduler;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
@@ -48,6 +50,11 @@ public class MqsUtilsAPI implements ProxyObject {
     private static final String SCHEDULER_INTERVAL = "interval";
     private static final String CHAT = "chat";
     private static final String MATH = "math";
+    private static final String OPTIONS = "options";
+    private static final String LOG_REDIRECT = "logRedirect";
+    private static final String ALLOW_ALL_CLASSES = "allowAllClasses";
+    private static final String ADDITIONAL_SCRIPT_DIRS = "additionalScriptDirs";
+    private static final String DEFAULT_IDE_COMMAND = "defaultIdeCommand";
     private static final String MESSAGE = "message";
     private static final String PREFIX = "prefix";
     private static final String COMMAND = "command";
@@ -63,14 +70,18 @@ public class MqsUtilsAPI implements ProxyObject {
     private final ScriptingClassResolver classResolver;
     private final ScriptManager scriptManager;
     private final ScriptScheduler scriptScheduler;
+    private final GlobalConfigManager globalConfigManager;
     private final ProxyObject schedulerProxy;
+    private final ProxyObject optionsProxy;
     private final Set<String> memberKeys;
 
-    public MqsUtilsAPI(ScriptingClassResolver classResolver, ScriptManager scriptManager, ScriptScheduler scheduler) {
+    public MqsUtilsAPI(ScriptingClassResolver classResolver, ScriptManager scriptManager, ScriptScheduler scheduler, GlobalConfigManager globalConfigManager) {
         this.classResolver = classResolver;
         this.scriptManager = scriptManager;
         this.scriptScheduler = scheduler;
+        this.globalConfigManager = globalConfigManager;
         this.schedulerProxy = createSchedulerProxy();
+        this.optionsProxy = createOptionsProxy();
         this.memberKeys = Set.of(
                 MC,
                 RUN_ON_CLIENT_THREAD,
@@ -78,7 +89,8 @@ public class MqsUtilsAPI implements ProxyObject {
                 PLAYER,
                 SCHEDULER,
                 CHAT,
-                MATH
+                MATH,
+                OPTIONS
         );
     }
 
@@ -93,7 +105,7 @@ public class MqsUtilsAPI implements ProxyObject {
                 ),
                 List.of(),
                 List.of(),
-                List.of(describeSchedulerApi(), describeChatApi(), describeUtilsApi())
+                List.of(describeSchedulerApi(), describeChatApi(), describeOptionsApi(), describeUtilsApi())
         );
     }
 
@@ -117,7 +129,20 @@ public class MqsUtilsAPI implements ProxyObject {
                         method(PLAYER, fn(mappedInstanceType(LOCAL_PLAYER_CLASS) + " | null")),
                         ro(SCHEDULER, "MQSUtilsSchedulerApi"),
                         ro(CHAT, "MQSUtilsChatApi"),
-                        ro(MATH, "JavaClass<any>")
+                        ro(MATH, "JavaClass<any>"),
+                        ro(OPTIONS, "MQSUtilsOptionsApi")
+                )
+        );
+    }
+
+    private static TsObject describeOptionsApi() {
+        return new TsObject(
+                "MQSUtilsOptionsApi",
+                List.of(
+                        ro(LOG_REDIRECT, TypingsConstants.BOOLEAN),
+                        ro(ALLOW_ALL_CLASSES, TypingsConstants.BOOLEAN),
+                        ro(ADDITIONAL_SCRIPT_DIRS, "readonly string[]"),
+                        ro(DEFAULT_IDE_COMMAND, TypingsConstants.STRING)
                 )
         );
     }
@@ -154,6 +179,7 @@ public class MqsUtilsAPI implements ProxyObject {
             case SCHEDULER -> schedulerProxy;
             case CHAT -> chatMember();
             case MATH -> mathMember();
+            case OPTIONS -> optionsProxy;
             default -> null;
         };
     }
@@ -202,6 +228,66 @@ public class MqsUtilsAPI implements ProxyObject {
             @Override
             public void putMember(String key, Value value) {
                 throw new UnsupportedOperationException("Cannot modify MQS.utils.scheduler.");
+            }
+        };
+    }
+
+    private ProxyObject createOptionsProxy() {
+        return new ProxyObject() {
+            private final Set<String> keys = Set.of(
+                    LOG_REDIRECT,
+                    ALLOW_ALL_CLASSES,
+                    ADDITIONAL_SCRIPT_DIRS,
+                    DEFAULT_IDE_COMMAND
+            );
+
+            @Override
+            public Object getMember(String key) {
+                GlobalConfigManager.OptionsSnapshot optionsSnapshot = globalConfigManager.getOptionsSnapshot();
+                return switch (key) {
+                    case LOG_REDIRECT -> optionsSnapshot.logRedirect();
+                    case ALLOW_ALL_CLASSES -> optionsSnapshot.allowAllClasses();
+                    case ADDITIONAL_SCRIPT_DIRS -> createReadOnlyStringArray(optionsSnapshot.additionalScriptDirs());
+                    case DEFAULT_IDE_COMMAND -> optionsSnapshot.defaultIdeCommand();
+                    default -> null;
+                };
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return keys.toArray(new String[0]);
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return keys.contains(key);
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify MQS.utils.options.");
+            }
+        };
+    }
+
+    private ProxyArray createReadOnlyStringArray(List<String> values) {
+        return new ProxyArray() {
+            @Override
+            public Object get(long index) {
+                if (index < 0 || index >= values.size()) {
+                    return null;
+                }
+                return values.get((int) index);
+            }
+
+            @Override
+            public void set(long index, Value value) {
+                throw new UnsupportedOperationException("Cannot modify MQS.utils.options.additionalScriptDirs.");
+            }
+
+            @Override
+            public long getSize() {
+                return values.size();
             }
         };
     }

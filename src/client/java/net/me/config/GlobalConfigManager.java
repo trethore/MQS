@@ -114,6 +114,16 @@ public class GlobalConfigManager {
         }
     }
 
+    public OptionsSnapshot getOptionsSnapshot() {
+        data.ensureDefaults();
+        return new OptionsSnapshot(
+                data.logRedirect,
+                data.allowAllClasses,
+                List.copyOf(data.additionalScriptDirs),
+                data.defaultIdeCommand
+        );
+    }
+
     private static class ConfigData {
         @SerializedName(ConfigKeys.LOG_REDIRECT)
         boolean logRedirect = false;
@@ -135,5 +145,13 @@ public class GlobalConfigManager {
                 defaultIdeCommand = "code";
             }
         }
+    }
+
+    public record OptionsSnapshot(
+            boolean logRedirect,
+            boolean allowAllClasses,
+            List<String> additionalScriptDirs,
+            String defaultIdeCommand
+    ) {
     }
 }

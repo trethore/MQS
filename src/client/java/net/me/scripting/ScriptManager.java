@@ -52,7 +52,7 @@ public class ScriptManager {
     private CommandAPIService commandApiService;
 
     public ScriptManager() {
-        // 2 step initialization
+        // 2-step initialization
     }
 
     public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager, GlobalConfigManager globalConfigManager) {
@@ -65,7 +65,7 @@ public class ScriptManager {
 
         ScriptScheduler scheduler = new ScriptScheduler(this);
 
-        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, this.commandApiService, hookManager, keybindManager, scheduler);
+        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, this.commandApiService, hookManager, keybindManager, scheduler, globalConfigManager);
         this.contextManager = ScriptContextManager.create(contextFactory);
         this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, this.commandApiService, scheduler, contextManager);
 

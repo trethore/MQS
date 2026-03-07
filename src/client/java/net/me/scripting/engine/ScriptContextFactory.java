@@ -19,6 +19,7 @@
 package net.me.scripting.engine;
 
 import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
@@ -64,8 +65,9 @@ public class ScriptContextFactory {
     private final EventManager eventManager;
     private final HostAccess hostAccess;
     private final ScriptScheduler scheduler;
+    private final GlobalConfigManager globalConfigManager;
 
-    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager, ScriptScheduler scheduler) {
+    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager, ScriptScheduler scheduler, GlobalConfigManager globalConfigManager) {
         this.classResolver = classResolver;
         this.sharedEngine = sharedEngine;
         this.scriptManager = scriptManager;
@@ -75,6 +77,7 @@ public class ScriptContextFactory {
         this.hookManager = hookManager;
         this.keybindManager = keybindManager;
         this.scheduler = scheduler;
+        this.globalConfigManager = globalConfigManager;
 
         this.hostAccess = HostAccess.newBuilder(HostAccess.ALL)
                 .targetTypeMapping(
@@ -170,7 +173,7 @@ public class ScriptContextFactory {
         mqsMembers.put(KEYBINDS, keybindsApi);
         mqsMembers.put(CMD, commandsApi);
         mqsMembers.put(HOOKS, hooksApi);
-        mqsMembers.put(UTILS, new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler));
+        mqsMembers.put(UTILS, new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler, this.globalConfigManager));
 
         addApiMember(bindings, "MQS", ProxyObject.fromMap(mqsMembers));
 
