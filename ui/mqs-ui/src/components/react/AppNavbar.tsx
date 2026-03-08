@@ -31,6 +31,7 @@ interface AppNavbarProps {
 }
 
 const CODE_EDITOR_URL = "https://vscode.dev/";
+const OPTIONS_PAGE_HREF = "../options/index.html";
 
 const NAV_ITEMS: NavAnchorItem[] = [
   { id: "scripts", label: "Scripts", href: "../scripts/index.html" },
@@ -44,7 +45,7 @@ const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
     id: "options",
     label: "Options",
     description: "Open the settings page.",
-    href: "../options/index.html",
+    href: OPTIONS_PAGE_HREF,
   },
   {
     id: "keybinds",
@@ -62,14 +63,14 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
   const [preparingCodeLink, setPreparingCodeLink] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const handleActiveNavigationClick = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-  }, []);
+  const handleSettingsTriggerClick = useCallback(() => {
+    if (activeItem === "settings") {
+      globalThis.window.location.reload();
+      return;
+    }
 
-  const handleSettingsTriggerClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
     setSettingsOpen((currentOpen) => !currentOpen);
-  }, []);
+  }, [activeItem]);
 
   const handleUnimplementedSettingsClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -142,8 +143,6 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
 
               if (codeLink) {
                 onClick = handleCodeClick;
-              } else if (active) {
-                onClick = handleActiveNavigationClick;
               }
 
               return (
