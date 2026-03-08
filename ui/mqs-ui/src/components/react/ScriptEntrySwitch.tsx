@@ -18,7 +18,9 @@ export function ScriptEntrySwitch({ checked, className }: ScriptEntrySwitchProps
       <span
         className={cn(
           "h-5 w-5 rounded-full shadow-lg transition-transform",
-          checked ? "translate-x-5 bg-background dark:bg-primary-foreground" : "translate-x-0 bg-white",
+          checked
+            ? "translate-x-5 bg-background dark:bg-primary-foreground"
+            : "translate-x-0 bg-white",
         )}
       />
     </span>

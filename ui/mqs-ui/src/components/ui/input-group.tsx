@@ -10,7 +10,6 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="input-group"
-      role="group"
       className={cn(
         "mqs-focus-highlight-within group/input-group border-input dark:bg-input/30 shadow-xs relative flex w-full items-center rounded-md border transition-[color,box-shadow]",
         "h-9 has-[>textarea]:h-auto",
@@ -57,16 +56,9 @@ function InputGroupAddon({
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
     <div
-      role="group"
       data-slot="input-group-addon"
       data-align={align}
       className={cn(inputGroupAddonVariants({ align }), className)}
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest("button")) {
-          return;
-        }
-        e.currentTarget.parentElement?.querySelector("input")?.focus();
-      }}
       {...props}
     />
   );
@@ -123,7 +115,7 @@ const InputGroupInput = React.forwardRef<HTMLInputElement, React.ComponentProps<
       <Input
         data-slot="input-group-control"
         className={cn(
-          "flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent",
+          "flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:outline-none focus-visible:ring-0 dark:bg-transparent",
           className,
         )}
         ref={ref}
@@ -139,7 +131,7 @@ function InputGroupTextarea({ className, ...props }: React.ComponentProps<"texta
     <Textarea
       data-slot="input-group-control"
       className={cn(
-        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
+        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 dark:bg-transparent",
         className,
       )}
       {...props}

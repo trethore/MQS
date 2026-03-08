@@ -241,6 +241,12 @@
     outline-offset: calc(var(--focus-highlight-border-width) * -1);
   }
 
+  .mqs-focus-highlight-always:focus,
+  .mqs-focus-highlight-always:focus-visible {
+    outline: var(--focus-highlight-border-width) solid var(--focus-highlight-border-color);
+    outline-offset: calc(var(--focus-highlight-border-width) * -1);
+  }
+
   .mqs-focus-highlight-within:focus-within {
     outline: var(--focus-highlight-border-width) solid var(--focus-highlight-border-color);
     outline-offset: calc(var(--focus-highlight-border-width) * -1);

@@ -72,9 +72,7 @@ export function OptionsWidget() {
         ) : null}
 
         {!errorMessage && successMessage ? (
-          <output
-            className="mt-4 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-foreground"
-          >
+          <output className="mt-4 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-foreground">
             {successMessage}
           </output>
         ) : null}
@@ -92,7 +90,10 @@ export function OptionsWidget() {
                 <div className="mt-5 flex flex-col gap-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="pr-4">
-                      <label className="text-sm font-semibold text-foreground" htmlFor="log-redirect-switch">
+                      <label
+                        className="text-sm font-semibold text-foreground"
+                        htmlFor="log-redirect-switch"
+                      >
                         Log Redirect
                       </label>
                       <p className="mt-1 text-sm text-muted-foreground">
@@ -111,7 +112,10 @@ export function OptionsWidget() {
 
                   <div className="flex items-start justify-between gap-4">
                     <div className="pr-4">
-                      <label className="text-sm font-semibold text-foreground" htmlFor="allow-all-classes-switch">
+                      <label
+                        className="text-sm font-semibold text-foreground"
+                        htmlFor="allow-all-classes-switch"
+                      >
                         Allow all classes
                       </label>
                       <p className="mt-1 text-sm text-muted-foreground">
@@ -134,7 +138,10 @@ export function OptionsWidget() {
                 <h2 className="text-xl font-semibold text-foreground">Scripts</h2>
 
                 <div className="mt-6 flex flex-col gap-5">
-                  <label htmlFor="additional-script-directories" className="text-sm font-semibold text-foreground">
+                  <label
+                    htmlFor="additional-script-directories"
+                    className="text-sm font-semibold text-foreground"
+                  >
                     Additional script directories
                   </label>
                   <Input
@@ -154,7 +161,10 @@ export function OptionsWidget() {
 
                 <div className="mt-6 flex flex-col gap-6">
                   <div className="flex flex-col gap-5">
-                    <label htmlFor="default-ide-command" className="text-sm font-semibold text-foreground">
+                    <label
+                      htmlFor="default-ide-command"
+                      className="text-sm font-semibold text-foreground"
+                    >
                       Default IDE Command
                     </label>
                     <Input

@@ -52,7 +52,8 @@ function areSnapshotsEqual(leftSnapshot: OptionsSnapshot, rightSnapshot: Options
     leftSnapshot.allowAllClasses !== rightSnapshot.allowAllClasses ||
     leftSnapshot.defaultIdeCommand !== rightSnapshot.defaultIdeCommand ||
     leftSnapshot.defaultScriptDirectory !== rightSnapshot.defaultScriptDirectory ||
-    leftSnapshot.additionalScriptDirectories.length !== rightSnapshot.additionalScriptDirectories.length
+    leftSnapshot.additionalScriptDirectories.length !==
+      rightSnapshot.additionalScriptDirectories.length
   ) {
     return false;
   }
@@ -64,7 +65,9 @@ function areSnapshotsEqual(leftSnapshot: OptionsSnapshot, rightSnapshot: Options
 
 export function useOptionsController() {
   const [snapshot, setSnapshot] = useState<OptionsSnapshot>(EMPTY_SNAPSHOT);
-  const [formState, setFormState] = useState<OptionsFormState>(() => createFormState(EMPTY_SNAPSHOT));
+  const [formState, setFormState] = useState<OptionsFormState>(() =>
+    createFormState(EMPTY_SNAPSHOT),
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [openingPath, setOpeningPath] = useState(false);
@@ -125,14 +128,17 @@ export function useOptionsController() {
     );
   }, [formState, snapshot]);
 
-  const setField = useCallback(<Key extends keyof OptionsFormState>(field: Key, value: OptionsFormState[Key]) => {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setFormState((currentState) => ({
-      ...currentState,
-      [field]: value,
-    }));
-  }, []);
+  const setField = useCallback(
+    <Key extends keyof OptionsFormState>(field: Key, value: OptionsFormState[Key]) => {
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      setFormState((currentState) => ({
+        ...currentState,
+        [field]: value,
+      }));
+    },
+    [],
+  );
 
   const save = useCallback(async () => {
     setSaving(true);
