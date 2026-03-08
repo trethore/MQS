@@ -37,7 +37,7 @@ export async function updateOptions(
   return response;
 }
 
-export async function openPathWithIde(
+export async function openOptionsPath(
   openPathRequest: OptionsOpenPathRequest,
 ): Promise<OptionsOpenPathResponse> {
   const rawResponse = await requestBridge(OPTIONS_CHANNEL_OPEN_PATH, openPathRequest);

@@ -19,6 +19,7 @@
 package net.me.utils;
 
 import net.me.Main;
+import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,10 +27,13 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class IdeCommandUtils {
     private static final String DEFAULT_IDE_COMMAND = "code";
     private static final Path DEFAULT_SCRIPTS_DIRECTORY = Main.MOD_DIR.resolve("scripts");
+    private static final String WINDOWS_SHELL = "cmd.exe";
+    private static final String WINDOWS_SHELL_EXECUTE_FLAG = "/c";
 
     private IdeCommandUtils() {
     }
@@ -46,7 +50,7 @@ public final class IdeCommandUtils {
         return DEFAULT_SCRIPTS_DIRECTORY.toAbsolutePath().normalize();
     }
 
-    public static Path openPath(String ideCommand, String requestedPath) throws IOException {
+    public static Path openPathInIde(String ideCommand, String requestedPath) throws IOException {
         List<String> commandParts = tokenizeCommand(getDefaultIdeCommand(ideCommand));
         if (commandParts.isEmpty()) {
             throw new IllegalArgumentException("IDE command cannot be empty.");
@@ -57,11 +61,68 @@ public final class IdeCommandUtils {
         processCommand.addAll(commandParts);
         processCommand.add(targetPath.toString());
 
-        new ProcessBuilder(processCommand)
-                .directory(Main.MOD_DIR.toFile())
-                .start();
+        startProcess(processCommand);
 
         return targetPath;
+    }
+
+    public static Path pickDirectory(String requestedPath) throws IOException {
+        Path defaultDirectory = resolveDialogDirectory(requestedPath);
+        String selectedPath = TinyFileDialogs.tinyfd_selectFolderDialog(
+                "Select Project Folder",
+                defaultDirectory.toString()
+        );
+
+        if (selectedPath == null || selectedPath.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Path.of(selectedPath).toAbsolutePath().normalize();
+        } catch (InvalidPathException exception) {
+            throw new IllegalArgumentException("Invalid path selected.", exception);
+        }
+    }
+
+    private static void startProcess(List<String> processCommand) throws IOException {
+        try {
+            createProcessBuilder(processCommand).start();
+        } catch (IOException exception) {
+            if (!isWindows()) {
+                throw exception;
+            }
+
+            List<String> shellCommand = new ArrayList<>(processCommand.size() + 2);
+            shellCommand.add(WINDOWS_SHELL);
+            shellCommand.add(WINDOWS_SHELL_EXECUTE_FLAG);
+            shellCommand.addAll(processCommand);
+            createProcessBuilder(shellCommand).start();
+        }
+    }
+
+    private static ProcessBuilder createProcessBuilder(List<String> command) {
+        return new ProcessBuilder(command)
+                .directory(Main.MOD_DIR.toFile());
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    private static Path resolveDialogDirectory(String requestedPath) throws IOException {
+        Path targetPath = resolveTargetPath(requestedPath);
+        if (Files.isDirectory(targetPath)) {
+            return targetPath;
+        }
+
+        Path parent = targetPath.getParent();
+        if (parent != null && Files.isDirectory(parent)) {
+            return parent;
+        }
+
+        Path defaultScriptsDirectory = getDefaultScriptsDirectory();
+        Files.createDirectories(defaultScriptsDirectory);
+        return defaultScriptsDirectory;
     }
 
     private static Path resolveTargetPath(String requestedPath) throws IOException {

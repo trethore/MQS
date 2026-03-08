@@ -9,6 +9,7 @@ export interface OptionsSnapshot {
   logRedirect: boolean;
   allowAllClasses: boolean;
   defaultIdeCommand: string;
+  defaultProjectPath: string;
   additionalScriptDirectories: string[];
   defaultScriptDirectory: string;
 }
@@ -17,6 +18,7 @@ export interface OptionsUpdateRequest {
   logRedirect?: boolean;
   allowAllClasses?: boolean;
   defaultIdeCommand?: string;
+  defaultProjectPath?: string;
   additionalScriptDirectories?: string[];
 }
 
@@ -30,6 +32,7 @@ export interface OptionsUpdateResponse {
 export interface OptionsOpenPathRequest {
   path?: string;
   defaultIdeCommand?: string;
+  target?: "ide" | "picker";
 }
 
 export interface OptionsOpenPathResponse {
@@ -48,6 +51,7 @@ export function parseOptionsSnapshot(rawSnapshot: unknown): OptionsSnapshot | nu
     logRedirect: asBoolean(rawSnapshot.logRedirect),
     allowAllClasses: asBoolean(rawSnapshot.allowAllClasses),
     defaultIdeCommand: asString(rawSnapshot.defaultIdeCommand),
+    defaultProjectPath: asString(rawSnapshot.defaultProjectPath),
     additionalScriptDirectories: asStringArray(rawSnapshot.additionalScriptDirectories),
     defaultScriptDirectory: asString(rawSnapshot.defaultScriptDirectory),
   };

@@ -23,6 +23,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import net.me.Main;
 import net.me.console.ConsoleManager;
+import net.me.utils.IdeCommandUtils;
 
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -117,9 +118,24 @@ public class GlobalConfigManager {
     }
 
     public void setDefaultIdeCommand(String command) {
-        String sanitized = command == null || command.isBlank() ? "code" : command.trim();
+        data.ensureDefaults();
+        String sanitized = IdeCommandUtils.getDefaultIdeCommand(command);
         if (!sanitized.equals(data.defaultIdeCommand)) {
             data.defaultIdeCommand = sanitized;
+            save();
+        }
+    }
+
+    public String getDefaultProjectPath() {
+        data.ensureDefaults();
+        return data.defaultProjectPath;
+    }
+
+    public void setDefaultProjectPath(String path) {
+        data.ensureDefaults();
+        String sanitized = path == null ? "" : path.trim();
+        if (!sanitized.equals(data.defaultProjectPath)) {
+            data.defaultProjectPath = sanitized;
             save();
         }
     }
@@ -130,7 +146,8 @@ public class GlobalConfigManager {
                 data.logRedirect,
                 data.allowAllClasses,
                 List.copyOf(data.additionalScriptDirs),
-                data.defaultIdeCommand
+                data.defaultIdeCommand,
+                data.defaultProjectPath
         );
     }
 
@@ -167,12 +184,16 @@ public class GlobalConfigManager {
         @SerializedName(ConfigKeys.DEFAULT_IDE_COMMAND)
         String defaultIdeCommand = "code";
 
+        @SerializedName(ConfigKeys.DEFAULT_PROJECT_PATH)
+        String defaultProjectPath = "";
+
         void ensureDefaults() {
             if (additionalScriptDirs == null) {
                 additionalScriptDirs = new ArrayList<>();
             }
-            if (defaultIdeCommand == null || defaultIdeCommand.isBlank()) {
-                defaultIdeCommand = "code";
+            defaultIdeCommand = IdeCommandUtils.getDefaultIdeCommand(defaultIdeCommand);
+            if (defaultProjectPath == null) {
+                defaultProjectPath = "";
             }
         }
     }
@@ -181,7 +202,8 @@ public class GlobalConfigManager {
             boolean logRedirect,
             boolean allowAllClasses,
             List<String> additionalScriptDirs,
-            String defaultIdeCommand
+            String defaultIdeCommand,
+            String defaultProjectPath
     ) {
     }
 }

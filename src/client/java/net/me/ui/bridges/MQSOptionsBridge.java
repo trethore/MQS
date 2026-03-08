@@ -27,6 +27,7 @@ import net.me.utils.IdeCommandUtils;
 import tytoo.grapheneui.api.bridge.GrapheneBridge;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,6 +38,7 @@ public final class MQSOptionsBridge implements AutoCloseable {
     public static final String EVENT_UPDATED = "mqs:options:updated";
     private static final String ACTION_UPDATE = "update";
     private static final String ACTION_OPEN_PATH = "openPath";
+    private static final String OPEN_TARGET_PICKER = "picker";
     private static final String BRIDGE_NAME = "MQS options";
     private final GlobalConfigManager globalConfigManager;
     private final BridgeSubscriptions subscriptions;
@@ -78,6 +80,9 @@ public final class MQSOptionsBridge implements AutoCloseable {
             if (payload.defaultIdeCommand() != null) {
                 this.globalConfigManager.setDefaultIdeCommand(payload.defaultIdeCommand());
             }
+            if (payload.defaultProjectPath() != null) {
+                this.globalConfigManager.setDefaultProjectPath(payload.defaultProjectPath());
+            }
             if (payload.additionalScriptDirectories() != null) {
                 this.globalConfigManager.setAdditionalScriptDirectories(payload.additionalScriptDirectories());
             }
@@ -101,7 +106,11 @@ public final class MQSOptionsBridge implements AutoCloseable {
                 : this.globalConfigManager.getDefaultIdeCommand();
 
         try {
-            String openedPath = IdeCommandUtils.openPath(ideCommand, payload.path()).toString();
+            Path openedPath = openRequestedPath(payload, ideCommand);
+            if (openedPath == null) {
+                return OptionsOpenPathResponse.success(ACTION_OPEN_PATH, "path selection cancelled", "");
+            }
+
             return OptionsOpenPathResponse.success(ACTION_OPEN_PATH, "path opened", openedPath);
         } catch (IllegalArgumentException | IOException exception) {
             Main.LOGGER.error("Failed to open path from options UI bridge.", exception);
@@ -109,12 +118,22 @@ public final class MQSOptionsBridge implements AutoCloseable {
         }
     }
 
+    private Path openRequestedPath(OptionsOpenPathRequest payload, String ideCommand) throws IOException {
+        if (OPEN_TARGET_PICKER.equalsIgnoreCase(payload.target())) {
+            return IdeCommandUtils.pickDirectory(payload.path());
+        }
+
+        return IdeCommandUtils.openPathInIde(ideCommand, payload.path());
+    }
+
     private OptionsSnapshotResponse buildSnapshot() {
+        GlobalConfigManager.OptionsSnapshot optionsSnapshot = this.globalConfigManager.getOptionsSnapshot();
         return new OptionsSnapshotResponse(
-                this.globalConfigManager.isLogRedirectEnabled(),
-                this.globalConfigManager.areAllClassesAllowed(),
-                this.globalConfigManager.getDefaultIdeCommand(),
-                this.globalConfigManager.getAdditionalScriptDirectories(),
+                optionsSnapshot.logRedirect(),
+                optionsSnapshot.allowAllClasses(),
+                optionsSnapshot.defaultIdeCommand(),
+                optionsSnapshot.defaultProjectPath(),
+                optionsSnapshot.additionalScriptDirs(),
                 IdeCommandUtils.getDefaultScriptsDirectory().toString()
         );
     }
@@ -131,17 +150,19 @@ public final class MQSOptionsBridge implements AutoCloseable {
             Boolean logRedirect,
             Boolean allowAllClasses,
             String defaultIdeCommand,
+            String defaultProjectPath,
             List<String> additionalScriptDirectories
     ) {
     }
 
-    public record OptionsOpenPathRequest(String path, String defaultIdeCommand) {
+    public record OptionsOpenPathRequest(String path, String defaultIdeCommand, String target) {
     }
 
     public record OptionsSnapshotResponse(
             boolean logRedirect,
             boolean allowAllClasses,
             String defaultIdeCommand,
+            String defaultProjectPath,
             List<String> additionalScriptDirectories,
             String defaultScriptDirectory
     ) {
@@ -161,6 +182,10 @@ public final class MQSOptionsBridge implements AutoCloseable {
     public record OptionsOpenPathResponse(boolean success, String action, String message, String openedPath) {
         public static OptionsOpenPathResponse success(String action, String message, String openedPath) {
             return new OptionsOpenPathResponse(true, action, message, openedPath);
+        }
+
+        public static OptionsOpenPathResponse success(String action, String message, Path openedPath) {
+            return new OptionsOpenPathResponse(true, action, message, openedPath.toString());
         }
 
         public static OptionsOpenPathResponse failure(String action, String message, String openedPath) {

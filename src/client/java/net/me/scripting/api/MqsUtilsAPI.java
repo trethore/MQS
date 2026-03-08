@@ -19,6 +19,7 @@
 package net.me.scripting.api;
 
 import net.me.Main;
+import net.me.config.ConfigKeys;
 import net.me.config.GlobalConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptingClassResolver;
@@ -51,10 +52,6 @@ public class MqsUtilsAPI implements ProxyObject {
     private static final String CHAT = "chat";
     private static final String MATH = "math";
     private static final String OPTIONS = "options";
-    private static final String LOG_REDIRECT = "logRedirect";
-    private static final String ALLOW_ALL_CLASSES = "allowAllClasses";
-    private static final String ADDITIONAL_SCRIPT_DIRS = "additionalScriptDirs";
-    private static final String DEFAULT_IDE_COMMAND = "defaultIdeCommand";
     private static final String MESSAGE = "message";
     private static final String PREFIX = "prefix";
     private static final String COMMAND = "command";
@@ -139,10 +136,11 @@ public class MqsUtilsAPI implements ProxyObject {
         return new TsObject(
                 "MQSUtilsOptionsApi",
                 List.of(
-                        ro(LOG_REDIRECT, TypingsConstants.BOOLEAN),
-                        ro(ALLOW_ALL_CLASSES, TypingsConstants.BOOLEAN),
-                        ro(ADDITIONAL_SCRIPT_DIRS, "readonly string[]"),
-                        ro(DEFAULT_IDE_COMMAND, TypingsConstants.STRING)
+                        ro(ConfigKeys.LOG_REDIRECT, TypingsConstants.BOOLEAN),
+                        ro(ConfigKeys.ALLOW_ALL_CLASSES, TypingsConstants.BOOLEAN),
+                        ro(ConfigKeys.ADDITIONAL_SCRIPT_DIRS, "readonly string[]"),
+                        ro(ConfigKeys.DEFAULT_IDE_COMMAND, TypingsConstants.STRING),
+                        ro(ConfigKeys.DEFAULT_PROJECT_PATH, TypingsConstants.STRING)
                 )
         );
     }
@@ -235,20 +233,23 @@ public class MqsUtilsAPI implements ProxyObject {
     private ProxyObject createOptionsProxy() {
         return new ProxyObject() {
             private final Set<String> keys = Set.of(
-                    LOG_REDIRECT,
-                    ALLOW_ALL_CLASSES,
-                    ADDITIONAL_SCRIPT_DIRS,
-                    DEFAULT_IDE_COMMAND
+                    ConfigKeys.LOG_REDIRECT,
+                    ConfigKeys.ALLOW_ALL_CLASSES,
+                    ConfigKeys.ADDITIONAL_SCRIPT_DIRS,
+                    ConfigKeys.DEFAULT_IDE_COMMAND,
+                    ConfigKeys.DEFAULT_PROJECT_PATH
             );
 
             @Override
             public Object getMember(String key) {
                 GlobalConfigManager.OptionsSnapshot optionsSnapshot = globalConfigManager.getOptionsSnapshot();
                 return switch (key) {
-                    case LOG_REDIRECT -> optionsSnapshot.logRedirect();
-                    case ALLOW_ALL_CLASSES -> optionsSnapshot.allowAllClasses();
-                    case ADDITIONAL_SCRIPT_DIRS -> createReadOnlyStringArray(optionsSnapshot.additionalScriptDirs());
-                    case DEFAULT_IDE_COMMAND -> optionsSnapshot.defaultIdeCommand();
+                    case ConfigKeys.LOG_REDIRECT -> optionsSnapshot.logRedirect();
+                    case ConfigKeys.ALLOW_ALL_CLASSES -> optionsSnapshot.allowAllClasses();
+                    case ConfigKeys.ADDITIONAL_SCRIPT_DIRS ->
+                            createReadOnlyStringArray(optionsSnapshot.additionalScriptDirs());
+                    case ConfigKeys.DEFAULT_IDE_COMMAND -> optionsSnapshot.defaultIdeCommand();
+                    case ConfigKeys.DEFAULT_PROJECT_PATH -> optionsSnapshot.defaultProjectPath();
                     default -> null;
                 };
             }

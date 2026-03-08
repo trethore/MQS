@@ -1,10 +1,10 @@
-import { FolderOpen, Save } from "lucide-react";
+import { ExternalLink, FolderOpen, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { useOptionsController } from "@/hooks/useOptionsController";
 import { ScrollbarWidget } from "@/components/react/ScrollbarWidget";
+import { cn } from "@/lib/utils";
 
 function OptionsSectionHeading({ title }: { title: string }) {
   return (
@@ -16,17 +16,78 @@ function OptionsSectionHeading({ title }: { title: string }) {
   );
 }
 
-export function OptionsWidget() {
-  const { dirty, errorMessage, formState, loading, openPath, openingPath, save, saving, setField } =
-    useOptionsController();
+interface ToggleOptionRowProps {
+  checked: boolean;
+  description: string;
+  onCheckedChange: (checked: boolean) => void;
+  title: string;
+}
 
-  const handleOpenPathClick = () => {
-    openPath().then();
+function ToggleOptionRow({ checked, description, onCheckedChange, title }: ToggleOptionRowProps) {
+  return (
+    <button
+      type="button"
+      className="mqs-focus-highlight flex w-full cursor-pointer items-start justify-between gap-4 rounded-md text-left"
+      aria-pressed={checked}
+      onClick={() => {
+        onCheckedChange(!checked);
+      }}
+    >
+      <div className="pr-4">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "relative inline-flex h-[1.15rem] w-8 shrink-0 rounded-full border border-transparent transition-all",
+          checked ? "bg-primary" : "bg-input dark:bg-input/80",
+        )}
+      >
+        <span
+          className={cn(
+            "block size-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+            checked ? "dark:bg-primary-foreground" : "dark:bg-foreground",
+            checked ? "translate-x-[calc(100%-2px)]" : "translate-x-0",
+          )}
+        />
+      </span>
+    </button>
+  );
+}
+
+export function OptionsWidget() {
+  const {
+    defaultScriptDirectory,
+    dirty,
+    errorMessage,
+    formState,
+    loading,
+    openExplorer,
+    openProject,
+    openingExplorer,
+    openingProject,
+    save,
+    saving,
+    setField,
+  } = useOptionsController();
+
+  const handleOpenExplorerClick = () => {
+    openExplorer();
+  };
+
+  const handleOpenProjectClick = () => {
+    openProject();
   };
 
   const handleSaveClick = () => {
-    save().then();
+    void save();
   };
+
+  const ideActionsDisabled = saving || openingExplorer || openingProject;
+  const defaultProjectPathPlaceholder = defaultScriptDirectory
+    ? `Leave empty to open ${defaultScriptDirectory}.`
+    : "Leave empty to open the default scripts directory.";
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -37,8 +98,8 @@ export function OptionsWidget() {
               type="button"
               size="icon"
               variant="default"
-              className="mqs-surface-shadow mqs-surface-shadow-front size-12 shrink-0 shadow-[0_1rem_2.5rem_-0.75rem_rgb(0_0_0_/_0.55)]"
-              disabled={saving || openingPath}
+              className="mqs-surface-shadow mqs-surface-shadow-front size-12 shrink-0 shadow-[0_1rem_2.5rem_-0.75rem_rgb(0_0_0/0.55)]"
+              disabled={ideActionsDisabled}
               onClick={handleSaveClick}
               aria-label={saving ? "Saving changes" : "Save changes"}
               title={saving ? "Saving changes" : "Save changes"}
@@ -82,49 +143,23 @@ export function OptionsWidget() {
                 <OptionsSectionHeading title="Runtime behavior" />
 
                 <div className="mt-5 flex flex-col gap-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="pr-4">
-                      <label
-                        className="text-sm font-semibold text-foreground"
-                        htmlFor="log-redirect-switch"
-                      >
-                        Log Redirect
-                      </label>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Forward script logs into the MQS console output.
-                      </p>
-                    </div>
-                    <Switch
-                      id="log-redirect-switch"
-                      checked={formState.logRedirect}
-                      onCheckedChange={(checked) => {
-                        setField("logRedirect", checked);
-                      }}
-                      aria-label="Toggle log redirect"
-                    />
-                  </div>
+                  <ToggleOptionRow
+                    title="Log Redirect"
+                    description="Forward script logs into the MQS console output."
+                    checked={formState.logRedirect}
+                    onCheckedChange={(checked) => {
+                      setField("logRedirect", checked);
+                    }}
+                  />
 
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="pr-4">
-                      <label
-                        className="text-sm font-semibold text-foreground"
-                        htmlFor="allow-all-classes-switch"
-                      >
-                        Allow all classes
-                      </label>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Disable package restrictions and let scripts access any JVM class.
-                      </p>
-                    </div>
-                    <Switch
-                      id="allow-all-classes-switch"
-                      checked={formState.allowAllClasses}
-                      onCheckedChange={(checked) => {
-                        setField("allowAllClasses", checked);
-                      }}
-                      aria-label="Toggle allow all classes"
-                    />
-                  </div>
+                  <ToggleOptionRow
+                    title="Allow all classes"
+                    description="Disable package restrictions and let scripts access any JVM class."
+                    checked={formState.allowAllClasses}
+                    onCheckedChange={(checked) => {
+                      setField("allowAllClasses", checked);
+                    }}
+                  />
                 </div>
               </section>
 
@@ -132,12 +167,9 @@ export function OptionsWidget() {
                 <OptionsSectionHeading title="Scripts" />
 
                 <div className="mt-6 flex flex-col gap-5">
-                  <label
-                    htmlFor="additional-script-directories"
-                    className="text-sm font-semibold text-foreground"
-                  >
+                  <div className="text-sm font-semibold text-foreground">
                     Additional script directories
-                  </label>
+                  </div>
                   <Input
                     id="additional-script-directories"
                     value={formState.additionalScriptDirectoriesInput}
@@ -155,27 +187,34 @@ export function OptionsWidget() {
 
                 <div className="mt-6 flex flex-col gap-6">
                   <div className="flex flex-col gap-5">
-                    <label
-                      htmlFor="default-ide-command"
-                      className="text-sm font-semibold text-foreground"
-                    >
-                      Default IDE Command
-                    </label>
-                    <Input
-                      id="default-ide-command"
-                      value={formState.defaultIdeCommand}
-                      onChange={(event) => {
-                        setField("defaultIdeCommand", event.target.value);
-                      }}
-                      placeholder="code"
-                      className="mqs-surface-shadow mqs-surface-shadow-front"
-                    />
+                    <div className="text-sm font-semibold text-foreground">Default IDE Command</div>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Input
+                        id="default-ide-command"
+                        value={formState.defaultIdeCommand}
+                        onChange={(event) => {
+                          setField("defaultIdeCommand", event.target.value);
+                        }}
+                        placeholder="code"
+                        className="mqs-surface-shadow mqs-surface-shadow-front flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="default"
+                        className="mqs-surface-shadow mqs-surface-shadow-front w-full shrink-0 justify-center sm:w-40"
+                        disabled={ideActionsDisabled}
+                        onClick={handleOpenProjectClick}
+                      >
+                        <ExternalLink />
+                        {openingProject ? "Opening..." : "Open Project"}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-5">
-                    <label htmlFor="open-path" className="text-sm font-semibold text-foreground">
+                    <div className="text-sm font-semibold text-foreground">
                       Default Project Path
-                    </label>
+                    </div>
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <Input
                         id="open-path"
@@ -183,18 +222,18 @@ export function OptionsWidget() {
                         onChange={(event) => {
                           setField("openPath", event.target.value);
                         }}
-                        placeholder="Leave empty to open ../myqolscripts/scripts/."
+                        placeholder={defaultProjectPathPlaceholder}
                         className="mqs-surface-shadow mqs-surface-shadow-front flex-1"
                       />
                       <Button
                         type="button"
                         variant="default"
-                        className="mqs-surface-shadow mqs-surface-shadow-front shrink-0"
-                        disabled={openingPath || saving}
-                        onClick={handleOpenPathClick}
+                        className="mqs-surface-shadow mqs-surface-shadow-front w-full shrink-0 justify-center sm:w-40"
+                        disabled={ideActionsDisabled}
+                        onClick={handleOpenExplorerClick}
                       >
                         <FolderOpen />
-                        {openingPath ? "Opening..." : "Open path"}
+                        {openingExplorer ? "Opening..." : "Open Explorer"}
                       </Button>
                     </div>
                   </div>

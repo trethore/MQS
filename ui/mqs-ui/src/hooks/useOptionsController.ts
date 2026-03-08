@@ -4,7 +4,7 @@ import { getBridgeErrorMessage } from "@/bridge/core/bridgeError";
 import type { OptionsSnapshot } from "@/bridge/contracts/options";
 import {
   fetchOptionsSnapshot,
-  openPathWithIde,
+  openOptionsPath,
   subscribeToOptionsUpdated,
   updateOptions,
 } from "@/bridge/services/optionsService";
@@ -21,6 +21,7 @@ const EMPTY_SNAPSHOT: OptionsSnapshot = {
   logRedirect: false,
   allowAllClasses: false,
   defaultIdeCommand: "code",
+  defaultProjectPath: "",
   additionalScriptDirectories: [],
   defaultScriptDirectory: "",
 };
@@ -42,7 +43,7 @@ function createFormState(snapshot: OptionsSnapshot): OptionsFormState {
     allowAllClasses: snapshot.allowAllClasses,
     defaultIdeCommand: snapshot.defaultIdeCommand,
     additionalScriptDirectoriesInput: formatDirectories(snapshot.additionalScriptDirectories),
-    openPath: "",
+    openPath: snapshot.defaultProjectPath,
   };
 }
 
@@ -51,6 +52,7 @@ function areSnapshotsEqual(leftSnapshot: OptionsSnapshot, rightSnapshot: Options
     leftSnapshot.logRedirect !== rightSnapshot.logRedirect ||
     leftSnapshot.allowAllClasses !== rightSnapshot.allowAllClasses ||
     leftSnapshot.defaultIdeCommand !== rightSnapshot.defaultIdeCommand ||
+    leftSnapshot.defaultProjectPath !== rightSnapshot.defaultProjectPath ||
     leftSnapshot.defaultScriptDirectory !== rightSnapshot.defaultScriptDirectory ||
     leftSnapshot.additionalScriptDirectories.length !==
       rightSnapshot.additionalScriptDirectories.length
@@ -70,17 +72,15 @@ export function useOptionsController() {
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [openingPath, setOpeningPath] = useState(false);
+  const [openingExplorer, setOpeningExplorer] = useState(false);
+  const [openingProject, setOpeningProject] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const applySnapshot = useCallback((nextSnapshot: OptionsSnapshot) => {
     setSnapshot((previousSnapshot) => {
       return areSnapshotsEqual(previousSnapshot, nextSnapshot) ? previousSnapshot : nextSnapshot;
     });
-    setFormState((previousFormState) => ({
-      ...createFormState(nextSnapshot),
-      openPath: previousFormState.openPath,
-    }));
+    setFormState(createFormState(nextSnapshot));
     setErrorMessage(null);
   }, []);
 
@@ -122,6 +122,7 @@ export function useOptionsController() {
       formState.logRedirect !== snapshot.logRedirect ||
       formState.allowAllClasses !== snapshot.allowAllClasses ||
       formState.defaultIdeCommand.trim() !== snapshot.defaultIdeCommand ||
+      formState.openPath.trim() !== snapshot.defaultProjectPath ||
       formatDirectories(parseDirectories(formState.additionalScriptDirectoriesInput)) !==
         formatDirectories(snapshot.additionalScriptDirectories)
     );
@@ -147,6 +148,7 @@ export function useOptionsController() {
         logRedirect: formState.logRedirect,
         allowAllClasses: formState.allowAllClasses,
         defaultIdeCommand: formState.defaultIdeCommand.trim(),
+        defaultProjectPath: formState.openPath.trim(),
         additionalScriptDirectories: parseDirectories(formState.additionalScriptDirectoriesInput),
       });
 
@@ -155,7 +157,8 @@ export function useOptionsController() {
       }
 
       if (!response.success) {
-        throw new Error(response.message || "Failed to save MQS options.");
+        setErrorMessage(response.message || "Failed to save MQS options.");
+        return;
       }
     } catch (error) {
       setErrorMessage(getBridgeErrorMessage(error, "Failed to save MQS options."));
@@ -164,25 +167,55 @@ export function useOptionsController() {
     }
   }, [applySnapshot, formState]);
 
-  const openPath = useCallback(async () => {
-    setOpeningPath(true);
+  const openProject = useCallback(async () => {
+    setOpeningProject(true);
     setErrorMessage(null);
 
     try {
-      const response = await openPathWithIde({
+      const response = await openOptionsPath({
         path: formState.openPath.trim(),
         defaultIdeCommand: formState.defaultIdeCommand.trim(),
+        target: "ide",
       });
 
       if (!response.success) {
-        throw new Error(response.message || "Failed to open path.");
+        setErrorMessage(response.message || "Failed to open project.");
+        return;
       }
     } catch (error) {
-      setErrorMessage(getBridgeErrorMessage(error, "Failed to open path."));
+      setErrorMessage(getBridgeErrorMessage(error, "Failed to open project."));
     } finally {
-      setOpeningPath(false);
+      setOpeningProject(false);
     }
   }, [formState.defaultIdeCommand, formState.openPath]);
+
+  const openExplorer = useCallback(async () => {
+    setOpeningExplorer(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await openOptionsPath({
+        path: formState.openPath.trim(),
+        target: "picker",
+      });
+
+      if (!response.success) {
+        setErrorMessage(response.message || "Failed to open explorer.");
+        return;
+      }
+
+      if (response.openedPath) {
+        setFormState((currentState) => ({
+          ...currentState,
+          openPath: response.openedPath,
+        }));
+      }
+    } catch (error) {
+      setErrorMessage(getBridgeErrorMessage(error, "Failed to open explorer."));
+    } finally {
+      setOpeningExplorer(false);
+    }
+  }, [formState.openPath]);
 
   return {
     defaultScriptDirectory: snapshot.defaultScriptDirectory,
@@ -190,8 +223,10 @@ export function useOptionsController() {
     errorMessage,
     formState,
     loading,
-    openPath,
-    openingPath,
+    openExplorer,
+    openProject,
+    openingExplorer,
+    openingProject,
     save,
     saving,
     setField,

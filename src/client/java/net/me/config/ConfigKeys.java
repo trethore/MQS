@@ -25,6 +25,7 @@ public final class ConfigKeys {
     public static final String ALLOW_ALL_CLASSES = "allowAllClasses";
     public static final String ADDITIONAL_SCRIPT_DIRS = "additionalScriptDirs";
     public static final String DEFAULT_IDE_COMMAND = "defaultIdeCommand";
+    public static final String DEFAULT_PROJECT_PATH = "defaultProjectPath";
 
     // Per-script configs (in /configs/)
     public static final String ENABLED = "enabled";
