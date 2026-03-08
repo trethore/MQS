@@ -85,28 +85,33 @@ export function OptionsWidget() {
   };
 
   const ideActionsDisabled = saving || openingExplorer || openingProject;
+  const showSaveButton = dirty || saving;
   const defaultProjectPathPlaceholder = defaultScriptDirectory
     ? `Leave empty to open ${defaultScriptDirectory}.`
     : "Leave empty to open the default scripts directory.";
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      {dirty ? (
-        <div className="pointer-events-none absolute top-3 right-4 z-20 flex justify-end">
-          <Button
-            type="button"
-            size="icon"
-            variant="default"
-            className="mqs-floating-save-button pointer-events-auto size-12 shrink-0 [&_svg]:size-7"
-            disabled={ideActionsDisabled}
-            onClick={handleSaveClick}
-            aria-label={saving ? "Saving changes" : "Save changes"}
-            title={saving ? "Saving changes" : "Save changes"}
-          >
-            <Save />
-          </Button>
-        </div>
-      ) : null}
+      <div
+        aria-hidden={!showSaveButton}
+        className={cn(
+          "absolute top-3 right-4 z-20 flex justify-end transition duration-200",
+          showSaveButton ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
+        )}
+      >
+        <Button
+          type="button"
+          size="icon"
+          variant="default"
+          className="mqs-floating-save-button size-12 shrink-0 [&_svg]:size-7"
+          disabled={!showSaveButton || ideActionsDisabled}
+          onClick={handleSaveClick}
+          aria-label={saving ? "Saving changes" : "Save changes"}
+          title={saving ? "Saving changes" : "Save changes"}
+        >
+          <Save />
+        </Button>
+      </div>
 
       <ScrollbarWidget className="-mr-3 pr-3 pb-5">
         <div className="flex flex-col gap-4 pr-16 sm:flex-row sm:items-start sm:justify-between">
@@ -243,6 +248,11 @@ export function OptionsWidget() {
           )}
         </div>
       </ScrollbarWidget>
+
+      <div
+        aria-hidden="true"
+        className="mqs-list-bottom-fade pointer-events-none absolute bottom-0 left-0"
+      />
     </div>
   );
 }
