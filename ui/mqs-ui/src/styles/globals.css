@@ -220,6 +220,10 @@
     box-shadow: var(--mqs-menu-shadow);
   }
 
+  .mqs-floating-save-button {
+    box-shadow: var(--mqs-menu-shadow) !important;
+  }
+
   .mqs-list-bottom-fade {
     z-index: 2;
     right: var(--mqs-list-overlay-right-inset);

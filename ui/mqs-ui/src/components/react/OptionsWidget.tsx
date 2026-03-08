@@ -91,24 +91,24 @@ export function OptionsWidget() {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <ScrollbarWidget className="-mr-3 pr-3 pb-5">
-        {dirty ? (
-          <div className="sticky top-3 z-20 -mb-12 flex justify-end pr-1 pb-3">
-            <Button
-              type="button"
-              size="icon"
-              variant="default"
-              className="mqs-surface-shadow mqs-surface-shadow-front size-12 shrink-0 shadow-[0_1rem_2.5rem_-0.75rem_rgb(0_0_0/0.55)]"
-              disabled={ideActionsDisabled}
-              onClick={handleSaveClick}
-              aria-label={saving ? "Saving changes" : "Save changes"}
-              title={saving ? "Saving changes" : "Save changes"}
-            >
-              <Save className="size-5" />
-            </Button>
-          </div>
-        ) : null}
+      {dirty ? (
+        <div className="pointer-events-none absolute top-3 right-4 z-20 flex justify-end">
+          <Button
+            type="button"
+            size="icon"
+            variant="default"
+            className="mqs-floating-save-button pointer-events-auto size-12 shrink-0 [&_svg]:size-7"
+            disabled={ideActionsDisabled}
+            onClick={handleSaveClick}
+            aria-label={saving ? "Saving changes" : "Save changes"}
+            title={saving ? "Saving changes" : "Save changes"}
+          >
+            <Save />
+          </Button>
+        </div>
+      ) : null}
 
+      <ScrollbarWidget className="-mr-3 pr-3 pb-5">
         <div className="flex flex-col gap-4 pr-16 sm:flex-row sm:items-start sm:justify-between">
           <div className="shrink-0">
             <h1 className="text-left text-3xl font-semibold text-foreground">
