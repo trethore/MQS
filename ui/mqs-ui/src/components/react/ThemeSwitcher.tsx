@@ -16,7 +16,7 @@ const MENU_NAVIGATION_KEYS = new Set(["ArrowDown", "ArrowUp", "Home", "End"]);
 
 export function ThemeSwitcher() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { darkTheme, setThemePreference, themePreference } = useThemePreference();
+  const { setThemePreference, themePreference } = useThemePreference();
   const rootRef = useRef<HTMLDivElement>(null);
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -25,17 +25,6 @@ export function ThemeSwitcher() {
     0,
     THEME_OPTIONS.findIndex((option) => option.value === themePreference),
   );
-  const themeIcon = (() => {
-    if (darkTheme === true) {
-      return <Moon className="size-4" />;
-    }
-
-    if (darkTheme === false) {
-      return <Sun className="size-4" />;
-    }
-
-    return null;
-  })();
 
   useEffect(() => {
     if (!menuOpen) {
@@ -138,7 +127,10 @@ export function ThemeSwitcher() {
         className="mqs-focus-highlight inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         <span className="sr-only">Toggle theme</span>
-        <div className="flex h-4 w-4 items-center justify-center">{themeIcon}</div>
+        <div className="relative flex h-4 w-4 items-center justify-center" aria-hidden="true">
+          <Sun className="absolute size-4 dark:hidden" />
+          <Moon className="absolute hidden size-4 dark:block" />
+        </div>
       </button>
 
       {menuOpen ? (
