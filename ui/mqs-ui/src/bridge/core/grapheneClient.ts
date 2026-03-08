@@ -93,7 +93,9 @@ function parseJsonOrNull(value: unknown): GrapheneBridgeMessage | null {
   }
 }
 
-function isGrapheneMessage(message: GrapheneBridgeMessage | null): message is GrapheneBridgeMessage {
+function isGrapheneMessage(
+  message: GrapheneBridgeMessage | null,
+): message is GrapheneBridgeMessage {
   return message?.bridge === GRAPHENE_BRIDGE_NAME;
 }
 
@@ -163,7 +165,8 @@ function installFallbackBridge(): GrapheneBridgeApi | null {
   const requestHandlersByChannel = new Map<string, GrapheneBridgeRequestHandler>();
 
   const addEventListener = (channel: string, listener: GrapheneBridgeEventListener) => {
-    const listeners = eventListenersByChannel.get(channel) ?? new Set<GrapheneBridgeEventListener>();
+    const listeners =
+      eventListenersByChannel.get(channel) ?? new Set<GrapheneBridgeEventListener>();
     listeners.add(listener);
     eventListenersByChannel.set(channel, listeners);
   };
@@ -199,8 +202,7 @@ function installFallbackBridge(): GrapheneBridgeApi | null {
       for (const listener of listeners) {
         try {
           listener(message.payload ?? null);
-        } catch {
-        }
+        } catch {}
       }
 
       return;

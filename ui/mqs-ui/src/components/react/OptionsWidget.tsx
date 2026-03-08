@@ -6,19 +6,19 @@ import { Switch } from "@/components/ui/switch";
 import { useOptionsController } from "@/hooks/useOptionsController";
 import { ScrollbarWidget } from "@/components/react/ScrollbarWidget";
 
+function OptionsSectionHeading({ title }: { title: string }) {
+  return (
+    <div className="border-t border-border/70 pt-5">
+      <h2 className="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-xl font-semibold text-transparent">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
 export function OptionsWidget() {
-  const {
-    dirty,
-    errorMessage,
-    formState,
-    loading,
-    openPath,
-    openingPath,
-    save,
-    saving,
-    setField,
-    successMessage,
-  } = useOptionsController();
+  const { dirty, errorMessage, formState, loading, openPath, openingPath, save, saving, setField } =
+    useOptionsController();
 
   const handleOpenPathClick = () => {
     openPath().then();
@@ -71,12 +71,6 @@ export function OptionsWidget() {
           </p>
         ) : null}
 
-        {!errorMessage && successMessage ? (
-          <output className="mt-4 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-foreground">
-            {successMessage}
-          </output>
-        ) : null}
-
         <div className="mt-5">
           {loading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -85,7 +79,7 @@ export function OptionsWidget() {
           ) : (
             <div className="flex flex-col gap-8 pb-2">
               <section>
-                <h2 className="text-xl font-semibold text-foreground">Runtime behavior</h2>
+                <OptionsSectionHeading title="Runtime behavior" />
 
                 <div className="mt-5 flex flex-col gap-5">
                   <div className="flex items-start justify-between gap-4">
@@ -135,7 +129,7 @@ export function OptionsWidget() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-foreground">Scripts</h2>
+                <OptionsSectionHeading title="Scripts" />
 
                 <div className="mt-6 flex flex-col gap-5">
                   <label
@@ -157,7 +151,7 @@ export function OptionsWidget() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-foreground">IDE</h2>
+                <OptionsSectionHeading title="IDE" />
 
                 <div className="mt-6 flex flex-col gap-6">
                   <div className="flex flex-col gap-5">

@@ -72,7 +72,6 @@ export function useOptionsController() {
   const [saving, setSaving] = useState(false);
   const [openingPath, setOpeningPath] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const applySnapshot = useCallback((nextSnapshot: OptionsSnapshot) => {
     setSnapshot((previousSnapshot) => {
@@ -131,7 +130,6 @@ export function useOptionsController() {
   const setField = useCallback(
     <Key extends keyof OptionsFormState>(field: Key, value: OptionsFormState[Key]) => {
       setErrorMessage(null);
-      setSuccessMessage(null);
       setFormState((currentState) => ({
         ...currentState,
         [field]: value,
@@ -143,7 +141,6 @@ export function useOptionsController() {
   const save = useCallback(async () => {
     setSaving(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
       const response = await updateOptions({
@@ -160,8 +157,6 @@ export function useOptionsController() {
       if (!response.success) {
         throw new Error(response.message || "Failed to save MQS options.");
       }
-
-      setSuccessMessage(response.message || "MQS options saved.");
     } catch (error) {
       setErrorMessage(getBridgeErrorMessage(error, "Failed to save MQS options."));
     } finally {
@@ -172,7 +167,6 @@ export function useOptionsController() {
   const openPath = useCallback(async () => {
     setOpeningPath(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
       const response = await openPathWithIde({
@@ -183,8 +177,6 @@ export function useOptionsController() {
       if (!response.success) {
         throw new Error(response.message || "Failed to open path.");
       }
-
-      setSuccessMessage(response.openedPath ? `Opened ${response.openedPath}` : response.message);
     } catch (error) {
       setErrorMessage(getBridgeErrorMessage(error, "Failed to open path."));
     } finally {
@@ -203,6 +195,5 @@ export function useOptionsController() {
     save,
     saving,
     setField,
-    successMessage,
   };
 }
