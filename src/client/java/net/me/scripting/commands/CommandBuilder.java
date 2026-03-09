@@ -21,6 +21,8 @@ package net.me.scripting.commands;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -34,7 +36,7 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 import java.util.concurrent.CompletableFuture;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "UnusedReturnValue"})
 public class CommandBuilder {
     private final ArgumentBuilder<FabricClientCommandSource, ?> builder;
     private final RunningScript owner;
@@ -91,23 +93,30 @@ public class CommandBuilder {
 
         RequiredArgumentBuilder<FabricClientCommandSource, ?> argBuilder = requireArgumentBuilder();
         argBuilder.suggests((context, suggestionsBuilder) -> {
-            withScriptContext(() -> {
-                Value result = invokeOrReturn(callback, context);
-                Value resolved = awaitIfPromise(result);
-                appendSuggestions(resolved, suggestionsBuilder);
-            });
-            return suggestionsBuilder.buildFuture();
+            CompletableFuture<Suggestions> suggestionsFuture =
+                    withScriptContext(() -> resolveSuggestions(callback, context, suggestionsBuilder));
+            return suggestionsFuture != null
+                    ? suggestionsFuture
+                    : CompletableFuture.completedFuture(suggestionsBuilder.build());
         });
         return this;
     }
 
     private void withScriptContext(Runnable action) {
+        withScriptContext(() -> {
+            action.run();
+            return null;
+        });
+    }
+
+    private <T> T withScriptContext(ScriptAction<T> action) {
         RunningScript previous = scriptManager.getCurrentScript();
         scriptManager.setCurrentScript(owner);
         try {
-            action.run();
+            return action.run();
         } catch (Exception e) {
             Main.LOGGER.error("Error in script '{}': {}", owner.getName(), e.getMessage(), e);
+            return null;
         } finally {
             restoreScriptContext(previous);
         }
@@ -121,12 +130,12 @@ public class CommandBuilder {
         }
     }
 
-    private void invokeCallback(Value callback, com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> context) {
+    private void invokeCallback(Value callback, CommandContext<FabricClientCommandSource> context) {
         Value jsInstance = owner.getJsInstance();
         callback.invokeMember("call", jsInstance, new JSCommandContext(context));
     }
 
-    private Value invokeOrReturn(Value callback, com.mojang.brigadier.context.CommandContext<FabricClientCommandSource> context) {
+    private Value invokeOrReturn(Value callback, CommandContext<FabricClientCommandSource> context) {
         if (!callback.canExecute()) {
             return callback;
         }
@@ -134,16 +143,19 @@ public class CommandBuilder {
         return callback.invokeMember("call", jsInstance, new JSCommandContext(context));
     }
 
-    private Value awaitIfPromise(Value value) {
-        if (!isPromise(value)) {
-            return value;
-        }
-
+    private CompletableFuture<Suggestions> resolveSuggestions(Value callback,
+                                                              CommandContext<FabricClientCommandSource> context,
+                                                              SuggestionsBuilder suggestionsBuilder) {
         try {
-            return awaitPromise(value);
+            Value result = invokeOrReturn(callback, context);
+            if (!isPromise(result)) {
+                appendSuggestions(result, suggestionsBuilder);
+                return CompletableFuture.completedFuture(suggestionsBuilder.build());
+            }
+            return attachPromiseHandlers(result, suggestionsBuilder);
         } catch (Exception e) {
-            Main.LOGGER.error("Failed to await promise suggestions for script '{}'", owner.getName(), e);
-            return null;
+            Main.LOGGER.error("Failed to resolve suggestions for script '{}'", owner.getName(), e);
+            return CompletableFuture.completedFuture(suggestionsBuilder.build());
         }
     }
 
@@ -151,24 +163,42 @@ public class CommandBuilder {
         return value != null && value.hasMember("then");
     }
 
-    private Value awaitPromise(Value promise) {
-        CompletableFuture<Value> future = new CompletableFuture<>();
-
+    private CompletableFuture<Suggestions> attachPromiseHandlers(Value promise,
+                                                                 SuggestionsBuilder suggestionsBuilder) {
+        CompletableFuture<Suggestions> future = new CompletableFuture<>();
         promise.invokeMember("then", (ProxyExecutable) args -> {
-            future.complete(args != null && args.length > 0 ? args[0] : null);
+            withScriptContext(() -> {
+                try {
+                    Value resolved = args != null && args.length > 0 ? args[0] : null;
+                    appendSuggestions(resolved, suggestionsBuilder);
+                } catch (Exception e) {
+                    Main.LOGGER.error("Failed to append async suggestions for script '{}'", owner.getName(), e);
+                } finally {
+                    completeSuggestions(future, suggestionsBuilder);
+                }
+            });
             return null;
         });
 
         if (promise.hasMember("catch")) {
             promise.invokeMember("catch", (ProxyExecutable) args -> {
-                if (!future.isDone()) {
-                    future.complete(null);
-                }
+                withScriptContext(() -> Main.LOGGER.error("Failed to resolve async suggestions for script '{}'", owner.getName()));
+                completeSuggestions(future, suggestionsBuilder);
                 return null;
             });
         }
+        return future;
+    }
 
-        return future.join();
+    private void completeSuggestions(CompletableFuture<Suggestions> future, SuggestionsBuilder suggestionsBuilder) {
+        if (!future.isDone()) {
+            future.complete(suggestionsBuilder.build());
+        }
+    }
+
+    @FunctionalInterface
+    private interface ScriptAction<T> {
+        T run();
     }
 
     private void appendSuggestions(Value suggestions, SuggestionsBuilder builder) {
