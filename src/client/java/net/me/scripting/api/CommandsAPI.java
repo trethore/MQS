@@ -23,6 +23,7 @@ import net.me.scripting.ScriptManager;
 import net.me.scripting.api.internal.HandleTracker;
 import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.commands.CommandAPIService;
+import net.me.scripting.commands.CommandAPIService.CommandRegistration;
 import net.me.scripting.commands.CommandBuilder;
 import net.me.scripting.commands.ScriptArgumentType;
 import net.me.scripting.module.RunningScript;
@@ -51,7 +52,13 @@ public class CommandsAPI implements ProxyObject {
     private static final String TYPES = "types";
     private static final String QUICK = "quick";
     private static final String ARG_USAGE = "cmd.arg(name, type) requires two string arguments.";
+    private static final String LIT_USAGE = "cmd.lit(name) requires one string argument.";
+    private static final String REG_USAGE = "cmd.reg(builder) requires one argument.";
+    private static final String UNREG_USAGE = "cmd.unreg(commandName) requires one string argument.";
+    private static final String CLEAR_USAGE = "cmd.clear() takes no arguments.";
+    private static final String QUICK_USAGE = "cmd.quick(name, handler) requires a name and handler.";
     private static final String COMMAND_BUILDER_TYPE = "MQSCommandBuilder";
+    private static final String COMMAND_TYPES = "MQSCommandTypes";
 
     private static final Set<String> MEMBER_KEYS = Set.of(
             LIT,
@@ -66,7 +73,7 @@ public class CommandsAPI implements ProxyObject {
     private final CommandAPIService service;
     private final ScriptManager scriptManager;
     private final ScriptContextHelper contextHelper;
-    private final HandleTracker<String> commandTracker;
+    private final HandleTracker<CommandRegistration> commandTracker;
 
     public CommandsAPI(ScriptManager scriptManager, CommandAPIService service) {
         this.scriptManager = scriptManager;
@@ -122,14 +129,14 @@ public class CommandsAPI implements ProxyObject {
             String typeName = argumentType.toString();
             members.add(ro(typeName, "\"" + typeName + "\""));
         }
-        return new TsObject("MQSCommandTypes", List.copyOf(members));
+        return new TsObject(COMMAND_TYPES, List.copyOf(members));
     }
 
     private static TsObject describeCommandApi() {
         return new TsObject(
                 "MQSCommandApi",
                 List.of(
-                        ro(TYPES, "MQSCommandTypes"),
+                        ro(TYPES, COMMAND_TYPES),
                         method(LIT, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING), opt("configure", "(builder: " + COMMAND_BUILDER_TYPE + ") => " + TypingsConstants.UNKNOWN))),
                         method(ARG, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING), p("type", TypingsConstants.STRING))),
                         method(REG, fn(TypingsConstants.MQS_DISPOSER, p("builder", COMMAND_BUILDER_TYPE))),
@@ -206,8 +213,8 @@ public class CommandsAPI implements ProxyObject {
     }
 
     private CommandBuilder buildLiteral(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCountAtLeast(args, 1, "cmd.lit(name) requires one string argument.");
-        String name = ApiArgumentChecks.requireString(args, 0, "cmd.lit(name) requires one string argument.");
+        ApiArgumentChecks.requireArgCountAtLeast(args, 1, LIT_USAGE);
+        String name = ApiArgumentChecks.requireString(args, 0, LIT_USAGE);
         CommandBuilder builder = new CommandBuilder(ClientCommandManager.literal(name), owner, this.scriptManager);
         if (args.length > 1) {
             Value configure = args[1];
@@ -230,27 +237,21 @@ public class CommandsAPI implements ProxyObject {
     }
 
     private Value register(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 1, "cmd.reg(builder) requires one argument.");
+        ApiArgumentChecks.requireArgCount(args, 1, REG_USAGE);
         CommandBuilder builder = ApiArgumentChecks.requireHostObject(args, 0, CommandBuilder.class, "Argument must be a CommandBuilder instance.");
-        service.register(owner, builder);
-        String commandName = builder.getRootBuilder().getLiteral();
-        commandTracker.track(owner, commandName);
-        return contextHelper.createIdempotentDisposer(owner, () -> {
-            service.unregister(owner, commandName);
-            commandTracker.remove(owner, commandName);
-        });
+        return registerCommand(owner, builder);
     }
 
     private Void unregister(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 1, "cmd.unreg(commandName) requires one string argument.");
-        String commandName = ApiArgumentChecks.requireString(args, 0, "cmd.unreg(commandName) requires one string argument.");
+        ApiArgumentChecks.requireArgCount(args, 1, UNREG_USAGE);
+        String commandName = ApiArgumentChecks.requireString(args, 0, UNREG_USAGE);
         service.unregister(owner, commandName);
-        commandTracker.remove(owner, commandName);
+        disposeTrackedCommands(owner, commandName);
         return null;
     }
 
     private Void clear(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCount(args, 0, "cmd.clear() takes no arguments.");
+        ApiArgumentChecks.requireArgCount(args, 0, CLEAR_USAGE);
         service.unregisterAllFor(owner);
         commandTracker.disposeAll(owner, ignored -> {
         });
@@ -258,16 +259,26 @@ public class CommandsAPI implements ProxyObject {
     }
 
     private Value quick(Value[] args, RunningScript owner) {
-        ApiArgumentChecks.requireArgCountAtLeast(args, 2, "cmd.quick(name, handler) requires a name and handler.");
-        String name = ApiArgumentChecks.requireString(args, 0, "cmd.quick(name, handler) requires a name and handler.");
+        ApiArgumentChecks.requireArgCountAtLeast(args, 2, QUICK_USAGE);
+        String name = ApiArgumentChecks.requireString(args, 0, QUICK_USAGE);
         Value handler = ApiArgumentChecks.requireExecutable(args, 1, "Handler must be executable.");
         CommandBuilder builder = new CommandBuilder(name, owner, scriptManager);
         builder.run(handler);
-        service.register(owner, builder);
-        commandTracker.track(owner, name);
+        return registerCommand(owner, builder);
+    }
+
+    private Value registerCommand(RunningScript owner, CommandBuilder builder) {
+        CommandRegistration registration = service.register(owner, builder);
+        disposeTrackedCommands(owner, registration.name());
+        commandTracker.track(owner, registration);
         return contextHelper.createIdempotentDisposer(owner, () -> {
-            service.unregister(owner, name);
-            commandTracker.remove(owner, name);
+            service.unregister(registration);
+            commandTracker.remove(owner, registration);
+        });
+    }
+
+    private void disposeTrackedCommands(RunningScript owner, String commandName) {
+        commandTracker.dispose(owner, tracked -> tracked.name().equals(commandName), ignored -> {
         });
     }
 }

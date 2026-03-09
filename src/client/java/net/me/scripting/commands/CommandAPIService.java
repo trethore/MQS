@@ -37,9 +37,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CommandAPIService {
-    private final Map<RunningScript, Map<String, LiteralArgumentBuilder<FabricClientCommandSource>>> scriptCommands = new ConcurrentHashMap<>();
+    private final Map<RunningScript, Map<String, ManagedCommand>> scriptCommands = new ConcurrentHashMap<>();
     private final Set<String> allManagedCommandNames = ConcurrentHashMap.newKeySet();
-    private final Queue<QueuedCommand> commandQueue = new ConcurrentLinkedQueue<>();
+    private final Queue<ManagedCommand> commandQueue = new ConcurrentLinkedQueue<>();
 
     public void init() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, ignored) -> {
@@ -51,9 +51,9 @@ public class CommandAPIService {
 
     private void reRegisterAllCommands(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         scriptCommands.forEach((script, commands) ->
-                commands.values().forEach(builder -> {
-                    dispatcher.register(builder);
-                    Main.LOGGER.debug("Re-registered command '{}' for script '{}'", builder.getLiteral(), script.getName());
+                commands.values().forEach(command -> {
+                    dispatcher.register(command.builder());
+                    Main.LOGGER.debug("Re-registered command '{}' for script '{}'", command.registration().name(), script.getName());
                 })
         );
     }
@@ -65,64 +65,79 @@ public class CommandAPIService {
 
         Main.LOGGER.info("Registering {} queued script commands...", commandQueue.size());
 
-        QueuedCommand queuedCommand;
+        ManagedCommand queuedCommand;
         while ((queuedCommand = commandQueue.poll()) != null) {
             registerQueuedCommand(dispatcher, queuedCommand);
         }
     }
 
-    private void registerQueuedCommand(CommandDispatcher<FabricClientCommandSource> dispatcher, QueuedCommand queuedCommand) {
+    private void registerQueuedCommand(CommandDispatcher<FabricClientCommandSource> dispatcher, ManagedCommand queuedCommand) {
         try {
-            registerInternal(dispatcher, queuedCommand.owner(), queuedCommand.builder());
+            registerInternal(dispatcher, queuedCommand);
         } catch (Exception e) {
             Main.LOGGER.error("Failed to register queued command '{}' for script '{}': {}",
-                    queuedCommand.builder().getLiteral(), queuedCommand.owner().getName(), e.getMessage());
+                    queuedCommand.registration().name(), queuedCommand.registration().owner().getName(), e.getMessage());
         }
     }
 
-    public void register(RunningScript owner, CommandBuilder commandBuilder) {
+    public CommandRegistration register(RunningScript owner, CommandBuilder commandBuilder) {
         LiteralArgumentBuilder<FabricClientCommandSource> literalBuilder = commandBuilder.getRootBuilder();
+        ManagedCommand command = new ManagedCommand(
+                new CommandRegistration(UUID.randomUUID(), owner, literalBuilder.getLiteral()),
+                literalBuilder
+        );
         CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
 
         if (dispatcher == null) {
-            Main.LOGGER.warn("Dispatcher not available. Queuing command '{}' for later registration.", literalBuilder.getLiteral());
-            removeOwnershipForName(literalBuilder.getLiteral());
-            commandQueue.add(new QueuedCommand(owner, literalBuilder));
-            reconcileManagedCommandName(literalBuilder.getLiteral());
-            return;
+            Main.LOGGER.warn("Dispatcher not available. Queuing command '{}' for later registration.", command.registration().name());
+            removeOwnershipForName(command.registration().name());
+            commandQueue.add(command);
+            reconcileManagedCommandName(command.registration().name());
+            return command.registration();
         }
 
-        commandQueue.removeIf(qc -> qc.builder().getLiteral().equals(literalBuilder.getLiteral()));
-        registerInternal(dispatcher, owner, literalBuilder);
+        commandQueue.removeIf(queued -> queued.registration().name().equals(command.registration().name()));
+        registerInternal(dispatcher, command);
         pushCommandTree(dispatcher);
+        return command.registration();
     }
 
-    private void registerInternal(CommandDispatcher<FabricClientCommandSource> dispatcher, RunningScript owner, LiteralArgumentBuilder<FabricClientCommandSource> literalBuilder) {
-        String name = literalBuilder.getLiteral();
+    private void registerInternal(CommandDispatcher<FabricClientCommandSource> dispatcher, ManagedCommand command) {
+        String name = command.registration().name();
         if (dispatcher.getRoot().getChild(name) != null) {
             Main.LOGGER.warn("Command '{}' already exists. It will be replaced.", name);
             removeNode(name);
         }
         removeOwnershipFromMaps(name);
-        dispatcher.register(literalBuilder);
-        scriptCommands.computeIfAbsent(owner, ignored -> new ConcurrentHashMap<>()).put(name, literalBuilder);
+        dispatcher.register(command.builder());
+        scriptCommands.computeIfAbsent(command.registration().owner(), ignored -> new ConcurrentHashMap<>()).put(name, command);
         reconcileManagedCommandName(name);
     }
 
-    public void unregister(RunningScript owner, String name) {
-        commandQueue.removeIf(qc -> qc.owner().equals(owner) && qc.builder().getLiteral().equals(name));
-
-        Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = scriptCommands.get(owner);
-        if (owned == null || !owned.containsKey(name)) {
-            Main.LOGGER.warn("Script '{}' tried to unregister '{}' which it does not own or wasn’t found.", owner.getName(), name);
+    public boolean unregister(CommandRegistration registration) {
+        String name = registration.name();
+        boolean removedQueued = commandQueue.removeIf(command -> command.registration().equals(registration));
+        if (removedQueued) {
             reconcileManagedCommandName(name);
-            return;
+            return true;
+        }
+
+        Map<String, ManagedCommand> owned = scriptCommands.get(registration.owner());
+        if (owned == null) {
+            reconcileManagedCommandName(name);
+            return false;
+        }
+
+        ManagedCommand current = owned.get(name);
+        if (current == null || !current.registration().equals(registration)) {
+            reconcileManagedCommandName(name);
+            return false;
         }
 
         removeNode(name);
         owned.remove(name);
         if (owned.isEmpty()) {
-            scriptCommands.remove(owner);
+            scriptCommands.remove(registration.owner(), owned);
         }
 
         CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
@@ -130,19 +145,47 @@ public class CommandAPIService {
             pushCommandTree(dispatcher);
         }
         reconcileManagedCommandName(name);
+        return true;
+    }
+
+    public void unregister(RunningScript owner, String name) {
+        boolean removedQueued = commandQueue.removeIf(command ->
+                command.registration().owner().equals(owner) && command.registration().name().equals(name)
+        );
+
+        Map<String, ManagedCommand> owned = scriptCommands.get(owner);
+        ManagedCommand removed = owned != null ? owned.remove(name) : null;
+        if (!removedQueued && removed == null) {
+            Main.LOGGER.warn("Script '{}' tried to unregister '{}' which it does not own or wasn’t found.", owner.getName(), name);
+            reconcileManagedCommandName(name);
+            return;
+        }
+
+        if (removed != null) {
+            removeNode(name);
+        }
+        if (owned != null && owned.isEmpty()) {
+            scriptCommands.remove(owner, owned);
+        }
+
+        CommandDispatcher<FabricClientCommandSource> dispatcher = ClientCommandManager.getActiveDispatcher();
+        if (dispatcher != null && removed != null) {
+            pushCommandTree(dispatcher);
+        }
+        reconcileManagedCommandName(name);
     }
 
     public void unregisterAllFor(RunningScript owner) {
         Set<String> touchedNames = new HashSet<>();
-        commandQueue.removeIf(qc -> {
-            if (!qc.owner().equals(owner)) {
+        commandQueue.removeIf(command -> {
+            if (!command.registration().owner().equals(owner)) {
                 return false;
             }
-            touchedNames.add(qc.builder().getLiteral());
+            touchedNames.add(command.registration().name());
             return true;
         });
 
-        Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = scriptCommands.remove(owner);
+        Map<String, ManagedCommand> owned = scriptCommands.remove(owner);
         if (owned != null) {
             touchedNames.addAll(owned.keySet());
         }
@@ -151,9 +194,9 @@ public class CommandAPIService {
         }
 
         if (owned != null) {
-            for (String name : owned.keySet()) {
-                if (removeNode(name)) {
-                    Main.LOGGER.info("Unregistered '{}' from disabled script '{}'", name, owner.getName());
+            for (ManagedCommand command : owned.values()) {
+                if (removeNode(command.registration().name())) {
+                    Main.LOGGER.info("Unregistered '{}' from disabled script '{}'", command.registration().name(), owner.getName());
                 }
             }
         }
@@ -170,13 +213,13 @@ public class CommandAPIService {
 
     private void removeOwnershipForName(String name) {
         removeOwnershipFromMaps(name);
-        commandQueue.removeIf(qc -> qc.builder().getLiteral().equals(name));
+        commandQueue.removeIf(command -> command.registration().name().equals(name));
         reconcileManagedCommandName(name);
     }
 
     private void removeOwnershipFromMaps(String name) {
-        for (Map.Entry<RunningScript, Map<String, LiteralArgumentBuilder<FabricClientCommandSource>>> entry : scriptCommands.entrySet()) {
-            Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned = entry.getValue();
+        for (Map.Entry<RunningScript, Map<String, ManagedCommand>> entry : scriptCommands.entrySet()) {
+            Map<String, ManagedCommand> owned = entry.getValue();
             owned.remove(name);
             if (owned.isEmpty()) {
                 scriptCommands.remove(entry.getKey(), owned);
@@ -193,13 +236,13 @@ public class CommandAPIService {
     }
 
     private boolean isNameManaged(String name) {
-        for (Map<String, LiteralArgumentBuilder<FabricClientCommandSource>> owned : scriptCommands.values()) {
+        for (Map<String, ManagedCommand> owned : scriptCommands.values()) {
             if (owned.containsKey(name)) {
                 return true;
             }
         }
-        for (QueuedCommand queuedCommand : commandQueue) {
-            if (queuedCommand.builder().getLiteral().equals(name)) {
+        for (ManagedCommand queuedCommand : commandQueue) {
+            if (queuedCommand.registration().name().equals(name)) {
                 return true;
             }
         }
@@ -257,16 +300,16 @@ public class CommandAPIService {
         List<ManagedCommandInfo> commands = new ArrayList<>();
 
         scriptCommands.forEach((owner, ownedCommands) ->
-                ownedCommands.keySet().forEach(commandName ->
-                        commands.add(new ManagedCommandInfo(commandName, owner.getId(), owner.getName(), false))
+                ownedCommands.values().forEach(command ->
+                        commands.add(new ManagedCommandInfo(command.registration().name(), owner.getId(), owner.getName(), false))
                 )
         );
 
-        for (QueuedCommand queuedCommand : commandQueue) {
+        for (ManagedCommand queuedCommand : commandQueue) {
             commands.add(new ManagedCommandInfo(
-                    queuedCommand.builder().getLiteral(),
-                    queuedCommand.owner().getId(),
-                    queuedCommand.owner().getName(),
+                    queuedCommand.registration().name(),
+                    queuedCommand.registration().owner().getId(),
+                    queuedCommand.registration().owner().getName(),
                     true
             ));
         }
@@ -282,6 +325,10 @@ public class CommandAPIService {
     public record ManagedCommandInfo(String name, String ownerScriptId, String ownerScriptName, boolean queued) {
     }
 
-    private record QueuedCommand(RunningScript owner, LiteralArgumentBuilder<FabricClientCommandSource> builder) {
+    public record CommandRegistration(UUID id, RunningScript owner, String name) {
+    }
+
+    private record ManagedCommand(CommandRegistration registration,
+                                  LiteralArgumentBuilder<FabricClientCommandSource> builder) {
     }
 }
