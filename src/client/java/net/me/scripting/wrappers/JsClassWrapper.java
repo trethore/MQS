@@ -56,14 +56,14 @@ public class JsClassWrapper implements ProxyObject, ProxyInstantiable {
     private final ScriptManager scriptManager;
 
     @SuppressWarnings("java:S3011") // Accessibility bypass is intentional for this reflection utility
-    public JsClassWrapper(String runtimeFqcn,
+    public JsClassWrapper(Class<?> targetClass,
                           Map<String, List<String>> methodLookup,
                           Map<String, String> fieldLookup,
                           MappingsManager mappingsManager,
                           ScriptManager scriptManager
-    ) throws ClassNotFoundException {
-        Main.LOGGER.debug("Creating JsClassWrapper for: {}", runtimeFqcn);
-        this.targetClass = Class.forName(runtimeFqcn);
+    ) {
+        Main.LOGGER.debug("Creating JsClassWrapper for: {}", targetClass.getName());
+        this.targetClass = targetClass;
         this.targetClassName = targetClass.getName();
         this.namedToRuntimeMethods = Map.copyOf(methodLookup);
         this.namedToRuntimeFields = Map.copyOf(fieldLookup);

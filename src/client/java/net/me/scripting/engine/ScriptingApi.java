@@ -156,14 +156,13 @@ public class ScriptingApi {
             throw new IllegalArgumentException("The instance passed to wrap() was null or could not be unwrapped to a Java object.");
         }
         Class<?> instanceClass = javaInstance.getClass();
-        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(
-                instanceClass, resolver.getRuntimeToNamedMap(), resolver.getMethodMap(), resolver.getFieldMap());
+        ScriptingClassResolver.WrapperMetadata metadata = resolver.getOrCreateWrapperMetadata(instanceClass);
 
         return new JsObjectWrapper(
                 javaInstance,
                 instanceClass,
-                cm.methods(),
-                cm.fields(),
+                metadata.methods(),
+                metadata.fields(),
                 resolver.getMappingsManager(),
                 resolver.getScriptManager()
         );

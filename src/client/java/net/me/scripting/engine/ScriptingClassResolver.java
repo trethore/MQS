@@ -41,6 +41,7 @@ public class ScriptingClassResolver {
     private static final String FABRIC_PREFIX = "net.fabricmc.";
 
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
+    private final Map<Class<?>, WrapperMetadata> wrapperMetadataCache = new ConcurrentHashMap<>();
     private final Map<Class<?>, Boolean> mcRelatedCache = new ConcurrentHashMap<>();
 
     @Getter
@@ -160,7 +161,7 @@ public class ScriptingClassResolver {
 
         while (!toCheck.isEmpty()) {
             Class<?> currentClass = toCheck.poll();
-            if (currentClass == null || !visited.add(currentClass)) {
+            if (!shouldInspect(currentClass, visited)) {
                 continue;
             }
 
@@ -168,20 +169,36 @@ public class ScriptingClassResolver {
                 return true;
             }
 
-            Class<?> superclass = currentClass.getSuperclass();
-            if (isCachedMcRelated(superclass)) {
+            if (hasMcRelatedParent(currentClass, toCheck)) {
                 return true;
-            }
-            enqueueIfValid(toCheck, superclass);
-
-            for (Class<?> iface : currentClass.getInterfaces()) {
-                if (isCachedMcRelated(iface)) {
-                    return true;
-                }
-                enqueueIfValid(toCheck, iface);
             }
         }
 
+        return false;
+    }
+
+    private boolean shouldInspect(Class<?> cls, Set<Class<?>> visited) {
+        return cls != null && visited.add(cls);
+    }
+
+    private boolean hasMcRelatedParent(Class<?> cls, Queue<Class<?>> queue) {
+        if (checkAndQueueParent(cls.getSuperclass(), queue)) {
+            return true;
+        }
+
+        for (Class<?> iface : cls.getInterfaces()) {
+            if (checkAndQueueParent(iface, queue)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean checkAndQueueParent(Class<?> cls, Queue<Class<?>> queue) {
+        if (isCachedMcRelated(cls)) {
+            return true;
+        }
+        enqueueIfValid(queue, cls);
         return false;
     }
 
@@ -268,8 +285,20 @@ public class ScriptingClassResolver {
 
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
-        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(cls, runtimeToNamed, methodMap, fieldMap);
-        return new JsClassWrapper(runtime, cm.methods(), cm.fields(), this.mappingsManager, this.scriptManager);
+        WrapperMetadata metadata = getOrCreateWrapperMetadata(cls);
+        return new JsClassWrapper(cls, metadata.methods(), metadata.fields(), this.mappingsManager, this.scriptManager);
+    }
+
+    public WrapperMetadata getOrCreateWrapperMetadata(Class<?> runtimeClass) {
+        return wrapperMetadataCache.computeIfAbsent(runtimeClass, cls -> {
+            MappingUtils.ClassMappings classMappings = MappingUtils.combineMappings(cls, runtimeToNamed, methodMap, fieldMap);
+            return new WrapperMetadata(cls, classMappings.methods(), classMappings.fields());
+        });
+    }
+
+    public record WrapperMetadata(Class<?> runtimeClass,
+                                  Map<String, List<String>> methods,
+                                  Map<String, String> fields) {
     }
 
 }

@@ -153,11 +153,8 @@ public final class ScriptUtils {
             return o;
         }
 
-        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(c,
-                mappingsManager.getRuntimeToNamedClassMap(),
-                mappingsManager.getMethodMap(),
-                mappingsManager.getFieldMap());
+        ScriptingClassResolver.WrapperMetadata metadata = classResolver.getOrCreateWrapperMetadata(c);
 
-        return new JsObjectWrapper(o, c, cm.methods(), cm.fields(), mappingsManager, scriptManager);
+        return new JsObjectWrapper(o, c, metadata.methods(), metadata.fields(), mappingsManager, scriptManager);
     }
 }
