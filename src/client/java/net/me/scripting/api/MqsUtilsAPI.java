@@ -26,6 +26,7 @@ import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.ReflectedJavaTypeDescriptors;
 import net.me.scripting.typings.TypingsConstants;
 import net.me.scripting.typings.schema.TsObject;
 import net.me.scripting.utils.ScriptUtils;
@@ -59,11 +60,13 @@ public class MqsUtilsAPI implements ProxyObject {
     private static final String LEVEL = "Level";
     private static final String CHAT_LEVEL_API = "MQSUtilsChatLevelApi";
     private static final String CHAT_LEVEL_INSTANCE = "MQSUtilsChatLevelInstance";
+    private static final String MATH_API = "MQSUtilsMathApi";
     private static final String MINECRAFT_CLASS = "net.minecraft.client.Minecraft";
     private static final String CLIENT_LEVEL_CLASS = "net.minecraft.client.multiplayer.ClientLevel";
     private static final String LOCAL_PLAYER_CLASS = "net.minecraft.client.player.LocalPlayer";
     private static final String MAPPED_INSTANCE_PREFIX = "MQSMappedInstance<\"";
     private static final String MAPPED_INSTANCE_SUFFIX = "\">";
+    private static final String REQUIRE_CALLBACK_FUNCTION_ERROR = "runOnClientThread requires a callback function.";
 
     private final ScriptingClassResolver classResolver;
     private final ScriptManager scriptManager;
@@ -101,11 +104,12 @@ public class MqsUtilsAPI implements ProxyObject {
                         alias(
                                 CHAT_LEVEL_API,
                                 "JavaClass<" + CHAT_LEVEL_INSTANCE + "> & { readonly ERROR: " + CHAT_LEVEL_INSTANCE + "; readonly INFO: " + CHAT_LEVEL_INSTANCE + "; readonly WARN: " + CHAT_LEVEL_INSTANCE + "; readonly SUCCESS: " + CHAT_LEVEL_INSTANCE + "; }"
-                        )
+                        ),
+                        alias(MATH_API, TypingsConstants.JAVA_CLASS_ANY + " & MQSUtilsMathStatics")
                 ),
                 List.of(),
                 List.of(),
-                List.of(describeSchedulerApi(), describeChatApi(), describeOptionsApi(), describeUtilsApi())
+                List.of(describeSchedulerApi(), describeChatApi(), describeMathApi(), describeOptionsApi(), describeUtilsApi())
         );
     }
 
@@ -129,10 +133,14 @@ public class MqsUtilsAPI implements ProxyObject {
                         method(PLAYER, fn(mappedInstanceType(LOCAL_PLAYER_CLASS) + " | null")),
                         ro(SCHEDULER, "MQSUtilsSchedulerApi"),
                         ro(CHAT, "MQSUtilsChatApi"),
-                        ro(MATH, "JavaClass<any>"),
+                        ro(MATH, MATH_API),
                         ro(OPTIONS, "MQSUtilsOptionsApi")
                 )
         );
+    }
+
+    private static TsObject describeMathApi() {
+        return ReflectedJavaTypeDescriptors.describeStaticClass("MQSUtilsMathStatics", Math.class);
     }
 
     private static TsObject describeOptionsApi() {
@@ -354,8 +362,8 @@ public class MqsUtilsAPI implements ProxyObject {
     }
 
     private Object runOnClientThread(Value[] args) {
-        ApiArgumentChecks.requireArgCount(args, 1, "runOnClientThread requires a callback function.");
-        ApiArgumentChecks.requireExecutable(args, 0, "runOnClientThread requires a callback function.");
+        ApiArgumentChecks.requireArgCount(args, 1, REQUIRE_CALLBACK_FUNCTION_ERROR);
+        ApiArgumentChecks.requireExecutable(args, 0, REQUIRE_CALLBACK_FUNCTION_ERROR);
         RunningScript owner = requireCurrentScript();
         Value callback = args[0];
         McUtils.getMc().execute(() -> executeCallback(owner, callback));
