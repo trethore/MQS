@@ -91,6 +91,11 @@ public class ConfigsAPI implements ProxyObject {
     }
 
     public static Object toSerializableObject(Value value) {
+        Set<Value> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        return toSerializableObject(value, visited);
+    }
+
+    private static Object toSerializableObject(Value value, Set<Value> visited) {
         if (value == null || value.isNull()) {
             return null;
         }
@@ -103,24 +108,65 @@ public class ConfigsAPI implements ProxyObject {
         if (value.isNumber()) {
             return value.as(Number.class);
         }
+        rejectUnsupportedRuntimeValues(value);
         if (value.hasArrayElements()) {
-            List<Object> javaList = new ArrayList<>();
-            for (int i = 0; i < value.getArraySize(); i++) {
-                javaList.add(toSerializableObject(value.getArrayElement(i)));
-            }
-            return javaList;
+            return serializeArray(value, visited);
+        }
+        if (value.hasMembers()) {
+            return serializeObject(value, visited);
+        }
+        throw new IllegalArgumentException("Unsupported config value type.");
+    }
+
+    private static void rejectUnsupportedRuntimeValues(Value value) {
+        if (value.canExecute()) {
+            throw new IllegalArgumentException("Config values cannot be functions.");
         }
         if (value.isHostObject()) {
-            return value.asHostObject();
+            throw new IllegalArgumentException("Config values cannot contain Java host objects.");
         }
-        if (value.hasMembers() || value.isProxyObject()) {
+        if (value.isProxyObject()) {
+            throw new IllegalArgumentException("Config values cannot contain proxy-backed objects.");
+        }
+    }
+
+    private static List<Object> serializeArray(Value value, Set<Value> visited) {
+        guardAgainstCycles(value, visited);
+        try {
+            List<Object> javaList = new ArrayList<>();
+            for (int i = 0; i < value.getArraySize(); i++) {
+                javaList.add(toSerializableObject(value.getArrayElement(i), visited));
+            }
+            return javaList;
+        } finally {
+            visited.remove(value);
+        }
+    }
+
+    private static Map<String, Object> serializeObject(Value value, Set<Value> visited) {
+        if (isPromiseLike(value)) {
+            throw new IllegalArgumentException("Config values cannot contain promises.");
+        }
+        guardAgainstCycles(value, visited);
+        try {
             Map<String, Object> javaMap = new LinkedHashMap<>();
-            for (String k : value.getMemberKeys()) {
-                javaMap.put(k, toSerializableObject(value.getMember(k)));
+            for (String key : value.getMemberKeys()) {
+                javaMap.put(key, toSerializableObject(value.getMember(key), visited));
             }
             return javaMap;
+        } finally {
+            visited.remove(value);
         }
-        return value;
+    }
+
+    private static void guardAgainstCycles(Value value, Set<Value> visited) {
+        if (!visited.add(value)) {
+            throw new IllegalArgumentException("Config values cannot contain circular references.");
+        }
+    }
+
+    private static boolean isPromiseLike(Value value) {
+        return value.canInvokeMember("then");
     }
 
     @Override

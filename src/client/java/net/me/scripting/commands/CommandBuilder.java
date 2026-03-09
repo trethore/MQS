@@ -35,6 +35,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 @SuppressWarnings({"unused", "UnusedReturnValue"})
 public class CommandBuilder {
@@ -109,11 +110,11 @@ public class CommandBuilder {
         });
     }
 
-    private <T> T withScriptContext(ScriptAction<T> action) {
+    private <T> T withScriptContext(Supplier<T> action) {
         RunningScript previous = scriptManager.getCurrentScript();
         scriptManager.setCurrentScript(owner);
         try {
-            return action.run();
+            return action.get();
         } catch (Exception e) {
             Main.LOGGER.error("Error in script '{}': {}", owner.getName(), e.getMessage(), e);
             return null;
@@ -196,11 +197,6 @@ public class CommandBuilder {
         }
     }
 
-    @FunctionalInterface
-    private interface ScriptAction<T> {
-        T run();
-    }
-
     private void appendSuggestions(Value suggestions, SuggestionsBuilder builder) {
         if (suggestions == null) {
             return;
@@ -264,4 +260,5 @@ public class CommandBuilder {
         }
         throw new IllegalStateException("The root of a command must be a literal. Current builder is: " + builder.getClass().getSimpleName());
     }
+
 }
