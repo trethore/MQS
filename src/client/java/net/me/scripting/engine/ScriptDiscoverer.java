@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 public class ScriptDiscoverer {
 
-    private static final Pattern MODULE_ANNOTATION_PATTERN = Pattern.compile("^//\\s*@module\\((.*)\\)");
+    private static final Pattern SCRIPT_ANNOTATION_PATTERN = Pattern.compile("^//\\s*@script\\((.*)\\)");
     private final GlobalConfigManager globalConfigManager;
     private final Path defaultScriptsDir = Main.MOD_DIR.resolve("scripts");
 
@@ -52,7 +52,7 @@ public class ScriptDiscoverer {
             discoverScriptsInDirectory(directory, availableScripts);
         }
 
-        Main.LOGGER.info("Discovered {} available script modules from {} directories.", availableScripts.size(), scriptDirectories.size());
+        Main.LOGGER.info("Discovered {} available scripts from {} directories.", availableScripts.size(), scriptDirectories.size());
         return availableScripts;
     }
 
@@ -65,33 +65,33 @@ public class ScriptDiscoverer {
         try (Stream<Path> paths = Files.walk(directory)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".js"))
-                    .forEach(path -> discoverModulesInFile(path, availableScripts));
+                    .forEach(path -> discoverScriptsInFile(path, availableScripts));
         } catch (IOException e) {
             Main.LOGGER.error("Error discovering scripts in {}", directory, e);
         }
     }
 
-    private void discoverModulesInFile(Path path, Map<String, ScriptDescriptor> availableScripts) {
+    private void discoverScriptsInFile(Path path, Map<String, ScriptDescriptor> availableScripts) {
         try {
             List<String> lines = Files.readAllLines(path);
             lines.stream()
                     .map(String::trim)
-                    .map(MODULE_ANNOTATION_PATTERN::matcher)
+                    .map(SCRIPT_ANNOTATION_PATTERN::matcher)
                     .filter(Matcher::matches)
-                    .forEach(matcher -> processModuleAnnotation(path, matcher.group(1), availableScripts));
+                    .forEach(matcher -> processScriptAnnotation(path, matcher.group(1), availableScripts));
         } catch (IOException e) {
             Main.LOGGER.error("Could not read script file for metadata: {}", path, e);
         }
     }
 
-    private void processModuleAnnotation(Path path, String content, Map<String, ScriptDescriptor> availableScripts) {
-        Map<String, String> metadata = parseModuleMetadata(content);
+    private void processScriptAnnotation(Path path, String content, Map<String, ScriptDescriptor> availableScripts) {
+        Map<String, String> metadata = parseScriptMetadata(content);
 
         String mainClass = metadata.get(ConfigKeys.SCRIPT_META_MAIN);
         String moduleName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
 
         if (mainClass == null || moduleName == null) {
-            Main.LOGGER.warn("Skipping malformed @module in {}: 'main' and 'name' are required.", path.getFileName());
+            Main.LOGGER.warn("Skipping malformed @script in {}: 'main' and 'name' are required.", path.getFileName());
             return;
         }
 
@@ -105,7 +105,7 @@ public class ScriptDiscoverer {
         availableScripts.put(descriptor.getId(), descriptor);
     }
 
-    private Map<String, String> parseModuleMetadata(String content) {
+    private Map<String, String> parseScriptMetadata(String content) {
         Map<String, String> metadata = new HashMap<>();
         for (String pair : content.split(",")) {
             String[] keyValue = pair.split("=", 2);
