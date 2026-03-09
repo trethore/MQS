@@ -22,6 +22,7 @@ import net.me.Main;
 import net.me.config.ConfigKeys;
 import net.me.config.GlobalConfigManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.engine.ScriptingClassResolver;
 import net.me.scripting.module.RunningScript;
 import net.me.scripting.typings.MqsApiFragment;
@@ -68,6 +69,7 @@ public class MqsUtilsAPI implements ProxyObject {
     private final ScriptManager scriptManager;
     private final ScriptScheduler scriptScheduler;
     private final GlobalConfigManager globalConfigManager;
+    private final ScriptContextHelper contextHelper;
     private final ProxyObject schedulerProxy;
     private final ProxyObject optionsProxy;
     private final Set<String> memberKeys;
@@ -77,6 +79,7 @@ public class MqsUtilsAPI implements ProxyObject {
         this.scriptManager = scriptManager;
         this.scriptScheduler = scheduler;
         this.globalConfigManager = globalConfigManager;
+        this.contextHelper = new ScriptContextHelper(scriptManager);
         this.schedulerProxy = createSchedulerProxy();
         this.optionsProxy = createOptionsProxy();
         this.memberKeys = Set.of(
@@ -328,11 +331,11 @@ public class MqsUtilsAPI implements ProxyObject {
     private ProxyExecutable schedulerTimeoutMember() {
         return args -> {
             ensureCallback(args);
-            RunningScript owner = currentScript();
+            RunningScript owner = requireCurrentScript();
             Value callback = args[0];
             int delay = args.length > 1 ? Math.max(0, args[1].asInt()) : 0;
             Runnable cancel = scriptScheduler.scheduleTickTimeout(owner, callback, delay);
-            return toDisposer(owner, cancel);
+            return contextHelper.createIdempotentDisposer(owner, cancel);
         };
     }
 
@@ -342,18 +345,18 @@ public class MqsUtilsAPI implements ProxyObject {
             if (args.length < 2 || !args[1].isNumber()) {
                 throw new IllegalArgumentException("interval requires an interval in ticks.");
             }
-            RunningScript owner = currentScript();
+            RunningScript owner = requireCurrentScript();
             Value callback = args[0];
             int interval = Math.max(1, args[1].asInt());
             Runnable cancel = scriptScheduler.scheduleTickInterval(owner, callback, interval);
-            return toDisposer(owner, cancel);
+            return contextHelper.createIdempotentDisposer(owner, cancel);
         };
     }
 
     private Object runOnClientThread(Value[] args) {
         ApiArgumentChecks.requireArgCount(args, 1, "runOnClientThread requires a callback function.");
         ApiArgumentChecks.requireExecutable(args, 0, "runOnClientThread requires a callback function.");
-        RunningScript owner = currentScript();
+        RunningScript owner = requireCurrentScript();
         Value callback = args[0];
         McUtils.getMc().execute(() -> executeCallback(owner, callback));
         return null;
@@ -366,37 +369,19 @@ public class MqsUtilsAPI implements ProxyObject {
         }
     }
 
-    private RunningScript currentScript() {
-        RunningScript script = scriptManager.getCurrentScript();
-        if (script == null) {
-            throw new IllegalStateException("MQS.utils helpers must be invoked from an active script.");
-        }
-        return script;
-    }
-
-    private Value toDisposer(RunningScript owner, Runnable cancel) {
-        ProxyExecutable exec = ignored -> {
-            cancel.run();
-            return null;
-        };
-        return owner.getContext().asValue(exec);
+    private RunningScript requireCurrentScript() {
+        return contextHelper.require("MQS.utils");
     }
 
     private void executeCallback(RunningScript owner, Value callback) {
-        RunningScript previous = scriptManager.getCurrentScript();
-        scriptManager.setCurrentScript(owner);
-        try {
-            callback.execute();
-        } catch (IllegalStateException ignored) {
-            // Ignore script cancellation exceptions
-        } catch (Exception e) {
-            Main.LOGGER.error("runOnClientThread callback threw for script '{}'", owner.getName(), e);
-        } finally {
-            if (previous != null) {
-                scriptManager.setCurrentScript(previous);
-            } else {
-                scriptManager.clearCurrentScript();
+        contextHelper.executeWithScript(owner, () -> {
+            try {
+                callback.execute();
+            } catch (IllegalStateException ignored) {
+                // Ignore script cancellation exceptions
+            } catch (Exception e) {
+                Main.LOGGER.error("runOnClientThread callback threw for script '{}'", owner.getName(), e);
             }
-        }
+        });
     }
 }
