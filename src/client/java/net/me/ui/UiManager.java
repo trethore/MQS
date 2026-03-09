@@ -25,6 +25,7 @@ import net.me.console.ConsoleManager;
 import net.me.keybinds.KeybindManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
+import net.me.utils.IdeCommandUtils;
 import net.me.utils.McUtils;
 import net.me.utils.VscodeWebUtils;
 import net.minecraft.client.Minecraft;
@@ -32,6 +33,7 @@ import tytoo.grapheneui.api.GrapheneCore;
 import tytoo.grapheneui.api.runtime.GrapheneHttpServer;
 import tytoo.grapheneui.api.url.GrapheneAppUrls;
 
+import java.io.IOException;
 import java.util.Objects;
 
 public class UiManager {
@@ -71,6 +73,13 @@ public class UiManager {
 
     public void openVscodeWeb() {
         openUrl(VscodeWebUtils.CODE_EDITOR_URL);
+    }
+
+    public void openIde() throws IOException {
+        IdeCommandUtils.openPathInIde(
+                this.globalConfigManager.getDefaultIdeCommand(),
+                this.globalConfigManager.getDefaultProjectPath()
+        );
     }
 
     /**

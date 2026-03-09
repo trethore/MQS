@@ -23,10 +23,7 @@ import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.Main;
-import net.me.command.commands.GenerateCommand;
-import net.me.command.commands.ScriptCommand;
-import net.me.command.commands.UpdateCommand;
-import net.me.command.commands.VscodeCommand;
+import net.me.command.commands.*;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.typings.TypeDefinitionGenerator;
 import net.me.ui.UiManager;
@@ -35,13 +32,19 @@ import net.me.utils.ChatUtils;
 public class MQSCommand extends Command {
     private final ScriptCommand scriptCommand;
     private final GenerateCommand generateCommand;
+    private final IdeCommand ideCommand;
     private final UpdateCommand updateCommand;
     private final VscodeCommand vscodeCommand;
     private final UiManager uiManager;
 
-    public MQSCommand(ScriptingService scriptingService, UiManager uiManager, TypeDefinitionGenerator typeDefinitionGenerator) {
+    public MQSCommand(
+            ScriptingService scriptingService,
+            UiManager uiManager,
+            TypeDefinitionGenerator typeDefinitionGenerator
+    ) {
         this.scriptCommand = new ScriptCommand(scriptingService);
         this.generateCommand = new GenerateCommand(typeDefinitionGenerator);
+        this.ideCommand = new IdeCommand(uiManager);
         this.updateCommand = new UpdateCommand();
         this.vscodeCommand = new VscodeCommand(uiManager);
         this.uiManager = uiManager;
@@ -55,6 +58,7 @@ public class MQSCommand extends Command {
                         .executes(this::openUi))
                 .then(scriptCommand.buildCommand())
                 .then(generateCommand.buildCommand())
+                .then(ideCommand.buildCommand())
                 .then(vscodeCommand.buildCommand())
                 .then(updateCommand.buildCommand());
     }
