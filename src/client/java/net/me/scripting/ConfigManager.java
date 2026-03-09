@@ -67,7 +67,7 @@ public class ConfigManager {
         return inMemoryConfigs.computeIfAbsent(scriptId, this::loadConfigFromFile);
     }
 
-    public Value getConfigForScript(RunningScript script) {
+    public Value createConfigSnapshot(RunningScript script) {
         Map<String, Object> configMap = getConfig(script.getId());
         Context scriptContext = script.getContext();
         if (configMap.isEmpty()) {
@@ -77,6 +77,10 @@ public class ConfigManager {
         Value parsed = scriptContext.eval(ScriptConstants.JS, "JSON.parse").execute(json);
         scriptContext.eval(ScriptConstants.JS, "Object.freeze").execute(parsed);
         return parsed;
+    }
+
+    public void reloadConfig(RunningScript script) {
+        inMemoryConfigs.put(script.getId(), loadConfigFromFile(script.getId()));
     }
 
     private Map<String, Object> loadConfigFromFile(String scriptId) {
@@ -185,7 +189,6 @@ public class ConfigManager {
         }
         try {
             Files.delete(configFile);
-            Main.LOGGER.info("Deleted empty/default config for disabled script '{}'.", scriptId);
         } catch (IOException e) {
             Main.LOGGER.error("Failed to delete empty config for script '{}'", scriptId, e);
         }

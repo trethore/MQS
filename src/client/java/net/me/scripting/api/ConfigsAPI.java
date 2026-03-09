@@ -266,14 +266,13 @@ public class ConfigsAPI implements ProxyObject {
     private Object handleLoad(Value[] args) {
         ApiArgumentChecks.requireArgCount(args, 0, "Config.load takes no arguments.");
         RunningScript script = requireScript();
-        configManager.unloadConfig(script);
-        configManager.getConfigForScript(script);
+        configManager.reloadConfig(script);
         return null;
     }
 
     private Object handleGetAll(Value[] args) {
         ApiArgumentChecks.requireArgCount(args, 0, "Config.getAll takes no arguments.");
-        return configManager.getConfigForScript(requireScript());
+        return configManager.createConfigSnapshot(requireScript());
     }
 
     private ProxyExecutable unsupportedOperation(String key) {
