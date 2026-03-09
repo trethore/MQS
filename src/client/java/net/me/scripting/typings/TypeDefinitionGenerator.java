@@ -48,7 +48,8 @@ public class TypeDefinitionGenerator {
             {
               "compilerOptions": {
                 "allowJs": true,
-                "checkJs": true
+                "checkJs": true,
+                "noEmit": true
               },
               "include": [
                 "*.js",

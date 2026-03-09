@@ -54,8 +54,9 @@ public class ScriptingApi {
                 List.of(
                         alias("MQSDisposer", "() => void"),
                         alias("MQSAnyFunction", "(...args: any[]) => unknown"),
+                        alias("MQSJavaInstanceOf", "<T>", "T extends JavaClass<infer I> ? I : T extends abstract new (...args: any) => infer I ? I : JavaInstance | any"),
                         alias("MQSMappedClass", "<K extends string>", "K extends keyof MQSClassRegistry ? MQSClassRegistry[K] : JavaClass<any>"),
-                        alias("MQSMappedInstance", "<K extends string>", "K extends keyof MQSClassRegistry ? InstanceType<MQSClassRegistry[K]> : JavaInstance | any")
+                        alias("MQSMappedInstance", "<K extends string>", "K extends keyof MQSClassRegistry ? MQSJavaInstanceOf<MQSClassRegistry[K]> : JavaInstance | any")
                 ),
                 List.of(
                         globalFunction("importClass", fn("<K extends keyof MQSClassRegistry>", "MQSClassRegistry[K]", p("name", "K"))),
