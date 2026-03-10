@@ -246,8 +246,10 @@ final class MinecraftMappingsDtsEmitter {
     ) {
         for (String fieldName : fieldNames) {
             appendFieldDeclaration(builder, fieldName, fieldName, methodNames, fieldTypes, depth);
-            String explicitFieldName = fieldName + WrapperConstants.FIELD_SUFFIX;
-            appendFieldDeclaration(builder, explicitFieldName, fieldName, methodNames, fieldTypes, depth);
+            if (methodNames.contains(fieldName)) {
+                String explicitFieldName = fieldName + WrapperConstants.FIELD_SUFFIX;
+                appendFieldDeclaration(builder, explicitFieldName, fieldName, methodNames, fieldTypes, depth);
+            }
         }
     }
 
@@ -378,7 +380,7 @@ final class MinecraftMappingsDtsEmitter {
         Set<String> matchingNames = new TreeSet<>();
         Map<String, String> resolvedTypes = new TreeMap<>();
         for (Map.Entry<String, List<String>> methodEntry : classMethods.entrySet()) {
-            List<Method> matchingMethods = ReflectionUtils.findMethods(runtimeClass, methodEntry.getValue(), staticMembers);
+            List<Method> matchingMethods = ReflectionUtils.findMethods(runtimeClass, methodEntry.getValue(), staticMembers, false);
             if (!matchingMethods.isEmpty()) {
                 matchingNames.add(methodEntry.getKey());
                 resolvedTypes.put(methodEntry.getKey(), renderMethodTypes(matchingMethods));
@@ -469,7 +471,7 @@ final class MinecraftMappingsDtsEmitter {
 
     private Field findField(Class<?> runtimeClass, String runtimeFieldName) {
         try {
-            return ReflectionUtils.findField(runtimeClass, runtimeFieldName);
+            return ReflectionUtils.findField(runtimeClass, runtimeFieldName, false);
         } catch (NoSuchFieldException ignored) {
             return null;
         }

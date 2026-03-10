@@ -30,10 +30,16 @@ public final class ReflectionUtils {
     }
 
     public static Field findField(Class<?> cls, String name) throws NoSuchFieldException {
+        return findField(cls, name, true);
+    }
+
+    public static Field findField(Class<?> cls, String name, boolean makeAccessible) throws NoSuchFieldException {
         for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
             try {
                 Field f = c.getDeclaredField(name);
-                f.setAccessible(true);
+                if (makeAccessible) {
+                    f.setAccessible(true);
+                }
                 return f;
             } catch (NoSuchFieldException ignored) {
                 // Continue searching in superclass
@@ -43,6 +49,10 @@ public final class ReflectionUtils {
     }
 
     public static List<Method> findMethods(Class<?> cls, List<String> names, boolean isStatic) {
+        return findMethods(cls, names, isStatic, true);
+    }
+
+    public static List<Method> findMethods(Class<?> cls, List<String> names, boolean isStatic, boolean makeAccessible) {
         List<Method> result = new ArrayList<>();
         Set<String> foundSignatures = new HashSet<>();
         Set<Class<?>> visited = new HashSet<>();
@@ -58,13 +68,13 @@ public final class ReflectionUtils {
                 continue;
             }
 
-            collectMatchingMethods(current, names, isStatic, foundSignatures, result);
+            collectMatchingMethods(current, names, isStatic, makeAccessible, foundSignatures, result);
             enqueueRelatedClasses(current, toSearch);
         }
         return result;
     }
 
-    private static void collectMatchingMethods(Class<?> cls, List<String> names, boolean isStatic,
+    private static void collectMatchingMethods(Class<?> cls, List<String> names, boolean isStatic, boolean makeAccessible,
                                                Set<String> foundSignatures, List<Method> result) {
         for (Method method : cls.getDeclaredMethods()) {
             if (!isMethodMatch(method, names, isStatic)) {
@@ -72,7 +82,9 @@ public final class ReflectionUtils {
             }
             String signature = method.getName() + Arrays.toString(method.getParameterTypes());
             if (foundSignatures.add(signature)) {
-                method.setAccessible(true);
+                if (makeAccessible) {
+                    method.setAccessible(true);
+                }
                 result.add(method);
             }
         }

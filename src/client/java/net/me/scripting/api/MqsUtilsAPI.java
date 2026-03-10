@@ -61,11 +61,9 @@ public class MqsUtilsAPI implements ProxyObject {
     private static final String CHAT_LEVEL_API = "MQSUtilsChatLevelApi";
     private static final String CHAT_LEVEL_INSTANCE = "MQSUtilsChatLevelInstance";
     private static final String MATH_API = "MQSUtilsMathApi";
-    private static final String MINECRAFT_CLASS = "net.minecraft.client.Minecraft";
-    private static final String CLIENT_LEVEL_CLASS = "net.minecraft.client.multiplayer.ClientLevel";
-    private static final String LOCAL_PLAYER_CLASS = "net.minecraft.client.player.LocalPlayer";
-    private static final String MAPPED_INSTANCE_PREFIX = "MQSMappedInstance<\"";
-    private static final String MAPPED_INSTANCE_SUFFIX = "\">";
+    private static final String MINECRAFT_INSTANCE_TYPE = "net.minecraft.client.Minecraft$Instance";
+    private static final String CLIENT_LEVEL_INSTANCE_TYPE = "net.minecraft.client.multiplayer.ClientLevel$Instance";
+    private static final String LOCAL_PLAYER_INSTANCE_TYPE = "net.minecraft.client.player.LocalPlayer$Instance";
     private static final String REQUIRE_CALLBACK_FUNCTION_ERROR = "runOnClientThread requires a callback function.";
 
     private final ScriptingClassResolver classResolver;
@@ -127,10 +125,10 @@ public class MqsUtilsAPI implements ProxyObject {
         return new TsObject(
                 "MQSUtilsApi",
                 List.of(
-                        method(MC, fn(mappedInstanceType(MINECRAFT_CLASS))),
+                        method(MC, fn(MINECRAFT_INSTANCE_TYPE)),
                         method(RUN_ON_CLIENT_THREAD, fn(TypingsConstants.VOID, p(TypingsConstants.CALLBACK, TypingsConstants.MQS_ANY_FUNCTION))),
-                        method(WORLD, fn(mappedInstanceType(CLIENT_LEVEL_CLASS) + " | null")),
-                        method(PLAYER, fn(mappedInstanceType(LOCAL_PLAYER_CLASS) + " | null")),
+                        method(WORLD, fn(CLIENT_LEVEL_INSTANCE_TYPE + " | null")),
+                        method(PLAYER, fn(LOCAL_PLAYER_INSTANCE_TYPE + " | null")),
                         ro(SCHEDULER, "MQSUtilsSchedulerApi"),
                         ro(CHAT, "MQSUtilsChatApi"),
                         ro(MATH, MATH_API),
@@ -172,10 +170,6 @@ public class MqsUtilsAPI implements ProxyObject {
                         method("addChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p("level", CHAT_LEVEL_INSTANCE), p(PREFIX, TypingsConstants.BOOLEAN)))
                 )
         );
-    }
-
-    private static String mappedInstanceType(String className) {
-        return MAPPED_INSTANCE_PREFIX + className + MAPPED_INSTANCE_SUFFIX;
     }
 
     @Override
