@@ -1,24 +1,201 @@
-<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MQS UI</title><script>
-      (() => {
-        const root = document.documentElement;
-        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        let themePreference = "system";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>MQS UI</title>
+    <script>
+        (() => {
+            const root = document.documentElement;
+            const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+            let themePreference = "system";
 
-        try {
-          const storedThemePreference = window.localStorage.getItem("theme");
+            try {
+                const storedThemePreference = window.localStorage.getItem("theme");
 
-          if (
-            storedThemePreference === "dark" ||
-            storedThemePreference === "light" ||
-            storedThemePreference === "system"
-          ) {
-            themePreference = storedThemePreference;
-          }
-        } catch (ignored) {}
+                if (
+                    storedThemePreference === "dark" ||
+                    storedThemePreference === "light" ||
+                    storedThemePreference === "system"
+                ) {
+                    themePreference = storedThemePreference;
+                }
+            } catch (ignored) {
+            }
 
-        const darkTheme =
-          themePreference === "dark" || (themePreference === "system" && mediaQuery.matches);
+            const darkTheme =
+                themePreference === "dark" || (themePreference === "system" && mediaQuery.matches);
 
-        root.classList.toggle("dark", darkTheme);
-      })();
-    </script><link rel="stylesheet" href="./_astro/index.DGsHltXn.css"></head> <body class="mqs-app-shell"> <main class="mqs-app-window"> <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).load=e;window.dispatchEvent(new Event("astro:load"));})();</script><script>(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="ZEdlY3" prefix="r1" component-url="./_astro/AppNavbar.KbORzpUM.js" component-export="AppNavbar" renderer-url="./_astro/client.BnVIp5Iu.js" props="{&quot;activeItem&quot;:[0,&quot;console&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;AppNavbar&quot;,&quot;value&quot;:true}" await-children><header class="p-4 pb-0"><div class="mqs-elevated grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3"><p class="text-sm font-semibold text-foreground">My<!-- --> <span class="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">QOL</span> <!-- -->Scripts</p><nav aria-label="Primary" class="justify-self-center"><ul class="flex items-center gap-1"><li><a href="../scripts/index.html" class="mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors text-muted-foreground hover:bg-accent hover:text-foreground">Scripts</a></li><li><a href="../console/index.html" aria-current="page" class="mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors bg-accent/90 text-foreground"><span class="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">Console</span></a></li><li><a href="../options/index.html" class="mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors text-muted-foreground hover:bg-accent hover:text-foreground">Options</a></li></ul></nav><div class="flex justify-self-end"><div class="relative"><button type="button" aria-label="Toggle theme" aria-haspopup="menu" aria-expanded="false" class="mqs-focus-highlight inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"><span class="sr-only">Toggle theme</span><div class="flex h-4 w-4 items-center justify-center"></div></button></div></div></div></header><!--astro:end--></astro-island> <section class="mqs-app-content"> <div class="flex min-h-0 flex-1 p-4"> <article class="mqs-elevated flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 pb-0">  </article> </div> </section> </main> </body></html>
+            root.classList.toggle("dark", darkTheme);
+        })();
+    </script>
+    <link href="./_astro/index.DGsHltXn.css" rel="stylesheet">
+</head>
+<body class="mqs-app-shell">
+<main class="mqs-app-window">
+    <style>astro-island, astro-slot, astro-static-slot {
+        display: contents
+    }</style>
+    <script>(() => {
+        var e = async t => {
+            await (await t())()
+        };
+        (self.Astro || (self.Astro = {})).load = e;
+        window.dispatchEvent(new Event("astro:load"));
+    })();</script>
+    <script>(() => {
+        var A = Object.defineProperty;
+        var g = (i, o, a) => o in i ? A(i, o, {enumerable: !0, configurable: !0, writable: !0, value: a}) : i[o] = a;
+        var d = (i, o, a) => g(i, typeof o != "symbol" ? o + "" : o, a);
+        {
+            let i = {
+                    0: t => m(t),
+                    1: t => a(t),
+                    2: t => new RegExp(t),
+                    3: t => new Date(t),
+                    4: t => new Map(a(t)),
+                    5: t => new Set(a(t)),
+                    6: t => BigInt(t),
+                    7: t => new URL(t),
+                    8: t => new Uint8Array(t),
+                    9: t => new Uint16Array(t),
+                    10: t => new Uint32Array(t),
+                    11: t => 1 / 0 * t
+                }, o = t => {
+                    let [l, e] = t;
+                    return l in i ? i[l](e) : void 0
+                }, a = t => t.map(o),
+                m = t => typeof t != "object" || t === null ? t : Object.fromEntries(Object.entries(t).map(([l, e]) => [l, o(e)]));
+
+            class y extends HTMLElement {
+                constructor() {
+                    super(...arguments);
+                    d(this, "Component");
+                    d(this, "hydrator");
+                    d(this, "hydrate", async () => {
+                        var b;
+                        if (!this.hydrator || !this.isConnected) return;
+                        let e = (b = this.parentElement) == null ? void 0 : b.closest("astro-island[ssr]");
+                        if (e) {
+                            e.addEventListener("astro:hydrate", this.hydrate, {once: !0});
+                            return
+                        }
+                        let c = this.querySelectorAll("astro-slot"), n = {},
+                            h = this.querySelectorAll("template[data-astro-template]");
+                        for (let r of h) {
+                            let s = r.closest(this.tagName);
+                            s != null && s.isSameNode(this) && (n[r.getAttribute("data-astro-template") || "default"] = r.innerHTML, r.remove())
+                        }
+                        for (let r of c) {
+                            let s = r.closest(this.tagName);
+                            s != null && s.isSameNode(this) && (n[r.getAttribute("name") || "default"] = r.innerHTML)
+                        }
+                        let p;
+                        try {
+                            p = this.hasAttribute("props") ? m(JSON.parse(this.getAttribute("props"))) : {}
+                        } catch (r) {
+                            let s = this.getAttribute("component-url") || "<unknown>",
+                                v = this.getAttribute("component-export");
+                            throw v && (s += ` (export ${v})`), console.error(`[hydrate] Error parsing props for component ${s}`, this.getAttribute("props"), r), r
+                        }
+                        let u;
+                        await this.hydrator(this)(this.Component, p, n, {client: this.getAttribute("client")}), this.removeAttribute("ssr"), this.dispatchEvent(new CustomEvent("astro:hydrate"))
+                    });
+                    d(this, "unmount", () => {
+                        this.isConnected || this.dispatchEvent(new CustomEvent("astro:unmount"))
+                    })
+                }
+
+                disconnectedCallback() {
+                    document.removeEventListener("astro:after-swap", this.unmount), document.addEventListener("astro:after-swap", this.unmount, {once: !0})
+                }
+
+                connectedCallback() {
+                    if (!this.hasAttribute("await-children") || document.readyState === "interactive" || document.readyState === "complete") this.childrenConnectedCallback(); else {
+                        let e = () => {
+                            document.removeEventListener("DOMContentLoaded", e), c.disconnect(), this.childrenConnectedCallback()
+                        }, c = new MutationObserver(() => {
+                            var n;
+                            ((n = this.lastChild) == null ? void 0 : n.nodeType) === Node.COMMENT_NODE && this.lastChild.nodeValue === "astro:end" && (this.lastChild.remove(), e())
+                        });
+                        c.observe(this, {childList: !0}), document.addEventListener("DOMContentLoaded", e)
+                    }
+                }
+
+                async childrenConnectedCallback() {
+                    let e = this.getAttribute("before-hydration-url");
+                    e && await import(e), this.start()
+                }
+
+                async start() {
+                    let e = JSON.parse(this.getAttribute("opts")), c = this.getAttribute("client");
+                    if (Astro[c] === void 0) {
+                        window.addEventListener(`astro:${c}`, () => this.start(), {once: !0});
+                        return
+                    }
+                    try {
+                        await Astro[c](async () => {
+                            let n = this.getAttribute("renderer-url"), [h, {default: p}] = await Promise.all([import(this.getAttribute("component-url")), n ? import(n) : () => () => {
+                            }]), u = this.getAttribute("component-export") || "default";
+                            if (!u.includes(".")) this.Component = h[u]; else {
+                                this.Component = h;
+                                for (let f of u.split(".")) this.Component = this.Component[f]
+                            }
+                            return this.hydrator = p, this.hydrate
+                        }, e, this)
+                    } catch (n) {
+                        console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`, n)
+                    }
+                }
+
+                attributeChangedCallback() {
+                    this.hydrate()
+                }
+            }
+
+            d(y, "observedAttributes", ["props"]), customElements.get("astro-island") || customElements.define("astro-island", y)
+        }
+    })();</script>
+    <astro-island await-children client="load" component-export="AppNavbar" component-url="./_astro/AppNavbar.KbORzpUM.js"
+                  opts="{&quot;name&quot;:&quot;AppNavbar&quot;,&quot;value&quot;:true}" prefix="r1"
+                  props="{&quot;activeItem&quot;:[0,&quot;console&quot;]}" renderer-url="./_astro/client.BnVIp5Iu.js" ssr
+                  uid="ZEdlY3">
+        <header class="p-4 pb-0">
+            <div class="mqs-elevated grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3">
+                <p class="text-sm font-semibold text-foreground">My<!-- --> <span
+                        class="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">QOL</span>
+                    <!-- -->Scripts</p>
+                <nav aria-label="Primary" class="justify-self-center">
+                    <ul class="flex items-center gap-1">
+                        <li><a class="mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors text-muted-foreground hover:bg-accent hover:text-foreground"
+                               href="../scripts/index.html">Scripts</a>
+                        </li>
+                        <li><a aria-current="page" class="mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors bg-accent/90 text-foreground"
+                               href="../console/index.html"><span
+                                class="bg-linear-to-r from-primary to-primary-2 bg-clip-text text-transparent">Console</span></a>
+                        </li>
+                        <li><a class="mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors text-muted-foreground hover:bg-accent hover:text-foreground"
+                               href="../options/index.html">Options</a>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="flex justify-self-end">
+                    <div class="relative">
+                        <button aria-expanded="false" aria-haspopup="menu" aria-label="Toggle theme" class="mqs-focus-highlight inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                type="button">
+                            <span class="sr-only">Toggle theme</span>
+                            <div class="flex h-4 w-4 items-center justify-center"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header><!--astro:end--></astro-island>
+    <section class="mqs-app-content">
+        <div class="flex min-h-0 flex-1 p-4">
+            <article
+                    class="mqs-elevated flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 pb-0"></article>
+        </div>
+    </section>
+</main>
+</body>
+</html>

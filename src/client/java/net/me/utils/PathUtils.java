@@ -18,7 +18,11 @@
 
 package net.me.utils;
 
+import net.me.Main;
+
 import java.io.File;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 
 public final class PathUtils {
     private PathUtils() {
@@ -49,5 +53,27 @@ public final class PathUtils {
         return path.startsWith("~" + File.separator)
                 || path.startsWith("~/")
                 || path.startsWith("~\\");
+    }
+
+    public static String formatPathRelativeToModDir(Path path) {
+        Path normalizedOutput = path.toAbsolutePath().normalize();
+        Path normalizedModDir = Main.MOD_DIR.toAbsolutePath().normalize();
+        if (normalizedOutput.startsWith(normalizedModDir)) {
+            Path relativePath = normalizedModDir.relativize(normalizedOutput);
+            return Main.MOD_ID + "/" + relativePath.toString().replace('\\', '/');
+        }
+        return normalizedOutput.toString();
+    }
+
+    public static Path resolvePathFromModDir(String path) {
+        if (path == null) {
+            throw new InvalidPathException("null", "Path cannot be null.");
+        }
+
+        Path resolvedPath = Path.of(expandHomeDirectory(path));
+        if (!resolvedPath.isAbsolute()) {
+            resolvedPath = Main.MOD_DIR.resolve(resolvedPath);
+        }
+        return resolvedPath.toAbsolutePath().normalize();
     }
 }

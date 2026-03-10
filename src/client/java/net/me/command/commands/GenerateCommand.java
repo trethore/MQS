@@ -28,6 +28,7 @@ import net.me.command.CommandManager;
 import net.me.scripting.typings.TypeDefinitionGenerator;
 import net.me.scripting.typings.TypeDefinitionGenerator.GenerationTarget;
 import net.me.utils.ChatUtils;
+import net.me.utils.PathUtils;
 import net.minecraft.client.Minecraft;
 
 import java.nio.file.Path;
@@ -103,12 +104,6 @@ public class GenerateCommand extends Command {
     }
 
     private String formatPath(Path outputPath) {
-        Path normalizedOutput = outputPath.toAbsolutePath().normalize();
-        Path normalizedModDir = Main.MOD_DIR.toAbsolutePath().normalize();
-        if (normalizedOutput.startsWith(normalizedModDir)) {
-            Path relativePath = normalizedModDir.relativize(normalizedOutput);
-            return Main.MOD_ID + "/" + relativePath.toString().replace('\\', '/');
-        }
-        return normalizedOutput.toString();
+        return PathUtils.formatPathRelativeToModDir(outputPath);
     }
 }

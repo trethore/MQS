@@ -127,25 +127,18 @@ public final class IdeCommandUtils {
 
     private static Path resolveTargetPath(String requestedPath) throws IOException {
         String sanitizedPath = requestedPath == null ? "" : requestedPath.trim();
-        Path targetPath;
 
         if (sanitizedPath.isEmpty()) {
-            targetPath = getDefaultScriptsDirectory();
+            Path targetPath = getDefaultScriptsDirectory();
             Files.createDirectories(targetPath);
             return targetPath;
         }
 
         try {
-            targetPath = Path.of(PathUtils.expandHomeDirectory(sanitizedPath));
+            return PathUtils.resolvePathFromModDir(sanitizedPath);
         } catch (InvalidPathException exception) {
             throw new IllegalArgumentException("Invalid path: " + sanitizedPath, exception);
         }
-
-        if (!targetPath.isAbsolute()) {
-            targetPath = Main.MOD_DIR.resolve(targetPath);
-        }
-
-        return targetPath.toAbsolutePath().normalize();
     }
 
     private static List<String> tokenizeCommand(String command) {

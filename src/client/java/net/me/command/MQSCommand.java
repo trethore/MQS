@@ -33,6 +33,7 @@ public class MQSCommand extends Command {
     private final ScriptCommand scriptCommand;
     private final GenerateCommand generateCommand;
     private final IdeCommand ideCommand;
+    private final TemplateCommand templateCommand;
     private final UpdateCommand updateCommand;
     private final VscodeCommand vscodeCommand;
     private final UiManager uiManager;
@@ -45,6 +46,7 @@ public class MQSCommand extends Command {
         this.scriptCommand = new ScriptCommand(scriptingService);
         this.generateCommand = new GenerateCommand(typeDefinitionGenerator);
         this.ideCommand = new IdeCommand(uiManager);
+        this.templateCommand = new TemplateCommand();
         this.updateCommand = new UpdateCommand();
         this.vscodeCommand = new VscodeCommand(uiManager);
         this.uiManager = uiManager;
@@ -58,6 +60,7 @@ public class MQSCommand extends Command {
                         .executes(this::openUi))
                 .then(scriptCommand.buildCommand())
                 .then(generateCommand.buildCommand())
+                .then(templateCommand.buildCommand())
                 .then(ideCommand.buildCommand())
                 .then(vscodeCommand.buildCommand())
                 .then(updateCommand.buildCommand());
