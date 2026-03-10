@@ -1,5 +1,5 @@
 const KEY_CODE = 66; // B
-// @script(main=TestKeybind, name=Test Keybind Module, version=0.0.1)
+// @script(id=TestKeybind, name=Test Keybind Module, version=0.0.1)
 class TestKeybind {
 
     disposer = null;

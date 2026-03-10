@@ -87,16 +87,16 @@ public class ScriptDiscoverer {
     private void processScriptAnnotation(Path path, String content, Map<String, ScriptDescriptor> availableScripts) {
         Map<String, String> metadata = parseScriptMetadata(content);
 
-        String mainClass = metadata.get(ConfigKeys.SCRIPT_META_MAIN);
+        String scriptExportId = metadata.get(ConfigKeys.SCRIPT_META_ID);
         String moduleName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
 
-        if (mainClass == null || moduleName == null) {
-            Main.LOGGER.warn("Skipping malformed @script in {}: 'main' and 'name' are required.", path.getFileName());
+        if (scriptExportId == null || moduleName == null) {
+            Main.LOGGER.warn("Skipping malformed @script in {}: 'id' and 'name' are required.", path.getFileName());
             return;
         }
 
         String version = metadata.getOrDefault(ConfigKeys.SCRIPT_META_VERSION, "N/A");
-        ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version, mainClass);
+        ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version, scriptExportId);
 
         if (availableScripts.containsKey(descriptor.getId())) {
             Main.LOGGER.warn("Duplicate script ID found in {}: {}. The last one found will be used.",

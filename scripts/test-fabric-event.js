@@ -1,5 +1,5 @@
 const Component = net.minecraft.network.chat.Component;
-// @script(main=TestEvent, name=Test Fabric Event, version=0.0.1)
+// @script(id=TestEvent, name=Test Fabric Event, version=0.0.1)
 class TestEvent {
     disposer = null;
     onEnable() {

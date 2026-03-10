@@ -1,4 +1,4 @@
-// @script(main=FullBrightHookModule, name=FullBright, version=1.0.3)
+// @script(id=FullBrightHookModule, name=FullBright, version=1.0.3)
 
 const Optional = importClass('java.util.Optional');
 const Double = importClass('java.lang.Double');

@@ -1,4 +1,4 @@
-// @script(main=TestEvent, name=Test MQS Event, version=0.0.1)
+// @script(id=TestEvent, name=Test MQS Event, version=0.0.1)
 class TestEvent {
     disposer = null;
     onEnable() {

@@ -1,5 +1,5 @@
 const Component = net.minecraft.network.chat.Component;
-// @script(main=TestCommand, name=Test Command Module, version=0.0.1)
+// @script(id=TestCommand, name=Test Command Module, version=0.0.1)
 class TestCommand {
     disposer = null;
 

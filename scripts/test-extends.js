@@ -50,7 +50,7 @@ function createCustomScreen(name) {
 }
 
 
-// @script(main=TestExtends, name=Test Extends Module, version=0.0.1)
+// @script(id=TestExtends, name=Test Extends Module, version=0.0.1)
 class TestExtends {
     onEnable() {
         // triggered when the module is enabled

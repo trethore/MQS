@@ -1,5 +1,5 @@
 const Minecraft = importClass("Minecraft");
-// @script(main=TestHookModule, name=Test Hook Module, version=0.0.1)
+// @script(id=TestHookModule, name=Test Hook Module, version=0.0.1)
 class TestHookModule {
     hookDisposer = null;
 

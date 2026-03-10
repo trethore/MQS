@@ -1,5 +1,5 @@
 const Component = net.minecraft.network.chat.Component;
-// @script(main=TestConfigModule, name=Test Config Module, version=0.0.1)
+// @script(id=TestConfigModule, name=Test Config Module, version=0.0.1)
 class TestConfigModule {
     onEnable() {
         // triggered when the module is enabled
