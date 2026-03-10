@@ -44,6 +44,7 @@ final class TypingsDeclarationUtils {
         builder.append(TypingsFormat.INDENT).append(TypingsFormat.READONLY).append("_self: unknown;\n");
         builder.append(TypingsFormat.INDENT).append("_instanceof(target: JavaClass<any>): boolean;\n");
         builder.append(TypingsFormat.INDENT).append("equals(other: unknown): boolean;\n");
+        builder.append(TypingsFormat.INDENT).append("getClass(): JavaClass<any>;\n");
         builder.append(TypingsFormat.INDENT).append("[member: string]: any;\n");
         builder.append(TypingsFormat.BLOCK_END);
     }

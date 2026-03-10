@@ -19,6 +19,7 @@
 package net.me.scripting.typings;
 
 import net.me.scripting.WrapperConstants;
+import net.me.scripting.utils.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -29,8 +30,11 @@ import java.util.*;
 final class MinecraftMappingsDtsEmitter {
     private static final String INDENT = TypingsFormat.INDENT;
     private static final String BLOCK_END = TypingsFormat.BLOCK_END;
+    private static final String JAVA_CLASS = "JavaClass";
+    private static final String JAVA_INSTANCE = "JavaInstance";
     private Map<String, String> currentClassMap = Collections.emptyMap();
     private Map<String, String> reflectedNamedClassesCache = Collections.emptyMap();
+
 
     public void append(
             StringBuilder builder,
@@ -106,68 +110,124 @@ final class MinecraftMappingsDtsEmitter {
             Map<String, ReflectedClassMembers> reflectedMembers
     ) {
         for (String className : classes) {
-            if (!isAccessibleIdentifier(className)) {
-                continue;
+            if (isAccessibleIdentifier(className)) {
+                appendClassDeclaration(builder, packageName, className, depth, methodMap, fieldMap, reflectedMembers);
             }
-
-            String fullClassName = packageName + "." + className;
-            String instanceTypeName = className + "$Instance";
-            String staticTypeName = className + "$Static";
-            ReflectedClassMembers reflectionData = reflectedMembers.getOrDefault(fullClassName, ReflectedClassMembers.empty());
-            Set<String> staticMethodNames = reflectionData.available() ? reflectionData.staticMethodNames() : Collections.emptySet();
-            Set<String> staticFieldNames = reflectionData.available() ? reflectionData.staticFieldNames() : Collections.emptySet();
-            Set<String> instanceMethodNames = reflectionData.available() ? reflectionData.instanceMethodNames() : null;
-            Set<String> instanceFieldNames = reflectionData.available() ? reflectionData.instanceFieldNames() : null;
-
-            appendIndent(builder, depth);
-            builder.append("interface ").append(staticTypeName).append(" extends JavaClass<").append(instanceTypeName).append("> {\n");
-
-            appendConstructSignatures(builder, reflectionData.constructorSignatures(), instanceTypeName, depth + 1);
-
-            Map<String, List<String>> classMethods = methodMap.getOrDefault(fullClassName, Collections.emptyMap());
-            Map<String, String> classFields = fieldMap.getOrDefault(fullClassName, Collections.emptyMap());
-            appendMappedMembers(builder, classMethods, classFields, staticMethodNames, staticFieldNames, reflectionData.staticMethodTypes(), reflectionData.staticFieldTypes(), depth + 1);
-
-            appendIndent(builder, depth);
-            builder.append(BLOCK_END);
-
-            appendIndent(builder, depth);
-            builder.append("const ").append(className).append(": ").append(staticTypeName).append(";\n");
-
-            appendIndent(builder, depth);
-            builder.append("interface ").append(instanceTypeName).append(" extends JavaInstance {\n");
-
-            appendMappedMembers(builder, classMethods, classFields, instanceMethodNames, instanceFieldNames, reflectionData.instanceMethodTypes(), reflectionData.instanceFieldTypes(), depth + 1);
-
-            appendIndent(builder, depth);
-            builder.append(BLOCK_END);
         }
     }
 
-    private void appendMappedMembers(
+    private void appendClassDeclaration(
             StringBuilder builder,
-            Map<String, List<String>> classMethods,
-            Map<String, String> classFields,
-            Set<String> allowedMethodNames,
-            Set<String> allowedFieldNames,
-            Map<String, String> methodTypes,
-            Map<String, String> fieldTypes,
+            String packageName,
+            String className,
+            int depth,
+            Map<String, Map<String, List<String>>> methodMap,
+            Map<String, Map<String, String>> fieldMap,
+            Map<String, ReflectedClassMembers> reflectedMembers
+    ) {
+        String fullClassName = packageName + "." + className;
+        String instanceTypeName = className + "$Instance";
+        String staticTypeName = className + "$Static";
+        ReflectedClassMembers reflectionData = reflectedMembers.getOrDefault(fullClassName, ReflectedClassMembers.empty());
+        Map<String, List<String>> classMethods = methodMap.getOrDefault(fullClassName, Collections.emptyMap());
+        Map<String, String> classFields = fieldMap.getOrDefault(fullClassName, Collections.emptyMap());
+
+        MemberDeclarationContext staticContext = createMemberDeclarationContext(classMethods, classFields, reflectionData.staticMembers());
+        MemberDeclarationContext instanceContext = createMemberDeclarationContext(classMethods, classFields, reflectionData.instanceMembers());
+
+        appendStaticClassDeclaration(builder, staticTypeName, instanceTypeName, className, reflectionData.constructorSignatures(), staticContext, depth);
+        appendInstanceClassDeclaration(builder, instanceTypeName, instanceContext, depth);
+    }
+
+    private void appendStaticClassDeclaration(
+            StringBuilder builder,
+            String staticTypeName,
+            String instanceTypeName,
+            String className,
+            List<String> constructorSignatures,
+            MemberDeclarationContext memberContext,
             int depth
     ) {
-        Set<String> methodNames = new TreeSet<>();
-        for (String methodName : classMethods.keySet()) {
-            if (isSupportedMemberName(methodName) && shouldIncludeMember(methodName, allowedMethodNames)) {
-                methodNames.add(methodName);
+        appendIndent(builder, depth);
+        builder.append("interface ").append(staticTypeName).append(" extends " + JAVA_CLASS + "<").append(instanceTypeName).append("> {\n");
+        appendConstructSignatures(builder, constructorSignatures, instanceTypeName, depth + 1);
+        appendMembers(builder, memberContext, depth + 1);
+        appendIndent(builder, depth);
+        builder.append(BLOCK_END);
+
+        appendIndent(builder, depth);
+        builder.append("const ").append(className).append(": ").append(staticTypeName).append(";\n");
+    }
+
+    private void appendInstanceClassDeclaration(
+            StringBuilder builder,
+            String instanceTypeName,
+            MemberDeclarationContext memberContext,
+            int depth
+    ) {
+        appendIndent(builder, depth);
+        builder.append("interface ").append(instanceTypeName).append(" extends " + JAVA_INSTANCE + " {\n");
+        appendMembers(builder, memberContext, depth + 1);
+        appendIndent(builder, depth);
+        builder.append(BLOCK_END);
+    }
+
+    private MemberDeclarationContext createMemberDeclarationContext(
+            Map<String, List<String>> classMethods,
+            Map<String, String> classFields,
+            ReflectedMemberData reflectedMemberData
+    ) {
+        Set<String> methodNames = collectVisibleMemberNames(
+                classMethods.keySet(),
+                reflectedMemberData.mappedMethodNames(),
+                reflectedMemberData.directMethodNames()
+        );
+        Set<String> fieldNames = collectVisibleMemberNames(
+                classFields.keySet(),
+                reflectedMemberData.mappedFieldNames(),
+                reflectedMemberData.directFieldNames()
+        );
+        return new MemberDeclarationContext(
+                methodNames,
+                fieldNames,
+                mergeTypes(reflectedMemberData.mappedMethodTypes(), reflectedMemberData.directMethodTypes()),
+                mergeTypes(reflectedMemberData.mappedFieldTypes(), reflectedMemberData.directFieldTypes())
+        );
+    }
+
+    private void appendMembers(StringBuilder builder, MemberDeclarationContext memberContext, int depth) {
+        appendMethodDeclarations(builder, memberContext.methodNames(), memberContext.methodTypes(), depth);
+        appendFieldDeclarations(builder, memberContext.fieldNames(), memberContext.methodNames(), memberContext.fieldTypes(), depth);
+    }
+
+    private Set<String> collectVisibleMemberNames(
+            Collection<String> mappedMemberNames,
+            Set<String> allowedMappedNames,
+            Set<String> directMemberNames
+    ) {
+        Set<String> visibleMemberNames = new TreeSet<>();
+        addMappedMemberNames(visibleMemberNames, mappedMemberNames, allowedMappedNames);
+        addDirectMemberNames(visibleMemberNames, directMemberNames);
+        return visibleMemberNames;
+    }
+
+    private void addMappedMemberNames(Set<String> target, Collection<String> mappedMemberNames, Set<String> allowedMappedNames) {
+        for (String memberName : mappedMemberNames) {
+            if (isSupportedMemberName(memberName) && shouldIncludeMember(memberName, allowedMappedNames)) {
+                target.add(memberName);
             }
         }
+    }
 
-        Set<String> fieldNames = new TreeSet<>();
-        for (String fieldName : classFields.keySet()) {
-            if (isSupportedMemberName(fieldName) && shouldIncludeMember(fieldName, allowedFieldNames)) {
-                fieldNames.add(fieldName);
+    private void addDirectMemberNames(Set<String> target, Collection<String> directMemberNames) {
+        for (String memberName : directMemberNames) {
+            if (isSupportedMemberName(memberName)) {
+                target.add(memberName);
             }
         }
+    }
 
+    private void appendMethodDeclarations(StringBuilder builder, Set<String> methodNames, Map<String, String> methodTypes, int depth) {
         for (String methodName : methodNames) {
             appendIndent(builder, depth);
             builder.append(renderMemberName(methodName))
@@ -175,25 +235,39 @@ final class MinecraftMappingsDtsEmitter {
                     .append(methodTypes.getOrDefault(methodName, "any"))
                     .append(";\n");
         }
+    }
 
+    private void appendFieldDeclarations(
+            StringBuilder builder,
+            Set<String> fieldNames,
+            Set<String> methodNames,
+            Map<String, String> fieldTypes,
+            int depth
+    ) {
         for (String fieldName : fieldNames) {
-            if (!methodNames.contains(fieldName)) {
-                appendIndent(builder, depth);
-                builder.append(renderMemberName(fieldName))
-                        .append(": ")
-                        .append(fieldTypes.getOrDefault(fieldName, "any"))
-                        .append(";\n");
-            }
-
+            appendFieldDeclaration(builder, fieldName, fieldName, methodNames, fieldTypes, depth);
             String explicitFieldName = fieldName + WrapperConstants.FIELD_SUFFIX;
-            if (!methodNames.contains(explicitFieldName)) {
-                appendIndent(builder, depth);
-                builder.append(renderMemberName(explicitFieldName))
-                        .append(": ")
-                        .append(fieldTypes.getOrDefault(fieldName, "any"))
-                        .append(";\n");
-            }
+            appendFieldDeclaration(builder, explicitFieldName, fieldName, methodNames, fieldTypes, depth);
         }
+    }
+
+    private void appendFieldDeclaration(
+            StringBuilder builder,
+            String renderedFieldName,
+            String typeKey,
+            Set<String> methodNames,
+            Map<String, String> fieldTypes,
+            int depth
+    ) {
+        if (methodNames.contains(renderedFieldName)) {
+            return;
+        }
+
+        appendIndent(builder, depth);
+        builder.append(renderMemberName(renderedFieldName))
+                .append(": ")
+                .append(fieldTypes.getOrDefault(typeKey, "any"))
+                .append(";\n");
     }
 
     private void appendConstructSignatures(StringBuilder builder, List<String> constructorSignatures, String instanceTypeName, int depth) {
@@ -251,21 +325,40 @@ final class MinecraftMappingsDtsEmitter {
 
         try {
             Class<?> runtimeClass = Class.forName(runtimeClassName, false, classLoader);
+            ReflectedMemberData staticMembers = collectReflectedMemberData(runtimeClass, classMethods, classFields, true);
+            ReflectedMemberData instanceMembers = collectReflectedMemberData(runtimeClass, classMethods, classFields, false);
             return new ReflectedClassMembers(
-                    true,
                     collectConstructorSignatures(runtimeClass),
-                    collectMethodNames(runtimeClass, classMethods, true),
-                    collectMethodNames(runtimeClass, classMethods, false),
-                    collectFieldNames(runtimeClass, classFields, true),
-                    collectFieldNames(runtimeClass, classFields, false),
-                    collectMethodTypes(runtimeClass, classMethods, true),
-                    collectMethodTypes(runtimeClass, classMethods, false),
-                    collectFieldTypes(runtimeClass, classFields, true),
-                    collectFieldTypes(runtimeClass, classFields, false)
+                    staticMembers,
+                    instanceMembers
             );
         } catch (LinkageError | ClassNotFoundException ignored) {
             return ReflectedClassMembers.empty();
         }
+    }
+
+    private ReflectedMemberData collectReflectedMemberData(
+            Class<?> runtimeClass,
+            Map<String, List<String>> classMethods,
+            Map<String, String> classFields,
+            boolean staticMembers
+    ) {
+        MemberNameAndTypeData mappedMethods = collectMappedMethodData(runtimeClass, classMethods, staticMembers);
+        MemberNameAndTypeData mappedFields = collectMappedFieldData(runtimeClass, classFields, staticMembers);
+        MemberNameAndTypeData directMethods = collectDirectMethodData(runtimeClass, staticMembers);
+        MemberNameAndTypeData directFields = staticMembers
+                ? MemberNameAndTypeData.empty()
+                : collectDirectInstanceFieldData(runtimeClass);
+        return new ReflectedMemberData(
+                mappedMethods.names(),
+                mappedFields.names(),
+                directMethods.names(),
+                directFields.names(),
+                mappedMethods.types(),
+                mappedFields.types(),
+                directMethods.types(),
+                directFields.types()
+        );
     }
 
     private List<String> collectConstructorSignatures(Class<?> runtimeClass) {
@@ -277,105 +370,63 @@ final class MinecraftMappingsDtsEmitter {
         return List.copyOf(constructorSignatures);
     }
 
-    private Set<String> collectMethodNames(Class<?> runtimeClass, Map<String, List<String>> classMethods, boolean staticMembers) {
+    private MemberNameAndTypeData collectMappedMethodData(Class<?> runtimeClass, Map<String, List<String>> classMethods, boolean staticMembers) {
         if (classMethods == null || classMethods.isEmpty()) {
-            return Collections.emptySet();
+            return MemberNameAndTypeData.empty();
         }
 
-        Set<String> runtimeMethodNames = new HashSet<>();
-        for (Method method : runtimeClass.getDeclaredMethods()) {
-            if (Modifier.isStatic(method.getModifiers()) == staticMembers) {
-                runtimeMethodNames.add(method.getName());
-            }
-        }
-
-        Set<String> matchingNames = new HashSet<>();
+        Set<String> matchingNames = new TreeSet<>();
+        Map<String, String> resolvedTypes = new TreeMap<>();
         for (Map.Entry<String, List<String>> methodEntry : classMethods.entrySet()) {
-            for (String runtimeName : methodEntry.getValue()) {
-                if (runtimeMethodNames.contains(runtimeName)) {
-                    matchingNames.add(methodEntry.getKey());
-                    break;
-                }
+            List<Method> matchingMethods = ReflectionUtils.findMethods(runtimeClass, methodEntry.getValue(), staticMembers);
+            if (!matchingMethods.isEmpty()) {
+                matchingNames.add(methodEntry.getKey());
+                resolvedTypes.put(methodEntry.getKey(), renderMethodTypes(matchingMethods));
             }
         }
-        return matchingNames;
+        return new MemberNameAndTypeData(matchingNames, resolvedTypes);
     }
 
-    private Set<String> collectFieldNames(Class<?> runtimeClass, Map<String, String> classFields, boolean staticMembers) {
+    private MemberNameAndTypeData collectMappedFieldData(Class<?> runtimeClass, Map<String, String> classFields, boolean staticMembers) {
         if (classFields == null || classFields.isEmpty()) {
-            return Collections.emptySet();
+            return MemberNameAndTypeData.empty();
         }
 
-        Set<String> runtimeFieldNames = new HashSet<>();
-        for (Field field : runtimeClass.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers()) == staticMembers) {
-                runtimeFieldNames.add(field.getName());
-            }
-        }
-
-        Set<String> matchingNames = new HashSet<>();
+        Set<String> matchingNames = new TreeSet<>();
+        Map<String, String> resolvedTypes = new TreeMap<>();
         for (Map.Entry<String, String> fieldEntry : classFields.entrySet()) {
-            if (runtimeFieldNames.contains(fieldEntry.getValue())) {
+            Field field = findField(runtimeClass, fieldEntry.getValue());
+            if (field != null && Modifier.isStatic(field.getModifiers()) == staticMembers) {
                 matchingNames.add(fieldEntry.getKey());
+                resolvedTypes.put(fieldEntry.getKey(), renderJavaType(field.getType()));
             }
         }
-        return matchingNames;
+        return new MemberNameAndTypeData(matchingNames, resolvedTypes);
     }
 
-    private Map<String, String> collectMethodTypes(
-            Class<?> runtimeClass,
-            Map<String, List<String>> classMethods,
-            boolean staticMembers
-    ) {
-        if (classMethods == null || classMethods.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        Map<String, Set<String>> runtimeMethodTypes = new HashMap<>();
-        for (Method method : runtimeClass.getDeclaredMethods()) {
+    private MemberNameAndTypeData collectDirectMethodData(Class<?> runtimeClass, boolean staticMembers) {
+        Set<String> methodNames = new TreeSet<>();
+        Map<String, Set<String>> methodTypes = new TreeMap<>();
+        for (Method method : runtimeClass.getMethods()) {
             if (Modifier.isStatic(method.getModifiers()) == staticMembers) {
-                runtimeMethodTypes.computeIfAbsent(method.getName(), ignored -> new TreeSet<>())
+                methodNames.add(method.getName());
+                methodTypes.computeIfAbsent(method.getName(), ignored -> new TreeSet<>())
                         .add(renderJavaType(method.getReturnType()));
             }
         }
-
-        Map<String, String> resolvedTypes = new HashMap<>();
-        for (Map.Entry<String, List<String>> methodEntry : classMethods.entrySet()) {
-            Set<String> matchingTypes = new TreeSet<>();
-            for (String runtimeName : methodEntry.getValue()) {
-                matchingTypes.addAll(runtimeMethodTypes.getOrDefault(runtimeName, Set.of()));
-            }
-            if (!matchingTypes.isEmpty()) {
-                resolvedTypes.put(methodEntry.getKey(), String.join(" | ", matchingTypes));
-            }
-        }
-        return resolvedTypes;
+        return new MemberNameAndTypeData(methodNames, flattenCollectedTypes(methodTypes));
     }
 
-    private Map<String, String> collectFieldTypes(
-            Class<?> runtimeClass,
-            Map<String, String> classFields,
-            boolean staticMembers
-    ) {
-        if (classFields == null || classFields.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        Map<String, String> runtimeFieldTypes = new HashMap<>();
-        for (Field field : runtimeClass.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers()) == staticMembers) {
-                runtimeFieldTypes.put(field.getName(), renderJavaType(field.getType()));
+    private MemberNameAndTypeData collectDirectInstanceFieldData(Class<?> runtimeClass) {
+        Set<String> fieldNames = new TreeSet<>();
+        Map<String, String> fieldTypes = new TreeMap<>();
+        for (Field field : runtimeClass.getFields()) {
+            if (!Modifier.isStatic(field.getModifiers())) {
+                fieldNames.add(field.getName());
+                fieldTypes.put(field.getName(), renderJavaType(field.getType()));
             }
         }
-
-        Map<String, String> resolvedTypes = new HashMap<>();
-        for (Map.Entry<String, String> fieldEntry : classFields.entrySet()) {
-            String type = runtimeFieldTypes.get(fieldEntry.getValue());
-            if (type != null) {
-                resolvedTypes.put(fieldEntry.getKey(), type);
-            }
-        }
-        return resolvedTypes;
+        return new MemberNameAndTypeData(fieldNames, fieldTypes);
     }
 
     private String renderExecutableParameters(Class<?>[] parameterTypes, Parameter[] parameters) {
@@ -408,6 +459,52 @@ final class MinecraftMappingsDtsEmitter {
         return signature.split(", ").length;
     }
 
+    private String renderMethodTypes(List<Method> methods) {
+        Set<String> matchingTypes = new TreeSet<>();
+        for (Method method : methods) {
+            matchingTypes.add(renderJavaType(method.getReturnType()));
+        }
+        return String.join(" | ", matchingTypes);
+    }
+
+    private Field findField(Class<?> runtimeClass, String runtimeFieldName) {
+        try {
+            return ReflectionUtils.findField(runtimeClass, runtimeFieldName);
+        } catch (NoSuchFieldException ignored) {
+            return null;
+        }
+    }
+
+    private Map<String, String> mergeTypes(Map<String, String> primaryTypes, Map<String, String> secondaryTypes) {
+        if (primaryTypes.isEmpty()) {
+            return secondaryTypes;
+        }
+        if (secondaryTypes.isEmpty()) {
+            return primaryTypes;
+        }
+
+        Map<String, Set<String>> mergedTypes = new TreeMap<>();
+        addTypes(mergedTypes, primaryTypes);
+        addTypes(mergedTypes, secondaryTypes);
+        return flattenCollectedTypes(mergedTypes);
+    }
+
+    private void addTypes(Map<String, Set<String>> collectedTypes, Map<String, String> typesToAdd) {
+        for (Map.Entry<String, String> entry : typesToAdd.entrySet()) {
+            Set<String> typeSet = collectedTypes.computeIfAbsent(entry.getKey(), ignored -> new TreeSet<>());
+            String[] splitTypes = entry.getValue().split(" \\| ");
+            Collections.addAll(typeSet, splitTypes);
+        }
+    }
+
+    private Map<String, String> flattenCollectedTypes(Map<String, Set<String>> collectedTypes) {
+        Map<String, String> flattenedTypes = new TreeMap<>();
+        for (Map.Entry<String, Set<String>> entry : collectedTypes.entrySet()) {
+            flattenedTypes.put(entry.getKey(), String.join(" | ", entry.getValue()));
+        }
+        return flattenedTypes;
+    }
+
     private String renderJavaType(Class<?> type) {
         if (type == null) {
             return "any";
@@ -431,7 +528,7 @@ final class MinecraftMappingsDtsEmitter {
             return "any";
         }
         if (type == Class.class) {
-            return "JavaClass<any>";
+            return JAVA_CLASS + "<any>";
         }
         if (Enum.class.isAssignableFrom(type)) {
             return "string | number";
@@ -441,7 +538,7 @@ final class MinecraftMappingsDtsEmitter {
         if (namedClassName != null && hasDeclarableTypeAccess(namedClassName)) {
             return buildInstanceTypeAccess(namedClassName);
         }
-        return "JavaInstance | any";
+        return JAVA_INSTANCE + " | any";
     }
 
     private String resolveNamedClassName(Class<?> type) {
@@ -477,7 +574,7 @@ final class MinecraftMappingsDtsEmitter {
                     .append("\"")
                     .append(className)
                     .append("\": ")
-                    .append(hasTypedAccess ? "typeof " + buildTypeAccess(className) : "JavaClass<any>")
+                    .append(hasTypedAccess ? "typeof " + buildTypeAccess(className) : JAVA_CLASS + "<any>")
                     .append(";\n");
         }
 
@@ -501,7 +598,7 @@ final class MinecraftMappingsDtsEmitter {
     private String buildInstanceTypeAccess(String className) {
         String[] parts = className.split("\\.");
         if (parts.length == 0 || parts[0].isEmpty()) {
-            return "JavaInstance | any";
+            return JAVA_INSTANCE + " | any";
         }
 
         StringBuilder builder = new StringBuilder(resolveRootAccess(parts[0]));
@@ -577,32 +674,64 @@ final class MinecraftMappingsDtsEmitter {
         private final Set<String> classes = new TreeSet<>();
     }
 
+    private record MemberDeclarationContext(
+            Set<String> methodNames,
+            Set<String> fieldNames,
+            Map<String, String> methodTypes,
+            Map<String, String> fieldTypes
+    ) {
+    }
+
+    private record MemberNameAndTypeData(Set<String> names, Map<String, String> types) {
+        private MemberNameAndTypeData {
+            names = Set.copyOf(names);
+            types = Map.copyOf(types);
+        }
+
+        private static MemberNameAndTypeData empty() {
+            return new MemberNameAndTypeData(Set.of(), Map.of());
+        }
+    }
+
+    private record ReflectedMemberData(
+            Set<String> mappedMethodNames,
+            Set<String> mappedFieldNames,
+            Set<String> directMethodNames,
+            Set<String> directFieldNames,
+            Map<String, String> mappedMethodTypes,
+            Map<String, String> mappedFieldTypes,
+            Map<String, String> directMethodTypes,
+            Map<String, String> directFieldTypes
+    ) {
+        private ReflectedMemberData {
+            mappedMethodNames = Set.copyOf(mappedMethodNames);
+            mappedFieldNames = Set.copyOf(mappedFieldNames);
+            directMethodNames = Set.copyOf(directMethodNames);
+            directFieldNames = Set.copyOf(directFieldNames);
+            mappedMethodTypes = Map.copyOf(mappedMethodTypes);
+            mappedFieldTypes = Map.copyOf(mappedFieldTypes);
+            directMethodTypes = Map.copyOf(directMethodTypes);
+            directFieldTypes = Map.copyOf(directFieldTypes);
+        }
+
+        private static ReflectedMemberData empty() {
+            return new ReflectedMemberData(Set.of(), Set.of(), Set.of(), Set.of(), Map.of(), Map.of(), Map.of(), Map.of());
+        }
+    }
+
     private record ReflectedClassMembers(
-            boolean available,
             List<String> constructorSignatures,
-            Set<String> staticMethodNames,
-            Set<String> instanceMethodNames,
-            Set<String> staticFieldNames,
-            Set<String> instanceFieldNames,
-            Map<String, String> staticMethodTypes,
-            Map<String, String> instanceMethodTypes,
-            Map<String, String> staticFieldTypes,
-            Map<String, String> instanceFieldTypes
+            ReflectedMemberData staticMembers,
+            ReflectedMemberData instanceMembers
     ) {
         private ReflectedClassMembers {
             constructorSignatures = List.copyOf(constructorSignatures);
-            staticMethodNames = Set.copyOf(staticMethodNames);
-            instanceMethodNames = Set.copyOf(instanceMethodNames);
-            staticFieldNames = Set.copyOf(staticFieldNames);
-            instanceFieldNames = Set.copyOf(instanceFieldNames);
-            staticMethodTypes = Map.copyOf(staticMethodTypes);
-            instanceMethodTypes = Map.copyOf(instanceMethodTypes);
-            staticFieldTypes = Map.copyOf(staticFieldTypes);
-            instanceFieldTypes = Map.copyOf(instanceFieldTypes);
+            staticMembers = staticMembers == null ? ReflectedMemberData.empty() : staticMembers;
+            instanceMembers = instanceMembers == null ? ReflectedMemberData.empty() : instanceMembers;
         }
 
         private static ReflectedClassMembers empty() {
-            return new ReflectedClassMembers(false, List.of(), Set.of(), Set.of(), Set.of(), Set.of(), Map.of(), Map.of(), Map.of(), Map.of());
+            return new ReflectedClassMembers(List.of(), ReflectedMemberData.empty(), ReflectedMemberData.empty());
         }
     }
 }
