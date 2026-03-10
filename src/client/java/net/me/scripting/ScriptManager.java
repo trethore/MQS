@@ -27,8 +27,8 @@ import net.me.keybinds.KeybindManager;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.engine.*;
 import net.me.scripting.mappings.MappingsManager;
-import net.me.scripting.module.RunningScript;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.script.ScriptDescriptor;
 import net.me.utils.ScriptScheduler;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -78,7 +78,7 @@ public class ScriptManager {
         Main.LOGGER.info("Checking configs to auto-enable scripts...");
         for (ScriptDescriptor descriptor : availableScripts.values()) {
             if (configManager.getEnabledState(descriptor.getId())) {
-                Main.LOGGER.info("Auto-enabling script '{}' as per config.", descriptor.moduleName());
+                Main.LOGGER.info("Auto-enabling script '{}' as per config.", descriptor.scriptName());
                 enableScript(descriptor.getId());
             }
         }
@@ -99,7 +99,7 @@ public class ScriptManager {
         Context scriptContext = null;
         try {
             scriptContext = contextManager.getContext();
-            Map<String, Value> fileExports = ScriptLoader.loadModules(descriptor.path(), scriptContext, contextManager.getPerFileExports());
+            Map<String, Value> fileExports = ScriptLoader.loadScripts(descriptor.path(), scriptContext, contextManager.getPerFileExports());
 
             String mainClassName = descriptor.mainClass();
             Value scriptClass = fileExports.get(mainClassName);

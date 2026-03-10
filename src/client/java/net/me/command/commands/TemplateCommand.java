@@ -143,7 +143,7 @@ public class TemplateCommand extends Command {
                     }
                 }
                 
-                exportModule(%s);
+                exportScript(%s);
                 """.formatted(scriptId, scriptName, scriptVersion, scriptId, scriptId);
     }
 

@@ -2,14 +2,14 @@
 class TestEvent {
     disposer = null;
     onEnable() {
-        // triggered when the module is enabled
+        // triggered when the script is enabled
         println("Hello from Test Event!");
-        MQS.utils.chat.addInfoChatMessage("Hello from Test Event Module!", true);
+        MQS.utils.chat.addInfoChatMessage("Hello from Test Event Script!", true);
         this.disposer = MQS.events.onEndClientTick(this.onTick.bind(this));
     }
 
     onDisable() {
-        // triggered when the module is disabled
+        // triggered when the script is disabled
         println("Goodbye from Test Event!");
         if (this.disposer) {
             this.disposer();
@@ -25,4 +25,4 @@ class TestEvent {
     }
 }
 
-exportModule(TestEvent);
+exportScript(TestEvent);

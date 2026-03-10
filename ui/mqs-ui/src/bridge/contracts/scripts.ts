@@ -10,7 +10,7 @@ export const SCRIPTS_EVENT_UPDATED = "mqs:scripts:updated";
 
 export interface ScriptState {
   id: string;
-  moduleName: string;
+  scriptName: string;
   version: string;
   mainClass: string;
   path: string;
@@ -41,10 +41,10 @@ function parseScriptState(rawScript: unknown): ScriptState | null {
     return null;
   }
 
-  const moduleName = asString(rawScript.moduleName);
+  const scriptName = asString(rawScript.scriptName);
   return {
     id,
-    moduleName: moduleName || id,
+    scriptName: scriptName || id,
     version: asString(rawScript.version),
     mainClass: asString(rawScript.mainClass),
     path: asString(rawScript.path),

@@ -31,7 +31,7 @@ import net.bytebuddy.utility.JavaModule;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.mappings.MappingsManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.scripting.utils.MappingUtils;
 import org.graalvm.polyglot.Value;
 

@@ -1,9 +1,9 @@
 const Component = net.minecraft.network.chat.Component;
-// @script(id=TestConfigModule, name=Test Config Module, version=0.0.1)
-class TestConfigModule {
+// @script(id=TestConfigScript, name=Test Config Script, version=0.0.1)
+class TestConfigScript {
     onEnable() {
-        // triggered when the module is enabled
-        println("Hello from Test Config Module!");
+        // triggered when the script is enabled
+        println("Hello from Test Config Script!");
         const name = MQS.config.getString("name", "Toto");
         const player = MQS.utils.player();
         if (player) {
@@ -13,9 +13,9 @@ class TestConfigModule {
     }
 
     onDisable() {
-        // triggered when the module is disabled
-        println("Goodbye from Test Config Module!");
+        // triggered when the script is disabled
+        println("Goodbye from Test Config Script!");
     }
 }
 
-exportModule(TestConfigModule);
+exportScript(TestConfigScript);

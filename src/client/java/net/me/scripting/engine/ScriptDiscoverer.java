@@ -21,7 +21,7 @@ package net.me.scripting.engine;
 import net.me.Main;
 import net.me.config.ConfigKeys;
 import net.me.config.GlobalConfigManager;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.ScriptDescriptor;
 import net.me.utils.PathUtils;
 
 import java.io.IOException;
@@ -88,15 +88,15 @@ public class ScriptDiscoverer {
         Map<String, String> metadata = parseScriptMetadata(content);
 
         String scriptExportId = metadata.get(ConfigKeys.SCRIPT_META_ID);
-        String moduleName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
+        String scriptName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
 
-        if (scriptExportId == null || moduleName == null) {
+        if (scriptExportId == null || scriptName == null) {
             Main.LOGGER.warn("Skipping malformed @script in {}: 'id' and 'name' are required.", path.getFileName());
             return;
         }
 
         String version = metadata.getOrDefault(ConfigKeys.SCRIPT_META_VERSION, "N/A");
-        ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version, scriptExportId);
+        ScriptDescriptor descriptor = new ScriptDescriptor(path, scriptName, version, scriptExportId);
 
         if (availableScripts.containsKey(descriptor.getId())) {
             Main.LOGGER.warn("Duplicate script ID found in {}: {}. The last one found will be used.",

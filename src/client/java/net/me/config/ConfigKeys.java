@@ -31,7 +31,7 @@ public final class ConfigKeys {
     public static final String ENABLED = "enabled";
     public static final String KEYBINDS = "keybinds";
 
-    // Script Metadata (@module)
+    // Script metadata (@script)
     public static final String SCRIPT_META_ID = "id";
     public static final String SCRIPT_META_NAME = "name";
     public static final String SCRIPT_META_VERSION = "version";

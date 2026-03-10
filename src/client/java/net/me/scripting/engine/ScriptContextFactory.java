@@ -159,7 +159,8 @@ public class ScriptContextFactory {
         addApiMember(bindings, "extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
         addApiMember(bindings, "isInstanceOf", ScriptingApi.createIsInstanceOfProxy());
         addApiMember(bindings, "wrap", ScriptingApi.createWrapProxy(classResolver));
-        addApiMember(bindings, "exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
+        ProxyExecutable exportScriptProxy = ScriptingApi.createExportScriptProxy(perFileExports);
+        addApiMember(bindings, "exportScript", exportScriptProxy);
 
         Map<String, Object> mqsMembers = new HashMap<>();
         EventsAPI eventsApi = new EventsAPI(this.eventManager, this.scriptManager);

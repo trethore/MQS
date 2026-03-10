@@ -19,7 +19,7 @@
 package net.me.scripting.api.internal;
 
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 

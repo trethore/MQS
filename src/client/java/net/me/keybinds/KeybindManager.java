@@ -24,7 +24,7 @@ import net.me.keybinds.events.KeyEvent;
 import net.me.keybinds.events.MouseButtonEvent;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.lwjgl.glfw.GLFW;
 

@@ -25,7 +25,7 @@ import com.google.gson.reflect.TypeToken;
 import net.me.Main;
 import net.me.config.ConfigKeys;
 import net.me.scripting.engine.ScriptConstants;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 

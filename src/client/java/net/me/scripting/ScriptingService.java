@@ -18,8 +18,8 @@
 
 package net.me.scripting;
 
-import net.me.scripting.module.RunningScript;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.script.ScriptDescriptor;
 
 import java.util.Collection;
 import java.util.List;
@@ -80,7 +80,7 @@ public class ScriptingService {
                 .map(descriptor -> {
                     boolean isRunning = isRunning(descriptor.getId());
                     String status = isRunning ? "§a[ENABLED]" : "§c[DISABLED]";
-                    return String.format(" - %s (%s) %s", descriptor.moduleName(), descriptor.getId(), status);
+                    return String.format(" - %s (%s) %s", descriptor.scriptName(), descriptor.getId(), status);
                 })
                 .collect(Collectors.joining("\n"));
     }

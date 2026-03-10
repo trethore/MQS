@@ -26,7 +26,7 @@ import net.me.scripting.api.internal.ClassResolverHelper;
 import net.me.scripting.api.internal.HandleTracker;
 import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.engine.ScriptingClassResolver;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.scripting.typings.MqsApiFragment;
 import net.me.scripting.typings.TypingsConstants;
 import net.me.scripting.typings.schema.TsObject;

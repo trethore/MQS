@@ -21,7 +21,7 @@ package net.me.event;
 import net.fabricmc.fabric.api.event.Event;
 import net.me.mixin.fabric.event.ArrayBackedEventAccessor;
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import net.minecraft.resources.Identifier;
 import org.graalvm.polyglot.Value;

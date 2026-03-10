@@ -32,7 +32,7 @@ function areSnapshotsEqual(leftSnapshot: ScriptsSnapshot, rightSnapshot: Scripts
 
     if (
       leftScript.id !== rightScript.id ||
-      leftScript.moduleName !== rightScript.moduleName ||
+      leftScript.scriptName !== rightScript.scriptName ||
       leftScript.version !== rightScript.version ||
       leftScript.mainClass !== rightScript.mainClass ||
       leftScript.path !== rightScript.path ||
@@ -61,7 +61,7 @@ export function useScriptsController() {
 
     return snapshot.scripts.filter((script) => {
       return (
-        script.moduleName.toLowerCase().includes(trimmedQuery) ||
+        script.scriptName.toLowerCase().includes(trimmedQuery) ||
         script.id.toLowerCase().includes(trimmedQuery) ||
         script.path.toLowerCase().includes(trimmedQuery) ||
         script.mainClass.toLowerCase().includes(trimmedQuery)

@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.scripting.module;
+package net.me.scripting.script;
 
 import lombok.Getter;
 import net.me.Main;
@@ -35,7 +35,7 @@ public class RunningScript {
         this.descriptor = descriptor;
         this.jsInstance = jsInstance;
         this.context = context;
-        this.name = descriptor.moduleName();
+        this.name = descriptor.scriptName();
     }
 
     public void onEnable() {

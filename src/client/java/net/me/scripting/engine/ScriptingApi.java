@@ -54,7 +54,9 @@ public class ScriptingApi {
                 List.of(
                         alias("MQSDisposer", "() => void"),
                         alias("MQSAnyFunction", "(...args: any[]) => unknown"),
-                        alias("MQSJavaInstanceOf", "<T>", "T extends JavaClass<infer I> ? I : T extends abstract new (...args: any) => infer I ? I : JavaInstance | any"),
+                        alias("MQSConstructable", "<T = any>", "abstract new (...args: any[]) => T"),
+                        alias("MQSExportableScript", "JavaClass<any> | MQSConstructable<any>"),
+                        alias("MQSJavaInstanceOf", "<T>", "T extends JavaClass<infer I> ? I : T extends MQSConstructable<infer I> ? I : JavaInstance | any"),
                         alias("MQSMappedClass", "<K extends string>", "K extends keyof MQSClassRegistry ? MQSClassRegistry[K] : JavaClass<any>"),
                         alias("MQSMappedInstance", "<K extends string>", "K extends keyof MQSClassRegistry ? MQSJavaInstanceOf<MQSClassRegistry[K]> : JavaInstance | any")
                 ),
@@ -63,7 +65,7 @@ public class ScriptingApi {
                         globalFunction("importClass", fn(TypingsConstants.JAVA_CLASS_ANY, p("name", TypingsConstants.STRING))),
                         globalFunction("wrap", fn("<T = JavaInstance>", "T", p("instance", TypingsConstants.UNKNOWN))),
                         globalFunction("extendMapped", fn(TypingsConstants.JAVA_CLASS_ANY, p("config", "MQSExtendMappedConfig"), p("implementation", "Record<string, unknown>"))),
-                        globalFunction("exportModule", fn(TypingsConstants.VOID, rest("modules", TypingsConstants.JAVA_CLASS_ANY + " | " + TypingsConstants.JAVA_CLASS_ANY + "[]"))),
+                        globalFunction("exportScript", fn(TypingsConstants.VOID, rest("scripts", "MQSExportableScript | MQSExportableScript[]"))),
                         globalFunction("isInstanceOf", fn(TypingsConstants.BOOLEAN, p("instance", TypingsConstants.UNKNOWN), p("clazz", TypingsConstants.JAVA_CLASS_ANY)))
                 ),
                 List.of(),
@@ -185,11 +187,11 @@ public class ScriptingApi {
         };
     }
 
-    public static ProxyExecutable createExportModuleProxy(ThreadLocal<Map<String, Value>> perFileExports) {
+    public static ProxyExecutable createExportScriptProxy(ThreadLocal<Map<String, Value>> perFileExports) {
         return args -> {
             Map<String, Value> exportsMap = perFileExports.get();
             if (exportsMap == null) {
-                Main.LOGGER.warn("exportModule called outside of a script discovery or enablement context. Ignoring.");
+                Main.LOGGER.warn("exportScript called outside of a script discovery or enablement context. Ignoring.");
                 return null;
             }
 
@@ -202,15 +204,15 @@ public class ScriptingApi {
 
     private static void processExportArg(Value arg, Map<String, Value> exportsMap) {
         if (arg == null) {
-            addModule(exportsMap, null);
+            addScript(exportsMap, null);
             return;
         }
         if (!arg.hasArrayElements()) {
-            addModule(exportsMap, arg);
+            addScript(exportsMap, arg);
             return;
         }
         for (long i = 0; i < arg.getArraySize(); i++) {
-            addModule(exportsMap, arg.getArrayElement(i));
+            addScript(exportsMap, arg.getArrayElement(i));
         }
     }
 
@@ -256,12 +258,12 @@ public class ScriptingApi {
     }
 
 
-    private static void addModule(Map<String, Value> exportsMap, Value moduleValue) {
-        if (moduleValue != null && moduleValue.canInstantiate()) {
-            exportsMap.put(moduleValue.getMetaQualifiedName(), moduleValue);
+    private static void addScript(Map<String, Value> exportsMap, Value scriptValue) {
+        if (scriptValue != null && scriptValue.canInstantiate()) {
+            exportsMap.put(scriptValue.getMetaQualifiedName(), scriptValue);
             return;
         }
-        Main.LOGGER.warn("An argument to exportModule was not a valid, instantiable class. Ignoring: {}", moduleValue);
+        Main.LOGGER.warn("An argument to exportScript was not a valid, instantiable class. Ignoring: {}", scriptValue);
     }
 
     private static ExtensionConfig parseExtensionConfig(Value configArg, Context context, ScriptingClassResolver resolver, Value extendsValueOverride) {

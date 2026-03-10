@@ -18,7 +18,7 @@
 
 package net.me.scripting.api.internal;
 
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 
 import java.util.Collections;
 import java.util.List;

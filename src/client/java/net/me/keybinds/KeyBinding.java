@@ -22,7 +22,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.lwjgl.glfw.GLFW;
 

@@ -23,7 +23,7 @@ import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.commands.CommandAPIService;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.utils.ScriptScheduler;
 
 public class ScriptLifecycleManager {

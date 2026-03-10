@@ -29,7 +29,7 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.Main;
 import net.me.command.CommandManager;
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;

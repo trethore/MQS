@@ -50,17 +50,17 @@ function createCustomScreen(name) {
 }
 
 
-// @script(id=TestExtends, name=Test Extends Module, version=0.0.1)
+// @script(id=TestExtends, name=Test Extends Script, version=0.0.1)
 class TestExtends {
     onEnable() {
-        // triggered when the module is enabled
-        println("Hello from Test Extends Module!");
+        // triggered when the script is enabled
+        println("Hello from Test Extends Script!");
         const mc = MQS.utils.mc();
         if (!mc || mc.player == null) {
             println("Player is null, try loading the script later");
             return;
         }
-        mc.player.displayClientMessage(Component.literal("Hello from Test Extends Module!"), false);
+        mc.player.displayClientMessage(Component.literal("Hello from Test Extends Script!"), false);
         const customScreen = createCustomScreen("My Custom Screen");
         customScreen.open();
         if (customScreen._instanceof(Runnable)) {
@@ -71,9 +71,9 @@ class TestExtends {
     }
 
     onDisable() {
-        // triggered when the module is disabled
-        println("Goodbye from Test Extends Module!");
+        // triggered when the script is disabled
+        println("Goodbye from Test Extends Script!");
     }
 }
 
-exportModule(TestExtends);
+exportScript(TestExtends);

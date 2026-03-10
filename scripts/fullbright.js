@@ -1,4 +1,4 @@
-// @script(id=FullBrightHookModule, name=FullBright, version=1.0.3)
+// @script(id=FullBrightHookScript, name=FullBright, version=1.0.3)
 
 const Optional = importClass('java.util.Optional');
 const Double = importClass('java.lang.Double');
@@ -22,7 +22,7 @@ const MESSAGES = {
     BRIGHTNESS_OFF: (gamma) => `FullBright OFF (Restored to ${Number(gamma).toFixed(2)})`
 };
 
-class FullBrightHookModule {
+class FullBrightHookScript {
     options = null;
     originalGamma = 0.5;
     isFullBrightActive = false;
@@ -159,4 +159,4 @@ class FullBrightHookModule {
     }
 }
 
-exportModule(FullBrightHookModule);
+exportScript(FullBrightHookScript);

@@ -1,11 +1,11 @@
 const Component = net.minecraft.network.chat.Component;
-// @script(id=TestCommand, name=Test Command Module, version=0.0.1)
+// @script(id=TestCommand, name=Test Command Script, version=0.0.1)
 class TestCommand {
     disposer = null;
 
     onEnable() {
-        // triggered when the module is enabled
-        println("Hello from Test Command Module!");
+        // triggered when the script is enabled
+        println("Hello from Test Command Script!");
         const fakePlayerList = ["AwesomeDude", "CoolPlayer", "EpicGamer"];
         const rootBuilder = MQS.cmd.lit('greet', cmd => {
             cmd.run(ctx => {
@@ -34,8 +34,8 @@ class TestCommand {
     }
 
     onDisable() {
-        // triggered when the module is disabled
-        println("Goodbye from Test Command Module!");
+        // triggered when the script is disabled
+        println("Goodbye from Test Command Script!");
         if (this.disposer) {
             this.disposer();
             this.disposer = null;
@@ -43,4 +43,4 @@ class TestCommand {
     }
 }
 
-exportModule(TestCommand);
+exportScript(TestCommand);

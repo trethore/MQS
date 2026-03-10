@@ -91,7 +91,7 @@ export function ScriptListWidget() {
               {filteredScripts.map((script) => (
                 <li key={script.id} className="w-full">
                   <ScriptEntryWidget
-                    title={script.moduleName}
+                    title={script.scriptName}
                     path={script.path}
                     version={script.version}
                     running={script.running}

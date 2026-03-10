@@ -20,8 +20,8 @@ package net.me.ui.bridges;
 
 import net.me.Main;
 import net.me.scripting.ScriptingService;
-import net.me.scripting.module.RunningScript;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.script.ScriptDescriptor;
 import net.me.ui.bridges.utils.BridgeEmitter;
 import net.me.ui.bridges.utils.BridgeRequests;
 import net.me.ui.bridges.utils.BridgeSubscriptions;
@@ -183,7 +183,7 @@ public final class MQSScriptsBridge implements AutoCloseable {
         List<ScriptStateResponse> scripts = scriptingService.listAvailable().stream()
                 .map(descriptor -> toScriptState(descriptor, runningScriptIds))
                 .sorted(
-                        Comparator.comparing(ScriptStateResponse::moduleName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        Comparator.comparing(ScriptStateResponse::scriptName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
                                 .thenComparing(ScriptStateResponse::id, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
                 )
                 .toList();
@@ -198,7 +198,7 @@ public final class MQSScriptsBridge implements AutoCloseable {
     private ScriptStateResponse toScriptState(ScriptDescriptor descriptor, Set<String> runningScriptIds) {
         return new ScriptStateResponse(
                 descriptor.getId(),
-                descriptor.moduleName(),
+                descriptor.scriptName(),
                 descriptor.version(),
                 descriptor.mainClass(),
                 descriptor.path().toString(),
@@ -242,7 +242,7 @@ public final class MQSScriptsBridge implements AutoCloseable {
 
     public record ScriptStateResponse(
             String id,
-            String moduleName,
+            String scriptName,
             String version,
             String mainClass,
             String path,

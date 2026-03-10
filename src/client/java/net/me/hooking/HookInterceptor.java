@@ -27,7 +27,7 @@ import net.me.hooking.context.HookContext;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptConstants;
 import net.me.scripting.mappings.MappingsManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;

@@ -28,8 +28,8 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.command.Command;
 import net.me.command.CommandManager;
 import net.me.scripting.ScriptingService;
-import net.me.scripting.module.RunningScript;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.script.ScriptDescriptor;
 import net.me.utils.ChatUtils;
 
 import java.util.Set;

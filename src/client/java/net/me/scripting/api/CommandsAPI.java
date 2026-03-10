@@ -26,7 +26,7 @@ import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.commands.CommandAPIService.CommandRegistration;
 import net.me.scripting.commands.CommandBuilder;
 import net.me.scripting.commands.ScriptArgumentType;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.scripting.typings.MqsApiFragment;
 import net.me.scripting.typings.TypingsConstants;
 import net.me.scripting.typings.schema.TsMember;

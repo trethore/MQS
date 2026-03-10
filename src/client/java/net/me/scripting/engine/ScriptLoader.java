@@ -34,7 +34,7 @@ public final class ScriptLoader {
         throw new UnsupportedOperationException("Utility class");
     }
 
-    public static Map<String, Value> loadModules(Path scriptPath, Context context, ThreadLocal<Map<String, Value>> perFileExports) {
+    public static Map<String, Value> loadScripts(Path scriptPath, Context context, ThreadLocal<Map<String, Value>> perFileExports) {
         perFileExports.set(new HashMap<>());
         try {
             Source source = Source.newBuilder(ScriptConstants.JS, scriptPath.toFile())
@@ -47,7 +47,7 @@ public final class ScriptLoader {
             if (e instanceof PolyglotException polyEx && polyEx.isHostException()) {
                 Main.LOGGER.error("A Java error occurred while loading script: {}", scriptPath, polyEx.asHostException());
             } else {
-                Main.LOGGER.error("Failed to load or parse script file for modules: {}", scriptPath, e);
+                Main.LOGGER.error("Failed to load or parse script file for scripts: {}", scriptPath, e);
             }
             return Collections.emptyMap();
         } finally {

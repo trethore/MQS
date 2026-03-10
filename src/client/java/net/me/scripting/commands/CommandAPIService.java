@@ -28,7 +28,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.Main;
 import net.me.mixin.client.accessors.CommandNodeAccessor;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientSuggestionProvider;
 

@@ -24,7 +24,7 @@ import net.me.config.GlobalConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.engine.ScriptingClassResolver;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.scripting.typings.MqsApiFragment;
 import net.me.scripting.typings.ReflectedJavaTypeDescriptors;
 import net.me.scripting.typings.TypingsConstants;

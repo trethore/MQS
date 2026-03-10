@@ -25,7 +25,7 @@ import net.me.keybinds.Keys;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.api.internal.HandleTracker;
 import net.me.scripting.api.internal.ScriptContextHelper;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.scripting.typings.MqsApiFragment;
 import net.me.scripting.typings.TypingsConstants;
 import net.me.scripting.typings.schema.TsMember;

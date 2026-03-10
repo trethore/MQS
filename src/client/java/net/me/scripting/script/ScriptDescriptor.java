@@ -16,20 +16,20 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package net.me.scripting.module;
+package net.me.scripting.script;
 
 import java.nio.file.Path;
 import java.util.Objects;
 
 public record ScriptDescriptor(
         Path path,
-        String moduleName,
+        String scriptName,
         String version,
         String mainClass
 ) {
 
     public String getId() {
-        return path.getFileName().toString() + ":" + moduleName;
+        return path.getFileName().toString() + ":" + scriptName;
     }
 
     @Override
@@ -37,11 +37,11 @@ public record ScriptDescriptor(
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ScriptDescriptor that = (ScriptDescriptor) o;
-        return Objects.equals(path, that.path) && Objects.equals(moduleName, that.moduleName) && Objects.equals(version, that.version) && Objects.equals(mainClass, that.mainClass);
+        return Objects.equals(path, that.path) && Objects.equals(scriptName, that.scriptName) && Objects.equals(version, that.version) && Objects.equals(mainClass, that.mainClass);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(path, moduleName, version, mainClass);
+        return Objects.hash(path, scriptName, version, mainClass);
     }
 }

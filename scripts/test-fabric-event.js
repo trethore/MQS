@@ -3,18 +3,18 @@ const Component = net.minecraft.network.chat.Component;
 class TestEvent {
     disposer = null;
     onEnable() {
-        // triggered when the module is enabled
+        // triggered when the script is enabled
         println("Hello from Test Event!");
         const player = MQS.utils.player();
         if (player) {
-            const message = "Hello from Test Module!";
+            const message = "Hello from Test Script!";
             player.displayClientMessage(Component.literal(message), false);
         }
         this.disposer = MQS.events.fabric.clientTickEnd(this.onTick.bind(this));
     }
 
     onDisable() {
-        // triggered when the module is disabled
+        // triggered when the script is disabled
         println("Goodbye from Test Event!");
         if (this.disposer) {
             this.disposer();
@@ -31,4 +31,4 @@ class TestEvent {
     }
 }
 
-exportModule(TestEvent);
+exportScript(TestEvent);
