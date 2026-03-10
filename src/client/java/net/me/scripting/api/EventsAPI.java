@@ -18,12 +18,12 @@
 
 package net.me.scripting.api;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.event.*;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.api.internal.HandleTracker;
 import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.script.RunningScript;
+import net.me.scripting.typings.FabricEventTypeDescriptors;
 import net.me.scripting.typings.MqsApiFragment;
 import net.me.scripting.typings.TypingsConstants;
 import net.me.scripting.typings.schema.TsMember;
@@ -51,8 +51,14 @@ public class EventsAPI implements ProxyObject {
     private static final String OFF = "off";
     private static final String OPTIONS = "options";
     private static final String TARGET = "target";
+    private static final String EVENT_TYPE = "eventType";
     private static final String EVENT_OPTIONS_LIKE = "MQSEventOptionsLike";
-
+    private static final String EVENT_PHASE = "MQSEventPhase";
+    private static final String EVENT_ENUM = "MQSEventsEnum";
+    private static final String EVENT_PHASE_VALUES = "MQSEventPhaseValues";
+    private static final String EVENT_SUBSCRIPTION_OPTIONS = "MQSEventSubscriptionOptions";
+    private static final String EVENTS_API = "MQSEventsApi";
+    private static final String CALLBACK_MUST_BE_FUNCTION = "Callback must be a function.";
     private static final Set<String> MEMBER_KEYS = Set.of(
             FABRIC,
             OFF,
@@ -83,28 +89,30 @@ public class EventsAPI implements ProxyObject {
     }
 
     public static MqsApiFragment describeTypeScript() {
-        return new MqsApiFragment(
-                List.of(
-                        alias("MQSEventPhase", "\"PRE\" | \"POST\""),
-                        alias(TypingsConstants.EVENT_CALLBACK, "<T = any>", "(event: T) => " + TypingsConstants.UNKNOWN),
-                        alias(EVENT_OPTIONS_LIKE, "MQSEventSubscriptionOptions | " + TypingsConstants.EVENT_OPTIONS_BUILDER + " | MQSEventPhase | " + TypingsConstants.STRING)
+        return MqsApiFragment.merge(
+                new MqsApiFragment(
+                        List.of(
+                                alias(EVENT_PHASE, "\"PRE\" | \"POST\""),
+                                alias(TypingsConstants.EVENT_CALLBACK, "<T = any>", "(event: T) => " + TypingsConstants.UNKNOWN),
+                                alias(EVENT_OPTIONS_LIKE, EVENT_SUBSCRIPTION_OPTIONS + " | " + TypingsConstants.EVENT_OPTIONS_BUILDER + " | " + EVENT_PHASE + " | " + TypingsConstants.STRING)
+                        ),
+                        List.of(),
+                        List.of(),
+                        List.of(
+                                describePhaseValues(),
+                                describeEventsEnum(),
+                                describeEventSubscriptionOptions(),
+                                describeEventOptionsBuilder(),
+                                describeEventsApi()
+                        )
                 ),
-                List.of(),
-                List.of(),
-                List.of(
-                        describePhaseValues(),
-                        describeEventsEnum(),
-                        describeEventSubscriptionOptions(),
-                        describeEventOptionsBuilder(),
-                        describeFabricEventsApi(),
-                        describeEventsApi()
-                )
+                FabricEventTypeDescriptors.describeTypeScript()
         );
     }
 
     private static TsObject describePhaseValues() {
         return new TsObject(
-                "MQSEventPhaseValues",
+                EVENT_PHASE_VALUES,
                 List.of(
                         ro("PRE", "\"PRE\""),
                         ro("POST", "\"POST\"")
@@ -117,13 +125,13 @@ public class EventsAPI implements ProxyObject {
         for (Events event : Events.values()) {
             members.add(ro(event.name(), "\"" + event.name() + "\""));
         }
-        return new TsObject("MQSEventsEnum", List.copyOf(members));
+        return new TsObject(EVENT_ENUM, List.copyOf(members));
     }
 
     private static TsObject describeEventSubscriptionOptions() {
         return new TsObject(
-                "MQSEventSubscriptionOptions",
-                List.of(prop(TypingsConstants.PHASE, "MQSEventPhase"))
+                EVENT_SUBSCRIPTION_OPTIONS,
+                List.of(prop(TypingsConstants.PHASE, EVENT_PHASE))
         );
     }
 
@@ -131,33 +139,27 @@ public class EventsAPI implements ProxyObject {
         return new TsObject(
                 TypingsConstants.EVENT_OPTIONS_BUILDER,
                 List.of(
-                        method(TypingsConstants.PHASE, fn(TypingsConstants.EVENT_OPTIONS_BUILDER, p(TypingsConstants.PHASE, "MQSEventPhase | " + TypingsConstants.STRING))),
-                        method("build", fn("MQSEventSubscriptionOptions"))
-                )
-        );
-    }
-
-    private static TsObject describeFabricEventsApi() {
-        return new TsObject(
-                "MQSFabricEventsApi",
-                List.of(
-                        method("clientTickStart", fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK))),
-                        method("clientTickEnd", fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK)))
+                        method(TypingsConstants.PHASE, fn(TypingsConstants.EVENT_OPTIONS_BUILDER, p(TypingsConstants.PHASE, EVENT_PHASE + " | " + TypingsConstants.STRING))),
+                        method("build", fn(EVENT_SUBSCRIPTION_OPTIONS))
                 )
         );
     }
 
     private static TsObject describeEventsApi() {
         List<TsMember> members = new ArrayList<>(List.of(
-                ro(FABRIC, "MQSFabricEventsApi"),
-                ro(EVENTS, "MQSEventsEnum"),
-                ro(PHASE, "MQSEventPhaseValues"),
+                ro(FABRIC, FabricEventTypeDescriptors.ROOT_OBJECT_NAME),
+                ro(EVENTS, EVENT_ENUM),
+                ro(PHASE, EVENT_PHASE_VALUES),
                 method(OPTIONS, fn(TypingsConstants.EVENT_OPTIONS_BUILDER)),
                 method(OFF, fn(TypingsConstants.VOID, opt(TARGET, TypingsConstants.MQS_DISPOSER + " | " + TypingsConstants.EVENT_CALLBACK))),
                 method(
                         REGISTER,
-                        fn(TypingsConstants.MQS_DISPOSER, p("eventType", TypingsConstants.UNKNOWN), p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK)),
-                        fn(TypingsConstants.MQS_DISPOSER, p("eventType", TypingsConstants.UNKNOWN), p(TypingsConstants.PHASE, "MQSEventPhase | " + TypingsConstants.STRING), p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK))
+                        fn("<TEvent extends " + FabricEventTypeDescriptors.EVENT_TYPE_BOUND + ">",
+                                TypingsConstants.MQS_DISPOSER,
+                                p(EVENT_TYPE, "TEvent"),
+                                p(TypingsConstants.CALLBACK, FabricEventTypeDescriptors.EVENT_CALLBACK_TYPE_NAME + "<TEvent>")),
+                        fn(TypingsConstants.MQS_DISPOSER, p(EVENT_TYPE, TypingsConstants.UNKNOWN), p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK)),
+                        fn(TypingsConstants.MQS_DISPOSER, p(EVENT_TYPE, TypingsConstants.UNKNOWN), p(TypingsConstants.PHASE, EVENT_PHASE + " | " + TypingsConstants.STRING), p(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK))
                 ),
                 method(UNREGISTER, fn(TypingsConstants.VOID, p("eventTarget", TypingsConstants.UNKNOWN), opt("phaseOrCallback", TypingsConstants.UNKNOWN), opt(TypingsConstants.CALLBACK, TypingsConstants.EVENT_CALLBACK))),
                 method(UNREGISTER_ALL, fn(TypingsConstants.VOID))
@@ -170,7 +172,7 @@ public class EventsAPI implements ProxyObject {
             ));
         }
 
-        return new TsObject("MQSEventsApi", List.copyOf(members));
+        return new TsObject(EVENTS_API, List.copyOf(members));
     }
 
     private static Class<? extends Event> getEventClass(Object eventTarget) {
@@ -281,41 +283,7 @@ public class EventsAPI implements ProxyObject {
     }
 
     private ProxyObject createFabricProxy() {
-        Map<String, net.fabricmc.fabric.api.event.Event<?>> fabricEvents = Map.of(
-                "clientTickEnd", ClientTickEvents.END_CLIENT_TICK,
-                "clientTickStart", ClientTickEvents.START_CLIENT_TICK
-        );
-
-        return new ProxyObject() {
-            @Override
-            public Object getMember(String key) {
-                net.fabricmc.fabric.api.event.Event<?> fabricEvent = fabricEvents.get(key);
-                if (fabricEvent == null) {
-                    return null;
-                }
-                return (ProxyExecutable) args -> {
-                    RunningScript owner = requireOwner();
-                    Value callback = ApiArgumentChecks.requireExecutable(args, 0, "First argument must be a callback function.");
-                    eventManager.registerFabric(owner, fabricEvent, callback);
-                    return registerHandle(owner, null, null, null, callback, fabricEvent);
-                };
-            }
-
-            @Override
-            public Object getMemberKeys() {
-                return fabricEvents.keySet().toArray(new String[0]);
-            }
-
-            @Override
-            public boolean hasMember(String key) {
-                return fabricEvents.containsKey(key);
-            }
-
-            @Override
-            public void putMember(String key, Value value) {
-                throw new UnsupportedOperationException("Cannot modify MQS.events.fabric.");
-            }
-        };
+        return new FabricEventRegistry().createProxy();
     }
 
     private ProxyExecutable createOffExecutable() {
@@ -363,14 +331,17 @@ public class EventsAPI implements ProxyObject {
     private Registration parseRegistration(Value[] args) {
         Object eventTarget = resolveEventTarget(args[0]);
         if (args.length == 2) {
-            Value callback = ApiArgumentChecks.requireExecutable(args, 1, "Callback must be a function.");
+            Value callback = ApiArgumentChecks.requireExecutable(args, 1, CALLBACK_MUST_BE_FUNCTION);
             return new Registration(eventTarget, EventPhase.POST, callback);
+        }
+        if (eventTarget instanceof net.fabricmc.fabric.api.event.Event<?>) {
+            throw new IllegalArgumentException("Fabric events do not support phases.");
         }
         EventPhase phase = resolvePhase(args[1]);
         if (phase == null) {
             throw new IllegalArgumentException("Second argument must be a valid phase (PRE or POST).");
         }
-        Value callback = ApiArgumentChecks.requireExecutable(args, 2, "Callback must be a function.");
+        Value callback = ApiArgumentChecks.requireExecutable(args, 2, CALLBACK_MUST_BE_FUNCTION);
         return new Registration(eventTarget, phase, callback);
     }
 
@@ -649,25 +620,42 @@ public class EventsAPI implements ProxyObject {
             if (!disposed.compareAndSet(false, true)) {
                 return;
             }
+
+            unregister();
+        }
+
+        private void unregister() {
             if (fabricEvent != null) {
                 eventManager.unregister(owner, fabricEvent, callback);
                 return;
             }
+
             if (eventClass != null) {
-                if (phase != null) {
-                    eventManager.unregister(owner, eventClass, phase, callback);
-                } else {
-                    eventManager.unregister(owner, eventClass, callback);
-                }
+                unregisterEventClass();
                 return;
             }
+
             if (event != null) {
-                if (phase != null) {
-                    eventManager.unregister(owner, event, phase, callback);
-                } else {
-                    eventManager.unregister(owner, event, callback);
-                }
+                unregisterEvent();
             }
+        }
+
+        private void unregisterEventClass() {
+            if (phase == null) {
+                eventManager.unregister(owner, eventClass, callback);
+                return;
+            }
+
+            eventManager.unregister(owner, eventClass, phase, callback);
+        }
+
+        private void unregisterEvent() {
+            if (phase == null) {
+                eventManager.unregister(owner, event, callback);
+                return;
+            }
+
+            eventManager.unregister(owner, event, phase, callback);
         }
 
         private boolean valueEquals(Value a, Value b) {

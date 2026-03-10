@@ -168,9 +168,10 @@ public final class MQSScriptsBridge implements AutoCloseable {
         ScriptsSnapshotResponse snapshot = buildSnapshot();
         emitScriptsUpdated(snapshot);
 
+        String pluralSuffix = disabledCount == 1 ? "" : "s";
         String message = disabledCount == 0
                 ? "no running scripts to disable"
-                : "disabled " + disabledCount + " running script" + (disabledCount == 1 ? "" : "s");
+                : "disabled " + disabledCount + " running script" + pluralSuffix;
 
         return ScriptOperationResponse.success(ACTION_DISABLE_ALL, message, null, snapshot);
     }

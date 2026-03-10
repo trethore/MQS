@@ -10,7 +10,10 @@ class TestEvent {
             const message = "Hello from Test Script!";
             player.displayClientMessage(Component.literal(message), false);
         }
-        this.disposer = MQS.events.fabric.clientTickEnd(this.onTick.bind(this));
+        this.disposer = MQS.events.register(
+            MQS.events.fabric.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK,
+            this.onTick.bind(this)
+        );
     }
 
     onDisable() {

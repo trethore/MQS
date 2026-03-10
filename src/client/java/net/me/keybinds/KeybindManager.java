@@ -192,41 +192,13 @@ public class KeybindManager {
     public void rebindKey(KeyBinding binding, int newKeyCode) {
         if (binding == null) return;
 
-        List<KeybindEntry> oldBindings = keybindsByKeycode.get(binding.getKey());
-        if (oldBindings != null) {
-            oldBindings.remove(binding);
-            if (oldBindings.isEmpty()) {
-                keybindsByKeycode.remove(binding.getKey());
-            }
-        }
-
-        binding.setKey(newKeyCode);
-
-        if (newKeyCode >= 0) {
-            keybindsByKeycode.computeIfAbsent(newKeyCode, ignored -> new CopyOnWriteArrayList<>()).add(binding);
-        }
-
-        configManager.setKeybind(binding.getOwner().getId(), binding.getName(), newKeyCode);
+        rebind(binding, binding.getOwner().getId(), binding.getName(), newKeyCode);
     }
 
     public void rebindHostKey(HostKeyBinding binding, int newKeyCode) {
         if (binding == null) return;
 
-        List<KeybindEntry> oldBindings = keybindsByKeycode.get(binding.getKey());
-        if (oldBindings != null) {
-            oldBindings.remove(binding);
-            if (oldBindings.isEmpty()) {
-                keybindsByKeycode.remove(binding.getKey());
-            }
-        }
-
-        binding.setKey(newKeyCode);
-
-        if (newKeyCode >= 0) {
-            keybindsByKeycode.computeIfAbsent(newKeyCode, ignored -> new CopyOnWriteArrayList<>()).add(binding);
-        }
-
-        configManager.setKeybind(HOST_ID, binding.getName(), newKeyCode);
+        rebind(binding, HOST_ID, binding.getName(), newKeyCode);
     }
 
     public Map<RunningScript, List<KeyBinding>> getGroupedKeybinds() {
@@ -272,6 +244,24 @@ public class KeybindManager {
 
         detachBinding(binding);
         return true;
+    }
+
+    private void rebind(KeybindEntry binding, String configOwnerId, String bindingName, int newKeyCode) {
+        List<KeybindEntry> oldBindings = keybindsByKeycode.get(binding.getKey());
+        if (oldBindings != null) {
+            oldBindings.remove(binding);
+            if (oldBindings.isEmpty()) {
+                keybindsByKeycode.remove(binding.getKey());
+            }
+        }
+
+        binding.setKey(newKeyCode);
+
+        if (newKeyCode >= 0) {
+            keybindsByKeycode.computeIfAbsent(newKeyCode, ignored -> new CopyOnWriteArrayList<>()).add(binding);
+        }
+
+        configManager.setKeybind(configOwnerId, bindingName, newKeyCode);
     }
 
     private String normalizeKey(String value) {

@@ -21,10 +21,15 @@ package net.me.mixin.fabric.event;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
+import java.util.function.Function;
+
 @Mixin(targets = "net.fabricmc.fabric.impl.base.event.ArrayBackedEvent", remap = false)
 public interface ArrayBackedEventAccessor<T> {
 
     @Accessor("handlers")
     T[] getHandlers();
+
+    @Accessor("invokerFactory")
+    Function<T[], T> getInvokerFactory();
 
 }

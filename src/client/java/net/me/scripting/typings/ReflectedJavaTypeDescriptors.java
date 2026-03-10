@@ -113,7 +113,7 @@ public final class ReflectedJavaTypeDescriptors {
         return builder.append(')').toString();
     }
 
-    private static String renderJavaType(Class<?> type) {
+    public static String renderJavaType(Class<?> type) {
         if (type == null) {
             return "any";
         }
