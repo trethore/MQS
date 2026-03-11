@@ -8,10 +8,9 @@ import { cn } from "@/lib/utils";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 type NavItemId = "scripts" | "console" | "settings";
-type NavLinkId = NavItemId | "code";
 
 interface BaseNavItem {
-  id: NavLinkId;
+  id: NavItemId;
   label: string;
 }
 
@@ -23,7 +22,7 @@ interface SettingsMenuItem {
   id: "options" | "keybinds" | "commands";
   label: string;
   description: string;
-  href?: string;
+  href: string;
 }
 
 interface AppNavbarProps {
@@ -32,6 +31,8 @@ interface AppNavbarProps {
 
 const CODE_EDITOR_URL = "https://vscode.dev/";
 const OPTIONS_PAGE_HREF = "../options/index.html";
+const KEYBINDS_PAGE_HREF = "../keybinds/index.html";
+const COMMANDS_PAGE_HREF = "../commands/index.html";
 
 const NAV_ITEMS: NavAnchorItem[] = [
   { id: "scripts", label: "Scripts", href: "../scripts/index.html" },
@@ -50,12 +51,14 @@ const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
   {
     id: "keybinds",
     label: "Keybinds",
-    description: "Keybind mapping tools are coming soon.",
+    description: "Open the keybinds page.",
+    href: KEYBINDS_PAGE_HREF,
   },
   {
     id: "commands",
     label: "Commands",
-    description: "Command browser and usage help are coming soon.",
+    description: "Open the commands page.",
+    href: COMMANDS_PAGE_HREF,
   },
 ];
 
@@ -64,17 +67,7 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleSettingsTriggerClick = useCallback(() => {
-    if (activeItem === "settings") {
-      globalThis.window.location.reload();
-      return;
-    }
-
     setSettingsOpen((currentOpen) => !currentOpen);
-  }, [activeItem]);
-
-  const handleUnimplementedSettingsClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    setSettingsOpen(false);
   }, []);
 
   const handleSettingsBlur = useCallback((event: FocusEvent<HTMLLIElement>) => {
@@ -136,28 +129,17 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
           <ul className="flex items-center gap-1">
             {NAV_ITEMS.map((item) => {
               const active = item.id === activeItem;
-              const codeLink = item.id === "code";
-              let onClick:
-                | ((event: MouseEvent<HTMLAnchorElement>) => void | Promise<void>)
-                | undefined;
-
-              if (codeLink) {
-                onClick = handleCodeClick;
-              }
 
               return (
                 <li key={item.id}>
                   <a
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    aria-disabled={codeLink && preparingCodeLink ? "true" : undefined}
-                    onClick={onClick}
                     className={cn(
                       "mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors",
                       active
                         ? "bg-accent/90 text-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                      codeLink && preparingCodeLink ? "opacity-70" : null,
                     )}
                   >
                     {active ? (
@@ -204,7 +186,7 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
                 <ChevronDown
                   aria-hidden="true"
                   className={cn(
-                    "relative top-[1px] ml-1 size-3 transition duration-200",
+                    "relative top-px ml-1 size-3 transition duration-200",
                     settingsOpen ? "rotate-180" : null,
                     activeItem === "settings" ? "text-primary" : null,
                   )}
@@ -225,38 +207,19 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
                       const classes =
                         "mqs-focus-highlight flex w-full flex-col rounded-xl px-4 py-3 text-left transition-colors hover:bg-accent hover:text-accent-foreground";
 
-                      if (item.href) {
-                        return (
-                          <a
-                            key={item.id}
-                            href={item.href}
-                            className={classes}
-                            onClick={() => setSettingsOpen(false)}
-                            onFocus={() => setSettingsOpen(true)}
-                          >
-                            <span className="text-sm font-semibold text-foreground">
-                              {item.label}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {item.description}
-                            </span>
-                          </a>
-                        );
-                      }
-
                       return (
-                        <button
+                        <a
                           key={item.id}
-                          type="button"
+                          href={item.href}
                           className={classes}
-                          onClick={handleUnimplementedSettingsClick}
+                          onClick={() => setSettingsOpen(false)}
                           onFocus={() => setSettingsOpen(true)}
                         >
                           <span className="text-sm font-semibold text-foreground">
                             {item.label}
                           </span>
                           <span className="text-xs text-muted-foreground">{item.description}</span>
-                        </button>
+                        </a>
                       );
                     })}
                   </div>
