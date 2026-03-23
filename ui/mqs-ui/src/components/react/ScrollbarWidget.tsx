@@ -2,19 +2,31 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-type ScrollbarWidgetProps = React.ComponentProps<"div">;
+interface ScrollbarWidgetProps extends React.ComponentProps<"div"> {
+  bottomFade?: boolean;
+}
 
 export const ScrollbarWidget = React.forwardRef<HTMLDivElement, ScrollbarWidgetProps>(
-  ({ className, ...props }, ref) => {
+  ({ bottomFade = true, children, className, ...props }, ref) => {
     return (
       <div
-        ref={ref}
-        className={cn(
-          "mqs-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-scroll",
-          className,
-        )}
-        {...props}
-      />
+        className="relative min-h-0 flex-1"
+      >
+        <div
+          ref={ref}
+          className={cn("mqs-scrollbar h-full overflow-x-hidden overflow-y-scroll", className)}
+          {...props}
+        >
+          {children}
+        </div>
+
+        {bottomFade ? (
+          <div
+            aria-hidden="true"
+            className="mqs-scrollbar-bottom-fade pointer-events-none absolute bottom-0 left-0"
+          />
+        ) : null}
+      </div>
     );
   },
 );

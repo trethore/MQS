@@ -250,11 +250,6 @@ export function OptionsWidget() {
           )}
         </div>
       </ScrollbarWidget>
-
-      <div
-        aria-hidden="true"
-        className="mqs-list-bottom-fade pointer-events-none absolute bottom-0 left-0"
-      />
     </div>
   );
 }

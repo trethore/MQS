@@ -224,7 +224,7 @@
     box-shadow: var(--mqs-menu-shadow) !important;
   }
 
-  .mqs-list-bottom-fade {
+  .mqs-scrollbar-bottom-fade {
     z-index: 2;
     right: var(--mqs-list-overlay-right-inset);
     height: var(--mqs-list-overlay-height);

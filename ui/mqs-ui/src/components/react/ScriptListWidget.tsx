@@ -80,7 +80,7 @@ export function ScriptListWidget() {
         </p>
       ) : null}
 
-      <section className="relative z-0 mt-3 flex min-h-0 w-full flex-1 flex-col overflow-visible pb-3">
+      <section className="mt-3 flex min-h-0 w-full flex-1 flex-col pb-3">
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             Loading scripts...
@@ -112,10 +112,6 @@ export function ScriptListWidget() {
           </ScrollbarWidget>
         )}
 
-        <div
-          aria-hidden="true"
-          className="mqs-list-bottom-fade pointer-events-none absolute bottom-0 left-0"
-        />
       </section>
     </div>
   );
