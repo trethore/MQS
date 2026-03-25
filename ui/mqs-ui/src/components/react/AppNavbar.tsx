@@ -3,66 +3,26 @@ import { useCallback, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { prepareCodeWorkspace } from "@/bridge/services/codeService";
+import {
+  NAV_ITEMS,
+  SETTINGS_MENU_ITEMS,
+  UI_NAVIGATION_PAGE_ATTRIBUTE,
+  type NavItemId,
+  resolveStaticUiPageHref,
+} from "@/lib/uiNavigation";
 import { cn } from "@/lib/utils";
 
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
-type NavItemId = "scripts" | "console" | "settings";
-
-interface BaseNavItem {
-  id: NavItemId;
-  label: string;
-}
-
-interface NavAnchorItem extends BaseNavItem {
-  href: string;
-}
-
-interface SettingsMenuItem {
-  id: "options" | "keybinds" | "commands";
-  label: string;
-  description: string;
-  href: string;
-}
-
 interface AppNavbarProps {
   activeItem: NavItemId;
+  pageRootHref: string;
 }
 
 const CODE_EDITOR_URL = "https://vscode.dev/";
-const OPTIONS_PAGE_HREF = "../options/index.html";
-const KEYBINDS_PAGE_HREF = "../keybinds/index.html";
-const COMMANDS_PAGE_HREF = "../commands/index.html";
+const SETTINGS_LABEL = "Settings";
 
-const NAV_ITEMS: NavAnchorItem[] = [
-  { id: "scripts", label: "Scripts", href: "../scripts/index.html" },
-  { id: "console", label: "Console", href: "../console/index.html" },
-];
-
-const SETTINGS_ITEM: BaseNavItem = { id: "settings", label: "Settings" };
-
-const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
-  {
-    id: "options",
-    label: "Options",
-    description: "Open the settings page.",
-    href: OPTIONS_PAGE_HREF,
-  },
-  {
-    id: "keybinds",
-    label: "Keybinds",
-    description: "Open the keybinds page.",
-    href: KEYBINDS_PAGE_HREF,
-  },
-  {
-    id: "commands",
-    label: "Commands",
-    description: "Open the commands page.",
-    href: COMMANDS_PAGE_HREF,
-  },
-];
-
-export function AppNavbar({ activeItem }: AppNavbarProps) {
+export function AppNavbar({ activeItem, pageRootHref }: AppNavbarProps) {
   const [preparingCodeLink, setPreparingCodeLink] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -133,7 +93,8 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
               return (
                 <li key={item.id}>
                   <a
-                    href={item.href}
+                    href={resolveStaticUiPageHref(pageRootHref, item.href)}
+                    {...{ [UI_NAVIGATION_PAGE_ATTRIBUTE]: item.href }}
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "mqs-focus-highlight inline-flex h-9 items-center rounded-md px-4 text-sm font-semibold transition-colors",
@@ -181,7 +142,7 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
                       : null,
                   )}
                 >
-                  {SETTINGS_ITEM.label}
+                  {SETTINGS_LABEL}
                 </span>
                 <ChevronDown
                   aria-hidden="true"
@@ -210,7 +171,8 @@ export function AppNavbar({ activeItem }: AppNavbarProps) {
                       return (
                         <a
                           key={item.id}
-                          href={item.href}
+                          href={resolveStaticUiPageHref(pageRootHref, item.href)}
+                          {...{ [UI_NAVIGATION_PAGE_ATTRIBUTE]: item.href }}
                           className={classes}
                           onClick={() => setSettingsOpen(false)}
                           onFocus={() => setSettingsOpen(true)}

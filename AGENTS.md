@@ -9,7 +9,7 @@ Here is the structure of the repository:
 
 ```text
 /
-├── libs-src/                                  # Unpacked dependency sources for browsing/reference.
+├── references/                                  # Unpacked dependency sources for browsing/reference.
 │   ├── fabric/
 │   ├── minecraft/
 │   └── <lib-name>/
@@ -93,7 +93,7 @@ Here is the structure of the repository:
 - Graphene (`graphene-ui`) is a modern, Chromium-based UI library for Minecraft.
 - Lombok ships as a dependency; prefer its annotations to reduce boilerplate.
 - Library sources are fetched through the `sourceDeps` configuration (see `build.gradle.kts`) and unpacked per library using
-  `./gradlew unpackSources` into `libs-src/<library>`. Use these sources to explore library source code.
+  `./gradlew unpackSources` into `references/<library>`. Use these sources to explore library source code.
 
 ## Testing & Verification
 

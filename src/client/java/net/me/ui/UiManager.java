@@ -29,16 +29,11 @@ import net.me.utils.IdeCommandUtils;
 import net.me.utils.McUtils;
 import net.me.utils.VscodeWebUtils;
 import net.minecraft.client.Minecraft;
-import tytoo.grapheneui.api.GrapheneCore;
-import tytoo.grapheneui.api.runtime.GrapheneHttpServer;
-import tytoo.grapheneui.api.url.GrapheneAppUrls;
 
 import java.io.IOException;
 import java.util.Objects;
 
 public class UiManager {
-    private static final String DEV_UI_ENTRYPOINT = "/scripts/index.html";
-    private static final String DEFAULT_PROD_UI_URL = GrapheneAppUrls.asset(Main.MOD_ID, "pages/scripts/index.html");
     private final ScriptingService scriptingService;
     private final ConsoleManager consoleManager;
     private final KeybindManager keybindManager;
@@ -65,7 +60,7 @@ public class UiManager {
         if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
             targetUrl = resolveDevelopmentUiUrl();
         } else {
-            targetUrl = DEFAULT_PROD_UI_URL;
+            targetUrl = resolveProductionUiUrl();
         }
 
         openUrl(targetUrl);
@@ -88,13 +83,11 @@ public class UiManager {
      * Fall back to the bundled UI if the HTTP server is not running for some reason (e.g. port already in use).
      */
     private String resolveDevelopmentUiUrl() {
-        GrapheneHttpServer httpServer = GrapheneCore.runtime().httpServer();
-        if (!httpServer.isRunning()) {
-            Main.LOGGER.warn("Graphene HTTP server is not running in dev, falling back to bundled UI.");
-            return DEFAULT_PROD_UI_URL;
-        }
+        return Main.getGraphene().httpUrl(UiPaths.DEV_HTTP_ENTRYPOINT + "?v=" + System.nanoTime());
+    }
 
-        return httpServer.baseUrl() + DEV_UI_ENTRYPOINT + "?v=" + System.nanoTime();
+    private String resolveProductionUiUrl() {
+        return Main.getGraphene().appAssets().asset(Main.MOD_ID, UiPaths.PROD_APP_ENTRYPOINT);
     }
 
     private void openUrl(String targetUrl) {

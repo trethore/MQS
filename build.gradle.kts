@@ -217,17 +217,17 @@ tasks.named<RemapJarTask>("remapJar") {
 
 // --- Source Browsing Helpers ---
 
-val unpackedSourcesDir: Directory = layout.projectDirectory.dir("libs-src")
+val unpackedSourcesDir: Directory = layout.projectDirectory.dir("references")
 
 val cleanSources by tasks.registering(Delete::class) {
     group = "help"
-    description = "Deletes unpacked sources in libs-src/"
+    description = "Deletes unpacked sources in references/"
     delete(unpackedSourcesDir)
 }
 
 val unpackSources by tasks.registering(UnpackSourcesTask::class) {
     group = "help"
-    description = "Unpacks library, Minecraft, and Fabric sources into libs-src/"
+    description = "Unpacks library, Minecraft, and Fabric sources into references/"
     dependsOn(cleanSources)
     sourceDeps.from(configurations.named(sourceDepsConfigName))
     outputDir.set(unpackedSourcesDir)

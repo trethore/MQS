@@ -111,7 +111,6 @@ export function ScriptListWidget() {
             </ul>
           </ScrollbarWidget>
         )}
-
       </section>
     </div>
   );

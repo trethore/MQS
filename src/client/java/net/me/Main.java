@@ -36,12 +36,16 @@ import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.typings.TypeDefinitionGenerator;
 import net.me.ui.UiManager;
+import net.me.ui.UiPaths;
 import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tytoo.grapheneui.api.GrapheneCore;
+import tytoo.grapheneui.api.GrapheneHandle;
 import tytoo.grapheneui.api.config.GrapheneConfig;
+import tytoo.grapheneui.api.config.GrapheneContainerConfig;
+import tytoo.grapheneui.api.config.GrapheneGlobalConfig;
 import tytoo.grapheneui.api.config.GrapheneHttpConfig;
 
 import java.nio.file.Path;
@@ -71,16 +75,10 @@ public class Main implements ClientModInitializer {
     private UiManager uiManager;
     private Engine scriptEngine;
 
-    private static void setInstance(Main instance) {
-        Main.instance = instance;
-    }
-
     @Override
     public void onInitializeClient() {
         setInstance(this);
-        GrapheneCore.register(Main.MOD_ID, createGrapheneConfig());
-
-
+        GrapheneCore.register(Main.class, createGrapheneConfig());
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
         this.scriptManager = new ScriptManager();
@@ -130,19 +128,21 @@ public class Main implements ClientModInitializer {
     private GrapheneConfig createGrapheneConfig() {
         if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
             return GrapheneConfig.builder()
-                    .allowFileSystemAccess()
-                    .build();
+                    .global(GrapheneGlobalConfig.builder()
+                            .allowFileSystemAccess()
+                            .build()
+                    ).build();
         }
 
         // In development, we want to serve the UI from the source folder for easier development and hot reloading.
-        GrapheneHttpConfig httpConfig = GrapheneHttpConfig.builder()
-                .port(DEV_UI_HTTP_PORT)
-                .fileRoot(FabricLoader.getInstance().getGameDir().resolve("../ui/out/"))
-                .build();
-
         return GrapheneConfig.builder()
-                .allowFileSystemAccess()
-                .http(httpConfig)
+                .container(GrapheneContainerConfig.builder()
+                        .http(GrapheneHttpConfig.builder()
+                                .port(DEV_UI_HTTP_PORT)
+                                .fileRoot(FabricLoader.getInstance().getGameDir().resolve("../ui/out/"))
+                                .spaFallback(UiPaths.DEV_HTTP_SPA_FALLBACK)
+                                .build())
+                        .build())
                 .build();
     }
 
@@ -164,5 +164,13 @@ public class Main implements ClientModInitializer {
         this.consoleManager.addCommand(new SaveConfigCommand(this.consoleManager, this.scriptingService));
         this.consoleManager.addCommand(new SaveAllConfigsCommand(this.consoleManager, this.scriptingService));
         this.consoleManager.addCommand(new AllowAllClassesCommand(this.consoleManager, this.globalConfigManager));
+    }
+
+    public static GrapheneHandle getGraphene() {
+        return GrapheneCore.handle(Main.class);
+    }
+
+    private static void setInstance(Main instance) {
+        Main.instance = instance;
     }
 }

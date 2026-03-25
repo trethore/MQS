@@ -9,9 +9,7 @@ interface ScrollbarWidgetProps extends React.ComponentProps<"div"> {
 export const ScrollbarWidget = React.forwardRef<HTMLDivElement, ScrollbarWidgetProps>(
   ({ bottomFade = true, children, className, ...props }, ref) => {
     return (
-      <div
-        className="relative min-h-0 flex-1"
-      >
+      <div className="relative min-h-0 flex-1">
         <div
           ref={ref}
           className={cn("mqs-scrollbar h-full overflow-x-hidden overflow-y-scroll", className)}
