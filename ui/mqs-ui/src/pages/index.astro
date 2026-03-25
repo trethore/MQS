@@ -1,9 +1,0 @@
----
-import AppLayout from "../layouts/AppLayout.astro";
-import { ROOT_PAGE_ROOT_HREF } from "../lib/uiNavigation";
-import { ScriptListWidget } from "../components/react/ScriptListWidget";
----
-
-<AppLayout activeItem="scripts" pageRootHref={ROOT_PAGE_ROOT_HREF}>
-  <ScriptListWidget client:load />
-</AppLayout>
