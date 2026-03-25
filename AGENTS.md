@@ -30,6 +30,7 @@ Here is the structure of the repository:
 │           ├── fabric.mod.json                # Registers the client entry point and mixin config.
 │           └── myqolscripts.client.mixins.json
 ├── scripts/                                   # User-controlled scripts loaded by MQS.
+├── web/                                       # Vite + React + shadcn/ui + Tailwind V4 project for Graphene pages.
 ├── docs/
 ├── build.gradle.kts
 ├── gradle.properties
