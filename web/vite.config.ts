@@ -7,6 +7,9 @@ import path from 'node:path';
 export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss()],
+  build: {
+    assetsDir: 'web-assets',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

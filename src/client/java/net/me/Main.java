@@ -134,12 +134,12 @@ public class Main implements ClientModInitializer {
                     ).build();
         }
 
-        // In development, we want to serve the UI from the source folder for easier development and hot reloading.
+        // In development, we serve the built UI from the web/out folder for faster iteration.
         return GrapheneConfig.builder()
                 .container(GrapheneContainerConfig.builder()
                         .http(GrapheneHttpConfig.builder()
                                 .port(DEV_UI_HTTP_PORT)
-                                .fileRoot(FabricLoader.getInstance().getGameDir().resolve("../ui/out/"))
+                                .fileRoot(FabricLoader.getInstance().getGameDir().resolve("../web/out/"))
                                 .spaFallback(UiPaths.DEV_HTTP_SPA_FALLBACK)
                                 .build())
                         .build())

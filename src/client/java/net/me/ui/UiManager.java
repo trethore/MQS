@@ -54,6 +54,18 @@ public class UiManager {
         this.globalConfigManager = Objects.requireNonNull(globalConfigManager, "globalConfigManager");
     }
 
+    private void openUrl(String targetUrl) {
+        Minecraft mc = McUtils.getMc();
+        mc.execute(() -> mc.setScreen(new MQSWebScreen(
+                targetUrl,
+                this.scriptingService,
+                this.consoleManager,
+                this.keybindManager,
+                this.scriptManager,
+                this.globalConfigManager
+        )));
+    }
+
     public void openUi() {
         String targetUrl;
 
@@ -78,9 +90,8 @@ public class UiManager {
     }
 
     /**
-     * In development, we want to load the UI from the Graphene HTTP server, which serves the files directly from the filesystem.
-     * This allows for hot-reloading and faster development.
-     * Fall back to the bundled UI if the HTTP server is not running for some reason (e.g. port already in use).
+     * In development, we load the UI from the Graphene HTTP server backed by the web/out build output.
+     * This allows faster UI iteration while keeping the same Graphene/JCEF loading path.
      */
     private String resolveDevelopmentUiUrl() {
         return Main.getGraphene().httpUrl(UiPaths.DEV_HTTP_ENTRYPOINT + "?v=" + System.nanoTime());
@@ -88,17 +99,5 @@ public class UiManager {
 
     private String resolveProductionUiUrl() {
         return Main.getGraphene().appAssets().asset(Main.MOD_ID, UiPaths.PROD_APP_ENTRYPOINT);
-    }
-
-    private void openUrl(String targetUrl) {
-        Minecraft mc = McUtils.getMc();
-        mc.execute(() -> mc.setScreen(new MQSWebScreen(
-                targetUrl,
-                this.scriptingService,
-                this.consoleManager,
-                this.keybindManager,
-                this.scriptManager,
-                this.globalConfigManager
-        )));
     }
 }

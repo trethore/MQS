@@ -22,7 +22,7 @@ public final class UiPaths {
     public static final String ROOT_PAGE_FILE_NAME = "index.html";
     public static final String DEV_HTTP_ENTRYPOINT = "/" + ROOT_PAGE_FILE_NAME;
     public static final String DEV_HTTP_SPA_FALLBACK = DEV_HTTP_ENTRYPOINT;
-    public static final String PROD_ASSET_ROOT = "pages/";
+    public static final String PROD_ASSET_ROOT = "web/";
     public static final String PROD_APP_ENTRYPOINT = PROD_ASSET_ROOT + ROOT_PAGE_FILE_NAME;
 
     private UiPaths() {
