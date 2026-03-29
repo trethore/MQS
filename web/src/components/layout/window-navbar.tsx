@@ -1,4 +1,5 @@
-import { Button } from '@/components/ui/button';
+import { ThemeSwitcher } from '@/components/shared/theme-switcher';
+import type { ResolvedTheme, ThemePreference } from '@/hooks/use-theme-preference';
 import { Card } from '@/components/ui/card';
 import { WindowNavigationMenu } from '@/components/layout/window-navigation-menu';
 import { cn } from '@/lib/utils';
@@ -14,14 +15,24 @@ export type WindowPageId = (typeof WINDOW_NAV_ITEMS)[number]['id'];
 type WindowNavbarProps = {
   activePage: WindowPageId;
   onPageChange: (pageId: WindowPageId) => void;
+  theme: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  onThemeChange: (theme: ThemePreference) => void;
   className?: string;
 };
 
-export function WindowNavbar({ activePage, onPageChange, className }: WindowNavbarProps) {
+export function WindowNavbar({
+  activePage,
+  onPageChange,
+  theme,
+  resolvedTheme,
+  onThemeChange,
+  className,
+}: WindowNavbarProps) {
   return (
     <Card
       className={cn(
-        'gap-0 rounded-xl border-[color:var(--window-navbar-border)] bg-card py-2 shadow-sm',
+        'gap-0 rounded-xl border-(--window-navbar-border) bg-card py-2 shadow-sm',
         className
       )}
     >
@@ -39,14 +50,11 @@ export function WindowNavbar({ activePage, onPageChange, className }: WindowNavb
         />
 
         <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-md px-2.5 text-muted-foreground hover:bg-transparent hover:text-foreground"
-          >
-            Theme
-          </Button>
+          <ThemeSwitcher
+            theme={theme}
+            resolvedTheme={resolvedTheme}
+            onThemeChange={onThemeChange}
+          />
         </div>
       </div>
     </Card>

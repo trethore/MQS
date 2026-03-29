@@ -206,6 +206,15 @@ body,
   background-color: transparent;
 }
 
+html.theme-changing,
+html.theme-changing *,
+html.theme-changing *::before,
+html.theme-changing *::after {
+  transition-duration: 180ms;
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow, opacity;
+  transition-timing-function: ease-out;
+}
+
 body {
   min-height: 100vh;
 }
