@@ -37,7 +37,7 @@ web/
 
 ## Testing & Verification
 
-- Do not run npm commands yourself; instead provide the exact command for the user to execute.
-- Encourage running `npm run build:dev` for development builds and `npm run build` for production builds.
+- Run `npm run lint` and `npm run format` to ensure code quality and consistency.
+- Run `npm run build:dev` for development builds and `npm run build` for production builds.
 - Use `node --check <file>` to validate syntax.
-- Document manual validation steps and remaining risks before completing work.
+- Document manual validation steps and any remaining risks before completing the work.

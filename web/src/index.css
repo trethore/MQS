@@ -185,7 +185,8 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: transparent;
     letter-spacing: var(--tracking-normal);
   }
   button:not(:disabled),
@@ -200,6 +201,7 @@ body,
   width: 100%;
   min-height: 100%;
   margin: 0;
+  background-color: transparent;
 }
 
 body {
