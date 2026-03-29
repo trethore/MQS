@@ -12,15 +12,15 @@ type WindowProps = {
 export function Window({ children, navbar, className, contentClassName }: WindowProps) {
   return (
     <section
-      style={{ aspectRatio: '16 / 9' }}
+      style={{ aspectRatio: '16 / 10' }}
       className={cn(
-        'flex w-[min(1120px,96vw,calc(92vh*16/9))] flex-col overflow-hidden rounded-2xl border border-border bg-background text-foreground shadow-lg',
+        'flex w-[min(1120px,96vw,calc(92vh*16/10))] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-background p-4 text-foreground shadow-lg',
         className
       )}
     >
-      {navbar ? <div className="shrink-0 border-b border-border px-5 py-4">{navbar}</div> : null}
+      {navbar ? <div className="shrink-0">{navbar}</div> : null}
 
-      <div className={cn('flex min-h-0 flex-1 items-center justify-center p-6', contentClassName)}>
+      <div className={cn('flex min-h-0 flex-1 items-center justify-center', contentClassName)}>
         {children}
       </div>
     </section>

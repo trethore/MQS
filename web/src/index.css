@@ -35,6 +35,7 @@
   --sidebar-accent-foreground: oklch(0.37 0.013 285.805);
   --sidebar-border: oklch(0.967 0.003 264.542);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --window-navbar-border: oklch(0.9 0.006 264.531);
   --font-sans: Plus Jakarta Sans, ui-sans-serif, sans-serif, system-ui;
   --font-serif: Merriweather, ui-serif, serif;
   --font-mono: Fira Code, ui-monospace, monospace;
@@ -90,6 +91,7 @@
   --sidebar-accent-foreground: oklch(0.872 0.01 258.338);
   --sidebar-border: oklch(0.982 0.018 155.826);
   --sidebar-ring: oklch(0.928 0.006 264.531);
+  --window-navbar-border: oklch(0.36 0.008 286.033);
   --font-sans: Plus Jakarta Sans, ui-sans-serif, sans-serif, system-ui;
   --font-serif: Merriweather, ui-serif, serif;
   --font-mono: Fira Code, ui-monospace, monospace;
