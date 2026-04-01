@@ -12,6 +12,7 @@ function App() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <Window
+        contentClassName="items-center justify-center"
         navbar={
           <WindowNavbar
             activePage={activePage}

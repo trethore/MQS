@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 type WindowProps = {
@@ -20,9 +21,9 @@ export function Window({ children, navbar, className, contentClassName }: Window
     >
       {navbar ? <div className="shrink-0">{navbar}</div> : null}
 
-      <div className={cn('flex min-h-0 flex-1 items-center justify-center', contentClassName)}>
-        {children}
-      </div>
+      <Card className="min-h-0 flex-1 gap-0 overflow-hidden rounded-xl border-(--surface-border) py-0 shadow-sm">
+        <CardContent className={cn('flex min-h-0 flex-1 py-6', contentClassName)}>{children}</CardContent>
+      </Card>
     </section>
   );
 }

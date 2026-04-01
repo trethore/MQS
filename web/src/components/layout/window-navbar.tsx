@@ -31,10 +31,7 @@ export function WindowNavbar({
 }: WindowNavbarProps) {
   return (
     <Card
-      className={cn(
-        'gap-0 rounded-xl border-(--window-navbar-border) bg-card py-2 shadow-sm',
-        className
-      )}
+      className={cn('gap-0 rounded-xl border-(--surface-border) bg-card py-2 shadow-sm', className)}
     >
       <div className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-5">
         <div className="min-w-0">

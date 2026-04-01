@@ -9,8 +9,8 @@
   --card-foreground: oklch(0.21 0.006 285.885);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.278 0.033 256.848);
-  --primary: oklch(0.852 0.199 91.936);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(48.8% 0.243 264.376);
+  --primary-foreground: oklch(0.985 0.002 247.839);
   --secondary: oklch(0.922 0 0);
   --secondary-foreground: oklch(0.442 0.017 285.786);
   --muted: oklch(0.967 0.003 264.542);
@@ -21,7 +21,7 @@
   --destructive-foreground: oklch(0.985 0.002 247.839);
   --border: oklch(0.872 0.01 258.338);
   --input: oklch(0.707 0.022 261.325);
-  --ring: oklch(0.905 0.182 98.111);
+  --ring: oklch(54.6% 0.245 262.881);
   --chart-1: oklch(0.588 0.158 241.966);
   --chart-2: oklch(0.627 0.265 303.9);
   --chart-3: oklch(0.723 0.219 149.579);
@@ -35,7 +35,7 @@
   --sidebar-accent-foreground: oklch(0.37 0.013 285.805);
   --sidebar-border: oklch(0.967 0.003 264.542);
   --sidebar-ring: oklch(0.551 0.027 264.364);
-  --window-navbar-border: oklch(0.9 0.006 264.531);
+  --surface-border: oklch(92.9% 0.013 255.508);
   --font-sans: Plus Jakarta Sans, ui-sans-serif, sans-serif, system-ui;
   --font-serif: Merriweather, ui-serif, serif;
   --font-mono: Fira Code, ui-monospace, monospace;
@@ -91,7 +91,7 @@
   --sidebar-accent-foreground: oklch(0.872 0.01 258.338);
   --sidebar-border: oklch(0.982 0.018 155.826);
   --sidebar-ring: oklch(0.928 0.006 264.531);
-  --window-navbar-border: oklch(0.36 0.008 286.033);
+  --surface-border: oklch(0.36 0.008 286.033);
   --font-sans: Plus Jakarta Sans, ui-sans-serif, sans-serif, system-ui;
   --font-serif: Merriweather, ui-serif, serif;
   --font-mono: Fira Code, ui-monospace, monospace;
