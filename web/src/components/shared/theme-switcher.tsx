@@ -61,7 +61,7 @@ export function ThemeSwitcher({ theme, resolvedTheme, onThemeChange }: ThemeSwit
 
       <DropdownMenuContent
         align="end"
-        className="w-40 rounded-xl border-(--surface-border) bg-card text-card-foreground shadow-sm"
+        className="w-40 rounded-xl bg-card text-card-foreground shadow-sm"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
 
