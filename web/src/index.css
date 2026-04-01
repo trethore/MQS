@@ -246,3 +246,25 @@ html.theme-changing *::after {
 body {
   min-height: 100vh;
 }
+
+.mqs-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--input) transparent;
+}
+
+.mqs-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mqs-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mqs-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: var(--input);
+}
+
+.mqs-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border);
+}
