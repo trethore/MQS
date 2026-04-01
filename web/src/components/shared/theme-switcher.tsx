@@ -52,7 +52,7 @@ export function ThemeSwitcher({ theme, resolvedTheme, onThemeChange }: ThemeSwit
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="rounded-md text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+          className="rounded-md text-muted-foreground hover:bg-accent/40 hover:text-foreground data-[state=open]:text-primary"
         >
           <ThemeTriggerIcon theme={theme} resolvedTheme={resolvedTheme} />
           <span className="sr-only">Open theme menu</span>
@@ -61,7 +61,7 @@ export function ThemeSwitcher({ theme, resolvedTheme, onThemeChange }: ThemeSwit
 
       <DropdownMenuContent
         align="end"
-        className="w-40 rounded-xl bg-card text-card-foreground shadow-sm"
+        className="w-40 rounded-xl border-border bg-card text-card-foreground shadow-sm dark:border-input"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
 
@@ -72,7 +72,7 @@ export function ThemeSwitcher({ theme, resolvedTheme, onThemeChange }: ThemeSwit
         }}
       >
         <DropdownMenuLabel>Theme</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-border dark:bg-input" />
 
         <DropdownMenuRadioGroup
           value={theme}

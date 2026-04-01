@@ -1,7 +1,7 @@
 import { PowerOff, RefreshCw } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { MqsButton } from '@/components/shared/mqs-button';
+import { MqsInput } from '@/components/shared/mqs-input';
 
 export function ScriptsPage() {
   return (
@@ -13,13 +13,13 @@ export function ScriptsPage() {
       </div>
 
       <div className="flex w-full items-center gap-3">
-        <Input
+        <MqsInput
           type="search"
           placeholder="Search a QOL script..."
-          className="h-10 flex-1 bg-input/30"
+          className="h-10 flex-1"
         />
 
-        <Button
+        <MqsButton
           type="button"
           variant="outline"
           size="icon"
@@ -27,9 +27,9 @@ export function ScriptsPage() {
           aria-label="Refresh script list"
         >
           <RefreshCw />
-        </Button>
+        </MqsButton>
 
-        <Button
+        <MqsButton
           type="button"
           variant="outline"
           size="icon"
@@ -37,7 +37,7 @@ export function ScriptsPage() {
           aria-label="Turn off all scripts"
         >
           <PowerOff />
-        </Button>
+        </MqsButton>
       </div>
     </section>
   );
