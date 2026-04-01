@@ -3,34 +3,34 @@
 My QOL Scripts (MQS) is a powerful, client-side scripting mod for Minecraft 1.21.11 that runs on the Fabric mod loader.
 It provides a high-performance JavaScript engine and a rich set of APIs, enabling complex scripts that enhance gameplay.
 
-## Project Overview & Architecture
+## Project Structure
 
 Here is the structure of the repository:
 
 ```text
 /
-├── references/                                  # Unpacked dependency sources for browsing/reference.
+├── references/                                 # Unpacked dependency sources for browsing/reference.
 │   ├── fabric/
 │   ├── minecraft/
 │   └── <lib-name>/
 ├── src/
 │   └── client/
 │       ├── java/net/me/
-│       │   ├── scripting/                     # Discovery (`ScriptDiscoverer`), Graal context pooling, lifecycle, `ScriptingService`.
-│       │   ├── event/                         # MQS event bus + Fabric bridge (`EventManager`, `FabricEventAdapter`).
-│       │   ├── hooking/                       # ByteBuddy interception and hook lifecycle (`HookManager`).
-│       │   ├── console/                       # Integrated console and console command surface.
-│       │   ├── command/                       # `/mqs` command tree and command integration.
-│       │   ├── keybinds/                      # Script-defined keybind registration and dispatch.
-│       │   ├── config/                        # Global host config (`mqs_config.json`) and config keys.
-│       │   ├── ui/                            # Graphene-based web UI.
-│       │   ├── utils/                         # Shared host-side utilities.
-│       │   └── mixin/                         # Mixins exposing Minecraft internals required by scripting APIs.
+│       │   ├── command/                        # `/mqs` command tree and command integration.
+│       │   ├── config/                         # Global host config (`mqs_config.json`) and config keys.
+│       │   ├── console/                        # Integrated console and console command surface.
+│       │   ├── event/                          # MQS event bus + Fabric bridge (`EventManager`, `FabricEventAdapter`).
+│       │   ├── hooking/                        # ByteBuddy interception and hook lifecycle (`HookManager`).
+│       │   ├── keybinds/                       # Script-defined keybind registration and dispatch.
+│       │   ├── mixin/                          # Mixins exposing Minecraft internals required by scripting APIs.
+│       │   ├── scripting/                      # Discovery (`ScriptDiscoverer`), Graal context pooling, lifecycle, `ScriptingService`.
+│       │   ├── ui/                             # Graphene-based web UI.
+│       │   └── utils/                          # Shared host-side utilities.
 │       └── resources/
-│           ├── fabric.mod.json                # Registers the client entry point and mixin config.
+│           ├── fabric.mod.json                 # Registers the client entry point and mixin config.
 │           └── myqolscripts.client.mixins.json
-├── scripts/                                   # User-controlled scripts loaded by MQS.
-├── web/                                       # Vite + React + shadcn/ui + Tailwind V4 project for Graphene pages.
+├── scripts/                                    # User-controlled scripts loaded by MQS.
+├── web/                                        # Vite + React + shadcn/ui + Tailwind V4 project for Graphene pages.
 ├── docs/
 ├── build.gradle.kts
 ├── gradle.properties
