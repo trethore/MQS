@@ -30,6 +30,7 @@ function MqsList({
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
   const contentRef = React.useRef<HTMLDivElement | null>(null);
   const [showBottomFade, setShowBottomFade] = React.useState(false);
+  const [enableFadeTransition, setEnableFadeTransition] = React.useState(false);
 
   React.useLayoutEffect(() => {
     const viewportElement = viewportRef.current;
@@ -39,17 +40,27 @@ function MqsList({
       return undefined;
     }
 
-    const updateFadeVisibility = () => {
-      const next  = shouldShowBottomFade(viewportElement);
+    let animationFrameId = 0;
+
+    const updateFadeVisibility = (animate: boolean) => {
+      setEnableFadeTransition((current) => (current === animate ? current : animate));
+      const next = shouldShowBottomFade(viewportElement);
       setShowBottomFade((current) => (current === next ? current : next));
     };
 
-    updateFadeVisibility();
+    const handleScroll = () => {
+      updateFadeVisibility(true);
+    };
 
-    viewportElement.addEventListener('scroll', updateFadeVisibility, { passive: true });
+    updateFadeVisibility(false);
+    animationFrameId = globalThis.requestAnimationFrame(() => {
+      updateFadeVisibility(false);
+    });
+
+    viewportElement.addEventListener('scroll', handleScroll, { passive: true });
 
     const resizeObserver = new ResizeObserver(() => {
-      updateFadeVisibility();
+      updateFadeVisibility(false);
     });
 
     resizeObserver.observe(viewportElement);
@@ -59,7 +70,8 @@ function MqsList({
     }
 
     return () => {
-      viewportElement.removeEventListener('scroll', updateFadeVisibility);
+      globalThis.cancelAnimationFrame(animationFrameId);
+      viewportElement.removeEventListener('scroll', handleScroll);
       resizeObserver.disconnect();
     };
   }, []);
@@ -83,7 +95,7 @@ function MqsList({
         className={cn(
           'pointer-events-none absolute right-2 bottom-0 left-0 z-20 h-9 bg-linear-to-t from-card via-card/92 to-transparent',
           showBottomFade ? 'opacity-100' : 'opacity-0',
-          'transition-opacity duration-150',
+          enableFadeTransition ? 'transition-opacity duration-150' : 'transition-none',
           fadeClassName
         )}
       />

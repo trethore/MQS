@@ -5,9 +5,10 @@ import { cn } from '@/lib/utils';
 
 type ScriptEntryProps = {
   name: string;
-  version: string;
+  version: string | null;
   path: string;
   enabled: boolean;
+  disabled?: boolean;
   onEnabledChange: (enabled: boolean) => void;
   className?: string;
 };
@@ -31,6 +32,7 @@ function ScriptEntry({
   version,
   path,
   enabled,
+  disabled = false,
   onEnabledChange,
   className,
 }: ScriptEntryProps) {
@@ -39,14 +41,19 @@ function ScriptEntry({
   const breadcrumbPath = formatScriptBreadcrumbs(path);
 
   const handleToggle = () => {
+    if (disabled) {
+      return;
+    }
+
     onEnabledChange(!enabled);
   };
 
   return (
     <div
       role="switch"
-      tabIndex={0}
+      tabIndex={disabled ? -1 : 0}
       aria-checked={enabled}
+      aria-disabled={disabled}
       aria-labelledby={titleId}
       aria-describedby={pathId}
       onClick={handleToggle}
@@ -59,7 +66,10 @@ function ScriptEntry({
         handleToggle();
       }}
       className={cn(
-        'relative z-10 flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-border bg-background px-5 py-3.5 shadow-xs outline-none transition-[border-color,box-shadow] hover:border-border focus-visible:border-border focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-input dark:bg-input/30 dark:hover:border-input dark:focus-visible:border-input',
+        'relative z-10 flex items-center justify-between gap-4 rounded-xl border border-border bg-background px-5 py-3.5 shadow-xs outline-none transition-[border-color,box-shadow,opacity] focus-visible:border-border focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-input dark:bg-input/30 dark:focus-visible:border-input',
+        disabled
+          ? 'cursor-not-allowed opacity-60'
+          : 'cursor-pointer hover:border-border dark:hover:border-input',
         className
       )}
     >
@@ -68,7 +78,7 @@ function ScriptEntry({
           <h3 id={titleId} className="truncate text-lg font-semibold tracking-tight text-card-foreground">
             {name}
           </h3>
-          <span className="text-sm font-medium text-muted-foreground">v{version}</span>
+          {version ? <span className="text-sm font-medium text-muted-foreground">v{version}</span> : null}
         </div>
 
         <p id={pathId} className="mt-1 truncate text-sm text-muted-foreground" title={path}>
