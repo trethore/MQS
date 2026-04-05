@@ -1,4 +1,11 @@
-type JsonObject = Record<string, unknown>;
+import {
+  expectObject,
+  readArray,
+  readBoolean,
+  readNullableString,
+  readNumber,
+  readString,
+} from '@/bridge/contracts/json';
 
 export const SCRIPTS_BRIDGE_CHANNELS = {
   list: 'mqs:scripts:list',
@@ -39,54 +46,6 @@ export type ScriptOperationResponse = {
   script: ScriptStateResponse | null;
   snapshot: ScriptsSnapshotResponse;
 };
-
-function expectObject(value: unknown, label: string): JsonObject {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new TypeError(`Invalid ${label} payload.`);
-  }
-
-  return value as JsonObject;
-}
-
-function readString(value: unknown, label: string): string {
-  if (typeof value !== 'string') {
-    throw new TypeError(`Invalid ${label} value.`);
-  }
-
-  return value;
-}
-
-function readNullableString(value: unknown, label: string): string | null {
-  if (value == null) {
-    return null;
-  }
-
-  return readString(value, label);
-}
-
-function readBoolean(value: unknown, label: string): boolean {
-  if (typeof value !== 'boolean') {
-    throw new TypeError(`Invalid ${label} value.`);
-  }
-
-  return value;
-}
-
-function readNumber(value: unknown, label: string): number {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    throw new TypeError(`Invalid ${label} value.`);
-  }
-
-  return value;
-}
-
-function readArray(value: unknown, label: string): Array<unknown> {
-  if (!Array.isArray(value)) {
-    throw new TypeError(`Invalid ${label} value.`);
-  }
-
-  return value;
-}
 
 function parseScriptStateResponse(value: unknown): ScriptStateResponse {
   const objectValue = expectObject(value, 'script state');

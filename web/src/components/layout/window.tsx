@@ -4,10 +4,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 type WindowProps = {
-  children: ReactNode;
-  navbar?: ReactNode;
-  className?: string;
-  contentClassName?: string;
+  readonly children: ReactNode;
+  readonly navbar?: ReactNode;
+  readonly className?: string;
+  readonly contentClassName?: string;
 };
 
 export function Window({ children, navbar, className, contentClassName }: WindowProps) {

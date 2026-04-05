@@ -1,3 +1,8 @@
+import { useCallback, useState } from 'react';
+
+import { prepareCodeWorkspace } from '@/bridge/services/code-service';
+import { VSCODE_WEB_URL } from '@/bridge/contracts/code';
+import { isGrapheneBridgeInstalled } from '@/bridge/core/graphene-bridge';
 import { ThemeSwitcher } from '@/components/shared/theme-switcher';
 import type { ResolvedTheme, ThemePreference } from '@/hooks/use-theme-preference';
 import { Card } from '@/components/ui/card';
@@ -13,13 +18,26 @@ const WINDOW_NAV_ITEMS = [
 export type WindowPageId = (typeof WINDOW_NAV_ITEMS)[number]['id'];
 
 type WindowNavbarProps = {
-  activePage: WindowPageId;
-  onPageChange: (pageId: WindowPageId) => void;
-  theme: ThemePreference;
-  resolvedTheme: ResolvedTheme;
-  onThemeChange: (theme: ThemePreference) => void;
-  className?: string;
+  readonly activePage: WindowPageId;
+  readonly onPageChange: (pageId: WindowPageId) => void;
+  readonly theme: ThemePreference;
+  readonly resolvedTheme: ResolvedTheme;
+  readonly onThemeChange: (theme: ThemePreference) => void;
+  readonly className?: string;
 };
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (text.trim().length === 0 || typeof globalThis.navigator?.clipboard?.writeText !== 'function') {
+    return false;
+  }
+
+  try {
+    await globalThis.navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function WindowNavbar({
   activePage,
@@ -29,6 +47,36 @@ export function WindowNavbar({
   onThemeChange,
   className,
 }: WindowNavbarProps) {
+  const [isOpeningCode, setIsOpeningCode] = useState(false);
+
+  const handleOpenCode = useCallback(async () => {
+    setIsOpeningCode(true);
+
+    try {
+      if (isGrapheneBridgeInstalled()) {
+        const preparation = await prepareCodeWorkspace();
+        if (!preparation.copied) {
+          await copyTextToClipboard(preparation.modDirPath);
+        }
+      }
+    } catch (_error) {
+      console.warn('Failed to prepare code workspace', _error);
+    } finally {
+      setIsOpeningCode(false);
+      globalThis.location.assign(VSCODE_WEB_URL);
+    }
+  }, []);
+
+  const navigationActions = [
+    {
+      id: 'code',
+      label: 'Code',
+      disabled: isOpeningCode,
+      title: 'Open vscode.dev and copy the MQS mod directory path.',
+      onAction: handleOpenCode,
+    },
+  ] as const;
+
   return (
     <Card
       className={cn('gap-0 rounded-xl bg-card py-2 shadow-sm', className)}
@@ -44,6 +92,7 @@ export function WindowNavbar({
           items={WINDOW_NAV_ITEMS}
           activeItem={activePage}
           onItemChange={onPageChange}
+          actions={navigationActions}
         />
 
         <div className="flex justify-end">

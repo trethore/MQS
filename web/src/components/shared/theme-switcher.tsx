@@ -13,9 +13,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 type ThemeSwitcherProps = {
-  theme: ThemePreference;
-  resolvedTheme: ResolvedTheme;
-  onThemeChange: (theme: ThemePreference) => void;
+  readonly theme: ThemePreference;
+  readonly resolvedTheme: ResolvedTheme;
+  readonly onThemeChange: (theme: ThemePreference) => void;
 };
 
 const THEME_OPTIONS = [
@@ -28,8 +28,8 @@ const THEME_OPTIONS = [
 }>;
 
 type ThemeTriggerIconProps = {
-  theme: ThemePreference;
-  resolvedTheme: ResolvedTheme;
+  readonly theme: ThemePreference;
+  readonly resolvedTheme: ResolvedTheme;
 };
 
 function ThemeTriggerIcon({ theme, resolvedTheme }: ThemeTriggerIconProps) {
