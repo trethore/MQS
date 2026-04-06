@@ -62,7 +62,9 @@ function parseScriptStateResponse(value: unknown): ScriptStateResponse {
 export function parseScriptsSnapshotResponse(value: unknown): ScriptsSnapshotResponse {
   const objectValue = expectObject(value, 'scripts snapshot');
   return {
-    scripts: readArray(objectValue.scripts, 'scripts snapshot scripts').map(parseScriptStateResponse),
+    scripts: readArray(objectValue.scripts, 'scripts snapshot scripts').map(
+      parseScriptStateResponse
+    ),
     runningCount: readNumber(objectValue.runningCount, 'scripts snapshot runningCount'),
     totalCount: readNumber(objectValue.totalCount, 'scripts snapshot totalCount'),
   };

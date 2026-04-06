@@ -27,7 +27,10 @@ type WindowNavbarProps = {
 };
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
-  if (text.trim().length === 0 || typeof globalThis.navigator?.clipboard?.writeText !== 'function') {
+  if (
+    text.trim().length === 0 ||
+    typeof globalThis.navigator?.clipboard?.writeText !== 'function'
+  ) {
     return false;
   }
 
@@ -80,9 +83,7 @@ export function WindowNavbar({
   ] as const;
 
   return (
-    <Card
-      className={cn('gap-0 rounded-xl bg-card py-2 shadow-sm', className)}
-    >
+    <Card className={cn('gap-0 rounded-xl bg-card py-2 shadow-sm', className)}>
       <div className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-5">
         <div className="min-w-0">
           <h1 className="text-base font-semibold text-card-foreground">

@@ -22,7 +22,9 @@ export function Window({ children, navbar, className, contentClassName }: Window
       {navbar ? <div className="shrink-0">{navbar}</div> : null}
 
       <Card className="min-h-0 flex-1 gap-0 overflow-hidden rounded-xl py-0 shadow-sm">
-        <CardContent className={cn('flex min-h-0 flex-1 py-6', contentClassName)}>{children}</CardContent>
+        <CardContent className={cn('flex min-h-0 flex-1 py-6', contentClassName)}>
+          {children}
+        </CardContent>
       </Card>
     </section>
   );

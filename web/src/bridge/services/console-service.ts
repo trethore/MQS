@@ -39,7 +39,9 @@ export type ConsoleExecuteResult = {
 };
 
 function normalizeConsoleMessageType(value: string): ConsoleMessageType {
-  return CONSOLE_MESSAGE_TYPES.includes(value as ConsoleMessageType) ? (value as ConsoleMessageType) : 'INFO';
+  return CONSOLE_MESSAGE_TYPES.includes(value as ConsoleMessageType)
+    ? (value as ConsoleMessageType)
+    : 'INFO';
 }
 
 function mapMessage(message: ConsoleMessageResponse): ConsoleMessageItem {
@@ -66,8 +68,14 @@ function mapExecuteResult(result: ConsoleExecuteResponse): ConsoleExecuteResult 
   };
 }
 
-export async function getConsoleSnapshot(options?: GrapheneBridgeWaitOptions): Promise<ConsoleSnapshot> {
-  const payload = await requestGrapheneBridge<unknown>(CONSOLE_BRIDGE_CHANNELS.snapshot, null, options);
+export async function getConsoleSnapshot(
+  options?: GrapheneBridgeWaitOptions
+): Promise<ConsoleSnapshot> {
+  const payload = await requestGrapheneBridge<unknown>(
+    CONSOLE_BRIDGE_CHANNELS.snapshot,
+    null,
+    options
+  );
   return mapSnapshot(parseConsoleSnapshotResponse(payload));
 }
 
@@ -75,7 +83,11 @@ export async function executeConsoleCommand(
   input: string,
   options?: GrapheneBridgeWaitOptions
 ): Promise<ConsoleExecuteResult> {
-  const payload = await requestGrapheneBridge<unknown>(CONSOLE_BRIDGE_CHANNELS.execute, { input } satisfies ConsoleExecuteRequest, options);
+  const payload = await requestGrapheneBridge<unknown>(
+    CONSOLE_BRIDGE_CHANNELS.execute,
+    { input } satisfies ConsoleExecuteRequest,
+    options
+  );
   return mapExecuteResult(parseConsoleExecuteResponse(payload));
 }
 

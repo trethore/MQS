@@ -19,12 +19,15 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [historyDraft, setHistoryDraft] = useState('');
-  const { messages, commandHistory, isLoading, isExecuting, errorMessage, executeCommand } = useConsoleBridge();
+  const { messages, commandHistory, isLoading, isExecuting, errorMessage, executeCommand } =
+    useConsoleBridge();
 
   useAutoFocusInput(inputRef);
 
   const statusMessage = getStatusMessage(errorMessage);
-  const statusMessageClassName = errorMessage ? 'text-destructive dark:text-rose-300' : 'text-muted-foreground';
+  const statusMessageClassName = errorMessage
+    ? 'text-destructive dark:text-rose-300'
+    : 'text-muted-foreground';
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value;
@@ -38,7 +41,8 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
       return;
     }
 
-    const activeHistoryIndex = historyIndex == null ? null : Math.min(historyIndex, commandHistory.length - 1);
+    const activeHistoryIndex =
+      historyIndex == null ? null : Math.min(historyIndex, commandHistory.length - 1);
 
     if (direction === 'up') {
       if (activeHistoryIndex == null) {
@@ -94,14 +98,18 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
     onCommandValueChange('');
     setHistoryDraft('');
     setHistoryIndex(null);
-    void executeCommand(nextCommand);
+    executeCommand(nextCommand);
   };
 
   return (
     <section className="flex h-full min-h-0 w-full flex-col gap-3">
       <div className="w-full">
-        <h2 className="text-left text-2xl font-semibold tracking-tight text-card-foreground">Console</h2>
-        {statusMessage ? <p className={cn('mt-1 text-sm', statusMessageClassName)}>{statusMessage}</p> : null}
+        <h2 className="text-left text-2xl font-semibold tracking-tight text-card-foreground">
+          Console
+        </h2>
+        {statusMessage ? (
+          <p className={cn('mt-1 text-sm', statusMessageClassName)}>{statusMessage}</p>
+        ) : null}
       </div>
 
       <ConsoleOutput messages={messages} isLoading={isLoading} />

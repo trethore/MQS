@@ -26,7 +26,9 @@ const DEFAULT_BRIDGE_INSTALL_TIMEOUT_MS = 4_000;
 const DEFAULT_BRIDGE_POLL_INTERVAL_MS = 25;
 
 export class GrapheneBridgeUnavailableError extends Error {
-  constructor(message = 'Graphene bridge is unavailable. Open the UI from Minecraft to use live MQS data.') {
+  constructor(
+    message = 'Graphene bridge is unavailable. Open the UI from Minecraft to use live MQS data.'
+  ) {
     super(message);
     this.name = 'GrapheneBridgeUnavailableError';
   }

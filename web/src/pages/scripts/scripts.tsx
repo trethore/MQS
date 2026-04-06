@@ -135,10 +135,19 @@ export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPagePro
   const statusMessage = getStatusMessage(errorMessage);
 
   const showBridgeErrorState = !isLoading && errorMessage !== null && totalCount === 0;
-  const showSearchEmptyState = !isLoading && !showBridgeErrorState && filteredScripts.length === 0 && searchValue.trim().length > 0;
-  const showScriptsEmptyState = !isLoading && !showBridgeErrorState && filteredScripts.length === 0 && totalCount === 0;
-  const listContentClassName = showSearchEmptyState ? 'min-h-full items-center justify-center' : undefined;
-  const statusMessageClassName = errorMessage ? 'text-destructive dark:text-rose-300' : 'text-muted-foreground';
+  const showSearchEmptyState =
+    !isLoading &&
+    !showBridgeErrorState &&
+    filteredScripts.length === 0 &&
+    searchValue.trim().length > 0;
+  const showScriptsEmptyState =
+    !isLoading && !showBridgeErrorState && filteredScripts.length === 0 && totalCount === 0;
+  const listContentClassName = showSearchEmptyState
+    ? 'min-h-full items-center justify-center'
+    : undefined;
+  const statusMessageClassName = errorMessage
+    ? 'text-destructive dark:text-rose-300'
+    : 'text-muted-foreground';
   const listContent = renderListContent({
     isLoading,
     showBridgeErrorState,
@@ -158,7 +167,9 @@ export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPagePro
         <h2 className="text-left text-2xl font-semibold tracking-tight text-card-foreground">
           All your <span className="text-primary">QOL</span> Scripts!
         </h2>
-        {statusMessage ? <p className={cn('mt-1 text-sm', statusMessageClassName)}>{statusMessage}</p> : null}
+        {statusMessage ? (
+          <p className={cn('mt-1 text-sm', statusMessageClassName)}>{statusMessage}</p>
+        ) : null}
       </div>
 
       <div className="flex w-full items-center gap-3">
@@ -179,7 +190,7 @@ export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPagePro
           aria-label="Refresh script list"
           disabled={isLoading || isRefreshing}
           onClick={() => {
-            void refreshScripts();
+            refreshScripts();
           }}
         >
           <RefreshCw className={cn(isRefreshing && 'animate-spin')} />
@@ -193,7 +204,7 @@ export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPagePro
           aria-label="Turn off all scripts"
           disabled={isLoading || isDisablingAll || runningCount === 0}
           onClick={() => {
-            void disableAllScripts();
+            disableAllScripts();
           }}
         >
           <PowerOff />

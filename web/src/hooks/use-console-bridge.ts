@@ -121,7 +121,9 @@ export function useConsoleBridge() {
       try {
         registerUnsubscribe(await subscribeToConsoleMessage(handleActiveConsoleMessage, options));
         registerUnsubscribe(await subscribeToConsoleCleared(handleActiveConsoleCleared, options));
-        registerUnsubscribe(await subscribeToConsoleSnapshotUpdated(handleActiveSnapshotUpdated, options));
+        registerUnsubscribe(
+          await subscribeToConsoleSnapshotUpdated(handleActiveSnapshotUpdated, options)
+        );
 
         const nextSnapshot = await getConsoleSnapshot(options);
         if (!isActive) {
@@ -163,7 +165,10 @@ export function useConsoleBridge() {
 
     try {
       const result = await executeConsoleCommand(normalizedInput);
-      const pendingDuplicateCount = Math.max(0, result.snapshot.messageCount - snapshotRef.current.messageCount);
+      const pendingDuplicateCount = Math.max(
+        0,
+        result.snapshot.messageCount - snapshotRef.current.messageCount
+      );
       ignoredMessageEventsRef.current += pendingDuplicateCount;
       snapshotRef.current = result.snapshot;
       setSnapshot(result.snapshot);

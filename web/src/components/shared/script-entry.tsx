@@ -75,10 +75,15 @@ function ScriptEntry({
     >
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-          <h3 id={titleId} className="truncate text-lg font-semibold tracking-tight text-card-foreground">
+          <h3
+            id={titleId}
+            className="truncate text-lg font-semibold tracking-tight text-card-foreground"
+          >
             {name}
           </h3>
-          {version ? <span className="text-sm font-medium text-muted-foreground">v{version}</span> : null}
+          {version ? (
+            <span className="text-sm font-medium text-muted-foreground">v{version}</span>
+          ) : null}
         </div>
 
         <p id={pathId} className="mt-1 truncate text-sm text-muted-foreground" title={path}>

@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { useThemePreference } from '@/hooks/use-theme-preference';
 import { WindowNavbar, type WindowPageId } from '@/components/layout/window-navbar';
 import { Window } from '@/components/layout/window';
-import { ConsolePage } from '@/pages/console-page';
-import { ScriptsPage } from '@/pages/scripts-page';
+import { ConsolePage } from '@/pages/console/console';
+import { OptionsPage } from '@/pages/options/options';
+import { ScriptsPage } from '@/pages/scripts/scripts';
 
 const DEFAULT_PAGE_ID: WindowPageId = 'scripts';
 
@@ -33,14 +34,18 @@ function App() {
         }
       >
         {activePage === 'scripts' ? (
-          <ScriptsPage searchValue={scriptsSearchValue} onSearchValueChange={setScriptsSearchValue} />
+          <ScriptsPage
+            searchValue={scriptsSearchValue}
+            onSearchValueChange={setScriptsSearchValue}
+          />
         ) : null}
         {activePage === 'console' ? (
-          <ConsolePage commandValue={consoleCommandValue} onCommandValueChange={setConsoleCommandValue} />
+          <ConsolePage
+            commandValue={consoleCommandValue}
+            onCommandValueChange={setConsoleCommandValue}
+          />
         ) : null}
-        {activePage === 'options' ? (
-          <div className="text-sm text-muted-foreground">Options page coming soon.</div>
-        ) : null}
+        {activePage === 'options' ? <OptionsPage /> : null}
       </Window>
     </main>
   );

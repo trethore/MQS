@@ -8,7 +8,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 export default defineConfig([
   globalIgnores(['dist', 'out']),
 
-   js.configs.recommended,
+  js.configs.recommended,
   ...tseslint.configs.recommended,
   reactHooks.configs.flat.recommended,
   reactRefresh.configs.vite,

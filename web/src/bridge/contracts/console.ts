@@ -57,10 +57,14 @@ function parseConsoleMessageResponse(value: unknown): ConsoleMessageResponse {
 export function parseConsoleSnapshotResponse(value: unknown): ConsoleSnapshotResponse {
   const objectValue = expectObject(value, 'console snapshot');
   return {
-    messages: readArray(objectValue.messages, 'console snapshot messages').map(parseConsoleMessageResponse),
-    commandHistory: readArray(objectValue.commandHistory, 'console snapshot commandHistory').map((entry) => {
-      return readString(entry, 'console history entry');
-    }),
+    messages: readArray(objectValue.messages, 'console snapshot messages').map(
+      parseConsoleMessageResponse
+    ),
+    commandHistory: readArray(objectValue.commandHistory, 'console snapshot commandHistory').map(
+      (entry) => {
+        return readString(entry, 'console history entry');
+      }
+    ),
     messageCount: readNumber(objectValue.messageCount, 'console snapshot messageCount'),
   };
 }

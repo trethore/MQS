@@ -79,7 +79,10 @@ async function requestScriptsSnapshot(
   return mapSnapshot(parseScriptsSnapshotResponse(payload));
 }
 
-async function requestScriptOperation(channel: string, payload: ScriptIdRequest | null): Promise<ScriptOperationResult> {
+async function requestScriptOperation(
+  channel: string,
+  payload: ScriptIdRequest | null
+): Promise<ScriptOperationResult> {
   const responsePayload = await requestGrapheneBridge<unknown>(channel, payload);
   return mapOperationResult(parseScriptOperationResponse(responsePayload));
 }

@@ -7,8 +7,7 @@ const SCROLL_FADE_EPSILON = 2;
 function shouldShowBottomFade(element: HTMLDivElement) {
   const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
   return (
-      maxScrollTop > SCROLL_FADE_EPSILON &&
-      maxScrollTop - element.scrollTop > SCROLL_FADE_EPSILON
+    maxScrollTop > SCROLL_FADE_EPSILON && maxScrollTop - element.scrollTop > SCROLL_FADE_EPSILON
   );
 }
 

@@ -46,7 +46,12 @@ export function ConsoleOutput({ messages, isLoading = false, className }: Consol
               <span className="w-14 shrink-0 text-[12px] text-muted-foreground/70 tabular-nums">
                 {message.timestamp}
               </span>
-              <span className={cn('min-w-0 whitespace-pre-wrap wrap-break-words', getMessageTextClassName(message.type))}>
+              <span
+                className={cn(
+                  'min-w-0 whitespace-pre-wrap wrap-break-words',
+                  getMessageTextClassName(message.type)
+                )}
+              >
                 {message.text}
               </span>
             </div>
