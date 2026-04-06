@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type MouseEvent } from 'react';
 
 import { prepareCodeWorkspace } from '@/bridge/services/code-service';
 import { VSCODE_WEB_URL } from '@/bridge/contracts/code';
@@ -49,11 +49,13 @@ export function WindowNavbar({
 }: WindowNavbarProps) {
   const [isOpeningCode, setIsOpeningCode] = useState(false);
 
-  const handleOpenCode = useCallback(async () => {
+  const handleOpenCode = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
+    const skipClipboardCopy = event.ctrlKey || event.shiftKey || event.altKey || event.metaKey;
+
     setIsOpeningCode(true);
 
     try {
-      if (isGrapheneBridgeInstalled()) {
+      if (!skipClipboardCopy && isGrapheneBridgeInstalled()) {
         const preparation = await prepareCodeWorkspace();
         if (!preparation.copied) {
           await copyTextToClipboard(preparation.modDirPath);

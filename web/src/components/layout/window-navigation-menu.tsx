@@ -1,3 +1,5 @@
+import type { MouseEvent } from 'react';
+
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -13,7 +15,7 @@ type WindowNavigationItem<TPageId extends string> = {
 type WindowNavigationAction = {
   readonly id: string;
   readonly label: string;
-  readonly onAction: () => void | Promise<void>;
+  readonly onAction: (event: MouseEvent<HTMLButtonElement>) => void | Promise<void>;
   readonly disabled?: boolean;
   readonly title?: string;
 };
@@ -69,8 +71,8 @@ export function WindowNavigationMenu<TPageId extends string>({
                 className={getItemClassName(false)}
                 disabled={action.disabled}
                 title={action.title}
-                onClick={() => {
-                  void action.onAction();
+                onClick={(event) => {
+                  void action.onAction(event);
                 }}
               >
                 {action.label}
