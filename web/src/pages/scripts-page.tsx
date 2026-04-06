@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 import { PowerOff, RefreshCw } from 'lucide-react';
 
 import type { ScriptListItem } from '@/bridge/services/scripts-service';
@@ -7,23 +7,18 @@ import { MqsInput } from '@/components/shared/mqs-input';
 import { MqsList } from '@/components/shared/mqs-list';
 import { ScriptEntry } from '@/components/shared/script-entry';
 import { Card } from '@/components/ui/card';
+import { useAutoFocusInput } from '@/hooks/use-auto-focus-input';
 import { useScriptsBridge } from '@/hooks/use-scripts-bridge';
 import { cn } from '@/lib/utils';
 
-function getStatusMessage(errorMessage: string | null, isLoading: boolean, totalCount: number): string | null {
-  if (errorMessage) {
-    return errorMessage;
-  }
+type ScriptsPageProps = {
+  readonly searchValue: string;
+  readonly onSearchValueChange: (value: string) => void;
+  readonly shouldAutoFocus?: boolean;
+};
 
-  if (isLoading) {
-    return 'Connecting to the MQS bridge...';
-  }
-
-  if (totalCount === 0) {
-    return 'No scripts discovered yet.';
-  }
-
-  return null;
+function getStatusMessage(errorMessage: string | null): string | null {
+  return errorMessage;
 }
 
 function renderScriptEntries(
@@ -64,11 +59,7 @@ function renderListContent(options: {
   toggleScript: (scriptId: string) => void;
 }): ReactNode {
   if (options.isLoading) {
-    return (
-      <div className="rounded-xl border border-dashed border-border px-5 py-8 text-center text-sm text-muted-foreground dark:border-input">
-        Loading live scripts...
-      </div>
-    );
+    return null;
   }
 
   if (options.showBridgeErrorState) {
@@ -108,8 +99,12 @@ function renderListContent(options: {
   return null;
 }
 
-export function ScriptsPage() {
-  const [searchValue, setSearchValue] = useState('');
+export function ScriptsPage({
+  searchValue,
+  onSearchValueChange,
+  shouldAutoFocus = true,
+}: ScriptsPageProps) {
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const {
     scripts,
     runningCount,
@@ -123,6 +118,8 @@ export function ScriptsPage() {
     refreshScripts,
     disableAllScripts,
   } = useScriptsBridge();
+
+  useAutoFocusInput(searchInputRef, shouldAutoFocus);
 
   const filteredScripts = useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
@@ -140,7 +137,7 @@ export function ScriptsPage() {
     });
   }, [scripts, searchValue]);
 
-  const statusMessage = getStatusMessage(errorMessage, isLoading, totalCount);
+  const statusMessage = getStatusMessage(errorMessage);
 
   const showBridgeErrorState = !isLoading && errorMessage !== null && totalCount === 0;
   const showSearchEmptyState = !isLoading && !showBridgeErrorState && filteredScripts.length === 0 && searchValue.trim().length > 0;
@@ -171,11 +168,12 @@ export function ScriptsPage() {
 
       <div className="flex w-full items-center gap-3">
         <MqsInput
-          type="search"
+          ref={searchInputRef}
+          type="text"
           placeholder="Search a QOL script..."
           className="h-10 flex-1"
           value={searchValue}
-          onChange={(event) => setSearchValue(event.target.value)}
+          onChange={(event) => onSearchValueChange(event.target.value)}
         />
 
         <MqsButton

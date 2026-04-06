@@ -72,6 +72,8 @@ public class MQSWebScreen extends Screen {
         this.webViewWidget = this.addRenderableWidget(
                 new GrapheneWebViewWidget(this, webViewX, webViewY, webViewWidth, webViewHeight, Component.empty(), this.initialUrl)
         );
+        this.setFocused(this.webViewWidget);
+        this.webViewWidget.setFocused(true);
 
         this.scriptsBridge.attach(this.webViewWidget.bridge());
         this.consoleBridge.attach(this.webViewWidget.bridge());
