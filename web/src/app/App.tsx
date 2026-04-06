@@ -10,16 +10,11 @@ const DEFAULT_PAGE_ID: WindowPageId = 'scripts';
 
 function App() {
   const [activePage, setActivePage] = useState<WindowPageId>(DEFAULT_PAGE_ID);
-  const [hasLeftInitialScriptsPage, setHasLeftInitialScriptsPage] = useState(false);
   const [scriptsSearchValue, setScriptsSearchValue] = useState('');
   const [consoleCommandValue, setConsoleCommandValue] = useState('');
   const { theme, resolvedTheme, setTheme } = useThemePreference();
 
   const handlePageChange = (pageId: WindowPageId) => {
-    if (pageId !== DEFAULT_PAGE_ID) {
-      setHasLeftInitialScriptsPage(true);
-    }
-
     setActivePage(pageId);
   };
 
@@ -38,11 +33,7 @@ function App() {
         }
       >
         {activePage === 'scripts' ? (
-          <ScriptsPage
-            searchValue={scriptsSearchValue}
-            onSearchValueChange={setScriptsSearchValue}
-            shouldAutoFocus={hasLeftInitialScriptsPage}
-          />
+          <ScriptsPage searchValue={scriptsSearchValue} onSearchValueChange={setScriptsSearchValue} />
         ) : null}
         {activePage === 'console' ? (
           <ConsolePage commandValue={consoleCommandValue} onCommandValueChange={setConsoleCommandValue} />

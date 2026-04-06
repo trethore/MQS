@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils';
 type ScriptsPageProps = {
   readonly searchValue: string;
   readonly onSearchValueChange: (value: string) => void;
-  readonly shouldAutoFocus?: boolean;
 };
 
 function getStatusMessage(errorMessage: string | null): string | null {
@@ -99,11 +98,7 @@ function renderListContent(options: {
   return null;
 }
 
-export function ScriptsPage({
-  searchValue,
-  onSearchValueChange,
-  shouldAutoFocus = true,
-}: ScriptsPageProps) {
+export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPageProps) {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const {
     scripts,
@@ -119,7 +114,7 @@ export function ScriptsPage({
     disableAllScripts,
   } = useScriptsBridge();
 
-  useAutoFocusInput(searchInputRef, shouldAutoFocus);
+  useAutoFocusInput(searchInputRef);
 
   const filteredScripts = useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
