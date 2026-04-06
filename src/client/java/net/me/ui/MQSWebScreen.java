@@ -81,6 +81,8 @@ public class MQSWebScreen extends Screen {
         this.commandsBridge.attach(this.webViewWidget.bridge());
         this.optionsBridge.attach(this.webViewWidget.bridge());
         this.codeBridge.attach(this.webViewWidget.bridge());
+
+        webViewWidget.requestKeyboardFocus();
     }
 
     @Override
