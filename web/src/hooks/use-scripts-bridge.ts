@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { formatGrapheneBridgeError } from '@/bridge/core/graphene-bridge';
 import {
   disableAllScripts,
   listScripts,
   refreshAndReenableScripts,
   subscribeToScriptsUpdated,
   toggleScript,
+  type ScriptOperationResult,
   type ScriptsSnapshot,
 } from '@/bridge/services/scripts-service';
-import { formatGrapheneBridgeError } from '@/bridge/core/graphene-bridge';
 
 function createEmptySnapshot(): ScriptsSnapshot {
   return {
@@ -33,10 +34,21 @@ function removePendingId(currentIds: ReadonlySet<string>, scriptId: string): Rea
 export function useScriptsBridge() {
   const [snapshot, setSnapshot] = useState<ScriptsSnapshot>(() => createEmptySnapshot());
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>();
   const [pendingScriptIds, setPendingScriptIds] = useState<ReadonlySet<string>>(new Set<string>());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDisablingAll, setIsDisablingAll] = useState(false);
+
+  const applySnapshot = useCallback((nextSnapshot: ScriptsSnapshot) => {
+    setSnapshot(nextSnapshot);
+    setErrorMessage(undefined);
+    setIsLoading(false);
+  }, []);
+
+  const applyOperationResult = useCallback((result: ScriptOperationResult) => {
+    setSnapshot(result.snapshot);
+    setErrorMessage(result.success ? undefined : result.message);
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -51,9 +63,7 @@ export function useScriptsBridge() {
               return;
             }
 
-            setSnapshot(nextSnapshot);
-            setErrorMessage(null);
-            setIsLoading(false);
+            applySnapshot(nextSnapshot);
           },
           { signal: abortController.signal }
         );
@@ -63,8 +73,7 @@ export function useScriptsBridge() {
           return;
         }
 
-        setSnapshot(nextSnapshot);
-        setErrorMessage(null);
+        applySnapshot(nextSnapshot);
       } catch (error) {
         if (!isActive || (error instanceof Error && error.name === 'AbortError')) {
           return;
@@ -85,49 +94,49 @@ export function useScriptsBridge() {
       abortController.abort();
       unsubscribe();
     };
-  }, []);
+  }, [applySnapshot]);
 
-  const handleToggleScript = useCallback(async (scriptId: string) => {
-    setPendingScriptIds((currentIds) => addPendingId(currentIds, scriptId));
+  const handleToggleScript = useCallback(
+    async (scriptId: string) => {
+      setPendingScriptIds((currentIds) => addPendingId(currentIds, scriptId));
 
-    try {
-      const result = await toggleScript(scriptId);
-      setSnapshot(result.snapshot);
-      setErrorMessage(result.success ? null : result.message);
-    } catch (error) {
-      setErrorMessage(formatGrapheneBridgeError(error));
-    } finally {
-      setPendingScriptIds((currentIds) => removePendingId(currentIds, scriptId));
-    }
-  }, []);
+      try {
+        const result = await toggleScript(scriptId);
+        applyOperationResult(result);
+      } catch (error) {
+        setErrorMessage(formatGrapheneBridgeError(error));
+      } finally {
+        setPendingScriptIds((currentIds) => removePendingId(currentIds, scriptId));
+      }
+    },
+    [applyOperationResult]
+  );
 
   const handleRefreshScripts = useCallback(async () => {
     setIsRefreshing(true);
 
     try {
       const result = await refreshAndReenableScripts();
-      setSnapshot(result.snapshot);
-      setErrorMessage(result.success ? null : result.message);
+      applyOperationResult(result);
     } catch (error) {
       setErrorMessage(formatGrapheneBridgeError(error));
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [applyOperationResult]);
 
   const handleDisableAllScripts = useCallback(async () => {
     setIsDisablingAll(true);
 
     try {
       const result = await disableAllScripts();
-      setSnapshot(result.snapshot);
-      setErrorMessage(result.success ? null : result.message);
+      applyOperationResult(result);
     } catch (error) {
       setErrorMessage(formatGrapheneBridgeError(error));
     } finally {
       setIsDisablingAll(false);
     }
-  }, []);
+  }, [applyOperationResult]);
 
   return {
     scripts: snapshot.scripts,

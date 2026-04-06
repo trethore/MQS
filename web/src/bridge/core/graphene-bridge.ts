@@ -1,6 +1,6 @@
 type GrapheneBridgeListener = (payload: unknown) => void;
 
-type GrapheneBridgeHandler = (payload: unknown) => unknown | Promise<unknown>;
+type GrapheneBridgeHandler = (payload: unknown) => unknown;
 
 export type GrapheneBridgeApi = {
   readonly __grapheneInstalled: boolean;
@@ -22,7 +22,7 @@ declare global {
   var grapheneBridge: GrapheneBridgeApi | undefined;
 }
 
-const DEFAULT_BRIDGE_INSTALL_TIMEOUT_MS = 4_000;
+const DEFAULT_BRIDGE_INSTALL_TIMEOUT_MS = 4000;
 const DEFAULT_BRIDGE_POLL_INTERVAL_MS = 25;
 
 export class GrapheneBridgeUnavailableError extends Error {
@@ -59,13 +59,13 @@ function isGrapheneBridgeApi(value: unknown): value is GrapheneBridgeApi {
   );
 }
 
-export function getInstalledGrapheneBridge(): GrapheneBridgeApi | null {
+export function getInstalledGrapheneBridge(): GrapheneBridgeApi | undefined {
   const bridge = globalThis.grapheneBridge;
-  return isGrapheneBridgeApi(bridge) ? bridge : null;
+  return isGrapheneBridgeApi(bridge) ? bridge : undefined;
 }
 
 export function isGrapheneBridgeInstalled(): boolean {
-  return getInstalledGrapheneBridge() !== null;
+  return getInstalledGrapheneBridge() !== undefined;
 }
 
 export async function waitForInstalledGrapheneBridge(
@@ -138,7 +138,7 @@ export async function requestGrapheneBridge<Response>(
   options: GrapheneBridgeWaitOptions = {}
 ): Promise<Response> {
   const bridge = await waitForReadyGrapheneBridge(options);
-  return await bridge.request<Response>(channel, payload ?? null);
+  return await bridge.request<Response>(channel, payload);
 }
 
 export async function subscribeToGrapheneBridgeEvent(

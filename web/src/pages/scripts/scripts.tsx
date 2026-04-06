@@ -16,16 +16,12 @@ type ScriptsPageProps = {
   readonly onSearchValueChange: (value: string) => void;
 };
 
-function getStatusMessage(errorMessage: string | null): string | null {
-  return errorMessage;
-}
-
 function renderScriptEntries(
   scripts: ReadonlyArray<ScriptListItem>,
   pendingScriptIds: ReadonlySet<string>,
   isRefreshing: boolean,
   isDisablingAll: boolean,
-  toggleScript: (scriptId: string) => void
+  toggleScript: (scriptId: string) => Promise<void>
 ): Array<ReactNode> {
   return scripts.map((script) => {
     const isPending = pendingScriptIds.has(script.id) || isRefreshing || isDisablingAll;
@@ -38,7 +34,7 @@ function renderScriptEntries(
         enabled={script.enabled}
         disabled={isPending}
         onEnabledChange={() => {
-          toggleScript(script.id);
+          void toggleScript(script.id);
         }}
       />
     );
@@ -50,15 +46,15 @@ function renderListContent(options: {
   showBridgeErrorState: boolean;
   showSearchEmptyState: boolean;
   showScriptsEmptyState: boolean;
-  errorMessage: string | null;
+  errorMessage: string | undefined;
   filteredScripts: ReadonlyArray<ScriptListItem>;
   pendingScriptIds: ReadonlySet<string>;
   isRefreshing: boolean;
   isDisablingAll: boolean;
-  toggleScript: (scriptId: string) => void;
+  toggleScript: (scriptId: string) => Promise<void>;
 }): ReactNode {
   if (options.isLoading) {
-    return null;
+    return;
   }
 
   if (options.showBridgeErrorState) {
@@ -95,7 +91,7 @@ function renderListContent(options: {
     );
   }
 
-  return null;
+  return;
 }
 
 export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPageProps) {
@@ -132,9 +128,7 @@ export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPagePro
     });
   }, [scripts, searchValue]);
 
-  const statusMessage = getStatusMessage(errorMessage);
-
-  const showBridgeErrorState = !isLoading && errorMessage !== null && totalCount === 0;
+  const showBridgeErrorState = !isLoading && errorMessage !== undefined && totalCount === 0;
   const showSearchEmptyState =
     !isLoading &&
     !showBridgeErrorState &&
@@ -167,9 +161,9 @@ export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPagePro
         <h2 className="text-left text-2xl font-semibold tracking-tight text-card-foreground">
           All your <span className="text-primary">QOL</span> Scripts!
         </h2>
-        {statusMessage ? (
-          <p className={cn('mt-1 text-sm', statusMessageClassName)}>{statusMessage}</p>
-        ) : null}
+        {errorMessage && (
+          <p className={cn('mt-1 text-sm', statusMessageClassName)}>{errorMessage}</p>
+        )}
       </div>
 
       <div className="flex w-full items-center gap-3">
@@ -190,7 +184,7 @@ export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPagePro
           aria-label="Refresh script list"
           disabled={isLoading || isRefreshing}
           onClick={() => {
-            refreshScripts();
+            void refreshScripts();
           }}
         >
           <RefreshCw className={cn(isRefreshing && 'animate-spin')} />
@@ -204,7 +198,7 @@ export function ScriptsPage({ searchValue, onSearchValueChange }: ScriptsPagePro
           aria-label="Turn off all scripts"
           disabled={isLoading || isDisablingAll || runningCount === 0}
           onClick={() => {
-            disableAllScripts();
+            void disableAllScripts();
           }}
         >
           <PowerOff />

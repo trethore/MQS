@@ -11,20 +11,15 @@ type ConsolePageProps = {
   readonly onCommandValueChange: (value: string) => void;
 };
 
-function getStatusMessage(errorMessage: string | null): string | null {
-  return errorMessage;
-}
-
 export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
+  const [historyIndex, setHistoryIndex] = useState<number>();
   const [historyDraft, setHistoryDraft] = useState('');
   const { messages, commandHistory, isLoading, isExecuting, errorMessage, executeCommand } =
     useConsoleBridge();
 
   useAutoFocusInput(inputRef);
 
-  const statusMessage = getStatusMessage(errorMessage);
   const statusMessageClassName = errorMessage
     ? 'text-destructive dark:text-rose-300'
     : 'text-muted-foreground';
@@ -33,7 +28,7 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
     const nextValue = event.target.value;
     onCommandValueChange(nextValue);
     setHistoryDraft(nextValue);
-    setHistoryIndex(null);
+    setHistoryIndex(undefined);
   };
 
   const navigateHistory = (direction: 'up' | 'down') => {
@@ -42,10 +37,10 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
     }
 
     const activeHistoryIndex =
-      historyIndex == null ? null : Math.min(historyIndex, commandHistory.length - 1);
+      historyIndex === undefined ? undefined : Math.min(historyIndex, commandHistory.length - 1);
 
     if (direction === 'up') {
-      if (activeHistoryIndex == null) {
+      if (activeHistoryIndex === undefined) {
         const nextIndex = commandHistory.length - 1;
         setHistoryDraft(commandValue);
         setHistoryIndex(nextIndex);
@@ -59,7 +54,7 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
       return;
     }
 
-    if (activeHistoryIndex == null) {
+    if (activeHistoryIndex === undefined) {
       return;
     }
 
@@ -70,7 +65,7 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
       return;
     }
 
-    setHistoryIndex(null);
+    setHistoryIndex(undefined);
     onCommandValueChange(historyDraft);
   };
 
@@ -97,8 +92,8 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
 
     onCommandValueChange('');
     setHistoryDraft('');
-    setHistoryIndex(null);
-    executeCommand(nextCommand);
+    setHistoryIndex(undefined);
+    void executeCommand(nextCommand);
   };
 
   return (
@@ -107,9 +102,9 @@ export function ConsolePage({ commandValue, onCommandValueChange }: ConsolePageP
         <h2 className="text-left text-2xl font-semibold tracking-tight text-card-foreground">
           Console
         </h2>
-        {statusMessage ? (
-          <p className={cn('mt-1 text-sm', statusMessageClassName)}>{statusMessage}</p>
-        ) : null}
+        {errorMessage && (
+          <p className={cn('mt-1 text-sm', statusMessageClassName)}>{errorMessage}</p>
+        )}
       </div>
 
       <ConsoleOutput messages={messages} isLoading={isLoading} />

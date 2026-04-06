@@ -33,19 +33,19 @@ function App() {
           />
         }
       >
-        {activePage === 'scripts' ? (
+        {activePage === 'scripts' && (
           <ScriptsPage
             searchValue={scriptsSearchValue}
             onSearchValueChange={setScriptsSearchValue}
           />
-        ) : null}
-        {activePage === 'console' ? (
+        )}
+        {activePage === 'console' && (
           <ConsolePage
             commandValue={consoleCommandValue}
             onCommandValueChange={setConsoleCommandValue}
           />
-        ) : null}
-        {activePage === 'options' ? <OptionsPage /> : null}
+        )}
+        {activePage === 'options' && <OptionsPage />}
       </Window>
     </main>
   );

@@ -11,9 +11,7 @@ function isThemePreference(value: string | null): value is ThemePreference {
 }
 
 function hasBrowserGlobals() {
-  return (
-    typeof globalThis.matchMedia === 'function' && typeof globalThis.localStorage !== 'undefined'
-  );
+  return typeof globalThis.matchMedia === 'function' && globalThis.localStorage !== undefined;
 }
 
 function getSystemTheme(): ResolvedTheme {
@@ -38,7 +36,7 @@ export function useThemePreference() {
 
   useEffect(() => {
     if (typeof globalThis.matchMedia !== 'function') {
-      return undefined;
+      return;
     }
 
     const mediaQuery = globalThis.matchMedia('(prefers-color-scheme: dark)');
@@ -58,17 +56,17 @@ export function useThemePreference() {
   const resolvedTheme = theme === 'system' ? systemTheme : theme;
 
   useEffect(() => {
-    if (typeof document === 'undefined') {
-      return undefined;
+    if (globalThis.document === undefined) {
+      return;
     }
 
-    const rootElement = document.documentElement;
+    const rootElement = globalThis.document.documentElement;
     rootElement.classList.toggle('dark', resolvedTheme === 'dark');
     rootElement.style.colorScheme = resolvedTheme;
 
     if (!hasAppliedThemeRef.current) {
       hasAppliedThemeRef.current = true;
-      return undefined;
+      return;
     }
 
     rootElement.classList.add(THEME_TRANSITION_CLASS);
@@ -83,7 +81,7 @@ export function useThemePreference() {
   }, [resolvedTheme]);
 
   useEffect(() => {
-    if (typeof globalThis.localStorage === 'undefined') {
+    if (globalThis.localStorage === undefined) {
       return;
     }
 

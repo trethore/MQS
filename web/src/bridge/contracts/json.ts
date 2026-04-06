@@ -16,9 +16,9 @@ export function readString(value: unknown, label: string): string {
   return value;
 }
 
-export function readNullableString(value: unknown, label: string): string | null {
-  if (value == null) {
-    return null;
+export function readOptionalString(value: unknown, label: string): string | undefined {
+  if (value == undefined) {
+    return;
   }
 
   return readString(value, label);

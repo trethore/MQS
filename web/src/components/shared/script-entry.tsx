@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 type ScriptEntryProps = {
   name: string;
-  version: string | null;
+  version: string | undefined;
   path: string;
   enabled: boolean;
   disabled?: boolean;
@@ -81,9 +81,7 @@ function ScriptEntry({
           >
             {name}
           </h3>
-          {version ? (
-            <span className="text-sm font-medium text-muted-foreground">v{version}</span>
-          ) : null}
+          {version && <span className="text-sm font-medium text-muted-foreground">v{version}</span>}
         </div>
 
         <p id={pathId} className="mt-1 truncate text-sm text-muted-foreground" title={path}>

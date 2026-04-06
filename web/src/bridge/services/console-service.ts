@@ -54,7 +54,9 @@ function mapMessage(message: ConsoleMessageResponse): ConsoleMessageItem {
 
 function mapSnapshot(snapshot: ConsoleSnapshotResponse): ConsoleSnapshot {
   return {
-    messages: snapshot.messages.map(mapMessage),
+    messages: snapshot.messages.map((message) => {
+      return mapMessage(message);
+    }),
     commandHistory: snapshot.commandHistory,
     messageCount: snapshot.messageCount,
   };
@@ -73,7 +75,7 @@ export async function getConsoleSnapshot(
 ): Promise<ConsoleSnapshot> {
   const payload = await requestGrapheneBridge<unknown>(
     CONSOLE_BRIDGE_CHANNELS.snapshot,
-    null,
+    undefined,
     options
   );
   return mapSnapshot(parseConsoleSnapshotResponse(payload));

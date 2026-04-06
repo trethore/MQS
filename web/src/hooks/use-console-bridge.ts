@@ -34,7 +34,7 @@ export function useConsoleBridge() {
   const [snapshot, setSnapshot] = useState<ConsoleSnapshot>(() => createEmptySnapshot());
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>();
   const snapshotRef = useRef<ConsoleSnapshot>(createEmptySnapshot());
   const ignoredMessageEventsRef = useRef(0);
 
@@ -42,14 +42,14 @@ export function useConsoleBridge() {
     ignoredMessageEventsRef.current = 0;
     snapshotRef.current = nextSnapshot;
     setSnapshot(nextSnapshot);
-    setErrorMessage(null);
+    setErrorMessage(undefined);
     setIsLoading(false);
   }, []);
 
   const handleConsoleMessage = useCallback((message: ConsoleMessageItem) => {
     if (ignoredMessageEventsRef.current > 0) {
       ignoredMessageEventsRef.current -= 1;
-      setErrorMessage(null);
+      setErrorMessage(undefined);
       setIsLoading(false);
       return;
     }
@@ -59,7 +59,7 @@ export function useConsoleBridge() {
       snapshotRef.current = nextSnapshot;
       return nextSnapshot;
     });
-    setErrorMessage(null);
+    setErrorMessage(undefined);
     setIsLoading(false);
   }, []);
 
@@ -74,7 +74,7 @@ export function useConsoleBridge() {
       snapshotRef.current = nextSnapshot;
       return nextSnapshot;
     });
-    setErrorMessage(null);
+    setErrorMessage(undefined);
     setIsLoading(false);
   }, []);
 
@@ -172,7 +172,7 @@ export function useConsoleBridge() {
       ignoredMessageEventsRef.current += pendingDuplicateCount;
       snapshotRef.current = result.snapshot;
       setSnapshot(result.snapshot);
-      setErrorMessage(result.success ? null : result.message);
+      setErrorMessage(result.success ? undefined : result.message);
       return result.success;
     } catch (error) {
       setErrorMessage(formatGrapheneBridgeError(error));

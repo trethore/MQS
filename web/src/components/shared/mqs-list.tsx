@@ -36,7 +36,7 @@ function MqsList({
     const contentElement = contentRef.current;
 
     if (!viewportElement) {
-      return undefined;
+      return;
     }
 
     let animationFrameId = 0;

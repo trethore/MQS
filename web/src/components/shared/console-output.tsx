@@ -18,14 +18,18 @@ function isNearBottom(element: HTMLDivElement): boolean {
 
 function getMessageTextClassName(type: ConsoleMessageItem['type']): string {
   switch (type) {
-    case 'COMMAND':
+    case 'COMMAND': {
       return 'text-amber-600 dark:text-amber-300';
-    case 'ERROR':
+    }
+    case 'ERROR': {
       return 'text-rose-600 dark:text-rose-300';
-    case 'SUCCESS':
+    }
+    case 'SUCCESS': {
       return 'text-emerald-600 dark:text-emerald-300';
-    case 'INFO':
+    }
+    case 'INFO': {
       return 'text-foreground';
+    }
   }
 }
 
@@ -72,7 +76,7 @@ export function ConsoleOutput({ messages, isLoading = false, className }: Consol
   React.useEffect(() => {
     const viewportElement = viewportRef.current;
     if (!viewportElement) {
-      return undefined;
+      return;
     }
 
     const handleScroll = () => {

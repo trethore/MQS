@@ -5,7 +5,7 @@ type FocusableInputElement = HTMLInputElement | HTMLTextAreaElement;
 export function useAutoFocusInput(ref: RefObject<FocusableInputElement | null>, enabled = true) {
   useEffect(() => {
     if (!enabled) {
-      return undefined;
+      return;
     }
 
     const focusInput = () => {

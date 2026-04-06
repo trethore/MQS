@@ -19,7 +19,7 @@ export function Window({ children, navbar, className, contentClassName }: Window
         className
       )}
     >
-      {navbar ? <div className="shrink-0">{navbar}</div> : null}
+      {navbar && <div className="shrink-0">{navbar}</div>}
 
       <Card className="min-h-0 flex-1 gap-0 overflow-hidden rounded-xl py-0 shadow-sm">
         <CardContent className={cn('flex min-h-0 flex-1 py-6', contentClassName)}>

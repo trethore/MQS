@@ -17,8 +17,8 @@ import {
 export type ScriptListItem = {
   id: string;
   name: string;
-  version: string | null;
-  mainClass: string | null;
+  version: string | undefined;
+  mainClass: string | undefined;
   path: string;
   enabled: boolean;
 };
@@ -33,11 +33,11 @@ export type ScriptOperationResult = {
   success: boolean;
   action: string;
   message: string;
-  script: ScriptListItem | null;
+  script: ScriptListItem | undefined;
   snapshot: ScriptsSnapshot;
 };
 
-function normalizeNonEmptyString(value: string | null | undefined, fallbackValue: string): string {
+function normalizeNonEmptyString(value: string | undefined, fallbackValue: string): string {
   const normalizedValue = value?.trim();
   return normalizedValue && normalizedValue.length > 0 ? normalizedValue : fallbackValue;
 }
@@ -55,7 +55,9 @@ function mapScript(script: ScriptStateResponse): ScriptListItem {
 
 function mapSnapshot(snapshot: ScriptsSnapshotResponse): ScriptsSnapshot {
   return {
-    scripts: snapshot.scripts.map(mapScript),
+    scripts: snapshot.scripts.map((script) => {
+      return mapScript(script);
+    }),
     runningCount: snapshot.runningCount,
     totalCount: snapshot.totalCount,
   };
@@ -66,7 +68,7 @@ function mapOperationResult(result: ScriptOperationResponse): ScriptOperationRes
     success: result.success,
     action: result.action,
     message: result.message,
-    script: result.script ? mapScript(result.script) : null,
+    script: result.script ? mapScript(result.script) : undefined,
     snapshot: mapSnapshot(result.snapshot),
   };
 }
@@ -75,13 +77,13 @@ async function requestScriptsSnapshot(
   channel: string,
   options?: GrapheneBridgeWaitOptions
 ): Promise<ScriptsSnapshot> {
-  const payload = await requestGrapheneBridge<unknown>(channel, null, options);
+  const payload = await requestGrapheneBridge<unknown>(channel, undefined, options);
   return mapSnapshot(parseScriptsSnapshotResponse(payload));
 }
 
 async function requestScriptOperation(
   channel: string,
-  payload: ScriptIdRequest | null
+  payload?: ScriptIdRequest
 ): Promise<ScriptOperationResult> {
   const responsePayload = await requestGrapheneBridge<unknown>(channel, payload);
   return mapOperationResult(parseScriptOperationResponse(responsePayload));
@@ -96,15 +98,15 @@ export async function toggleScript(scriptId: string): Promise<ScriptOperationRes
 }
 
 export async function refreshScripts(): Promise<ScriptOperationResult> {
-  return await requestScriptOperation(SCRIPTS_BRIDGE_CHANNELS.refresh, null);
+  return await requestScriptOperation(SCRIPTS_BRIDGE_CHANNELS.refresh);
 }
 
 export async function refreshAndReenableScripts(): Promise<ScriptOperationResult> {
-  return await requestScriptOperation(SCRIPTS_BRIDGE_CHANNELS.refreshAndReenable, null);
+  return await requestScriptOperation(SCRIPTS_BRIDGE_CHANNELS.refreshAndReenable);
 }
 
 export async function disableAllScripts(): Promise<ScriptOperationResult> {
-  return await requestScriptOperation(SCRIPTS_BRIDGE_CHANNELS.disableAll, null);
+  return await requestScriptOperation(SCRIPTS_BRIDGE_CHANNELS.disableAll);
 }
 
 export async function subscribeToScriptsUpdated(

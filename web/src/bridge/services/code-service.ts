@@ -11,6 +11,10 @@ import {
 export async function prepareCodeWorkspace(
   options?: GrapheneBridgeWaitOptions
 ): Promise<CodePrepareResponse> {
-  const payload = await requestGrapheneBridge<unknown>(CODE_BRIDGE_CHANNELS.prepare, null, options);
+  const payload = await requestGrapheneBridge<unknown>(
+    CODE_BRIDGE_CHANNELS.prepare,
+    undefined,
+    options
+  );
   return parseCodePrepareResponse(payload);
 }
