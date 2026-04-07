@@ -76,8 +76,8 @@ The source code for all these dependencies is included in `references/<library>`
 
 ## Testing & Verification
 
-- Do not run Gradle commands yourself; instead provide the exact command for the user to execute and state tooling limitations clearly.
-- Encourage running `./gradlew compileJava` after changes, `./gradlew build` for full validation, and `./gradlew runDebugClient` to test UI flows.
+- Run `./gradlew check` to get linting errors and warnings.
+- Do not run long-running Gradle commands yourself; instead provide the exact command for the user to execute (for example `gradlew runDebugClient`).
 - Document manual validation steps and remaining risks before completing work.
 
 ## Pull Requests & Commits
