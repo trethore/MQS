@@ -75,6 +75,14 @@ public class Main implements ClientModInitializer {
     private UiManager uiManager;
     private Engine scriptEngine;
 
+    public static GrapheneHandle getGraphene() {
+        return GrapheneCore.handle(Main.class);
+    }
+
+    private static void setInstance(Main instance) {
+        Main.instance = instance;
+    }
+
     @Override
     public void onInitializeClient() {
         setInstance(this);
@@ -167,13 +175,5 @@ public class Main implements ClientModInitializer {
         this.consoleManager.addCommand(new SaveConfigCommand(this.consoleManager, this.scriptingService));
         this.consoleManager.addCommand(new SaveAllConfigsCommand(this.consoleManager, this.scriptingService));
         this.consoleManager.addCommand(new AllowAllClassesCommand(this.consoleManager, this.globalConfigManager));
-    }
-
-    public static GrapheneHandle getGraphene() {
-        return GrapheneCore.handle(Main.class);
-    }
-
-    private static void setInstance(Main instance) {
-        Main.instance = instance;
     }
 }

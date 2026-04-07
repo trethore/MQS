@@ -71,7 +71,7 @@ public class MQSCommand extends Command {
             uiManager.openUi();
             return CommandManager.COMMAND_SUCCESS;
         } catch (RuntimeException exception) {
-            Main.LOGGER.error("Failed to open MQS UI.", exception);
+            Main.LOGGER.atError().setCause(exception).log("Failed to open MQS UI.");
             ChatUtils.addErrorChatMessage("Failed to open MQS UI. Check logs for details.", true);
             return CommandManager.COMMAND_FAILURE;
         }

@@ -31,6 +31,7 @@ import net.me.utils.ChatUtils;
 import net.me.utils.PathUtils;
 import net.minecraft.client.Minecraft;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -63,7 +64,10 @@ public class GenerateCommand extends Command {
 
         CompletableFuture.runAsync(() -> generateDefinitions(client, target))
                 .exceptionally(exception -> {
-                    Main.LOGGER.error("Unexpected failure while generating TypeScript definitions for target {}.", target, exception);
+                    Main.LOGGER.atError().setCause(exception).log(
+                            "Unexpected failure while generating TypeScript definitions for target {}.",
+                            target
+                    );
                     client.execute(() -> ChatUtils.addErrorChatMessage("Failed to generate TypeScript definitions. Check logs for details.", true));
                     return null;
                 });
@@ -86,8 +90,11 @@ public class GenerateCommand extends Command {
                 }
                 ChatUtils.addInfoChatMessage("File: " + formatPath(typeDefinitionGenerator.getTsConfigPath()), false);
             });
-        } catch (Exception exception) {
-            Main.LOGGER.error("Failed to generate TypeScript definitions for target {}.", target, exception);
+        } catch (IOException exception) {
+            Main.LOGGER.atError().setCause(exception).log(
+                    "Failed to generate TypeScript definitions for target {}.",
+                    target
+            );
             client.execute(() -> ChatUtils.addErrorChatMessage("Failed to generate TypeScript definitions. Check logs for details.", true));
         }
     }

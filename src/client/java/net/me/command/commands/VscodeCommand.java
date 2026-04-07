@@ -47,7 +47,7 @@ public class VscodeCommand extends Command {
             ChatUtils.addSuccessChatMessage("Opened VS Code!", true);
             return CommandManager.COMMAND_SUCCESS;
         } catch (RuntimeException exception) {
-            Main.LOGGER.error("Failed to open VS Code for the Web in MQS.", exception);
+            Main.LOGGER.atError().setCause(exception).log("Failed to open VS Code for the Web in MQS.");
             ChatUtils.addErrorChatMessage("Failed to open VS Code for the Web. Check logs for details.", true);
             return CommandManager.COMMAND_FAILURE;
         }

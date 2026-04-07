@@ -23,12 +23,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ConsoleManager {
-    private static final PrintStream originalOut = new PrintStream(new FileOutputStream(FileDescriptor.out), true);
-    private static final PrintStream originalErr = new PrintStream(new FileOutputStream(FileDescriptor.err), true);
+    private static final PrintStream originalOut = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+    private static final PrintStream originalErr = new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8);
     private static final int MAX_HISTORY_SIZE = 100;
     private final List<ConsoleMessage> messages = new CopyOnWriteArrayList<>();
     private final Map<String, ConsoleCommand> commands = new HashMap<>();
@@ -42,7 +43,7 @@ public class ConsoleManager {
     }
 
     public void addCommand(ConsoleCommand command) {
-        commands.put(command.getName().toLowerCase(), command);
+        commands.put(command.getName().toLowerCase(Locale.ROOT), command);
     }
 
     private List<String> parseArguments(String commandLine) {
@@ -87,7 +88,7 @@ public class ConsoleManager {
             return;
         }
 
-        String commandName = parts.getFirst().toLowerCase();
+        String commandName = parts.getFirst().toLowerCase(Locale.ROOT);
         String[] args = parts.subList(1, parts.size()).toArray(new String[0]);
 
         ConsoleCommand command = commands.get(commandName);
@@ -164,8 +165,8 @@ public class ConsoleManager {
         Logger rootLogger = (Logger) LogManager.getRootLogger();
 
         if (enable) {
-            System.setOut(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.INFO, originalOut), true));
-            System.setErr(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.ERROR, originalErr), true));
+            System.setOut(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.INFO, originalOut), true, StandardCharsets.UTF_8));
+            System.setErr(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.ERROR, originalErr), true, StandardCharsets.UTF_8));
 
             if (this.slf4jAppender == null) {
                 this.slf4jAppender = ConsoleManagerAppender.createAppender(this);
@@ -223,7 +224,7 @@ public class ConsoleManager {
         public void flush() throws IOException {
             synchronized (this) {
                 super.flush();
-                String output = this.toString();
+                String output = this.toString(StandardCharsets.UTF_8);
                 super.reset();
 
                 if (output.isEmpty() || output.equals(lineSeparator)) {

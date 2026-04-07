@@ -20,13 +20,15 @@ package net.me.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
 import com.google.gson.annotations.SerializedName;
 import net.me.Main;
 import net.me.console.ConsoleManager;
 import net.me.utils.IdeCommandUtils;
 
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -54,24 +56,29 @@ public class GlobalConfigManager {
             save();
             return;
         }
-        try (FileReader reader = new FileReader(CONFIG_FILE.toFile())) {
+        try (BufferedReader reader = Files.newBufferedReader(CONFIG_FILE)) {
             this.data = GSON.fromJson(reader, ConfigData.class);
             if (this.data == null) {
                 this.data = new ConfigData();
             }
             this.data.ensureDefaults();
-            consoleManager.setLogRedirect(this.data.logRedirect);
-        } catch (Exception e) {
-            Main.LOGGER.error("Failed to load global MQS config, using defaults.", e);
+            this.consoleManager.setLogRedirect(this.data.logRedirect);
+        } catch (IOException | JsonParseException exception) {
+            Main.LOGGER.atError().setCause(exception).log("Failed to load global MQS config, using defaults.");
             this.data = new ConfigData();
+            this.data.ensureDefaults();
+            this.consoleManager.setLogRedirect(this.data.logRedirect);
         }
     }
 
     public void save() {
-        try (FileWriter writer = new FileWriter(CONFIG_FILE.toFile())) {
-            GSON.toJson(this.data, writer);
-        } catch (Exception e) {
-            Main.LOGGER.error("Failed to save global MQS config.", e);
+        try {
+            Files.createDirectories(CONFIG_FILE.getParent());
+            try (BufferedWriter writer = Files.newBufferedWriter(CONFIG_FILE)) {
+                GSON.toJson(this.data, writer);
+            }
+        } catch (IOException exception) {
+            Main.LOGGER.atError().setCause(exception).log("Failed to save global MQS config.");
         }
     }
 
@@ -171,12 +178,12 @@ public class GlobalConfigManager {
         return new ArrayList<>(sanitizedDirectories);
     }
 
-    private static class ConfigData {
+    private static final class ConfigData {
         @SerializedName(ConfigKeys.LOG_REDIRECT)
-        boolean logRedirect = false;
+        boolean logRedirect;
 
         @SerializedName(ConfigKeys.ALLOW_ALL_CLASSES)
-        boolean allowAllClasses = false;
+        boolean allowAllClasses;
 
         @SerializedName(ConfigKeys.ADDITIONAL_SCRIPT_DIRS)
         List<String> additionalScriptDirs = new ArrayList<>();
@@ -205,5 +212,8 @@ public class GlobalConfigManager {
             String defaultIdeCommand,
             String defaultProjectPath
     ) {
+        public OptionsSnapshot {
+            additionalScriptDirs = List.copyOf(additionalScriptDirs);
+        }
     }
 }

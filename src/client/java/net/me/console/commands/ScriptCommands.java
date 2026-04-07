@@ -22,7 +22,7 @@ import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 import net.me.scripting.ScriptingService;
 
-public class ScriptCommands {
+public final class ScriptCommands {
 
     private ScriptCommands() {
     }

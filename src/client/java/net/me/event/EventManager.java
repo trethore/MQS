@@ -23,6 +23,7 @@ import net.me.event.events.tick.EndClientTickEvent;
 import net.me.event.events.tick.StartClientTickEvent;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.script.RunningScript;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,9 +79,13 @@ public class EventManager {
         scriptManager.setCurrentScript(listener.owner());
         try {
             listener.callback().execute(event);
-        } catch (Exception e) {
-            LOGGER.error("Error executing event listener for {} in script '{}' during phase {}",
-                    event.getClass().getSimpleName(), listener.owner().getName(), phase, e);
+        } catch (PolyglotException exception) {
+            LOGGER.atError().setCause(exception).log(
+                    "Error executing event listener for {} in script '{}' during phase {}",
+                    event.getClass().getSimpleName(),
+                    listener.owner().getName(),
+                    phase
+            );
         } finally {
             scriptManager.setCurrentScript(previousScript);
         }

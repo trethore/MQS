@@ -49,7 +49,7 @@ public class IdeCommand extends Command {
             ChatUtils.addSuccessChatMessage("Opened your IDE!", true);
             return CommandManager.COMMAND_SUCCESS;
         } catch (IllegalArgumentException | IOException exception) {
-            Main.LOGGER.error("Failed to open configured IDE for MQS.", exception);
+            Main.LOGGER.atError().setCause(exception).log("Failed to open configured IDE for MQS.");
             ChatUtils.addErrorChatMessage("Failed to open IDE. Check logs for details.", true);
             return CommandManager.COMMAND_FAILURE;
         }

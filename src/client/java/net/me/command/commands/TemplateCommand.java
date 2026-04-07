@@ -84,7 +84,7 @@ public class TemplateCommand extends Command {
             ChatUtils.addErrorChatMessage("Script template already exists: " + formatPath(exception.getFile()), true);
             return CommandManager.COMMAND_FAILURE;
         } catch (IOException exception) {
-            Main.LOGGER.error("Failed to create script template.", exception);
+            Main.LOGGER.atError().setCause(exception).log("Failed to create script template.");
             ChatUtils.addErrorChatMessage("Failed to create script template. Check logs for details.", true);
             return CommandManager.COMMAND_FAILURE;
         }
@@ -131,20 +131,26 @@ public class TemplateCommand extends Command {
     }
 
     private String buildTemplateContent(String scriptId, String scriptName, String scriptVersion) {
-        return """
-                // @script(id=%s, name=%s, version=%s)
-                class %s {
-                    onEnable() {
-                        // triggered when the script is enabled
-                    }
-                
-                    onDisable() {
-                        // triggered when the script is disabled
-                    }
-                }
-                
-                exportScript(%s);
-                """.formatted(scriptId, scriptName, scriptVersion, scriptId, scriptId);
+        return String.format(
+                Locale.ROOT,
+                "// @script(id=%s, name=%s, version=%s)%n"
+                        + "class %s {%n"
+                        + "    onEnable() {%n"
+                        + "        // triggered when the script is enabled%n"
+                        + "    }%n"
+                        + "%n"
+                        + "    onDisable() {%n"
+                        + "        // triggered when the script is disabled%n"
+                        + "    }%n"
+                        + "}%n"
+                        + "%n"
+                        + "exportScript(%s);%n",
+                scriptId,
+                scriptName,
+                scriptVersion,
+                scriptId,
+                scriptId
+        );
     }
 
     private String formatPath(Path path) {

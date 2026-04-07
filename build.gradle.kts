@@ -3,7 +3,6 @@ import net.fabricmc.loom.task.RemapJarTask
 import org.gradle.api.file.Directory
 import org.gradle.api.tasks.Delete
 import tytoo.myqolscripts.UnpackSourcesTask
-import tytoo.myqolscripts.VerifyCodePlugin
 import java.time.Year
 import java.util.Date
 
@@ -11,7 +10,7 @@ import java.util.Date
 
 plugins {
     id("fabric-loom")
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "9.4.1"
     `maven-publish`
 }
 
@@ -73,8 +72,6 @@ loom {
         }
     }
 }
-
-apply<VerifyCodePlugin>()
 
 java {
     withSourcesJar()
@@ -213,11 +210,6 @@ val shadowLibsJar by tasks.registering(ShadowJar::class) {
 tasks.named<RemapJarTask>("remapJar") {
     dependsOn(shadowJarProvider)
     inputFile.set(shadowJarProvider.flatMap { it.archiveFile })
-
-    from("LICENSE") {
-        into("META-INF")
-        rename { licenseArchiveName }
-    }
 }
 
 // --- Source Browsing Helpers ---

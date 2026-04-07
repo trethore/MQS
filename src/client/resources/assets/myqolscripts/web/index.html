@@ -1,36 +1,37 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8"/>
+    <link href="./icon.svg" rel="icon" type="image/svg+xml"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <script>
-      (() => {
-        const KEY = 'mqs-web-theme';
-        const root = document.documentElement;
+        (() => {
+            const KEY = 'mqs-web-theme';
+            const root = document.documentElement;
 
-        let theme = 'system';
+            let theme = 'system';
 
-        try {
-          const stored = localStorage.getItem(KEY);
-          if (stored === 'light' || stored === 'dark' || stored === 'system') {
-            theme = stored;
-          }
-        } catch {}
+            try {
+                const stored = localStorage.getItem(KEY);
+                if (stored === 'light' || stored === 'dark' || stored === 'system') {
+                    theme = stored;
+                }
+            } catch {
+            }
 
-        if (theme === 'system') {
-          theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
+            if (theme === 'system') {
+                theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
 
-        root.classList.toggle('dark', theme === 'dark');
-        root.style.colorScheme = theme;
-      })();
+            root.classList.toggle('dark', theme === 'dark');
+            root.style.colorScheme = theme;
+        })();
     </script>
     <title>web</title>
-    <script type="module" crossorigin src="./web-assets/index-BVUiqo2s.js"></script>
-    <link rel="stylesheet" crossorigin href="./web-assets/index-CuYuHV6u.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+    <script crossorigin src="./web-assets/index-BVUiqo2s.js" type="module"></script>
+    <link crossorigin href="./web-assets/index-CuYuHV6u.css" rel="stylesheet">
+</head>
+<body>
+<div id="root"></div>
+</body>
 </html>

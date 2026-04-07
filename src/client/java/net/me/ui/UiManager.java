@@ -69,7 +69,7 @@ public class UiManager {
     public void openUi() {
         String targetUrl;
 
-        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
+        if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
             targetUrl = resolveDevelopmentUiUrl();
         } else {
             targetUrl = resolveProductionUiUrl();
