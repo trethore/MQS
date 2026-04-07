@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,17 +21,17 @@ package net.me.event.events.tick;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 @Getter
 public class StartClientTickEvent extends Event {
-    private final MinecraftClient client;
+    private final Minecraft client;
 
-    public StartClientTickEvent(MinecraftClient client) {
+    public StartClientTickEvent(Minecraft client) {
         this.client = client;
     }
 
     public Events getType() {
-        return Events.StartClientTickEvent;
+        return Events.START_CLIENT_TICK_EVENT;
     }
 }

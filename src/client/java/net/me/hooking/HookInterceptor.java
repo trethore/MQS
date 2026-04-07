@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -27,7 +27,7 @@ import net.me.hooking.context.HookContext;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.engine.ScriptConstants;
 import net.me.scripting.mappings.MappingsManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import net.me.scripting.utils.ScriptUtils;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -39,13 +39,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "java:S2386"})
+// Sonar, this is a js context hook interceptor, stop complaining about making this protected...
 public class HookInterceptor {
-
-    public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
-    public static final Map<CacheKey, ProxyExecutable> CHAIN_CACHE = new ConcurrentHashMap<>();
+    // Must remain public: Byte Buddy inlines advice into target classes that access these members directly.
     public static final ThreadLocal<Deque<AdviceContext>> adviceContextStack = ThreadLocal.withInitial(ArrayDeque::new);
     public static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+    public static final Map<String, CopyOnWriteArrayList<HookData>> HOOKS = new ConcurrentHashMap<>();
+    public static final Map<CacheKey, ProxyExecutable> CHAIN_CACHE = new ConcurrentHashMap<>();
 
     public static ProxyExecutable createEmptyChainProxy() {
         return passedArgs -> {
@@ -98,46 +99,23 @@ public class HookInterceptor {
             @Advice.This(optional = true) Object thiz
     ) {
         String hookId = method.getDeclaringClass().getName() + "::" + method.getName();
-        CopyOnWriteArrayList<HookData> allHooksForName = HOOKS.get(hookId);
+        List<HookData> allHooksForName = HOOKS.get(hookId);
 
         if (allHooksForName == null || allHooksForName.isEmpty()) {
             return false;
         }
 
-        ScriptManager scriptManager = allHooksForName.getFirst().scriptManager();
         MappingsManager mappingsManager = Main.getInstance().getMappingsManager();
+        ScriptManager scriptManager = allHooksForName.getFirst().scriptManager();
+        ProxyExecutable chain = getOrCreateChain(hookId, args.length, allHooksForName, scriptManager, mappingsManager);
 
-        CacheKey cacheKey = new CacheKey(hookId, args.length);
-
-        ProxyExecutable chain = CHAIN_CACHE.get(cacheKey);
-        if (chain == null) {
-            ChainFactory factory = new ChainFactory(allHooksForName, scriptManager, mappingsManager);
-            chain = factory.apply(cacheKey);
-            CHAIN_CACHE.put(cacheKey, chain);
-        }
-
-        AdviceContext adviceContext = new AdviceContext();
-        adviceContext.setHookContext(new HookContext(thiz, method, STACK_WALKER, mappingsManager, scriptManager));
+        AdviceContext adviceContext = createAdviceContext(thiz, method, mappingsManager, scriptManager);
         adviceContextStack.get().push(adviceContext);
 
         try {
-            Value[] initialChainArgs = new Value[args.length];
-            for (int i = 0; i < args.length; i++) {
-                initialChainArgs[i] = Value.asValue(args[i]);
-            }
-            adviceContext.setInitialArgs(Arrays.copyOf(initialChainArgs, initialChainArgs.length));
-
-            List<HookData> afterHooks = new ArrayList<>();
-            for (HookData data : allHooksForName) {
-                boolean argCountMatches = data.argCount() == null || data.argCount() == args.length;
-                if (argCountMatches && data.mode() == HookExecutionMode.AFTER) {
-                    afterHooks.add(data);
-                }
-            }
-            if (!afterHooks.isEmpty()) {
-                ProxyExecutable afterChain = rebuildChain(afterHooks, mappingsManager, scriptManager, createAfterChainTerminal());
-                adviceContext.setAfterChain(afterChain);
-            }
+            Value[] initialChainArgs = wrapArgsAsValues(args);
+            adviceContext.setInitialArgs(initialChainArgs);
+            setupAfterChain(adviceContext, allHooksForName, args.length, mappingsManager, scriptManager);
 
             Value result = (Value) chain.execute(initialChainArgs);
 
@@ -146,31 +124,69 @@ public class HookInterceptor {
                 return false;
             }
             context.setScriptReturnValue(result);
+            applyModifiedArgs(context, args, method.getParameterTypes());
 
-            if (context.shouldExecuteOriginal()) {
-                Value[] newArgs = context.modifiedArgs();
-                if (newArgs != null && newArgs.length == args.length) {
-                    Class<?>[] paramTypes = method.getParameterTypes();
-                    for (int i = 0; i < args.length; i++) {
-                        args[i] = ScriptUtils.unwrapArgs(
-                                new Value[]{newArgs[i]},
-                                new Class<?>[]{paramTypes[i]}
-                        )[0];
-                    }
-                }
-            }
-
-            return !context.shouldExecuteOriginal();
-
+            return context.shouldSkipOriginal();
         } catch (Exception e) {
-            Main.LOGGER.error("JS hook chain error in {}#{}",
-                    method.getDeclaringClass().getSimpleName(),
-                    method.getName(), e);
-            AdviceContext context = adviceContextStack.get().peek();
-            if (context != null) {
-                context.setShouldExecuteOriginal(true);
-            }
+            handleChainError(method, e);
             return false;
+        }
+    }
+
+    // Must remain public for inlined advice access.
+    public static ProxyExecutable getOrCreateChain(String hookId, int argCount, List<HookData> allHooksForName, ScriptManager scriptManager, MappingsManager mappingsManager) {
+        CacheKey cacheKey = new CacheKey(hookId, argCount);
+        ChainFactory factory = new ChainFactory(allHooksForName, scriptManager, mappingsManager);
+        return CHAIN_CACHE.computeIfAbsent(cacheKey, factory);
+    }
+
+    // Must remain public for inlined advice access.
+    public static AdviceContext createAdviceContext(Object thiz, Method method, MappingsManager mappingsManager, ScriptManager scriptManager) {
+        AdviceContext adviceContext = new AdviceContext();
+        adviceContext.setHookContext(new HookContext(thiz, method, STACK_WALKER, mappingsManager, scriptManager));
+        return adviceContext;
+    }
+
+    // Must remain public for inlined advice access.
+    public static Value[] wrapArgsAsValues(Object[] args) {
+        Value[] values = new Value[args.length];
+        for (int i = 0; i < args.length; i++) {
+            values[i] = Value.asValue(args[i]);
+        }
+        return values;
+    }
+
+    // Must remain public for inlined advice access.
+    public static void setupAfterChain(AdviceContext adviceContext, List<HookData> allHooksForName, int argCount, MappingsManager mappingsManager, ScriptManager scriptManager) {
+        List<HookData> afterHooks = allHooksForName.stream()
+                .filter(data -> (data.argCount() == null || data.argCount() == argCount) && data.mode() == HookExecutionMode.AFTER)
+                .toList();
+        if (!afterHooks.isEmpty()) {
+            ProxyExecutable afterChain = rebuildChain(afterHooks, mappingsManager, scriptManager, createAfterChainTerminal());
+            adviceContext.setAfterChain(afterChain);
+        }
+    }
+
+    // Must remain public for inlined advice access.
+    public static void applyModifiedArgs(AdviceContext context, Object[] args, Class<?>[] paramTypes) {
+        if (context.shouldSkipOriginal()) {
+            return;
+        }
+        Value[] newArgs = context.modifiedArgs();
+        if (newArgs == null || newArgs.length != args.length) {
+            return;
+        }
+        for (int i = 0; i < args.length; i++) {
+            args[i] = ScriptUtils.unwrapArgs(new Value[]{newArgs[i]}, new Class<?>[]{paramTypes[i]})[0];
+        }
+    }
+
+    // Must remain public for inlined advice access.
+    public static void handleChainError(Method method, Exception e) {
+        Main.LOGGER.error("JS hook chain error in {}#{}", method.getDeclaringClass().getSimpleName(), method.getName(), e);
+        AdviceContext context = adviceContextStack.get().peek();
+        if (context != null) {
+            context.setShouldExecuteOriginal(true);
         }
     }
 
@@ -184,7 +200,7 @@ public class HookInterceptor {
         return nextInChain;
     }
 
-    @SuppressWarnings({"UnusedAssignment", "ParameterCanBeLocal"})
+    @SuppressWarnings({"UnusedAssignment"})
     @Advice.OnMethodExit
     public static void onExit(
             @Advice.Origin Method method,
@@ -196,40 +212,48 @@ public class HookInterceptor {
         }
 
         AdviceContext context = stack.peek();
-
-        if (context.getAfterChain() != null) {
-            Value[] argsForAfter = context.modifiedArgs();
-            if (argsForAfter == null) {
-                argsForAfter = context.getInitialArgs();
-            }
-            if (argsForAfter == null) {
-                argsForAfter = new Value[0];
-            }
-            try {
-                context.getAfterChain().execute(argsForAfter);
-            } catch (Exception e) {
-                Main.LOGGER.error("JS after hook chain error in {}#{}",
-                        method.getDeclaringClass().getSimpleName(),
-                        method.getName(), e);
-            }
-        }
+        executeAfterChain(context, method);
 
         AdviceContext currentContext = stack.pop();
+        returnValue = unwrapScriptReturnValue(currentContext, method.getReturnType(), returnValue);
+    }
 
-        if (currentContext.hasScriptReturnValue()) {
-            returnValue = ScriptUtils.unwrapArgs(
-                    new Value[]{currentContext.getScriptReturnValue()},
-                    new Class<?>[]{method.getReturnType()}
-            )[0];
+    // Must remain public for inlined advice access.
+    public static Object unwrapScriptReturnValue(AdviceContext context, Class<?> returnType, Object originalValue) {
+        if (!context.hasScriptReturnValue()) {
+            return originalValue;
+        }
+        return ScriptUtils.unwrapArgs(
+                new Value[]{context.getScriptReturnValue()},
+                new Class<?>[]{returnType}
+        )[0];
+    }
+
+    // Must remain public for inlined advice access.
+    public static void executeAfterChain(AdviceContext context, Method method) {
+        if (context.getAfterChain() == null) {
+            return;
+        }
+        Value[] argsForAfter = context.modifiedArgs();
+        if (argsForAfter == null) {
+            argsForAfter = context.getInitialArgs();
+        }
+        if (argsForAfter == null) {
+            argsForAfter = new Value[0];
+        }
+        try {
+            context.getAfterChain().execute(argsForAfter);
+        } catch (Exception e) {
+            Main.LOGGER.error("JS after hook chain error in {}#{}", method.getDeclaringClass().getSimpleName(), method.getName(), e);
         }
     }
 
     public static class ChainFactory implements Function<CacheKey, ProxyExecutable> {
-        private final CopyOnWriteArrayList<HookData> allHooksForName;
+        private final List<HookData> allHooksForName;
         private final ScriptManager scriptManager;
         private final MappingsManager mappingsManager;
 
-        public ChainFactory(CopyOnWriteArrayList<HookData> allHooksForName, ScriptManager scriptManager, MappingsManager mappingsManager) {
+        public ChainFactory(List<HookData> allHooksForName, ScriptManager scriptManager, MappingsManager mappingsManager) {
             this.allHooksForName = allHooksForName;
             this.scriptManager = scriptManager;
             this.mappingsManager = mappingsManager;
@@ -313,8 +337,8 @@ public class HookInterceptor {
         @Getter
         private ProxyExecutable afterChain = null;
 
-        public boolean shouldExecuteOriginal() {
-            return shouldExecuteOriginal;
+        public boolean shouldSkipOriginal() {
+            return !shouldExecuteOriginal;
         }
 
         public boolean hasScriptReturnValue() {

@@ -1,0 +1,136 @@
+name: Release MQS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-mqs
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version="$(grep -E '^mod_version=' gradle.properties | head -n 1 | cut -d= -f2- | tr -d '\r')"
+          if [[ -z "${version}" ]]; then
+            echo "Unable to resolve mod_version from gradle.properties." >&2
+            exit 1
+          fi
+
+          if gh release view "${version}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "A release for tag ${version} already exists." >&2
+            exit 1
+          fi
+
+          if git rev-parse -q --verify "refs/tags/${version}" >/dev/null; then
+            echo "Tag ${version} already exists." >&2
+            exit 1
+          fi
+
+          previous_tag=""
+          if previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name 2>/dev/null)"; then
+            previous_tag="$(printf '%s' "${previous_tag}" | tr -d '\r')"
+          else
+            previous_tag=""
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "previous_tag=${previous_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate patch notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin main
+
+          range="origin/main"
+          if [[ -n "${{ steps.meta.outputs.previous_tag }}" ]] && git rev-parse -q --verify "refs/tags/${{ steps.meta.outputs.previous_tag }}" >/dev/null; then
+            range="${{ steps.meta.outputs.previous_tag }}..origin/main"
+          fi
+
+          mapfile -t commits < <(git log "${range}" --pretty=format:%s -n 10)
+          count="${#commits[@]}"
+
+          {
+            echo "## Patch Notes"
+            echo
+            if (( count == 0 )); then
+              echo "- No changes since last release #1"
+            else
+              note_number="${count}"
+              for commit in "${commits[@]}"; do
+                subject="$(printf '%s' "${commit}" | tr -d '\r')"
+                echo "- ${subject} #${note_number}"
+                note_number="$((note_number - 1))"
+              done
+            fi
+          } > release-notes.md
+
+          echo "path=${GITHUB_WORKSPACE}/release-notes.md" >> "${GITHUB_OUTPUT}"
+
+      - name: Build release jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew remapJar
+
+      - name: Locate release jar
+        id: jar
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t jars < <(find build/libs -maxdepth 1 -type f -name '*.jar' \
+            ! -name '*-sources.jar' \
+            ! -name '*-dev.jar' \
+            ! -name '*-libs-only.jar' | sort)
+
+          if (( ${#jars[@]} != 1 )); then
+            echo "Expected exactly one release jar, found ${#jars[@]}." >&2
+            printf '%s\n' "${jars[@]}" >&2
+            exit 1
+          fi
+
+          echo "path=${jars[0]}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.version }}
+          target_commitish: main
+          name: MQS ${{ steps.meta.outputs.version }}
+          body_path: ${{ steps.notes.outputs.path }}
+          files: ${{ steps.jar.outputs.path }}
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+          make_latest: true

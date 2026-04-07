@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,24 +18,24 @@
 
 package net.me.event.events.render;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.network.chat.Component;
 
 @Getter
 @SuppressWarnings("unused")
 public class NameTagRenderEvent<S extends EntityRenderState> extends CancellableEvent {
     private final S entityState;
-    private final MatrixStack matrices;
-    private final VertexConsumerProvider vertexConsumers;
+    private final PoseStack matrices;
+    private final SubmitNodeCollector vertexConsumers;
     private final int light;
-    private final Text text;
+    private final Component text;
 
-    public NameTagRenderEvent(S entityState, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
+    public NameTagRenderEvent(S entityState, Component text, PoseStack matrices, SubmitNodeCollector vertexConsumers, int light) {
         this.entityState = entityState;
         this.matrices = matrices;
         this.vertexConsumers = vertexConsumers;
@@ -45,6 +45,6 @@ public class NameTagRenderEvent<S extends EntityRenderState> extends Cancellable
 
     @Override
     public Events getType() {
-        return Events.NameTagRenderEvent;
+        return Events.NAME_TAG_RENDER_EVENT;
     }
 }

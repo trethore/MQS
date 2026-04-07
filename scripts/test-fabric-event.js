@@ -1,19 +1,23 @@
-const Text = net.minecraft.text.Text;
-// @module(main=TestEvent, name=Test Fabric Event, version=0.0.1)
+const Component = net.minecraft.network.chat.Component;
+// @script(id=TestEvent, name=Test Fabric Event, version=0.0.1)
 class TestEvent {
     disposer = null;
     onEnable() {
-        // triggered when the module is enabled
+        // triggered when the script is enabled
         println("Hello from Test Event!");
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
-            player.sendMessage(Text.literal("Hello from Test Module!"), false);
+            const message = "Hello from Test Script!";
+            player.displayClientMessage(Component.literal(message), false);
         }
-        this.disposer = MQS.events.fabric.clientTickEnd(this.onTick.bind(this));
+        this.disposer = MQS.events.register(
+            MQS.events.fabric.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK,
+            this.onTick.bind(this)
+        );
     }
 
     onDisable() {
-        // triggered when the module is disabled
+        // triggered when the script is disabled
         println("Goodbye from Test Event!");
         if (this.disposer) {
             this.disposer();
@@ -22,11 +26,12 @@ class TestEvent {
     }
 
     onTick(client) { // ClientTickEvents.END_CLIENT_TICK return the client instance
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
-            player.sendMessage(Text.literal("Hello from Test Event!"), false);
+            const message = "Hello from Test Event!";
+            player.displayClientMessage(Component.literal(message), false);
         }
     }
 }
 
-exportModule(TestEvent);
+exportScript(TestEvent);

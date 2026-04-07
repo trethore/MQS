@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,14 +20,17 @@ package net.me.keybinds;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.Main;
+import net.me.keybinds.events.KeyEvent;
+import net.me.keybinds.events.MouseButtonEvent;
 import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -45,7 +48,7 @@ public class KeybindManager {
     public KeybindManager(ScriptManager scriptManager, ConfigManager configManager) {
         this.scriptManager = scriptManager;
         this.configManager = configManager;
-        ClientTickEvents.END_CLIENT_TICK.register(client -> onTick());
+        ClientTickEvents.END_CLIENT_TICK.register(ignored -> onTick());
     }
 
     private void onTick() {
@@ -79,7 +82,9 @@ public class KeybindManager {
         }
     }
 
-    public void onKey(int key, int action) {
+    public void onKey(KeyEvent event) {
+        int key = event.key();
+        int action = event.action();
         if (action != GLFW.GLFW_REPEAT) {
             processInput(key, action);
         }
@@ -91,7 +96,10 @@ public class KeybindManager {
         }
     }
 
-    public void onMouseClick(int button, int action) {
+    public void onMouseClick(MouseButtonEvent event) {
+        int button = event.button();
+        int action = event.action();
+
         if (action == GLFW.GLFW_PRESS) {
             heldKeys.add(button);
         } else if (action == GLFW.GLFW_RELEASE) {
@@ -100,9 +108,8 @@ public class KeybindManager {
         processInput(button, action);
     }
 
-    public void register(String name, Value action, RunningScript owner, KeybindOptions options) {
-        KeybindOptions resolved = options != null ? options : KeybindOptions.builder().keyCode(Keys.UNBOUND.getCode()).build();
-        int defaultKey = resolved.keyCode();
+    public KeyBinding register(String name, Value action, RunningScript owner, int defaultKeyCode, KeybindOptions options) {
+        KeybindOptions resolved = options != null ? options : KeybindOptions.builder().build();
         boolean repeatable = resolved.repeatable();
         int debounceTime = resolved.debounceMillis();
 
@@ -112,14 +119,16 @@ public class KeybindManager {
             this.unregister(owner, name);
         }
 
-        int finalKey = configManager.getKeybind(owner.getId(), name).orElse(defaultKey);
+        int finalKey = configManager.getKeybind(owner.getId(), name).orElse(defaultKeyCode);
 
         KeyBinding keyBinding = new KeyBinding(name, finalKey, repeatable, owner, action, debounceTime, scriptManager);
 
         keybindsByName.put(uniqueName, keyBinding);
         if (finalKey >= 0) {
-            keybindsByKeycode.computeIfAbsent(finalKey, k -> new CopyOnWriteArrayList<>()).add(keyBinding);
+            keybindsByKeycode.computeIfAbsent(finalKey, ignored -> new CopyOnWriteArrayList<>()).add(keyBinding);
         }
+
+        return keyBinding;
     }
 
     public HostKeyBinding registerHost(String name, Runnable action, int defaultKey, boolean repeatable, int debounceTime) {
@@ -134,20 +143,39 @@ public class KeybindManager {
 
         hostKeybindsByName.put(uniqueName, binding);
         if (finalKey >= 0) {
-            keybindsByKeycode.computeIfAbsent(finalKey, k -> new CopyOnWriteArrayList<>()).add(binding);
+            keybindsByKeycode.computeIfAbsent(finalKey, ignored -> new CopyOnWriteArrayList<>()).add(binding);
         }
 
         return binding;
     }
 
-    public void unregister(RunningScript owner, String name) {
+    public boolean unregister(RunningScript owner, String name) {
         String uniqueName = owner.getId() + "::" + name;
         KeyBinding keyBinding = keybindsByName.remove(uniqueName);
         if (keyBinding == null) {
             Main.LOGGER.warn("Script '{}' attempted to unregister keybind '{}', which was not found.", owner.getName(), name);
-            return;
+            return false;
         }
         detachBinding(keyBinding);
+        return true;
+    }
+
+    public boolean unregister(RunningScript owner, String name, KeyBinding expectedBinding) {
+        if (expectedBinding == null) {
+            return false;
+        }
+
+        String uniqueName = owner.getId() + "::" + name;
+        KeyBinding currentBinding = keybindsByName.get(uniqueName);
+        if (currentBinding != expectedBinding) {
+            return false;
+        }
+        if (!keybindsByName.remove(uniqueName, expectedBinding)) {
+            return false;
+        }
+
+        detachBinding(expectedBinding);
+        return true;
     }
 
     public void unregister(RunningScript owner) {
@@ -164,6 +192,61 @@ public class KeybindManager {
     public void rebindKey(KeyBinding binding, int newKeyCode) {
         if (binding == null) return;
 
+        rebind(binding, binding.getOwner().getId(), binding.getName(), newKeyCode);
+    }
+
+    public void rebindHostKey(HostKeyBinding binding, int newKeyCode) {
+        if (binding == null) return;
+
+        rebind(binding, HOST_ID, binding.getName(), newKeyCode);
+    }
+
+    public Map<RunningScript, List<KeyBinding>> getGroupedKeybinds() {
+        Map<RunningScript, List<KeyBinding>> grouped = new ConcurrentHashMap<>();
+        for (KeyBinding binding : keybindsByName.values()) {
+            grouped.computeIfAbsent(binding.getOwner(), ignored -> new CopyOnWriteArrayList<>()).add(binding);
+        }
+        return grouped;
+    }
+
+    public List<HostKeyBinding> getHostKeybinds() {
+        return List.copyOf(hostKeybindsByName.values());
+    }
+
+    public List<KeyBinding> getScriptKeybinds() {
+        return List.copyOf(keybindsByName.values());
+    }
+
+    public KeyBinding findScriptKeybind(String scriptId, String keybindName) {
+        String normalizedScriptId = normalizeKey(scriptId);
+        String normalizedName = normalizeKey(keybindName);
+
+        for (KeyBinding keyBinding : keybindsByName.values()) {
+            if (keyBinding.getOwner().getId().equals(normalizedScriptId) && keyBinding.getName().equals(normalizedName)) {
+                return keyBinding;
+            }
+        }
+
+        return null;
+    }
+
+    public HostKeyBinding findHostKeybind(String keybindName) {
+        String uniqueName = HOST_ID + "::" + normalizeKey(keybindName);
+        return hostKeybindsByName.get(uniqueName);
+    }
+
+    public boolean unregisterHost(String keybindName) {
+        String uniqueName = HOST_ID + "::" + normalizeKey(keybindName);
+        HostKeyBinding binding = hostKeybindsByName.remove(uniqueName);
+        if (binding == null) {
+            return false;
+        }
+
+        detachBinding(binding);
+        return true;
+    }
+
+    private void rebind(KeybindEntry binding, String configOwnerId, String bindingName, int newKeyCode) {
         List<KeybindEntry> oldBindings = keybindsByKeycode.get(binding.getKey());
         if (oldBindings != null) {
             oldBindings.remove(binding);
@@ -175,17 +258,13 @@ public class KeybindManager {
         binding.setKey(newKeyCode);
 
         if (newKeyCode >= 0) {
-            keybindsByKeycode.computeIfAbsent(newKeyCode, k -> new CopyOnWriteArrayList<>()).add(binding);
+            keybindsByKeycode.computeIfAbsent(newKeyCode, ignored -> new CopyOnWriteArrayList<>()).add(binding);
         }
 
-        configManager.setKeybind(binding.getOwner().getId(), binding.getName(), newKeyCode);
+        configManager.setKeybind(configOwnerId, bindingName, newKeyCode);
     }
 
-    public Map<RunningScript, List<KeyBinding>> getGroupedKeybinds() {
-        Map<RunningScript, List<KeyBinding>> grouped = new ConcurrentHashMap<>();
-        for (KeyBinding binding : keybindsByName.values()) {
-            grouped.computeIfAbsent(binding.getOwner(), k -> new CopyOnWriteArrayList<>()).add(binding);
-        }
-        return grouped;
+    private String normalizeKey(String value) {
+        return Objects.requireNonNull(value, "value");
     }
 }

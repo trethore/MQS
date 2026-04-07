@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -27,8 +27,8 @@ import net.me.keybinds.KeybindManager;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.engine.*;
 import net.me.scripting.mappings.MappingsManager;
-import net.me.scripting.module.RunningScript;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.script.ScriptDescriptor;
 import net.me.utils.ScriptScheduler;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -40,37 +40,36 @@ public class ScriptManager {
 
     private final Map<String, ScriptDescriptor> availableScripts = new HashMap<>();
     private final Map<String, RunningScript> runningScripts = new HashMap<>();
-    private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
     private final ThreadLocal<RunningScript> currentScriptContext = new InheritableThreadLocal<>();
 
     private ConfigManager configManager;
     @Getter
     private ScriptingClassResolver classResolver;
     private ScriptDiscoverer scriptDiscoverer;
-    private ScriptLoader scriptLoader;
     private ScriptContextManager contextManager;
     private ScriptLifecycleManager lifecycleManager;
+    @Getter
+    private CommandAPIService commandApiService;
 
     public ScriptManager() {
+        // 2-step initialization
     }
 
     public void init(Engine scriptEngine, MappingsManager mappingsManager, ConfigManager configManager, EventManager eventManager, HookManager hookManager, KeybindManager keybindManager, GlobalConfigManager globalConfigManager) {
         this.configManager = configManager;
 
-        this.classResolver = new ScriptingClassResolver();
-        classResolver.init(mappingsManager, this);
+        this.classResolver = ScriptingClassResolver.create(mappingsManager, this);
 
-        CommandAPIService commandApiService = new CommandAPIService();
-        commandApiService.init();
+        this.commandApiService = new CommandAPIService();
+        this.commandApiService.init();
 
         ScriptScheduler scheduler = new ScriptScheduler(this);
 
-        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, commandApiService, hookManager, keybindManager, scheduler);
-        this.contextManager = new ScriptContextManager(contextFactory, perFileExports);
-        this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, commandApiService, scheduler, contextManager);
+        ScriptContextFactory contextFactory = new ScriptContextFactory(classResolver, scriptEngine, this, eventManager, configManager, this.commandApiService, hookManager, keybindManager, scheduler, globalConfigManager);
+        this.contextManager = ScriptContextManager.create(contextFactory);
+        this.lifecycleManager = new ScriptLifecycleManager(configManager, eventManager, hookManager, keybindManager, this.commandApiService, scheduler, contextManager);
 
         this.scriptDiscoverer = new ScriptDiscoverer(globalConfigManager);
-        this.scriptLoader = new ScriptLoader();
 
         discoverScripts();
     }
@@ -79,7 +78,7 @@ public class ScriptManager {
         Main.LOGGER.info("Checking configs to auto-enable scripts...");
         for (ScriptDescriptor descriptor : availableScripts.values()) {
             if (configManager.getEnabledState(descriptor.getId())) {
-                Main.LOGGER.info("Auto-enabling script '{}' as per config.", descriptor.moduleName());
+                Main.LOGGER.info("Auto-enabling script '{}' as per config.", descriptor.scriptName());
                 enableScript(descriptor.getId());
             }
         }
@@ -100,7 +99,7 @@ public class ScriptManager {
         Context scriptContext = null;
         try {
             scriptContext = contextManager.getContext();
-            Map<String, Value> fileExports = scriptLoader.loadModules(descriptor.path(), scriptContext, perFileExports);
+            Map<String, Value> fileExports = ScriptLoader.loadScripts(descriptor.path(), scriptContext, contextManager.getPerFileExports());
 
             String mainClassName = descriptor.mainClass();
             Value scriptClass = fileExports.get(mainClassName);

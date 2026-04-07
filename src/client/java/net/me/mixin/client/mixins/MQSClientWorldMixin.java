@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,19 +21,19 @@ package net.me.mixin.client.mixins;
 import net.me.event.MQSEventBus;
 import net.me.event.events.world.EntityAddedEvent;
 import net.me.event.events.world.EntityRemovedEvent;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.entity.Entity;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(ClientWorld.class)
+@Mixin(ClientLevel.class)
 public abstract class MQSClientWorldMixin {
 
     @Shadow
-    public abstract Entity getEntityById(int id);
+    public abstract Entity getEntity(int id);
 
     @Inject(method = "addEntity", at = @At("TAIL"))
     private void onAddEntity(Entity entity, CallbackInfo info) {
@@ -42,7 +42,7 @@ public abstract class MQSClientWorldMixin {
 
     @Inject(method = "removeEntity", at = @At("HEAD"))
     private void onRemoveEntity(int entityId, Entity.RemovalReason removalReason, CallbackInfo info) {
-        Entity entity = this.getEntityById(entityId);
+        Entity entity = this.getEntity(entityId);
         MQSEventBus.post(new EntityRemovedEvent(entity));
     }
 }

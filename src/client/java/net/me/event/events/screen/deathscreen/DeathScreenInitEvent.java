@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +20,7 @@ package net.me.event.events.screen.deathscreen;
 
 import net.me.event.Events;
 import net.me.event.events.screen.ScreenInitEvent;
-import net.minecraft.client.gui.screen.DeathScreen;
+import net.minecraft.client.gui.screens.DeathScreen;
 
 public class DeathScreenInitEvent extends ScreenInitEvent {
 
@@ -35,6 +35,6 @@ public class DeathScreenInitEvent extends ScreenInitEvent {
 
     @Override
     public Events getType() {
-        return Events.DeathScreenInitEvent;
+        return Events.DEATH_SCREEN_INIT_EVENT;
     }
 }

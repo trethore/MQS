@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,7 +22,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.Value;
 import org.lwjgl.glfw.GLFW;
 
@@ -60,7 +60,7 @@ public class KeyBinding implements KeybindEntry {
             }
             fireAction();
             hasBeenPressed = true;
-        } else if (glfwAction == GLFW.GLFW_RELEASE && !(currentTime - lastReleaseTime < debounceTime) && hasBeenPressed) {
+        } else if (glfwAction == GLFW.GLFW_RELEASE && currentTime - lastReleaseTime >= debounceTime && hasBeenPressed) {
             lastReleaseTime = System.currentTimeMillis();
             hasBeenPressed = false;
         }
@@ -79,12 +79,7 @@ public class KeyBinding implements KeybindEntry {
     }
 
     public String getKeyName() {
-        if (key < 0) {
-            return "UNKNOWN";
-        } else if (key < 7) {
-            return "BUTTON_" + key;
-        }
-        return Keys.fromCode(this.key).map(Keys::toString).orElse("Unknown");
+        return Keys.toDisplayName(this.key);
     }
 
 }

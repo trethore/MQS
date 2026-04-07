@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class ExtendedInstanceProxy implements ProxyObject {
+    private static final String ARGUMENT_MUST_BE_CLASS = "The argument to _instanceof must be a class.";
     private final Map<String, Object> properties;
     @Getter
     private final Object baseInstance;
@@ -57,43 +58,37 @@ public class ExtendedInstanceProxy implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        if (WrapperConstants.INSTANCE_OF.equals(key)) {
-            return (ProxyExecutable) (Value... args) -> {
-                if (args.length != 1) {
-                    throw new IllegalArgumentException("_instanceof(class) requires exactly one argument.");
-                }
-
-                Value classValue = args[0];
-                Class<?> rawClass;
-
-                if (classValue == null || classValue.isNull()) {
-                    throw new IllegalArgumentException("The argument to _instanceof cannot be null.");
-                }
-                Object proxy = classValue.isProxyObject() ? classValue.asProxyObject() : null;
-                if (proxy instanceof LazyJsClassHolder holder) {
-                    rawClass = holder.getWrapper().getTargetClass();
-                } else if (proxy instanceof JsClassWrapper wrapper) {
-                    rawClass = wrapper.getTargetClass();
-                } else {
-                    Object unwrapped = ScriptUtils.unwrapReceiver(classValue);
-                    if (unwrapped instanceof Class) {
-                        rawClass = (Class<?>) unwrapped;
-                    } else {
-                        throw new IllegalArgumentException("The argument to _instanceof must be a class.");
-                    }
-                }
-
-                return rawClass.isInstance(this.baseInstance);
-            };
+        if (key == null) {
+            return null;
         }
-        if (WrapperConstants.EQUALS.equals(key)) {
-            return (ProxyExecutable) (Value... args) -> {
-                if (args.length != 1) return false;
-                Object otherRaw = ScriptUtils.unwrapReceiver(args[0]);
-                return this.baseInstance.equals(otherRaw);
-            };
-        }
+        return switch (key) {
+            case WrapperConstants.INSTANCE_OF -> createInstanceOfExecutable();
+            case WrapperConstants.EQUALS -> createEqualsExecutable();
+            default -> getPropertyOrProxyMember(key);
+        };
+    }
 
+    private ProxyExecutable createInstanceOfExecutable() {
+        return (Value... args) -> {
+            if (args.length != 1) {
+                throw new IllegalArgumentException("_instanceof(class) requires exactly one argument.");
+            }
+            Class<?> rawClass = resolveClassFromValue(args[0]);
+            return rawClass.isInstance(this.baseInstance);
+        };
+    }
+
+    private ProxyExecutable createEqualsExecutable() {
+        return (Value... args) -> {
+            if (args.length != 1) {
+                return false;
+            }
+            Object otherRaw = ScriptUtils.unwrapReceiver(args[0]);
+            return this.baseInstance.equals(otherRaw);
+        };
+    }
+
+    private Object getPropertyOrProxyMember(String key) {
         if (properties.containsKey(key)) {
             if (WrapperConstants.SELF.equals(key)) {
                 return baseInstance;
@@ -106,6 +101,54 @@ public class ExtendedInstanceProxy implements ProxyObject {
         }
 
         return null;
+    }
+
+    private Class<?> resolveClassFromValue(Value classValue) {
+        if (classValue == null || classValue.isNull()) {
+            throw new IllegalArgumentException("The argument to _instanceof cannot be null.");
+        }
+        Object proxy = classValue.isProxyObject() ? classValue.asProxyObject() : null;
+        return switch (resolveProxyType(proxy)) {
+            case LAZY_JS_CLASS_HOLDER -> resolveTargetClassFromHolder((LazyJsClassHolder) proxy);
+            case JS_CLASS_WRAPPER -> resolveTargetClassFromWrapper((JsClassWrapper) proxy);
+            case OTHER -> resolveClassFromUnwrapped(classValue);
+        };
+    }
+
+    private ProxyType resolveProxyType(Object proxy) {
+        if (proxy instanceof LazyJsClassHolder) {
+            return ProxyType.LAZY_JS_CLASS_HOLDER;
+        }
+        if (proxy instanceof JsClassWrapper) {
+            return ProxyType.JS_CLASS_WRAPPER;
+        }
+        return ProxyType.OTHER;
+    }
+
+    private Class<?> resolveClassFromUnwrapped(Value classValue) {
+        Object unwrapped = ScriptUtils.unwrapReceiver(classValue);
+        if (unwrapped instanceof Class<?> clazz) {
+            return clazz;
+        }
+        throw new IllegalArgumentException(ARGUMENT_MUST_BE_CLASS);
+    }
+
+    private Class<?> resolveTargetClassFromWrapper(JsClassWrapper wrapper) {
+        if (wrapper == null || wrapper.getTargetClass() == null) {
+            throw new IllegalArgumentException(ARGUMENT_MUST_BE_CLASS);
+        }
+        return wrapper.getTargetClass();
+    }
+
+    private Class<?> resolveTargetClassFromHolder(LazyJsClassHolder holder) {
+        if (holder == null) {
+            throw new IllegalArgumentException(ARGUMENT_MUST_BE_CLASS);
+        }
+        JsClassWrapper wrapper = holder.getWrapper();
+        if (wrapper == null) {
+            throw new IllegalArgumentException(ARGUMENT_MUST_BE_CLASS);
+        }
+        return resolveTargetClassFromWrapper(wrapper);
     }
 
     @Override
@@ -149,6 +192,12 @@ public class ExtendedInstanceProxy implements ProxyObject {
     public String toString() {
         return String.format("[MQS Extended Instance: %s (extends %s)]",
                 this.baseInstance.getClass().getName(),
-                this.getOriginalConfig().extendsClass().yarnName());
+                this.getOriginalConfig().extendsClass().namedClassName());
+    }
+
+    private enum ProxyType {
+        LAZY_JS_CLASS_HOLDER,
+        JS_CLASS_WRAPPER,
+        OTHER
     }
 }

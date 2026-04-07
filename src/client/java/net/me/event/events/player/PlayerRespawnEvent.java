@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,20 +21,22 @@ package net.me.event.events.player;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 
 @Getter
 @SuppressWarnings("unused")
 public class PlayerRespawnEvent extends Event {
-    private final ClientPlayerEntity player;
+    private final LocalPlayer player;
+    private final ClientboundRespawnPacket packet;
 
-    public PlayerRespawnEvent(PlayerRespawnS2CPacket packet, ClientPlayerEntity player) {
+    public PlayerRespawnEvent(ClientboundRespawnPacket packet, LocalPlayer player) {
         this.player = player;
+        this.packet = packet;
     }
 
     @Override
     public Events getType() {
-        return Events.PlayerRespawnEvent;
+        return Events.PLAYER_RESPAWN_EVENT;
     }
 }

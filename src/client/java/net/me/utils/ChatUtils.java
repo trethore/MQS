@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,25 +18,26 @@
 
 package net.me.utils;
 
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 @SuppressWarnings("unused")
 public final class ChatUtils {
-    public final static String TAG = Formatting.GRAY + "[" + Formatting.GREEN + "MQS" + Formatting.GRAY + "] " + Formatting.RESET;
+    public static final String TAG = ChatFormatting.GRAY + "[" + ChatFormatting.GREEN + "MQS" + ChatFormatting.GRAY + "] " + ChatFormatting.RESET;
 
     private ChatUtils() {
     }
 
     public static void sendChatMessage(String s) {
         McUtils.getPlayer().ifPresent(player ->
-                player.networkHandler.sendChatMessage(s)
+                player.connection.sendChat(s)
         );
     }
 
     public static void sendChatCommand(String s) {
         McUtils.getPlayer().ifPresent(player ->
-                player.networkHandler.sendChatCommand(s)
+                player.connection.sendCommand(s)
         );
     }
 
@@ -57,31 +58,32 @@ public final class ChatUtils {
     }
 
     public static void addChatMessage(String message, Level level, boolean prefix) {
-        Text text = Text.literal(message).formatted(level.getFormatting());
+        MutableComponent text = Component.literal(message).withStyle(level.getFormatting());
         if (prefix) {
-            text = Text.literal(TAG).append(text);
+            text = Component.literal(TAG).append(text);
         }
-        Text finalText = text;
-        McUtils.getPlayer().ifPresent(p -> p.sendMessage(finalText, false));
+        MutableComponent finalText = text;
+        McUtils.getPlayer().ifPresent(p -> p.displayClientMessage(finalText, false));
     }
 
     public static void addRawMessage(String message) {
-        McUtils.getPlayer().ifPresent(player -> player.sendMessage(Text.literal(message), false));
+        McUtils.getPlayer().ifPresent(player -> player.displayClientMessage(Component.literal(message), false));
     }
 
 
     public enum Level {
-        ERROR(Formatting.RED),
-        INFO(Formatting.WHITE),
-        WARN(Formatting.GOLD),
-        SUCCESS(Formatting.GREEN);
-        private final Formatting fmt;
+        ERROR(ChatFormatting.RED),
+        INFO(ChatFormatting.WHITE),
+        WARN(ChatFormatting.GOLD),
+        SUCCESS(ChatFormatting.GREEN);
 
-        Level(Formatting fmt) {
+        private final ChatFormatting fmt;
+
+        Level(ChatFormatting fmt) {
             this.fmt = fmt;
         }
 
-        public Formatting getFormatting() {
+        public ChatFormatting getFormatting() {
             return fmt;
         }
     }

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,16 +20,16 @@ package net.me.event.events.title;
 
 import net.me.event.Events;
 import net.me.event.PacketEvent;
-import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 
-public class TitleEvent extends PacketEvent<TitleS2CPacket> {
+public class TitleEvent extends PacketEvent<ClientboundSetTitleTextPacket> {
 
-    public TitleEvent(TitleS2CPacket packet) {
+    public TitleEvent(ClientboundSetTitleTextPacket packet) {
         super(packet);
     }
 
     @Override
     public Events getType() {
-        return Events.TitleEvent;
+        return Events.TITLE_EVENT;
     }
 }

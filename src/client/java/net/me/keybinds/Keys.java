@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -184,6 +184,16 @@ public enum Keys {
 
     public static Optional<Keys> fromCode(int code) {
         return Optional.ofNullable(LOOKUP.get(code));
+    }
+
+    public static String toDisplayName(int code) {
+        if (code < 0) {
+            return "Unbound";
+        }
+        if (code <= 7) {
+            return "BUTTON_" + code;
+        }
+        return fromCode(code).map(Keys::toString).orElse("Unknown");
     }
 
     @Override

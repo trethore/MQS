@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,16 +20,20 @@ package net.me.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
 import com.google.gson.annotations.SerializedName;
 import net.me.Main;
 import net.me.console.ConsoleManager;
+import net.me.utils.IdeCommandUtils;
 
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 public class GlobalConfigManager {
@@ -52,24 +56,29 @@ public class GlobalConfigManager {
             save();
             return;
         }
-        try (FileReader reader = new FileReader(CONFIG_FILE.toFile())) {
+        try (BufferedReader reader = Files.newBufferedReader(CONFIG_FILE)) {
             this.data = GSON.fromJson(reader, ConfigData.class);
             if (this.data == null) {
                 this.data = new ConfigData();
             }
             this.data.ensureDefaults();
-            consoleManager.setLogRedirect(this.data.logRedirect);
-        } catch (Exception e) {
-            Main.LOGGER.error("Failed to load global MQS config, using defaults.", e);
+            this.consoleManager.setLogRedirect(this.data.logRedirect);
+        } catch (IOException | JsonParseException exception) {
+            Main.LOGGER.atError().setCause(exception).log("Failed to load global MQS config, using defaults.");
             this.data = new ConfigData();
+            this.data.ensureDefaults();
+            this.consoleManager.setLogRedirect(this.data.logRedirect);
         }
     }
 
     public void save() {
-        try (FileWriter writer = new FileWriter(CONFIG_FILE.toFile())) {
-            GSON.toJson(this.data, writer);
-        } catch (Exception e) {
-            Main.LOGGER.error("Failed to save global MQS config.", e);
+        try {
+            Files.createDirectories(CONFIG_FILE.getParent());
+            try (BufferedWriter writer = Files.newBufferedWriter(CONFIG_FILE)) {
+                GSON.toJson(this.data, writer);
+            }
+        } catch (IOException exception) {
+            Main.LOGGER.atError().setCause(exception).log("Failed to save global MQS config.");
         }
     }
 
@@ -102,24 +111,109 @@ public class GlobalConfigManager {
     }
 
     public void setAdditionalScriptDirectories(List<String> directories) {
-        data.additionalScriptDirs = directories == null ? new ArrayList<>() : new ArrayList<>(directories);
-        save();
+        data.ensureDefaults();
+        List<String> sanitizedDirectories = sanitizeAdditionalScriptDirectories(directories);
+        if (!sanitizedDirectories.equals(data.additionalScriptDirs)) {
+            data.additionalScriptDirs = sanitizedDirectories;
+            save();
+        }
     }
 
-    private static class ConfigData {
+    public String getDefaultIdeCommand() {
+        data.ensureDefaults();
+        return data.defaultIdeCommand;
+    }
+
+    public void setDefaultIdeCommand(String command) {
+        data.ensureDefaults();
+        String sanitized = IdeCommandUtils.getDefaultIdeCommand(command);
+        if (!sanitized.equals(data.defaultIdeCommand)) {
+            data.defaultIdeCommand = sanitized;
+            save();
+        }
+    }
+
+    public String getDefaultProjectPath() {
+        data.ensureDefaults();
+        return data.defaultProjectPath;
+    }
+
+    public void setDefaultProjectPath(String path) {
+        data.ensureDefaults();
+        String sanitized = path == null ? "" : path.trim();
+        if (!sanitized.equals(data.defaultProjectPath)) {
+            data.defaultProjectPath = sanitized;
+            save();
+        }
+    }
+
+    public OptionsSnapshot getOptionsSnapshot() {
+        data.ensureDefaults();
+        return new OptionsSnapshot(
+                data.logRedirect,
+                data.allowAllClasses,
+                List.copyOf(data.additionalScriptDirs),
+                data.defaultIdeCommand,
+                data.defaultProjectPath
+        );
+    }
+
+    private List<String> sanitizeAdditionalScriptDirectories(List<String> directories) {
+        if (directories == null || directories.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        LinkedHashSet<String> sanitizedDirectories = new LinkedHashSet<>();
+        for (String directory : directories) {
+            if (directory == null) {
+                continue;
+            }
+
+            String trimmedDirectory = directory.trim();
+            if (!trimmedDirectory.isEmpty()) {
+                sanitizedDirectories.add(trimmedDirectory);
+            }
+        }
+
+        return new ArrayList<>(sanitizedDirectories);
+    }
+
+    private static final class ConfigData {
         @SerializedName(ConfigKeys.LOG_REDIRECT)
-        boolean logRedirect = false;
+        boolean logRedirect;
 
         @SerializedName(ConfigKeys.ALLOW_ALL_CLASSES)
-        boolean allowAllClasses = false;
+        boolean allowAllClasses;
 
         @SerializedName(ConfigKeys.ADDITIONAL_SCRIPT_DIRS)
         List<String> additionalScriptDirs = new ArrayList<>();
+
+        @SerializedName(ConfigKeys.DEFAULT_IDE_COMMAND)
+        String defaultIdeCommand = "code";
+
+        @SerializedName(ConfigKeys.DEFAULT_PROJECT_PATH)
+        String defaultProjectPath = "";
 
         void ensureDefaults() {
             if (additionalScriptDirs == null) {
                 additionalScriptDirs = new ArrayList<>();
             }
+            defaultIdeCommand = IdeCommandUtils.getDefaultIdeCommand(defaultIdeCommand);
+            if (defaultProjectPath == null) {
+                defaultProjectPath = "";
+            }
+        }
+    }
+
+    public record OptionsSnapshot(
+            boolean logRedirect,
+            boolean allowAllClasses,
+            List<String> additionalScriptDirs,
+            String defaultIdeCommand,
+            String defaultProjectPath
+    ) {
+        public OptionsSnapshot {
+            additionalScriptDirs = List.copyOf(additionalScriptDirs);
         }
     }
 }

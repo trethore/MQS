@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -25,157 +25,216 @@ import net.me.scripting.config.MappedClassInfo;
 import net.me.scripting.extenders.MappedClassExtender;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsObject;
 import net.me.scripting.utils.MappingUtils;
 import net.me.scripting.utils.ScriptUtils;
 import net.me.scripting.wrappers.JsClassWrapper;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import net.me.scripting.wrappers.LazyJsClassHolder;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 import java.util.*;
 
+import static net.me.scripting.typings.schema.TsDescriptors.*;
+
 public class ScriptingApi {
     private static final String EXTENDS = "extends";
     private static final String IMPLEMENTS = "implements";
 
+    private ScriptingApi() {
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(
+                        alias("MQSDisposer", "() => void"),
+                        alias("MQSAnyFunction", "(...args: any[]) => unknown"),
+                        alias("MQSConstructable", "<T = any>", "abstract new (...args: any[]) => T"),
+                        alias("MQSExportableScript", "JavaClass<any> | MQSConstructable<any>"),
+                        alias("MQSJavaInstanceOf", "<T>", "T extends JavaClass<infer I> ? I : T extends MQSConstructable<infer I> ? I : JavaInstance | any"),
+                        alias("MQSMappedClass", "<K extends string>", "K extends keyof MQSClassRegistry ? MQSClassRegistry[K] : JavaClass<any>"),
+                        alias("MQSMappedInstance", "<K extends string>", "K extends keyof MQSClassRegistry ? MQSJavaInstanceOf<MQSClassRegistry[K]> : JavaInstance | any")
+                ),
+                List.of(
+                        globalFunction("importClass", fn("<K extends keyof MQSClassRegistry>", "MQSClassRegistry[K]", p("name", "K"))),
+                        globalFunction("importClass", fn(TypingsConstants.JAVA_CLASS_ANY, p("name", TypingsConstants.STRING))),
+                        globalFunction("wrap", fn("<T = JavaInstance>", "T", p("instance", TypingsConstants.UNKNOWN))),
+                        globalFunction("extendMapped", fn(TypingsConstants.JAVA_CLASS_ANY, p("config", "MQSExtendMappedConfig"), p("implementation", "Record<string, unknown>"))),
+                        globalFunction("exportScript", fn(TypingsConstants.VOID, rest("scripts", "MQSExportableScript | MQSExportableScript[]"))),
+                        globalFunction("isInstanceOf", fn(TypingsConstants.BOOLEAN, p("instance", TypingsConstants.UNKNOWN), p("clazz", TypingsConstants.JAVA_CLASS_ANY)))
+                ),
+                List.of(),
+                List.of(
+                        describeExtendMappedConfig(),
+                        new TsObject("MQSClassRegistry", List.of())
+                )
+        );
+    }
+
+    private static TsObject describeExtendMappedConfig() {
+        return new TsObject(
+                "MQSExtendMappedConfig",
+                List.of(
+                        prop(EXTENDS, TypingsConstants.UNKNOWN),
+                        optProp(IMPLEMENTS, TypingsConstants.UNKNOWN + " | " + TypingsConstants.UNKNOWN + "[]")
+                )
+        );
+    }
+
     public static ProxyExecutable createImportClassProxy(ScriptingClassResolver resolver, Context context) {
         return args -> {
-            if (args.length == 0 || !args[0].isString())
-                throw new RuntimeException("importClass requires a FQCN string argument (Yarn mappings).");
-            var name = args[0].asString();
-            if (!resolver.isClassAllowed(name)) throw new RuntimeException("Class not allowed: " + name);
+            if (args.length == 0 || !args[0].isString()) {
+                throw new IllegalArgumentException("importClass requires a class name string argument.");
+            }
+            String requestedName = args[0].asString().trim();
+            if (requestedName.isEmpty()) {
+                throw new IllegalArgumentException("importClass requires a non-empty class name.");
+            }
 
-            String runtime = resolver.getRuntimeName(name);
-            if (runtime != null) return resolver.getOrCreateWrapper(runtime);
+            String resolvedName = resolveImportClassName(requestedName, resolver);
+            if (!resolver.isClassAllowed(resolvedName)) {
+                throw new SecurityException("Class not allowed: " + resolvedName);
+            }
+
+            String runtime = resolver.getRuntimeName(resolvedName);
+            if (runtime != null) {
+                return resolver.getOrCreateWrapper(runtime);
+            }
             try {
-                return context.eval(ScriptConstants.JS, "Java.type('" + name + "')");
-            } catch (Exception e) {
-                throw new RuntimeException("Unknown class or could not load host class: " + name, e);
+                Value javaInterop = context.getBindings(ScriptConstants.JS).getMember("Java");
+                return javaInterop.invokeMember("type", resolvedName);
+            } catch (PolyglotException e) {
+                throw new IllegalArgumentException("Unknown class or could not load host class: " + resolvedName, e);
             }
         };
+    }
+
+    private static String resolveImportClassName(String requestedName, ScriptingClassResolver resolver) {
+        if (requestedName.indexOf('.') >= 0) {
+            return requestedName;
+        }
+
+        List<String> matches = resolver.findNamedClassesBySimpleName(requestedName);
+        if (matches.isEmpty()) {
+            throw new IllegalArgumentException("Unknown class name '" + requestedName + "'. Use a fully qualified class name.");
+        }
+        if (matches.size() > 1) {
+            throw new IllegalArgumentException("Ambiguous class name '" + requestedName + "'. Possible matches: " + String.join(", ", matches) + ". Use a fully qualified class name.");
+        }
+        return matches.getFirst();
     }
 
     public static ProxyExecutable createWrapProxy(ScriptingClassResolver resolver) {
         return args -> {
             if (args.length != 1) {
-                throw new RuntimeException("wrap() requires exactly one argument: the instance to wrap.");
+                throw new IllegalArgumentException("wrap() requires exactly one argument: the instance to wrap.");
             }
             Value v = args[0];
-            if (v.isProxyObject()) {
-                Object proxy = v.asProxyObject();
-                if (proxy instanceof ExtendedInstanceProxy || proxy instanceof JsObjectWrapper || proxy instanceof MappedInstanceProxy) {
-                    return v;
-                }
+            if (isAlreadyWrapped(v)) {
+                return v;
             }
-            Object javaInstance = ScriptUtils.unwrapReceiver(v);
-            if (javaInstance == null) {
-                throw new RuntimeException("The instance passed to wrap() was null or could not be unwrapped to a Java object.");
-            }
-            Class<?> instanceClass = javaInstance.getClass();
-
-            var cm = MappingUtils.combineMappings(instanceClass, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
-
-            return new JsObjectWrapper(
-                    javaInstance,
-                    instanceClass,
-                    cm.methods(),
-                    cm.fields(),
-                    resolver.getMappingsManager(),
-                    resolver.getScriptManager()
-            );
+            return wrapJavaInstance(v, resolver);
         };
+    }
+
+    private static boolean isAlreadyWrapped(Value v) {
+        if (!v.isProxyObject()) {
+            return false;
+        }
+
+        Object o = v.asProxyObject();
+        return o instanceof ExtendedInstanceProxy
+                || o instanceof MappedInstanceProxy
+                || o instanceof JsObjectWrapper;
+    }
+
+    private static JsObjectWrapper wrapJavaInstance(Value v, ScriptingClassResolver resolver) {
+        Object javaInstance = ScriptUtils.unwrapReceiver(v);
+        if (javaInstance == null) {
+            throw new IllegalArgumentException("The instance passed to wrap() was null or could not be unwrapped to a Java object.");
+        }
+        Class<?> instanceClass = javaInstance.getClass();
+        ScriptingClassResolver.WrapperMetadata metadata = resolver.getOrCreateWrapperMetadata(instanceClass);
+
+        return new JsObjectWrapper(
+                javaInstance,
+                instanceClass,
+                metadata.methods(),
+                metadata.fields(),
+                resolver.getMappingsManager(),
+                resolver.getScriptManager()
+        );
     }
 
     public static ProxyExecutable createExtendMappedProxy(ScriptingClassResolver resolver, Context context) {
         return args -> {
-            if (args.length != 2) {
-                throw new RuntimeException("extendMapped() requires exactly two arguments: extendMapped(config, implementation)");
-            }
-            Value configArg = args[0];
-            Value implementationArg = args[1];
-
-            if (!configArg.hasMembers() || !configArg.hasMember(EXTENDS)) {
-                throw new RuntimeException("First argument must be a configuration object with an '" + EXTENDS + "' property.");
-            }
-            if (!implementationArg.hasMembers() && !implementationArg.isProxyObject()) {
-                throw new RuntimeException("Second argument must be an implementation object containing methods and properties.");
-            }
-
-            Value extendsValue = configArg.getMember(EXTENDS);
-            Value parentOverrides = null;
-            Value parentAddons = null;
-            Value parentSuper = null;
-            ExtensionConfig config;
-
-            if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof MappedClassExtender) {
-                config = parseExtensionConfig(configArg, context, resolver, extendsValue);
-            } else if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
-                parentOverrides = parentProxy.getOriginalOverrides();
-                parentAddons = parentProxy.getOriginalAddons();
-                parentSuper = extendsValue.getMember(WrapperConstants.SUPER);
-
-                ExtensionConfig originalConfig = parentProxy.getOriginalConfig();
-                MappedClassInfo newExtendsInfo = originalConfig.extendsClass();
-                List<MappedClassInfo> allImplements = new ArrayList<>(originalConfig.implementsClasses());
-                if (configArg.hasMember(IMPLEMENTS)) {
-                    Value impl = configArg.getMember(IMPLEMENTS);
-                    if (impl.hasArrayElements()) {
-                        for (long i = 0; i < impl.getArraySize(); i++) {
-                            allImplements.add(extractInfoFromValue(impl.getArrayElement(i), resolver));
-                        }
-                    } else {
-                        allImplements.add(extractInfoFromValue(impl, resolver));
-                    }
-                }
-                List<MappedClassInfo> finalImplements = new ArrayList<>(new LinkedHashSet<>(allImplements));
-                config = new ExtensionConfig(newExtendsInfo, finalImplements.stream().filter(Objects::nonNull).toList(), context);
-            } else {
-                config = parseExtensionConfig(configArg, context, resolver, extendsValue);
-            }
-
-            return new MappedClassExtender(config, context, parentOverrides, parentAddons, parentSuper, resolver, implementationArg);
+            ExtendMappedArgs validatedArgs = requireExtendMappedArgs(args);
+            ExtendMappedSetup setup = resolveExtendMappedSetup(validatedArgs.configArg(), context, resolver);
+            return new MappedClassExtender(
+                    setup.config(),
+                    context,
+                    setup.parentOverrides(),
+                    setup.parentAddons(),
+                    setup.parentSuper(),
+                    resolver,
+                    validatedArgs.implementationArg()
+            );
         };
     }
 
-    public static ProxyExecutable createExportModuleProxy(ThreadLocal<Map<String, Value>> perFileExports) {
+    public static ProxyExecutable createExportScriptProxy(ThreadLocal<Map<String, Value>> perFileExports) {
         return args -> {
             Map<String, Value> exportsMap = perFileExports.get();
             if (exportsMap == null) {
-                Main.LOGGER.warn("exportModule called outside of a script discovery or enablement context. Ignoring.");
+                Main.LOGGER.warn("exportScript called outside of a script discovery or enablement context. Ignoring.");
                 return null;
             }
 
             for (Value arg : args) {
-                if (arg != null && arg.hasArrayElements()) {
-                    for (long i = 0; i < arg.getArraySize(); i++) {
-                        addModule(exportsMap, arg.getArrayElement(i));
-                    }
-                } else {
-                    addModule(exportsMap, arg);
-                }
+                processExportArg(arg, exportsMap);
             }
             return null;
         };
+    }
+
+    private static void processExportArg(Value arg, Map<String, Value> exportsMap) {
+        if (arg == null) {
+            addScript(exportsMap, null);
+            return;
+        }
+        if (!arg.hasArrayElements()) {
+            addScript(exportsMap, arg);
+            return;
+        }
+        for (long i = 0; i < arg.getArraySize(); i++) {
+            addScript(exportsMap, arg.getArrayElement(i));
+        }
     }
 
     private static Class<?> getClassFromValue(Value value) {
         if (value == null || value.isNull()) {
             return null;
         }
-        Object proxy = value.isProxyObject() ? value.asProxyObject() : null;
-        if (proxy instanceof LazyJsClassHolder holder) {
-            return holder.getWrapper().getTargetClass();
+
+        if (value.isProxyObject()) {
+            return getClassFromProxy(value.asProxyObject());
         }
-        if (proxy instanceof JsClassWrapper wrapper) {
-            return wrapper.getTargetClass();
-        }
+
         Object unwrapped = ScriptUtils.unwrapReceiver(value);
-        if (unwrapped instanceof Class) {
-            return (Class<?>) unwrapped;
-        }
-        return null;
+        return unwrapped instanceof Class<?> clazz ? clazz : null;
+    }
+
+    private static Class<?> getClassFromProxy(Object proxy) {
+        return switch (proxy) {
+            case LazyJsClassHolder holder -> holder.getWrapper().getTargetClass();
+            case JsClassWrapper wrapper -> wrapper.getTargetClass();
+            default -> null;
+        };
     }
 
 
@@ -199,79 +258,165 @@ public class ScriptingApi {
     }
 
 
-    private static void addModule(Map<String, Value> exportsMap, Value moduleValue) {
-        if (moduleValue != null && moduleValue.canInstantiate()) {
-            exportsMap.put(moduleValue.getMetaQualifiedName(), moduleValue);
+    private static void addScript(Map<String, Value> exportsMap, Value scriptValue) {
+        if (scriptValue != null && scriptValue.canInstantiate()) {
+            exportsMap.put(scriptValue.getMetaQualifiedName(), scriptValue);
             return;
         }
-        Main.LOGGER.warn("An argument to exportModule was not a valid, instantiable class. Ignoring: {}", moduleValue);
+        Main.LOGGER.warn("An argument to exportScript was not a valid, instantiable class. Ignoring: {}", scriptValue);
     }
 
     private static ExtensionConfig parseExtensionConfig(Value configArg, Context context, ScriptingClassResolver resolver, Value extendsValueOverride) {
         Value extendsValue = (extendsValueOverride != null) ? extendsValueOverride : configArg.getMember(EXTENDS);
         if (extendsValue == null) {
-            throw new RuntimeException("Configuration object must have an '" + EXTENDS + "' property.");
+            throw new IllegalArgumentException("Configuration object must have an '" + EXTENDS + "' property.");
         }
 
         MappedClassInfo extendsInfo = extractInfoFromValue(extendsValue, resolver);
         List<MappedClassInfo> implementsInfos = new ArrayList<>();
-        if (configArg.hasMember(IMPLEMENTS)) {
-            Value impl = configArg.getMember(IMPLEMENTS);
-            if (impl.hasArrayElements()) {
-                for (long i = 0; i < impl.getArraySize(); i++) {
-                    implementsInfos.add(extractInfoFromValue(impl.getArrayElement(i), resolver));
-                }
-            } else {
-                implementsInfos.add(extractInfoFromValue(impl, resolver));
-            }
-        }
-        return new ExtensionConfig(extendsInfo, implementsInfos.stream().filter(Objects::nonNull).toList(), context);
+        addImplementsFromConfig(configArg, resolver, implementsInfos);
+        return new ExtensionConfig(extendsInfo, filterNonNull(implementsInfos), context);
     }
 
     private static MappedClassInfo extractInfoFromValue(Value value, ScriptingClassResolver resolver) {
-        if (value.isProxyObject()) {
-            Object proxy = value.asProxyObject();
-            if (proxy instanceof MappedClassExtender extender) {
-                try {
-                    java.lang.reflect.Field configField = MappedClassExtender.class.getDeclaredField("config");
-                    configField.setAccessible(true);
-                    ExtensionConfig parentConfig = (ExtensionConfig) configField.get(extender);
-                    return parentConfig.extendsClass();
-                } catch (Exception e) {
-                    throw new RuntimeException("Could not extract config from parent MappedClassExtender.", e);
-                }
-            }
-
-            JsClassWrapper wrapper = null;
-            String yarnName = null;
-            if (proxy instanceof LazyJsClassHolder holder) {
-                wrapper = holder.getWrapper();
-                try {
-                    java.lang.reflect.Field yarnNameField = LazyJsClassHolder.class.getDeclaredField("yarnName");
-                    yarnNameField.setAccessible(true);
-                    yarnName = (String) yarnNameField.get(holder);
-                } catch (Exception ignored) {
-                }
-            } else if (proxy instanceof JsClassWrapper w) {
-                wrapper = w;
-            }
-
-            if (wrapper != null) {
-                if (yarnName == null) {
-                    yarnName = resolver.getRuntimeToYarnMap().getOrDefault(wrapper.getTargetClass().getName(), wrapper.getTargetClass().getName());
-                }
-                return new MappedClassInfo(yarnName, wrapper.getTargetClass(), wrapper.getMethodMappings(), wrapper.getFieldMappings());
-            }
-        } else if (value.isHostObject() && value.asHostObject() instanceof Class) {
-            Class<?> clazz = value.as(Class.class);
-            String yarnName = resolver.getRuntimeToYarnMap().get(clazz.getName());
-            if (yarnName != null) {
-                var cm = MappingUtils.combineMappings(clazz, resolver.getRuntimeToYarnMap(), resolver.getMethodMap(), resolver.getFieldMap());
-                return new MappedClassInfo(yarnName, clazz, cm.methods(), cm.fields());
-            } else {
-                return new MappedClassInfo(clazz.getName(), clazz, Collections.emptyMap(), Collections.emptyMap());
-            }
+        if (value == null || value.isNull()) {
+            return null;
         }
-        return null;
+        if (value.isProxyObject()) {
+            return extractInfoFromProxy(value.asProxyObject(), resolver);
+        }
+        return extractInfoFromHostClass(value, resolver);
+    }
+
+    private static ExtendMappedArgs requireExtendMappedArgs(Value[] args) {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("extendMapped() requires exactly two arguments: extendMapped(config, implementation)");
+        }
+        Value configArg = args[0];
+        Value implementationArg = args[1];
+
+        if (!configArg.hasMembers() || !configArg.hasMember(EXTENDS)) {
+            throw new IllegalArgumentException("First argument must be a configuration object with an '" + EXTENDS + "' property.");
+        }
+        if (!implementationArg.hasMembers() && !implementationArg.isProxyObject()) {
+            throw new IllegalArgumentException("Second argument must be an implementation object containing methods and properties.");
+        }
+
+        return new ExtendMappedArgs(configArg, implementationArg);
+    }
+
+    private static ExtendMappedSetup resolveExtendMappedSetup(Value configArg, Context context, ScriptingClassResolver resolver) {
+        Value extendsValue = configArg.getMember(EXTENDS);
+
+        if (extendsValue.isProxyObject() && extendsValue.asProxyObject() instanceof ExtendedInstanceProxy parentProxy) {
+            return buildSetupFromParentProxy(configArg, parentProxy, extendsValue, context, resolver);
+        }
+
+        ExtensionConfig config = parseExtensionConfig(configArg, context, resolver, extendsValue);
+        return new ExtendMappedSetup(config, null, null, null);
+    }
+
+    private static ExtendMappedSetup buildSetupFromParentProxy(
+            Value configArg,
+            ExtendedInstanceProxy parentProxy,
+            Value extendsValue,
+            Context context,
+            ScriptingClassResolver resolver
+    ) {
+        Value parentOverrides = parentProxy.getOriginalOverrides();
+        Value parentAddons = parentProxy.getOriginalAddons();
+        Value parentSuper = extendsValue.getMember(WrapperConstants.SUPER);
+
+        ExtensionConfig originalConfig = parentProxy.getOriginalConfig();
+        MappedClassInfo newExtendsInfo = originalConfig.extendsClass();
+        List<MappedClassInfo> allImplements = new ArrayList<>(originalConfig.implementsClasses());
+        addImplementsFromConfig(configArg, resolver, allImplements);
+        List<MappedClassInfo> finalImplements = dedupeImplements(allImplements);
+
+        ExtensionConfig config = new ExtensionConfig(newExtendsInfo, filterNonNull(finalImplements), context);
+        return new ExtendMappedSetup(config, parentOverrides, parentAddons, parentSuper);
+    }
+
+    private static void addImplementsFromConfig(Value configArg, ScriptingClassResolver resolver, List<MappedClassInfo> target) {
+        if (!configArg.hasMember(IMPLEMENTS)) {
+            return;
+        }
+        Value impl = configArg.getMember(IMPLEMENTS);
+        if (impl.hasArrayElements()) {
+            for (long i = 0; i < impl.getArraySize(); i++) {
+                target.add(extractInfoFromValue(impl.getArrayElement(i), resolver));
+            }
+            return;
+        }
+        target.add(extractInfoFromValue(impl, resolver));
+    }
+
+    private static List<MappedClassInfo> dedupeImplements(List<MappedClassInfo> implementsInfos) {
+        return new ArrayList<>(new LinkedHashSet<>(implementsInfos));
+    }
+
+    private static List<MappedClassInfo> filterNonNull(List<MappedClassInfo> infos) {
+        return infos.stream().filter(Objects::nonNull).toList();
+    }
+
+    private static MappedClassInfo extractInfoFromProxy(Object proxy, ScriptingClassResolver resolver) {
+        MappedClassInfo extenderInfo = extractInfoFromExtender(proxy);
+        if (extenderInfo != null) {
+            return extenderInfo;
+        }
+
+        WrapperInfo wrapperInfo = extractWrapperInfo(proxy);
+        if (wrapperInfo == null || wrapperInfo.wrapper() == null) {
+            return null;
+        }
+        String namedClassName = resolveNamedClassName(wrapperInfo, resolver);
+        JsClassWrapper wrapper = wrapperInfo.wrapper();
+        return new MappedClassInfo(namedClassName, wrapper.getTargetClass(), wrapper.getMethodMappings(), wrapper.getFieldMappings());
+    }
+
+    private static MappedClassInfo extractInfoFromExtender(Object proxy) {
+        if (!(proxy instanceof MappedClassExtender extender)) {
+            return null;
+        }
+        return extender.getConfig().extendsClass();
+    }
+
+    private static WrapperInfo extractWrapperInfo(Object proxy) {
+        return switch (proxy) {
+            case LazyJsClassHolder holder -> new WrapperInfo(holder.getWrapper(), holder.getNamedClassName());
+            case JsClassWrapper wrapper -> new WrapperInfo(wrapper, null);
+            default -> null;
+        };
+    }
+
+    private static String resolveNamedClassName(WrapperInfo wrapperInfo, ScriptingClassResolver resolver) {
+        if (wrapperInfo.namedClassName() != null) {
+            return wrapperInfo.namedClassName();
+        }
+        String runtimeName = wrapperInfo.wrapper().getTargetClass().getName();
+        return resolver.getRuntimeToNamedMap().getOrDefault(runtimeName, runtimeName);
+    }
+
+    private static MappedClassInfo extractInfoFromHostClass(Value value, ScriptingClassResolver resolver) {
+        if (!value.isHostObject() || !(value.asHostObject() instanceof Class)) {
+            return null;
+        }
+        Class<?> clazz = value.as(Class.class);
+        String namedClassName = resolver.getRuntimeToNamedMap().get(clazz.getName());
+        if (namedClassName != null) {
+            MappingUtils.ClassMappings cm = MappingUtils.combineMappings(clazz, resolver.getRuntimeToNamedMap(), resolver.getMethodMap(), resolver.getFieldMap());
+            return new MappedClassInfo(namedClassName, clazz, cm.methods(), cm.fields());
+        }
+        return new MappedClassInfo(clazz.getName(), clazz, Collections.emptyMap(), Collections.emptyMap());
+    }
+
+    private record ExtendMappedArgs(Value configArg, Value implementationArg) {
+    }
+
+    private record ExtendMappedSetup(ExtensionConfig config, Value parentOverrides, Value parentAddons,
+                                     Value parentSuper) {
+    }
+
+    private record WrapperInfo(JsClassWrapper wrapper, String namedClassName) {
     }
 }

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,9 +18,9 @@
 
 package net.me.utils;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 
 import java.util.Optional;
 
@@ -30,16 +30,15 @@ public final class McUtils {
     private McUtils() {
     }
 
-    public static Optional<MinecraftClient> getMc() {
-        return Optional.ofNullable(MinecraftClient.getInstance());
+    public static Minecraft getMc() {
+        return Minecraft.getInstance();
     }
 
-    public static Optional<ClientPlayerEntity> getPlayer() {
-        return getMc().map(mc -> mc.player);
-
+    public static Optional<LocalPlayer> getPlayer() {
+        return Optional.ofNullable(getMc().player);
     }
 
-    public static Optional<ClientWorld> getWorld() {
-        return getMc().map(mc -> mc.world);
+    public static Optional<ClientLevel> getWorld() {
+        return Optional.ofNullable(getMc().level);
     }
 }

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,18 +18,21 @@
 
 package net.me.utils.update;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
 import net.fabricmc.loader.api.FabricLoader;
 import net.me.Main;
-import net.me.utils.AssetIdentifiers;
+import net.me.utils.AssetIdentifier;
 
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -39,7 +42,7 @@ import java.util.function.Consumer;
 public class UpdateUtils {
 
     private static final Path UPDATES_FOLDER = Main.MOD_DIR.resolve("updates");
-    private static final String UPDATE_FILE_NAME = "my-qol-scripts-update.jar";
+    private static final String UPDATE_FILE_NAME = "myqolscripts-update.jar";
 
     private static final String GITHUB_KEY_TAG_NAME = "tag_name";
     private static final String GITHUB_KEY_BODY = "body";
@@ -114,7 +117,7 @@ public class UpdateUtils {
 
     private static UpdateInfo checkForUpdate() {
         try {
-            URL url = new URI(AssetIdentifiers.URL_GITHUB_API_BASE + AssetIdentifiers.GITHUB_REPO + "/releases/latest").toURL();
+            URL url = new URI(AssetIdentifier.URL_GITHUB_API_BASE.value() + AssetIdentifier.GITHUB_REPO.value() + "/releases/latest").toURL();
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             connection.setRequestProperty("User-Agent", "MQS-Updater");
@@ -140,9 +143,9 @@ public class UpdateUtils {
 
             String downloadUrl = null;
             if (release.has(GITHUB_KEY_ASSETS) && release.get(GITHUB_KEY_ASSETS).isJsonArray()) {
-                var assets = release.get(GITHUB_KEY_ASSETS).getAsJsonArray();
-                for (var asset : assets) {
-                    var assetObj = asset.getAsJsonObject();
+                JsonArray assets = release.get(GITHUB_KEY_ASSETS).getAsJsonArray();
+                for (JsonElement asset : assets) {
+                    JsonObject assetObj = asset.getAsJsonObject();
                     String fileName = assetObj.get(GITHUB_KEY_ASSET_NAME).getAsString();
 
                     if (fileName.endsWith(".jar") && !fileName.endsWith("-sources.jar") && !fileName.endsWith("-dev.jar")) {
@@ -192,7 +195,7 @@ public class UpdateUtils {
         }
         try {
             Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (java.nio.file.FileSystemException e) {
+        } catch (FileSystemException e) {
             Main.LOGGER.warn("Standard copy failed, trying with FileChannel transfer. Error: {}", e.getMessage());
             copyFileWithChannel(sourceFile, destFile);
         }

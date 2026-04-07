@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,13 +24,15 @@ public final class ConfigKeys {
     public static final String LOG_REDIRECT = "logRedirect";
     public static final String ALLOW_ALL_CLASSES = "allowAllClasses";
     public static final String ADDITIONAL_SCRIPT_DIRS = "additionalScriptDirs";
+    public static final String DEFAULT_IDE_COMMAND = "defaultIdeCommand";
+    public static final String DEFAULT_PROJECT_PATH = "defaultProjectPath";
 
     // Per-script configs (in /configs/)
     public static final String ENABLED = "enabled";
     public static final String KEYBINDS = "keybinds";
 
-    // Script Metadata (@module)
-    public static final String SCRIPT_META_MAIN = "main";
+    // Script metadata (@script)
+    public static final String SCRIPT_META_ID = "id";
     public static final String SCRIPT_META_NAME = "name";
     public static final String SCRIPT_META_VERSION = "version";
 

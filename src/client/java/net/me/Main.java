@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -34,19 +34,27 @@ import net.me.scripting.ConfigManager;
 import net.me.scripting.ScriptManager;
 import net.me.scripting.ScriptingService;
 import net.me.scripting.mappings.MappingsManager;
+import net.me.scripting.typings.TypeDefinitionGenerator;
+import net.me.ui.UiManager;
+import net.me.ui.UiPaths;
 import net.me.utils.McUtils;
 import org.graalvm.polyglot.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tytoo.grapheneui.api.GrapheneCore;
+import tytoo.grapheneui.api.GrapheneHandle;
+import tytoo.grapheneui.api.config.GrapheneConfig;
+import tytoo.grapheneui.api.config.GrapheneContainerConfig;
+import tytoo.grapheneui.api.config.GrapheneGlobalConfig;
+import tytoo.grapheneui.api.config.GrapheneHttpConfig;
 
 import java.nio.file.Path;
 
 public class Main implements ClientModInitializer {
-    public static final String MOD_ID = "my_qol_scripts";
+    public static final String MOD_ID = "myqolscripts";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-    @SuppressWarnings("unused")
-    public static final String MC_VERSION = "1.21.4";
     public static final Path MOD_DIR = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
+    private static final int DEV_UI_HTTP_PORT = 41795;
 
     @Getter
     private static Main instance;
@@ -57,8 +65,6 @@ public class Main implements ClientModInitializer {
     private MappingsManager mappingsManager;
     @Getter
     private ScriptManager scriptManager;
-    private HookManager hookManager;
-    private EventManager eventManager;
     private CommandManager commandManager;
     private ConsoleManager consoleManager;
     private ScriptingService scriptingService;
@@ -66,13 +72,21 @@ public class Main implements ClientModInitializer {
     private GlobalConfigManager globalConfigManager;
     @Getter
     private KeybindManager keybindManager;
+    private UiManager uiManager;
     private Engine scriptEngine;
+
+    public static GrapheneHandle getGraphene() {
+        return GrapheneCore.handle(Main.class);
+    }
+
+    private static void setInstance(Main instance) {
+        Main.instance = instance;
+    }
 
     @Override
     public void onInitializeClient() {
-        instance = this;
-
-        this.scriptEngine = Engine.create();
+        setInstance(this);
+        GrapheneCore.register(Main.class, createGrapheneConfig());
         this.mappingsManager = new MappingsManager();
         this.configManager = new ConfigManager();
         this.scriptManager = new ScriptManager();
@@ -81,12 +95,13 @@ public class Main implements ClientModInitializer {
         this.consoleManager = new ConsoleManager();
         this.globalConfigManager = new GlobalConfigManager(consoleManager);
 
-        this.eventManager = new EventManager(scriptManager);
+        EventManager eventManager = new EventManager(scriptManager);
         MQSEventBus.setManager(eventManager);
         this.keybindManager = new KeybindManager(scriptManager, configManager);
 
-        this.hookManager = new HookManager(scriptManager, mappingsManager);
+        HookManager hookManager = new HookManager(scriptManager, mappingsManager);
         this.scriptingService = new ScriptingService(scriptManager, configManager);
+        this.uiManager = new UiManager(this.scriptingService, this.consoleManager, this.keybindManager, this.scriptManager, this.globalConfigManager);
 
         configManager.init();
         consoleManager.init();
@@ -97,17 +112,53 @@ public class Main implements ClientModInitializer {
         this.registerClientCommands();
 
         mappingsManager.init();
-
-        mappingsManager.whenReady(() -> McUtils.getMc().ifPresent(mc -> mc.send(() -> {
-            scriptManager.init(scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
+        this.scriptEngine = Engine.create();
+        mappingsManager.whenReady(() -> McUtils.getMc().execute(() -> {
+            if (this.scriptEngine == null) {
+                LOGGER.warn("Skipping script initialization because engine has already been shut down.");
+                return;
+            }
+            scriptManager.init(this.scriptEngine, mappingsManager, configManager, eventManager, hookManager, keybindManager, globalConfigManager);
             scriptManager.loadAndEnableScriptsFromConfig();
 
             LOGGER.info("MyQOLScripts initialization complete! Hello !");
-        })));
+        }));
+    }
+
+    public void shutdown() {
+        Engine engine = this.scriptEngine;
+        this.scriptEngine = null;
+        if (engine != null) {
+            engine.close();
+        }
+    }
+
+    private GrapheneConfig createGrapheneConfig() {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
+            return GrapheneConfig.builder()
+                    .global(GrapheneGlobalConfig.builder()
+                            .allowFileSystemAccess()
+                            .build()
+                    ).build();
+        }
+
+        // In development, we serve the built UI from the web/out folder for faster iteration.
+        return GrapheneConfig.builder()
+                .global(GrapheneGlobalConfig.builder()
+                        .allowFileSystemAccess()
+                        .build()
+                ).container(GrapheneContainerConfig.builder()
+                        .http(GrapheneHttpConfig.builder()
+                                .port(DEV_UI_HTTP_PORT)
+                                .fileRoot(FabricLoader.getInstance().getGameDir().resolve("../web/out/"))
+                                .spaFallback(UiPaths.DEV_HTTP_SPA_FALLBACK)
+                                .build())
+                        .build())
+                .build();
     }
 
     private void registerClientCommands() {
-        this.commandManager.addCommand(new MQSCommand(this.scriptingService));
+        this.commandManager.addCommand(new MQSCommand(this.scriptingService, this.uiManager, new TypeDefinitionGenerator(this.mappingsManager)));
     }
 
     private void registerConsoleCommands() {

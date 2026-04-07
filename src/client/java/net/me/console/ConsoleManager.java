@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,19 +22,20 @@ import net.me.console.log.ConsoleManagerAppender;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ConsoleManager {
+    private static final PrintStream originalOut = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+    private static final PrintStream originalErr = new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8);
     private static final int MAX_HISTORY_SIZE = 100;
     private final List<ConsoleMessage> messages = new CopyOnWriteArrayList<>();
     private final Map<String, ConsoleCommand> commands = new HashMap<>();
     private final List<String> commandHistory = new ArrayList<>();
-    private final PrintStream originalOut = System.out;
-    private final PrintStream originalErr = System.err;
+    private final List<ConsoleListener> listeners = new CopyOnWriteArrayList<>();
+
     private ConsoleManagerAppender slf4jAppender;
 
     public void init() {
@@ -42,33 +43,37 @@ public class ConsoleManager {
     }
 
     public void addCommand(ConsoleCommand command) {
-        commands.put(command.getName().toLowerCase(), command);
+        commands.put(command.getName().toLowerCase(Locale.ROOT), command);
     }
 
     private List<String> parseArguments(String commandLine) {
         List<String> tokens = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
         boolean inQuotes = false;
+
         for (char c : commandLine.toCharArray()) {
             if (c == '"') {
                 inQuotes = !inQuotes;
-                if (!inQuotes && !sb.isEmpty()) {
-                    tokens.add(sb.toString());
-                    sb.setLength(0);
+                if (!inQuotes) {
+                    flushToken(tokens, sb);
                 }
             } else if (c == ' ' && !inQuotes) {
-                if (!sb.isEmpty()) {
-                    tokens.add(sb.toString());
-                    sb.setLength(0);
-                }
+                flushToken(tokens, sb);
             } else {
                 sb.append(c);
             }
         }
-        if (!sb.isEmpty()) {
-            tokens.add(sb.toString());
-        }
+
+        flushToken(tokens, sb);
         return tokens;
+    }
+
+    private void flushToken(List<String> tokens, StringBuilder sb) {
+        if (sb.isEmpty()) {
+            return;
+        }
+        tokens.add(sb.toString());
+        sb.setLength(0);
     }
 
     public void executeCommand(String input) {
@@ -83,7 +88,7 @@ public class ConsoleManager {
             return;
         }
 
-        String commandName = parts.getFirst().toLowerCase();
+        String commandName = parts.getFirst().toLowerCase(Locale.ROOT);
         String[] args = parts.subList(1, parts.size()).toArray(new String[0]);
 
         ConsoleCommand command = commands.get(commandName);
@@ -109,7 +114,9 @@ public class ConsoleManager {
 
     public void log(String message, ConsoleMessage.MessageType type) {
         for (String line : message.split("\\r?\\n")) {
-            messages.add(new ConsoleMessage(line, type));
+            ConsoleMessage consoleMessage = new ConsoleMessage(line, type);
+            messages.add(consoleMessage);
+            notifyMessageAdded(consoleMessage);
         }
     }
 
@@ -127,6 +134,7 @@ public class ConsoleManager {
 
     public void clear() {
         this.messages.clear();
+        notifyCleared();
     }
 
     public List<ConsoleMessage> getMessages() {
@@ -141,6 +149,14 @@ public class ConsoleManager {
         return Collections.unmodifiableList(commandHistory);
     }
 
+    public void addListener(ConsoleListener listener) {
+        listeners.add(Objects.requireNonNull(listener, "listener"));
+    }
+
+    public void removeListener(ConsoleListener listener) {
+        listeners.remove(Objects.requireNonNull(listener, "listener"));
+    }
+
     public void setLogRedirect(boolean enable) {
         applyLogRedirectState(enable);
     }
@@ -149,8 +165,8 @@ public class ConsoleManager {
         Logger rootLogger = (Logger) LogManager.getRootLogger();
 
         if (enable) {
-            System.setOut(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.INFO, originalOut), true));
-            System.setErr(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.ERROR, originalErr), true));
+            System.setOut(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.INFO, originalOut), true, StandardCharsets.UTF_8));
+            System.setErr(new PrintStream(new ConsoleOutputStream(this, ConsoleMessage.MessageType.ERROR, originalErr), true, StandardCharsets.UTF_8));
 
             if (this.slf4jAppender == null) {
                 this.slf4jAppender = ConsoleManagerAppender.createAppender(this);
@@ -166,6 +182,30 @@ public class ConsoleManager {
             System.setOut(originalOut);
             System.setErr(originalErr);
         }
+    }
+
+    private void notifyMessageAdded(ConsoleMessage message) {
+        for (ConsoleListener listener : listeners) {
+            try {
+                listener.onMessageAdded(message);
+            } catch (RuntimeException ignored) {
+            }
+        }
+    }
+
+    private void notifyCleared() {
+        for (ConsoleListener listener : listeners) {
+            try {
+                listener.onCleared();
+            } catch (RuntimeException ignored) {
+            }
+        }
+    }
+
+    public interface ConsoleListener {
+        void onMessageAdded(ConsoleMessage message);
+
+        void onCleared();
     }
 
     private static class ConsoleOutputStream extends ByteArrayOutputStream {
@@ -184,19 +224,19 @@ public class ConsoleManager {
         public void flush() throws IOException {
             synchronized (this) {
                 super.flush();
-                String record = this.toString();
+                String output = this.toString(StandardCharsets.UTF_8);
                 super.reset();
 
-                if (record.isEmpty() || record.equals(lineSeparator)) {
+                if (output.isEmpty() || output.equals(lineSeparator)) {
                     return;
                 }
 
-                if (record.endsWith(lineSeparator)) {
-                    record = record.substring(0, record.length() - lineSeparator.length());
+                if (output.endsWith(lineSeparator)) {
+                    output = output.substring(0, output.length() - lineSeparator.length());
                 }
 
-                consoleManager.log(record, messageType);
-                originalStream.println(record);
+                consoleManager.log(output, messageType);
+                originalStream.println(output);
             }
         }
     }

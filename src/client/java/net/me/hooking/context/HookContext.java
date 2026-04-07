@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -27,7 +27,6 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
 public class HookContext {
@@ -37,8 +36,8 @@ public class HookContext {
     private final MappingsManager mappingsManager;
     private final ScriptManager scriptManager;
 
-    private String yarnMethodName;
-    private String yarnClassName;
+    private String namedMethodName;
+    private String namedClassName;
 
     public HookContext(Object instance, Method method, StackWalker stackWalker, MappingsManager mappingsManager, ScriptManager scriptManager) {
         this.instance = instance;
@@ -62,7 +61,7 @@ public class HookContext {
                 .skip(3)
                 .limit(depth)
                 .map(frame -> new CallerInfo(frame.toStackTraceElement()))
-                .collect(Collectors.toList()));
+                .toList());
     }
 
     @HostAccess.Export
@@ -87,31 +86,34 @@ public class HookContext {
     }
 
     @HostAccess.Export
-    public String getYarnMethodClass() {
-        if (yarnClassName == null) {
-            yarnClassName = mappingsManager.getRuntimeToYarnClassMap().getOrDefault(method.getDeclaringClass().getName(), method.getDeclaringClass().getName());
+    public String getNamedMethodClass() {
+        if (namedClassName == null) {
+            namedClassName = mappingsManager.getRuntimeToNamedClassMap().getOrDefault(method.getDeclaringClass().getName(), method.getDeclaringClass().getName());
         }
-        return yarnClassName;
+        return namedClassName;
     }
 
     @HostAccess.Export
-    public String getYarnMethod() {
-        if (yarnMethodName != null) {
-            return yarnMethodName;
+    public String getNamedMethod() {
+        if (namedMethodName != null) {
+            return namedMethodName;
         }
 
-        String declaringClassYarnName = getYarnMethodClass();
-        Map<String, List<String>> methodsForClass = mappingsManager.getMethodMap().get(declaringClassYarnName);
+        String declaringClassNamedName = getNamedMethodClass();
+        Map<String, List<String>> methodsForClass = mappingsManager.getMethodMap().get(declaringClassNamedName);
 
-        if (methodsForClass != null) {
-            for (Map.Entry<String, List<String>> entry : methodsForClass.entrySet()) {
-                if (entry.getValue().contains(method.getName())) {
-                    this.yarnMethodName = entry.getKey();
-                    return this.yarnMethodName;
-                }
-            }
+        this.namedMethodName = findNamedMethodName(methodsForClass, method.getName());
+        return this.namedMethodName;
+    }
+
+    private String findNamedMethodName(Map<String, List<String>> methodsForClass, String runtimeName) {
+        if (methodsForClass == null) {
+            return runtimeName;
         }
-        this.yarnMethodName = method.getName();
-        return this.yarnMethodName;
+        return methodsForClass.entrySet().stream()
+                .filter(entry -> entry.getValue().contains(runtimeName))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(runtimeName);
     }
 }

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,30 +21,30 @@ package net.me.event.events.player;
 import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.entity.MovementType;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.phys.Vec3;
 
 @SuppressWarnings("unused")
 public class PlayerMoveEvent extends CancellableEvent {
     @Getter
-    private final ClientPlayerEntity player;
-    private final MovementType type;
+    private final LocalPlayer player;
+    private final MoverType type;
     @Getter
-    private final Vec3d movement;
+    private final Vec3 movement;
 
-    public PlayerMoveEvent(ClientPlayerEntity player, MovementType type, Vec3d movement) {
+    public PlayerMoveEvent(LocalPlayer player, MoverType type, Vec3 movement) {
         this.player = player;
         this.type = type;
         this.movement = movement;
     }
 
-    public MovementType getMouvementType() {
+    public MoverType getMouvementType() {
         return type;
     }
 
     @Override
     public Events getType() {
-        return Events.PlayerMoveEvent;
+        return Events.PLAYER_MOVE_EVENT;
     }
 }

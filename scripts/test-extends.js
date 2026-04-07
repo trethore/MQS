@@ -1,5 +1,5 @@
-const Text = net.minecraft.text.Text;
-const Screen = net.minecraft.client.gui.screen.Screen;
+const Component = net.minecraft.network.chat.Component;
+const Screen = net.minecraft.client.gui.screens.Screen;
 const Runnable = importClass("java.lang.Runnable");
 
 function createCustomScreen(name) {
@@ -20,11 +20,11 @@ function createCustomScreen(name) {
 
         // This is an addon method
         open: function () {
-            const mc = MQS.utils.mc.client();
+            const mc = MQS.utils.mc();
             if (mc) {
-                mc.send(() => {
+                MQS.utils.runOnClientThread(() => {
                     mc.setScreen(this);
-                    if (customScreen.equals(mc.currentScreen)) {
+                    if (customScreen.equals(mc.screen)) {
                         println("equals is true");
                     }
                 });
@@ -44,23 +44,23 @@ function createCustomScreen(name) {
     });
 
     // Step 2: Instantiate the class, passing only constructor arguments
-    const customScreen = new CustomScreen(Text.literal(name));
+    const customScreen = new CustomScreen(Component.literal(name));
 
     return customScreen;
 }
 
 
-// @module(main=TestExtends, name=Test Extends Module, version=0.0.1)
+// @script(id=TestExtends, name=Test Extends Script, version=0.0.1)
 class TestExtends {
     onEnable() {
-        // triggered when the module is enabled
-        println("Hello from Test Extends Module!");
-        const mc = MQS.utils.mc.client();
+        // triggered when the script is enabled
+        println("Hello from Test Extends Script!");
+        const mc = MQS.utils.mc();
         if (!mc || mc.player == null) {
             println("Player is null, try loading the script later");
             return;
         }
-        mc.player.sendMessage(Text.literal("Hello from Test Extends Module!"), false);
+        mc.player.displayClientMessage(Component.literal("Hello from Test Extends Script!"), false);
         const customScreen = createCustomScreen("My Custom Screen");
         customScreen.open();
         if (customScreen._instanceof(Runnable)) {
@@ -71,9 +71,9 @@ class TestExtends {
     }
 
     onDisable() {
-        // triggered when the module is disabled
-        println("Goodbye from Test Extends Module!");
+        // triggered when the script is disabled
+        println("Goodbye from Test Extends Script!");
     }
 }
 
-exportModule(TestExtends);
+exportScript(TestExtends);

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -28,10 +28,11 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.me.command.Command;
 import net.me.command.CommandManager;
 import net.me.scripting.ScriptingService;
-import net.me.scripting.module.RunningScript;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.script.ScriptDescriptor;
 import net.me.utils.ChatUtils;
 
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -144,7 +145,7 @@ public class ScriptCommand extends Command {
     }
 
     private CompletableFuture<Suggestions> suggestDisabledScripts(CommandContext<FabricClientCommandSource> context, SuggestionsBuilder builder) {
-        var runningIds = scriptingService.listRunning().stream()
+        Set<String> runningIds = scriptingService.listRunning().stream()
                 .map(RunningScript::getId)
                 .collect(Collectors.toSet());
         scriptingService.listAvailable().stream()

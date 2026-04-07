@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,7 +19,7 @@
 package net.me.event.events.sound;
 
 import net.me.event.Events;
-import net.minecraft.client.sound.SoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
 
 public class PlaySoundEvent extends SoundEvent {
 
@@ -29,6 +29,6 @@ public class PlaySoundEvent extends SoundEvent {
 
     @Override
     public Events getType() {
-        return Events.PlaySoundEvent;
+        return Events.PLAY_SOUND_EVENT;
     }
 }

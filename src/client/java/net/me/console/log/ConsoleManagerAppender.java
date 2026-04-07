@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -42,26 +42,27 @@ public class ConsoleManagerAppender extends AbstractAppender {
 
     @Override
     public void append(LogEvent event) {
+        Throwable thrown = event.getThrown();
         String message = String.format("[%s/%s] %s",
                 event.getThreadName(),
                 event.getLoggerName().substring(event.getLoggerName().lastIndexOf('.') + 1),
                 event.getMessage().getFormattedMessage()
         );
-
-        Throwable thrown = event.getThrown();
         if (thrown != null) {
             message += ": " + thrown.getMessage();
         }
 
-        if (event.getLevel().isMoreSpecificThan(Level.WARN)) {
+        boolean isError = event.getLevel().isMoreSpecificThan(Level.WARN);
+        if (isError) {
             consoleManager.logError(message);
-            if (thrown != null) {
-                for (StackTraceElement ste : thrown.getStackTrace()) {
-                    consoleManager.logError("  at " + ste.toString());
-                }
-            }
         } else {
             consoleManager.logInfo(message);
+        }
+
+        if (isError && thrown != null) {
+            for (StackTraceElement element : thrown.getStackTrace()) {
+                consoleManager.logError("  at " + element);
+            }
         }
     }
 }

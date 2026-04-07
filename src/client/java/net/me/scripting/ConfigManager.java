@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -25,7 +25,7 @@ import com.google.gson.reflect.TypeToken;
 import net.me.Main;
 import net.me.config.ConfigKeys;
 import net.me.scripting.engine.ScriptConstants;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
@@ -67,7 +67,7 @@ public class ConfigManager {
         return inMemoryConfigs.computeIfAbsent(scriptId, this::loadConfigFromFile);
     }
 
-    public Value getConfigForScript(RunningScript script) {
+    public Value createConfigSnapshot(RunningScript script) {
         Map<String, Object> configMap = getConfig(script.getId());
         Context scriptContext = script.getContext();
         if (configMap.isEmpty()) {
@@ -77,6 +77,10 @@ public class ConfigManager {
         Value parsed = scriptContext.eval(ScriptConstants.JS, "JSON.parse").execute(json);
         scriptContext.eval(ScriptConstants.JS, "Object.freeze").execute(parsed);
         return parsed;
+    }
+
+    public void reloadConfig(RunningScript script) {
+        inMemoryConfigs.put(script.getId(), loadConfigFromFile(script.getId()));
     }
 
     private Map<String, Object> loadConfigFromFile(String scriptId) {
@@ -106,7 +110,7 @@ public class ConfigManager {
 
     public boolean getEnabledState(String scriptId) {
         Object enabled = getConfig(scriptId).get(ConfigKeys.ENABLED);
-        return enabled instanceof Boolean && (Boolean) enabled;
+        return enabled instanceof Boolean bool && bool;
     }
 
     public Object get(String scriptId, String key) {
@@ -121,8 +125,8 @@ public class ConfigManager {
         if (keybindsObj instanceof Map) {
             Map<String, Object> keybinds = (Map<String, Object>) keybindsObj;
             Object keyObj = keybinds.get(keybindName);
-            if (keyObj instanceof Number) {
-                return Optional.of(((Number) keyObj).intValue());
+            if (keyObj instanceof Number number) {
+                return Optional.of(number.intValue());
             }
         }
         return Optional.empty();
@@ -132,7 +136,7 @@ public class ConfigManager {
     public void setKeybind(String scriptId, String keybindName, int keyCode) {
         Map<String, Object> config = getConfig(scriptId);
         Map<String, Object> keybinds = (Map<String, Object>) config.computeIfAbsent(ConfigKeys.KEYBINDS,
-                k -> new ConcurrentHashMap<>());
+                ignored -> new ConcurrentHashMap<>());
 
         keybinds.put(keybindName, keyCode);
     }
@@ -153,37 +157,40 @@ public class ConfigManager {
         Map<String, Object> configMap = inMemoryConfigs.get(scriptId);
         Path configFile = getConfigFile(scriptId);
 
-        boolean isEnabled = getEnabledState(scriptId);
-        boolean shouldBeSaved = false;
-
-        if (isEnabled) {
-            shouldBeSaved = true;
+        if (shouldPersistConfig(configMap, scriptId)) {
+            writeConfigToFile(configFile, configMap, scriptId);
         } else {
-            if (configMap.size() > 1 || (configMap.size() == 1 && !configMap.containsKey(ConfigKeys.ENABLED))) {
-                shouldBeSaved = true;
-            }
-        }
-
-        if (configMap.isEmpty()) {
-            shouldBeSaved = false;
-        }
-
-        if (shouldBeSaved) {
-            try (FileWriter writer = new FileWriter(configFile.toFile())) {
-                GSON.toJson(configMap, writer);
-            } catch (Exception e) {
-                Main.LOGGER.error("Failed to save config for script '{}': {}", scriptId, e.getMessage());
-            }
-        } else {
-            if (Files.exists(configFile)) {
-                try {
-                    Files.delete(configFile);
-                    Main.LOGGER.info("Deleted empty/default config for disabled script '{}'.", scriptId);
-                } catch (IOException e) {
-                    Main.LOGGER.error("Failed to delete empty config for script '{}'", scriptId, e);
-                }
-            }
+            deleteConfigFileIfExists(configFile, scriptId);
             inMemoryConfigs.remove(scriptId);
+        }
+    }
+
+    private boolean shouldPersistConfig(Map<String, Object> configMap, String scriptId) {
+        if (configMap.isEmpty()) {
+            return false;
+        }
+        if (getEnabledState(scriptId)) {
+            return true;
+        }
+        return configMap.size() > 1 || !configMap.containsKey(ConfigKeys.ENABLED);
+    }
+
+    private void writeConfigToFile(Path configFile, Map<String, Object> configMap, String scriptId) {
+        try (FileWriter writer = new FileWriter(configFile.toFile())) {
+            GSON.toJson(configMap, writer);
+        } catch (Exception e) {
+            Main.LOGGER.error("Failed to save config for script '{}': {}", scriptId, e.getMessage());
+        }
+    }
+
+    private void deleteConfigFileIfExists(Path configFile, String scriptId) {
+        if (!Files.exists(configFile)) {
+            return;
+        }
+        try {
+            Files.delete(configFile);
+        } catch (IOException e) {
+            Main.LOGGER.error("Failed to delete empty config for script '{}'", scriptId, e);
         }
     }
 
@@ -191,13 +198,13 @@ public class ConfigManager {
         inMemoryConfigs.remove(script.getId());
     }
 
-    public int saveAllConfigs() {
-        int count = inMemoryConfigs.size();
-        if (count == 0) return 0;
+    public void saveAllConfigs() {
+        if (inMemoryConfigs.isEmpty()) {
+            return;
+        }
 
         for (String scriptId : Set.copyOf(inMemoryConfigs.keySet())) {
             saveConfig(scriptId);
         }
-        return count;
     }
 }

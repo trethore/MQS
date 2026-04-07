@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,6 +19,7 @@
 package net.me.scripting.engine;
 
 import net.me.Main;
+import net.me.config.GlobalConfigManager;
 import net.me.event.EventManager;
 import net.me.hooking.HookManager;
 import net.me.keybinds.KeybindManager;
@@ -28,6 +29,8 @@ import net.me.scripting.api.*;
 import net.me.scripting.commands.CommandAPIService;
 import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.schema.TsObject;
 import net.me.scripting.wrappers.JsObjectWrapper;
 import net.me.scripting.wrappers.LazyPackageProxy;
 import net.me.utils.ScriptScheduler;
@@ -41,7 +44,15 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import java.util.*;
 
+import static net.me.scripting.typings.schema.TsDescriptors.*;
+
 public class ScriptContextFactory {
+    private static final String EVENTS = "events";
+    private static final String CONFIG = "config";
+    private static final String KEYBINDS = "keybinds";
+    private static final String CMD = "cmd";
+    private static final String HOOKS = "hooks";
+    private static final String UTILS = "utils";
 
     private final ScriptingClassResolver classResolver;
     private final Engine sharedEngine;
@@ -54,8 +65,9 @@ public class ScriptContextFactory {
     private final EventManager eventManager;
     private final HostAccess hostAccess;
     private final ScriptScheduler scheduler;
+    private final GlobalConfigManager globalConfigManager;
 
-    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager, ScriptScheduler scheduler) {
+    public ScriptContextFactory(ScriptingClassResolver classResolver, Engine sharedEngine, ScriptManager scriptManager, EventManager eventManager, ConfigManager configManager, CommandAPIService commandApiService, HookManager hookManager, KeybindManager keybindManager, ScriptScheduler scheduler, GlobalConfigManager globalConfigManager) {
         this.classResolver = classResolver;
         this.sharedEngine = sharedEngine;
         this.scriptManager = scriptManager;
@@ -65,6 +77,7 @@ public class ScriptContextFactory {
         this.hookManager = hookManager;
         this.keybindManager = keybindManager;
         this.scheduler = scheduler;
+        this.globalConfigManager = globalConfigManager;
 
         this.hostAccess = HostAccess.newBuilder(HostAccess.ALL)
                 .targetTypeMapping(
@@ -86,6 +99,32 @@ public class ScriptContextFactory {
                         MappedInstanceProxy::getInstance
                 )
                 .build();
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(),
+                List.of(
+                        globalFunction("print", fn("void", rest("args", "unknown"))),
+                        globalFunction("println", fn("void", rest("args", "unknown")))
+                ),
+                List.of(globalConstant("MQS", "MQSApi")),
+                List.of(describeMqsApi())
+        );
+    }
+
+    private static TsObject describeMqsApi() {
+        return new TsObject(
+                "MQSApi",
+                List.of(
+                        ro(EVENTS, "MQSEventsApi"),
+                        ro(CONFIG, "MQSConfigApi"),
+                        ro(KEYBINDS, "MQSKeybindsApi"),
+                        ro(CMD, "MQSCommandApi"),
+                        ro(HOOKS, "MQSHooksApi"),
+                        ro(UTILS, "MQSUtilsApi")
+                )
+        );
     }
 
     public Context createContext(ThreadLocal<Map<String, Value>> perFileExports) {
@@ -120,31 +159,42 @@ public class ScriptContextFactory {
         addApiMember(bindings, "extendMapped", ScriptingApi.createExtendMappedProxy(classResolver, context));
         addApiMember(bindings, "isInstanceOf", ScriptingApi.createIsInstanceOfProxy());
         addApiMember(bindings, "wrap", ScriptingApi.createWrapProxy(classResolver));
-        addApiMember(bindings, "exportModule", ScriptingApi.createExportModuleProxy(perFileExports));
+        ProxyExecutable exportScriptProxy = ScriptingApi.createExportScriptProxy(perFileExports);
+        addApiMember(bindings, "exportScript", exportScriptProxy);
 
         Map<String, Object> mqsMembers = new HashMap<>();
-        mqsMembers.put("utils", new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler));
-        mqsMembers.put("eventManager", new EventAPI(this.eventManager, this.scriptManager));
-        mqsMembers.put("events", new EventsHelperAPI(this.eventManager, this.scriptManager));
-        mqsMembers.put("configManager", new ConfigAPI(this.configManager, this.scriptManager));
-        mqsMembers.put("config", new ConfigHelperAPI(this.configManager, this.scriptManager));
-        mqsMembers.put("keybindManager", new KeybindAPI(this.keybindManager, this.scriptManager));
-        mqsMembers.put("keybinds", new KeybindsAPI(this.keybindManager, this.scriptManager));
-        mqsMembers.put("commandManager", new CommandsAPI(this.scriptManager, this.commandApiService));
-        mqsMembers.put("commands", new CommandsHelperAPI(this.scriptManager, this.commandApiService));
-        mqsMembers.put("hookManager", new HookAPI(this.hookManager, this.scriptManager, this.classResolver));
-        mqsMembers.put("hooks", new HooksAPI(this.hookManager, this.scriptManager, this.classResolver));
+        EventsAPI eventsApi = new EventsAPI(this.eventManager, this.scriptManager);
+        ConfigsAPI configsApi = new ConfigsAPI(this.configManager, this.scriptManager);
+        KeybindsAPI keybindsApi = new KeybindsAPI(this.keybindManager, this.scriptManager);
+        CommandsAPI commandsApi = new CommandsAPI(this.scriptManager, this.commandApiService);
+        HooksAPI hooksApi = new HooksAPI(this.hookManager, this.scriptManager, this.classResolver);
+
+        mqsMembers.put(EVENTS, eventsApi);
+        mqsMembers.put(CONFIG, configsApi);
+        mqsMembers.put(KEYBINDS, keybindsApi);
+        mqsMembers.put(CMD, commandsApi);
+        mqsMembers.put(HOOKS, hooksApi);
+        mqsMembers.put(UTILS, new MqsUtilsAPI(this.classResolver, this.scriptManager, this.scheduler, this.globalConfigManager));
 
         addApiMember(bindings, "MQS", ProxyObject.fromMap(mqsMembers));
 
         addApiMember(bindings, "println", (ProxyExecutable) args -> {
-            for (Value arg : args) System.out.println(arg);
+            logScriptOutput(args);
             return null;
         });
         addApiMember(bindings, "print", (ProxyExecutable) args -> {
-            for (Value arg : args) System.out.print(arg);
+            logScriptOutput(args);
             return null;
         });
+    }
+
+    private void logScriptOutput(Value[] args) {
+        if (args == null) {
+            return;
+        }
+        for (Value arg : args) {
+            Main.LOGGER.info("{}", arg);
+        }
     }
 
     private void addApiMember(Value bindings, String name, Object member) {

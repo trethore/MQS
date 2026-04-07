@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,35 +22,145 @@ import net.me.hooking.HookExecutionMode;
 import net.me.hooking.HookManager;
 import net.me.hooking.HookOptions;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.api.internal.ClassResolverHelper;
+import net.me.scripting.api.internal.HandleTracker;
+import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.engine.ScriptingClassResolver;
-import net.me.scripting.module.RunningScript;
-import net.me.scripting.utils.ScriptUtils;
-import net.me.scripting.wrappers.JsClassWrapper;
-import net.me.scripting.wrappers.LazyJsClassHolder;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsObject;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import static net.me.scripting.api.ApiConstants.*;
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class HooksAPI implements ProxyObject {
+    private static final String API_NAME = "Hooks API";
+    private static final String HOOK = "hook";
+    private static final String UNHOOK = "unhook";
+    private static final String UNHOOK_ALL = "unhookAll";
+    private static final String HOOK_BEFORE = "before";
+    private static final String HOOK_AFTER = "after";
+    private static final String HOOK_INSTEAD = "instead";
+    private static final String OPTIONS = "options";
+    private static final String HOOK_USAGE_PREFIX = "Usage: MQS.hooks.";
+    private static final String MODE_HOOK_USAGE_SUFFIX = "(target, methodOrHandler, handler?, options?)";
+    private static final String HOOK_METHOD_USAGE = "(Class, 'methodName', handler, options?)";
+    private static final String HOOK_HANDLER_USAGE = "Usage: MQS.hooks.hook(TargetClass, 'methodName', callbackFunction, [options])";
+    private static final String UNHOOK_METHOD_USAGE = "Usage: MQS.hooks.unhook(TargetClass, 'methodName', [options])";
+    private static final String UNHOOK_ALL_USAGE = "Usage: MQS.hooks.unhookAll()";
+    private static final String HANDLER_EXECUTABLE_MESSAGE = "Handler must be executable.";
+    private static final String DESCRIPTOR_EMPTY_MESSAGE = "Descriptor cannot be empty.";
+    private static final String UNSUPPORTED_PUT_MEMBER_MESSAGE = "Cannot modify MQS.hooks.";
     private static final Set<String> MEMBER_KEYS = Set.of(
             HOOK_BEFORE,
             HOOK_AFTER,
-            HOOK_INSTEAD
+            HOOK_INSTEAD,
+            HOOK,
+            UNHOOK,
+            UNHOOK_ALL
     );
 
     private final HookManager hookManager;
-    private final ScriptManager scriptManager;
-    private final ScriptingClassResolver classResolver;
+    private final ScriptContextHelper contextHelper;
+    private final ClassResolverHelper classHelper;
+    private final HandleTracker<HookHandle> hookTracker;
 
     public HooksAPI(HookManager hookManager, ScriptManager scriptManager, ScriptingClassResolver classResolver) {
         this.hookManager = hookManager;
-        this.scriptManager = scriptManager;
-        this.classResolver = classResolver;
+        this.contextHelper = new ScriptContextHelper(scriptManager);
+        this.classHelper = new ClassResolverHelper(classResolver);
+        this.hookTracker = new HandleTracker<>();
+    }
+
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(
+                        alias("MQSHookMode", "\"BEFORE\" | \"AFTER\" | \"INSTEAD\" | \"before\" | \"after\" | \"instead\""),
+                        alias(TypingsConstants.HOOK_HANDLER, "(...args: any[]) => " + TypingsConstants.UNKNOWN)
+                ),
+                List.of(),
+                List.of(),
+                List.of(describeHookOptions(), describeHooksApi())
+        );
+    }
+
+    private static TsObject describeHookOptions() {
+        return new TsObject(
+                TypingsConstants.HOOK_OPTIONS,
+                List.of(
+                        optProp("args", TypingsConstants.NUMBER),
+                        optProp("mode", "MQSHookMode")
+                )
+        );
+    }
+
+    private static TsObject describeHooksApi() {
+        return new TsObject(
+                "MQSHooksApi",
+                List.of(
+                        method(HOOK_BEFORE, describeDescriptorHookOverload(), describeClassHookOverload()),
+                        method(HOOK_AFTER, describeDescriptorHookOverload(), describeClassHookOverload()),
+                        method(HOOK_INSTEAD, describeDescriptorHookOverload(), describeClassHookOverload()),
+                        method(HOOK, describeDescriptorHookOverload(), describeClassHookOverload()),
+                        method(
+                                UNHOOK,
+                                fn(TypingsConstants.VOID, p("target", TypingsConstants.STRING), opt(OPTIONS, TypingsConstants.HOOK_OPTIONS)),
+                                fn(TypingsConstants.VOID, p("targetClass", TypingsConstants.UNKNOWN), p("methodName", TypingsConstants.STRING), opt(OPTIONS, TypingsConstants.HOOK_OPTIONS))
+                        ),
+                        method(UNHOOK_ALL, fn(TypingsConstants.VOID))
+                )
+        );
+    }
+
+    private static net.me.scripting.typings.schema.TsFunction describeDescriptorHookOverload() {
+        return fn(
+                TypingsConstants.MQS_DISPOSER,
+                p("target", TypingsConstants.STRING),
+                p("handler", TypingsConstants.HOOK_HANDLER),
+                opt(OPTIONS, TypingsConstants.HOOK_OPTIONS)
+        );
+    }
+
+    private static net.me.scripting.typings.schema.TsFunction describeClassHookOverload() {
+        return fn(
+                TypingsConstants.MQS_DISPOSER,
+                p("targetClass", TypingsConstants.UNKNOWN),
+                p("methodName", TypingsConstants.STRING),
+                p("handler", TypingsConstants.HOOK_HANDLER),
+                opt(OPTIONS, TypingsConstants.HOOK_OPTIONS)
+        );
+    }
+
+    private static HookOptions resolveHookOptions(Value optionsValue, HookExecutionMode mode, boolean enforceMode) {
+        if (enforceMode) {
+            return HookOptions.withEnforcedMode(optionsValue, mode);
+        }
+        return HookOptions.fromScript(optionsValue, mode);
+    }
+
+    private static String buildModeUsage(HookExecutionMode mode, String signature) {
+        return HOOK_USAGE_PREFIX + mode.name().toLowerCase(Locale.ROOT) + signature;
+    }
+
+    private static String requireDescriptor(String descriptor) {
+        if (descriptor == null || descriptor.isEmpty()) {
+            throw new IllegalArgumentException(DESCRIPTOR_EMPTY_MESSAGE);
+        }
+        return descriptor;
+    }
+
+    private static Value requireExecutable(Value value, String message) {
+        if (value == null || !value.canExecute()) {
+            throw new IllegalArgumentException(message);
+        }
+        return value;
     }
 
     @Override
@@ -59,6 +169,9 @@ public class HooksAPI implements ProxyObject {
             case HOOK_BEFORE -> createHookExecutable(HookExecutionMode.BEFORE);
             case HOOK_AFTER -> createHookExecutable(HookExecutionMode.AFTER);
             case HOOK_INSTEAD -> createHookExecutable(HookExecutionMode.INSTEAD);
+            case HOOK -> (ProxyExecutable) args -> hook(contextHelper.require(API_NAME), args);
+            case UNHOOK -> (ProxyExecutable) args -> unhook(contextHelper.require(API_NAME), args);
+            case UNHOOK_ALL -> (ProxyExecutable) args -> unhookAll(contextHelper.require(API_NAME), args);
             default -> null;
         };
     }
@@ -75,103 +188,160 @@ public class HooksAPI implements ProxyObject {
 
     @Override
     public void putMember(String key, Value value) {
-        throw new UnsupportedOperationException("Cannot modify MQS.hooks.");
+        throw new UnsupportedOperationException(UNSUPPORTED_PUT_MEMBER_MESSAGE);
     }
 
     private ProxyExecutable createHookExecutable(HookExecutionMode mode) {
         return args -> {
-            if (args.length < 2) {
-                throw new IllegalArgumentException("Usage: MQS.hooks." + mode.name().toLowerCase() + "(target, methodOrHandler, handler?, options?)");
-            }
-            RunningScript owner = getCurrentScript();
-            HookCall call = parseArgs(args, mode);
+            ApiArgumentChecks.requireArgCountAtLeast(args, 2, buildModeUsage(mode, MODE_HOOK_USAGE_SUFFIX));
+            RunningScript owner = contextHelper.require(API_NAME);
+            HookCall call = parseModeHookCall(args, mode);
             hookManager.hook(owner, call.targetClass(), call.methodName(), call.callback(), call.options());
-            AtomicBoolean disposed = new AtomicBoolean(false);
-            ProxyExecutable disposer = disposeArgs -> {
-                if (disposed.compareAndSet(false, true)) {
-                    hookManager.unhookSingle(owner, call.targetClass(), call.methodName(), call.options().argCount(), mode);
-                }
-                return null;
-            };
-            return owner.getContext().asValue(disposer);
+            HookHandle handle = new HookHandle(call.targetClass(), call.methodName(), call.options().argCount(), mode);
+            hookTracker.track(owner, handle);
+            return contextHelper.createIdempotentDisposer(owner, () -> {
+                hookManager.unhookSingle(owner, call.targetClass(), call.methodName(), call.options().argCount(), mode);
+                hookTracker.remove(owner, handle);
+            });
         };
     }
 
-    private RunningScript getCurrentScript() {
-        RunningScript script = scriptManager.getCurrentScript();
-        if (script == null) {
-            throw new IllegalStateException("Hooks helper can only be used from an active script.");
-        }
-        return script;
-    }
-
-    private HookCall parseArgs(Value[] args, HookExecutionMode mode) {
+    private HookCall parseModeHookCall(Value[] args, HookExecutionMode mode) {
         if (args[0].isString()) {
-            String descriptor = args[0].asString();
-            if (descriptor == null || descriptor.isEmpty()) {
-                throw new IllegalArgumentException("Descriptor cannot be empty.");
-            }
-            Value handler = args.length > 1 ? args[1] : null;
-            if (handler == null || !handler.canExecute()) {
-                throw new IllegalArgumentException("Handler must be executable.");
-            }
             Value optionsValue = args.length > 2 ? args[2] : null;
-            HookOptions options = HookOptions.withEnforcedMode(optionsValue, mode);
-            HookDescriptor parsed = parseDescriptor(descriptor);
-            Class<?> targetClass = resolveDescriptorClass(parsed.className());
-            return new HookCall(targetClass, parsed.methodName(), handler, options);
+            return parseDescriptorHookCall(args[0], args[1], optionsValue, mode, true);
         }
 
-        if (args.length < 3 || !args[1].isString()) {
-            throw new IllegalArgumentException("Usage: MQS.hooks." + mode.name().toLowerCase() + "(Class, 'methodName', handler, options?)");
-        }
-
-        Object unwrapped = ScriptUtils.unwrapReceiver(args[0]);
-        Class<?> targetClass = resolveClass(unwrapped);
-        String methodName = args[1].asString();
-        Value handler = args[2];
-        if (!handler.canExecute()) {
-            throw new IllegalArgumentException("Handler must be executable.");
-        }
+        String usage = buildModeUsage(mode, HOOK_METHOD_USAGE);
+        ApiArgumentChecks.requireArgCountAtLeast(args, 3, usage);
         Value optionsValue = args.length > 3 ? args[3] : null;
-        HookOptions options = HookOptions.withEnforcedMode(optionsValue, mode);
-        return new HookCall(targetClass, methodName, handler, options);
+        return parseClassHookCall(args[0], args[1], args[2], optionsValue, mode, true, usage, HANDLER_EXECUTABLE_MESSAGE);
     }
 
-    private HookDescriptor parseDescriptor(String descriptor) {
-        int idx = descriptor.indexOf('#');
-        if (idx <= 0 || idx == descriptor.length() - 1) {
-            throw new IllegalArgumentException("Descriptor must follow the 'fully.qualified.Class#methodName' format.");
-        }
-        return new HookDescriptor(descriptor.substring(0, idx), descriptor.substring(idx + 1));
+    private Value hook(RunningScript owner, Value[] args) {
+        HookCall call = parseHookInvocation(args);
+        hookManager.hook(owner, call.targetClass(), call.methodName(), call.callback(), call.options());
+        HookHandle handle = new HookHandle(call.targetClass(), call.methodName(), call.options().argCount(), call.options().mode());
+        hookTracker.track(owner, handle);
+        return contextHelper.createIdempotentDisposer(owner, () -> {
+            hookManager.unhookSingle(owner, call.targetClass(), call.methodName(), call.options().argCount(), call.options().mode());
+            hookTracker.remove(owner, handle);
+        });
     }
 
-    private Class<?> resolveClass(Object unwrapped) {
-        if (unwrapped instanceof JsClassWrapper wrapper) {
-            return wrapper.getTargetClass();
+    private Void unhook(RunningScript owner, Value[] args) {
+        UnhookInvocation invocation = parseUnhookInvocation(args);
+        if (invocation.argCount() != null) {
+            HookExecutionMode mode = invocation.mode();
+            if (mode != null) {
+                hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), mode);
+                hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), invocation.argCount(), mode), ignored -> {
+                });
+            } else {
+                for (HookExecutionMode candidate : HookExecutionMode.values()) {
+                    hookManager.unhookSingle(owner, invocation.targetClass(), invocation.methodName(), invocation.argCount(), candidate);
+                }
+                hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), invocation.argCount(), null), ignored -> {
+                });
+            }
+        } else {
+            hookManager.unhookAllForMethod(owner, invocation.targetClass(), invocation.methodName());
+            hookTracker.dispose(owner, handle -> handle.matches(invocation.targetClass(), invocation.methodName(), null, null), ignored -> {
+            });
         }
-        if (unwrapped instanceof LazyJsClassHolder holder) {
-            return holder.getWrapper().getTargetClass();
-        }
-        if (unwrapped instanceof Class<?> cls) {
-            return cls;
-        }
-        throw new IllegalArgumentException("Target must be a class imported via importClass().");
+        return null;
     }
 
-    private Class<?> resolveDescriptorClass(String className) {
-        try {
-            String runtimeName = classResolver.getRuntimeName(className);
-            String lookup = runtimeName != null ? runtimeName : className;
-            return Class.forName(lookup, false, HooksAPI.class.getClassLoader());
-        } catch (ClassNotFoundException e) {
-            throw new IllegalArgumentException("Could not resolve class '" + className + "'.", e);
-        }
+    private Void unhookAll(RunningScript owner, Value[] args) {
+        ApiArgumentChecks.requireArgCount(args, 0, UNHOOK_ALL_USAGE);
+        hookManager.unhookAllForScript(owner);
+        hookTracker.disposeAll(owner, ignored -> {
+        });
+        return null;
     }
 
-    private record HookDescriptor(String className, String methodName) {
+    private HookCall parseHookInvocation(Value[] args) {
+        if ((args.length == 2 || args.length == 3) && args[0].isString() && args[1].canExecute()) {
+            Value optionsValue = args.length == 3 ? args[2] : null;
+            return parseDescriptorHookCall(args[0], args[1], optionsValue, HookExecutionMode.BEFORE, false);
+        }
+
+        ApiArgumentChecks.requireArgCountRange(args, 3, 4, HOOK_HANDLER_USAGE);
+        Value optionsValue = args.length == 4 ? args[3] : null;
+        return parseClassHookCall(args[0], args[1], args[2], optionsValue, HookExecutionMode.BEFORE, false, HOOK_HANDLER_USAGE, HOOK_HANDLER_USAGE);
+    }
+
+    private HookCall parseDescriptorHookCall(Value descriptorValue,
+                                             Value callbackValue,
+                                             Value optionsValue,
+                                             HookExecutionMode mode,
+                                             boolean enforceMode) {
+        String descriptor = requireDescriptor(descriptorValue.asString());
+        Value callback = requireExecutable(callbackValue, HANDLER_EXECUTABLE_MESSAGE);
+        ClassResolverHelper.HookTarget target = classHelper.parseDescriptor(descriptor);
+        HookOptions options = resolveHookOptions(optionsValue, mode, enforceMode);
+        return new HookCall(target.targetClass(), target.methodName(), callback, options);
+    }
+
+    private HookCall parseClassHookCall(Value targetValue,
+                                        Value methodNameValue,
+                                        Value callbackValue,
+                                        Value optionsValue,
+                                        HookExecutionMode mode,
+                                        boolean enforceMode,
+                                        String methodUsage,
+                                        String callbackMessage) {
+        if (methodNameValue == null || !methodNameValue.isString()) {
+            throw new IllegalArgumentException(methodUsage);
+        }
+        Class<?> targetClass = classHelper.resolveFromValue(targetValue);
+        String methodName = methodNameValue.asString();
+        Value callback = requireExecutable(callbackValue, callbackMessage);
+        HookOptions options = resolveHookOptions(optionsValue, mode, enforceMode);
+        return new HookCall(targetClass, methodName, callback, options);
+    }
+
+    private UnhookInvocation parseUnhookInvocation(Value[] args) {
+        Value options = args.length > 1 ? args[1] : null;
+        boolean descriptorForm = args.length >= 1 && args[0] != null && args[0].isString();
+        boolean descriptorArityValid = switch (args.length) {
+            case 1 -> true;
+            case 2, 3 -> options != null;
+            default -> false;
+        };
+        if (descriptorForm && descriptorArityValid) {
+            String descriptor = requireDescriptor(args[0].asString());
+            ClassResolverHelper.HookTarget target = classHelper.parseDescriptor(descriptor);
+            Integer argCount = HookOptions.extractArgCount(options);
+            HookExecutionMode mode = HookOptions.extractMode(options, null);
+            return new UnhookInvocation(target.targetClass(), target.methodName(), argCount, mode);
+        }
+
+        ApiArgumentChecks.requireArgCountRange(args, 2, 3, UNHOOK_METHOD_USAGE);
+        String methodName = ApiArgumentChecks.requireString(args, 1, UNHOOK_METHOD_USAGE);
+
+        Class<?> targetClass = classHelper.resolveFromValue(args[0]);
+        Value optionsValue = args.length == 3 ? args[2] : null;
+        Integer argCount = HookOptions.extractArgCount(optionsValue);
+        HookExecutionMode mode = HookOptions.extractMode(optionsValue, null);
+        return new UnhookInvocation(targetClass, methodName, argCount, mode);
+    }
+
+    private record HookHandle(Class<?> targetClass, String methodName, Integer argCount, HookExecutionMode mode) {
+        private boolean matches(Class<?> target, String method, Integer argCount, HookExecutionMode mode) {
+            if (!targetClass.equals(target) || !methodName.equals(method)) {
+                return false;
+            }
+            if (argCount != null && !argCount.equals(this.argCount)) {
+                return false;
+            }
+            return mode == null || mode == this.mode;
+        }
     }
 
     private record HookCall(Class<?> targetClass, String methodName, Value callback, HookOptions options) {
+    }
+
+    private record UnhookInvocation(Class<?> targetClass, String methodName, Integer argCount, HookExecutionMode mode) {
     }
 }

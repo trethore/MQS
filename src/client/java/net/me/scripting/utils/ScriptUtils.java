@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,10 +24,7 @@ import net.me.scripting.extenders.proxies.ExtendedInstanceProxy;
 import net.me.scripting.extenders.proxies.MappedInstanceProxy;
 import net.me.scripting.mappings.MappingsManager;
 import net.me.scripting.wrappers.JsObjectWrapper;
-import net.minecraft.client.option.SimpleOption;
 import org.graalvm.polyglot.Value;
-
-import java.lang.reflect.Method;
 
 public final class ScriptUtils {
 
@@ -62,7 +59,7 @@ public final class ScriptUtils {
             try {
                 return v.as(expected);
             } catch (Exception ignored) {
-
+                // Conversion failed, fall through to type-specific handling below
             }
         }
 
@@ -76,32 +73,50 @@ public final class ScriptUtils {
     }
 
     public static Object unwrapReceiver(Object o) {
-        if (o == null) return null;
-
-        Object current = o;
-        if (current instanceof Value val) {
-            if (val.isNull()) return null;
-            if (val.isHostObject()) return val.asHostObject();
-            if (val.isProxyObject()) current = val.asProxyObject();
-            else return o;
+        if (o == null) {
+            return null;
         }
 
-        while (true) {
-            if (current instanceof ExtendedInstanceProxy proxy) {
-                current = proxy.getBaseInstance();
-                continue;
-            }
-            if (current instanceof MappedInstanceProxy proxy) {
-                current = proxy.getInstance();
-                continue;
-            }
-            if (current instanceof JsObjectWrapper wrapper) {
-                current = wrapper.getJavaInstance();
-                continue;
-            }
-            break;
+        Object current = unwrapValue(o);
+        if (current == null) {
+            return null;
         }
 
+        Object unwrapped = tryUnwrapProxy(current);
+        while (unwrapped != current) {
+            current = unwrapped;
+            unwrapped = tryUnwrapProxy(current);
+        }
+
+        return current;
+    }
+
+    private static Object unwrapValue(Object o) {
+        if (!(o instanceof Value val)) {
+            return o;
+        }
+        if (val.isNull()) {
+            return null;
+        }
+        if (val.isHostObject()) {
+            return val.asHostObject();
+        }
+        if (val.isProxyObject()) {
+            return val.asProxyObject();
+        }
+        return o;
+    }
+
+    private static Object tryUnwrapProxy(Object current) {
+        if (current instanceof ExtendedInstanceProxy proxy) {
+            return proxy.getBaseInstance();
+        }
+        if (current instanceof MappedInstanceProxy proxy) {
+            return proxy.getInstance();
+        }
+        if (current instanceof JsObjectWrapper wrapper) {
+            return wrapper.getJavaInstance();
+        }
         return current;
     }
 
@@ -122,81 +137,6 @@ public final class ScriptUtils {
         return v.asDouble();
     }
 
-    public static void coerceArgumentTypes(Object targetInstance, Method method, Object[] args) {
-        if (targetInstance == null || method == null || args == null || args.length == 0) {
-            return;
-        }
-        if (targetInstance instanceof SimpleOption<?> option) {
-            coerceSimpleOptionArguments(option, method, args);
-        }
-    }
-
-    private static void coerceSimpleOptionArguments(SimpleOption<?> option, Method method, Object[] args) {
-        String name = method.getName();
-        if (!("setValue".equals(name) || "setDefaultValue".equals(name))) {
-            return;
-        }
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            if (!(arg instanceof Number number)) {
-                continue;
-            }
-            Class<?> parameterType = i < parameterTypes.length ? parameterTypes[i] : Object.class;
-            args[i] = coerceNumber(number, parameterType, option.getValue());
-        }
-    }
-
-    private static Object coerceNumber(Number number, Class<?> targetType, Object currentValue) {
-        if (targetType == null || targetType == Object.class || targetType == Number.class) {
-            return convertToMatch(number, currentValue);
-        }
-        if (targetType == Double.class || targetType == double.class) {
-            return number.doubleValue();
-        }
-        if (targetType == Float.class || targetType == float.class) {
-            return number.floatValue();
-        }
-        if (targetType == Long.class || targetType == long.class) {
-            return number.longValue();
-        }
-        if (targetType == Integer.class || targetType == int.class) {
-            return number.intValue();
-        }
-        if (targetType == Short.class || targetType == short.class) {
-            return number.shortValue();
-        }
-        if (targetType == Byte.class || targetType == byte.class) {
-            return number.byteValue();
-        }
-        if (Number.class.isAssignableFrom(targetType)) {
-            return convertToMatch(number, currentValue);
-        }
-        return number;
-    }
-
-    private static Object convertToMatch(Number number, Object currentValue) {
-        if (currentValue instanceof Double) {
-            return number.doubleValue();
-        }
-        if (currentValue instanceof Float) {
-            return number.floatValue();
-        }
-        if (currentValue instanceof Long) {
-            return number.longValue();
-        }
-        if (currentValue instanceof Integer) {
-            return number.intValue();
-        }
-        if (currentValue instanceof Short) {
-            return number.shortValue();
-        }
-        if (currentValue instanceof Byte) {
-            return number.byteValue();
-        }
-        return number.doubleValue();
-    }
-
     public static Object wrapReturn(Object o, MappingsManager mappingsManager, ScriptManager scriptManager) {
         if (o == null || o instanceof String || o instanceof Number || o instanceof Boolean) {
             return o;
@@ -213,11 +153,8 @@ public final class ScriptUtils {
             return o;
         }
 
-        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(c,
-                mappingsManager.getRuntimeToYarnClassMap(),
-                mappingsManager.getMethodMap(),
-                mappingsManager.getFieldMap());
+        ScriptingClassResolver.WrapperMetadata metadata = classResolver.getOrCreateWrapperMetadata(c);
 
-        return new JsObjectWrapper(o, c, cm.methods(), cm.fields(), mappingsManager, scriptManager);
+        return new JsObjectWrapper(o, c, metadata.methods(), metadata.fields(), mappingsManager, scriptManager);
     }
 }

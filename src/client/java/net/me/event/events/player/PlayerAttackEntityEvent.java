@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,23 +22,23 @@ import lombok.Getter;
 import lombok.Setter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 
 @Getter
 @SuppressWarnings("unused")
 public class PlayerAttackEntityEvent extends CancellableEvent {
-    private final PlayerEntity attacker;
+    private final Player attacker;
     @Setter
     private Entity target;
 
-    public PlayerAttackEntityEvent(PlayerEntity attacker, Entity target) {
+    public PlayerAttackEntityEvent(Player attacker, Entity target) {
         this.attacker = attacker;
         this.target = target;
     }
 
     @Override
     public Events getType() {
-        return Events.PlayerAttackEntityEvent;
+        return Events.PLAYER_ATTACK_ENTITY_EVENT;
     }
 }

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -46,7 +46,7 @@ public class CopyTailCommand extends ConsoleCommand {
         } else {
             try {
                 numberOfLines = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException ignored) {
                 cm.logError("Invalid argument '" + args[0] + "'. Must be a number.");
                 return;
             }
@@ -81,7 +81,7 @@ public class CopyTailCommand extends ConsoleCommand {
                 .map(msg -> String.format("[%s] %s", msg.timestamp(), msg.text()))
                 .collect(Collectors.joining(System.lineSeparator()));
 
-        McUtils.getMc().ifPresent(mc -> mc.keyboard.setClipboard(textToCopy));
+        McUtils.getMc().keyboardHandler.setClipboard(textToCopy);
         cm.logSuccess("Copied " + tail.size() + " lines to clipboard.");
     }
 }

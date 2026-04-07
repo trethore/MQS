@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -46,53 +46,56 @@ import net.me.event.events.world.WorldChangeEvent;
 @Getter
 public enum Events {
     // Render Events
-    WorldRenderEvent(WorldRenderEvent.class),
-    HudRenderEvent(HudRenderEvent.class),
-    EntityRenderEventPre(EntityRenderEvent.Pre.class),
-    EntityRenderEventPost(EntityRenderEvent.Post.class),
-    NameTagRenderEvent(NameTagRenderEvent.class),
+    WORLD_RENDER_EVENT(WorldRenderEvent.class),
+    HUD_RENDER_EVENT(HudRenderEvent.class),
+    ENTITY_RENDER_EVENT_PRE(EntityRenderEvent.Pre.class),
+    ENTITY_RENDER_EVENT_POST(EntityRenderEvent.Post.class),
+    NAME_TAG_RENDER_EVENT(NameTagRenderEvent.class),
 
     // Player & Combat Events
-    PlayerAttackEntityEvent(PlayerAttackEntityEvent.class),
-    PlayerInteractEntityEvent(PlayerInteractEntityEvent.class),
-    PlayerDamageEvent(PlayerDamageEvent.class),
-    PlayerRespawnEvent(PlayerRespawnEvent.class),
-    PlayerMoveEvent(PlayerMoveEvent.class),
+    PLAYER_ATTACK_ENTITY_EVENT(PlayerAttackEntityEvent.class),
+    PLAYER_INTERACT_ENTITY_EVENT(PlayerInteractEntityEvent.class),
+    PLAYER_DAMAGE_EVENT(PlayerDamageEvent.class),
+    PLAYER_RESPAWN_EVENT(PlayerRespawnEvent.class),
+    PLAYER_MOVE_EVENT(PlayerMoveEvent.class),
 
     // World Interaction Events
-    BlockInteractEvent(BlockInteractEvent.class),
-    ItemUseEvent(ItemUseEvent.class),
-    WorldChangeEvent(WorldChangeEvent.class),
-    ChatMessageReceivedEvent(ChatMessageReceivedEvent.class),
-    EntityAddedEvent(EntityAddedEvent.class),            // <-- ADD THIS
-    EntityRemovedEvent(EntityRemovedEvent.class),
+    BLOCK_INTERACT_EVENT(BlockInteractEvent.class),
+    ITEM_USE_EVENT(ItemUseEvent.class),
+    WORLD_CHANGE_EVENT(WorldChangeEvent.class),
+    CHAT_MESSAGE_RECEIVED_EVENT(ChatMessageReceivedEvent.class),
+    ENTITY_ADDED_EVENT(EntityAddedEvent.class),
+    ENTITY_REMOVED_EVENT(EntityRemovedEvent.class),
+
     // Screen Events
-    ScreenFirstInitEvent(ScreenFirstInitEvent.class),
-    ScreenInitEvent(ScreenInitEvent.class),
-    ScreenDisplayedEvent(ScreenDisplayedEvent.class),
-    ScreenRemovedEvent(ScreenRemovedEvent.class),
-    ScreenCloseEvent(ScreenCloseEvent.class),
+    SCREEN_FIRST_INIT_EVENT(ScreenFirstInitEvent.class),
+    SCREEN_INIT_EVENT(ScreenInitEvent.class),
+    SCREEN_DISPLAYED_EVENT(ScreenDisplayedEvent.class),
+    SCREEN_REMOVED_EVENT(ScreenRemovedEvent.class),
+    SCREEN_CLOSE_EVENT(ScreenCloseEvent.class),
+
     // Title Screen Events
-    TitleScreenInitEvent(TitleScreenInitEvent.class),
+    TITLE_SCREEN_INIT_EVENT(TitleScreenInitEvent.class),
+
     // Death Screen Events
-    DeathScreenInitEvent(DeathScreenInitEvent.class),
+    DEATH_SCREEN_INIT_EVENT(DeathScreenInitEvent.class),
 
     // Sound Events
-    PlaySoundEvent(PlaySoundEvent.class),
+    PLAY_SOUND_EVENT(PlaySoundEvent.class),
 
     // Tick Events
-    StartClientTickEvent(StartClientTickEvent.class),
-    EndClientTickEvent(EndClientTickEvent.class),
-    ClientPlayerTickEvent(ClientPlayerTickEvent.class),
+    START_CLIENT_TICK_EVENT(StartClientTickEvent.class),
+    END_CLIENT_TICK_EVENT(EndClientTickEvent.class),
+    CLIENT_PLAYER_TICK_EVENT(ClientPlayerTickEvent.class),
 
     // Other Client Events
-    MinecraftClientStopEvent(MinecraftClientStopEvent.class),
+    MINECRAFT_CLIENT_STOP_EVENT(MinecraftClientStopEvent.class),
 
     // Packet Events
-    ClientPacketOutputEvent(ClientPacketOutputEvent.class),
-    ClientPacketInputEvent(ClientPacketInputEvent.class),
-    TitleEvent(TitleEvent.class),
-    SubtitleEvent(SubTitleEvent.class);
+    CLIENT_PACKET_OUTPUT_EVENT(ClientPacketOutputEvent.class),
+    CLIENT_PACKET_INPUT_EVENT(ClientPacketInputEvent.class),
+    TITLE_EVENT(TitleEvent.class),
+    SUBTITLE_EVENT(SubTitleEvent.class);
 
     private final Class<? extends Event> eventClass;
 

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,9 +22,9 @@ import net.me.Main;
 import net.me.event.MQSEventBus;
 import net.me.event.events.MinecraftClientStopEvent;
 import net.me.event.events.world.WorldChangeEvent;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -32,16 +32,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(MinecraftClient.class)
+@Mixin(Minecraft.class)
 public class MQSMinecraftClientMixin {
     @Shadow
     @Nullable
-    public ClientPlayerEntity player;
-
-    @Inject(at = @At("HEAD"), method = "run")
-    private void init(CallbackInfo info) {
-        // System.out.println("Client has started!");
-    }
+    public LocalPlayer player;
 
     @Inject(at = @At("HEAD"), method = "stop()V")
     private void onStop(CallbackInfo ci) {
@@ -49,10 +44,11 @@ public class MQSMinecraftClientMixin {
         main.getGlobalConfigManager().save();
         main.getConfigManager().saveAllConfigs();
         MQSEventBus.post(new MinecraftClientStopEvent());
+        main.shutdown();
     }
 
-    @Inject(method = "setWorld", at = @At("HEAD"))
-    private void onSetWorld(ClientWorld world, CallbackInfo ci) {
+    @Inject(method = "setLevel", at = @At("HEAD"))
+    private void onSetWorld(ClientLevel world, CallbackInfo ci) {
         WorldChangeEvent event = new WorldChangeEvent(world);
         MQSEventBus.post(event);
     }

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,9 +31,9 @@ public class MappedInstanceProxy implements ProxyObject {
     public MappedInstanceProxy(Object extendedInstance, ScriptingClassResolver resolver) {
         this.extendedInstance = extendedInstance;
 
-        var cm = MappingUtils.combineMappings(
+        MappingUtils.ClassMappings cm = MappingUtils.combineMappings(
                 extendedInstance.getClass(),
-                resolver.getRuntimeToYarnMap(),
+                resolver.getRuntimeToNamedMap(),
                 resolver.getMethodMap(),
                 resolver.getFieldMap()
         );

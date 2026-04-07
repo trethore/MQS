@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -41,6 +41,7 @@ public class ScriptingClassResolver {
     private static final String FABRIC_PREFIX = "net.fabricmc.";
 
     private final Map<String, JsClassWrapper> wrapperCache = new WeakHashMap<>();
+    private final Map<Class<?>, WrapperMetadata> wrapperMetadataCache = new ConcurrentHashMap<>();
     private final Map<Class<?>, Boolean> mcRelatedCache = new ConcurrentHashMap<>();
 
     @Getter
@@ -53,16 +54,24 @@ public class ScriptingClassResolver {
     private Map<String, Map<String, List<String>>> methodMap;
     @Getter
     private Map<String, Map<String, String>> fieldMap;
-    private Map<String, String> runtimeToYarn;
+    private Map<String, String> runtimeToNamed;
     private Set<String> knownPackagePrefixes;
+    private Map<String, List<String>> simpleNameToNamedClasses;
 
-    public ScriptingClassResolver() {
+    private ScriptingClassResolver() {
     }
 
-    public void init(MappingsManager mappingsManager, ScriptManager scriptManager) {
+    public static ScriptingClassResolver create(MappingsManager mappingsManager, ScriptManager scriptManager) {
+        ScriptingClassResolver resolver = new ScriptingClassResolver();
+        resolver.init(mappingsManager, scriptManager);
+        return resolver;
+    }
+
+    private void init(MappingsManager mappingsManager, ScriptManager scriptManager) {
         this.mappingsManager = mappingsManager;
         this.scriptManager = scriptManager;
         loadMappings(mappingsManager);
+        precomputeSimpleNameLookup();
         precomputePackagePrefixes();
     }
 
@@ -70,7 +79,7 @@ public class ScriptingClassResolver {
         classMap = mappingsManager.getClassMap();
         methodMap = mappingsManager.getMethodMap();
         fieldMap = mappingsManager.getFieldMap();
-        runtimeToYarn = mappingsManager.getRuntimeToYarnClassMap();
+        runtimeToNamed = mappingsManager.getRuntimeToNamedClassMap();
     }
 
     private void precomputePackagePrefixes() {
@@ -85,46 +94,131 @@ public class ScriptingClassResolver {
         }
     }
 
+    private void precomputeSimpleNameLookup() {
+        Map<String, LinkedHashSet<String>> simpleNameLookup = new HashMap<>();
+        if (classMap == null) {
+            simpleNameToNamedClasses = Collections.emptyMap();
+            return;
+        }
+
+        for (String namedClassName : classMap.keySet()) {
+            String simpleName = extractSimpleName(namedClassName);
+            indexSimpleName(simpleNameLookup, simpleName, namedClassName);
+
+            String innerSimpleName = extractInnerSimpleName(simpleName);
+            if (innerSimpleName != null) {
+                indexSimpleName(simpleNameLookup, innerSimpleName, namedClassName);
+            }
+        }
+
+        Map<String, List<String>> finalizedLookup = new HashMap<>();
+        for (Map.Entry<String, LinkedHashSet<String>> entry : simpleNameLookup.entrySet()) {
+            List<String> classes = new ArrayList<>(entry.getValue());
+            classes.sort(String::compareTo);
+            finalizedLookup.put(entry.getKey(), Collections.unmodifiableList(classes));
+        }
+        simpleNameToNamedClasses = Collections.unmodifiableMap(finalizedLookup);
+    }
+
+    private void indexSimpleName(Map<String, LinkedHashSet<String>> simpleNameLookup, String simpleName, String namedClassName) {
+        if (simpleName == null || simpleName.isBlank()) {
+            return;
+        }
+        simpleNameLookup.computeIfAbsent(simpleName, ignored -> new LinkedHashSet<>()).add(namedClassName);
+    }
+
+    private String extractSimpleName(String className) {
+        int lastDot = className.lastIndexOf('.');
+        if (lastDot < 0 || lastDot == className.length() - 1) {
+            return className;
+        }
+        return className.substring(lastDot + 1);
+    }
+
+    private String extractInnerSimpleName(String simpleName) {
+        int lastDollar = simpleName.lastIndexOf('$');
+        if (lastDollar < 0 || lastDollar == simpleName.length() - 1) {
+            return null;
+        }
+        return simpleName.substring(lastDollar + 1);
+    }
+
     public boolean isMcRelated(Class<?> cls) {
-        return mcRelatedCache.computeIfAbsent(cls, c -> {
-            if (c == null || c == Object.class) {
-                return false;
-            }
-
-            Queue<Class<?>> toCheck = new LinkedList<>();
-            Set<Class<?>> visited = new HashSet<>();
-            toCheck.add(c);
-
-            while (!toCheck.isEmpty()) {
-                Class<?> currentClass = toCheck.poll();
-                if (currentClass == null || !visited.add(currentClass)) {
-                    continue;
-                }
-
-                String name = currentClass.getName();
-                if (name.startsWith(NET_MINECRAFT_PREFIX) || name.startsWith(COM_MOJANG_PREFIX)) {
-                    return true;
-                }
-
-                if (currentClass.getSuperclass() != null) {
-                    Boolean isSuperMcRelated = mcRelatedCache.get(currentClass.getSuperclass());
-                    if (isSuperMcRelated != null && isSuperMcRelated) {
-                        return true;
-                    }
-                    toCheck.add(currentClass.getSuperclass());
-                }
-
-                for (Class<?> iface : currentClass.getInterfaces()) {
-                    Boolean isIfaceMcRelated = mcRelatedCache.get(iface);
-                    if (isIfaceMcRelated != null && isIfaceMcRelated) {
-                        return true;
-                    }
-                    toCheck.add(iface);
-                }
-            }
-
+        if (cls == null) {
             return false;
-        });
+        }
+        return mcRelatedCache.computeIfAbsent(cls, this::isMcRelatedUncached);
+    }
+
+    private boolean isMcRelatedUncached(Class<?> cls) {
+        if (cls == null || cls == Object.class) {
+            return false;
+        }
+
+        Queue<Class<?>> toCheck = new ArrayDeque<>();
+        Set<Class<?>> visited = new HashSet<>();
+        enqueueIfValid(toCheck, cls);
+
+        while (!toCheck.isEmpty()) {
+            Class<?> currentClass = toCheck.poll();
+            if (!shouldInspect(currentClass, visited)) {
+                continue;
+            }
+
+            if (isMinecraftNamespace(currentClass)) {
+                return true;
+            }
+
+            if (hasMcRelatedParent(currentClass, toCheck)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean shouldInspect(Class<?> cls, Set<Class<?>> visited) {
+        return cls != null && visited.add(cls);
+    }
+
+    private boolean hasMcRelatedParent(Class<?> cls, Queue<Class<?>> queue) {
+        if (checkAndQueueParent(cls.getSuperclass(), queue)) {
+            return true;
+        }
+
+        for (Class<?> iface : cls.getInterfaces()) {
+            if (checkAndQueueParent(iface, queue)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean checkAndQueueParent(Class<?> cls, Queue<Class<?>> queue) {
+        if (isCachedMcRelated(cls)) {
+            return true;
+        }
+        enqueueIfValid(queue, cls);
+        return false;
+    }
+
+    private boolean isMinecraftNamespace(Class<?> cls) {
+        String name = cls.getName();
+        return name.startsWith(NET_MINECRAFT_PREFIX) || name.startsWith(COM_MOJANG_PREFIX);
+    }
+
+    private boolean isCachedMcRelated(Class<?> cls) {
+        if (cls == null) {
+            return false;
+        }
+        Boolean cached = mcRelatedCache.get(cls);
+        return cached != null && cached;
+    }
+
+    private void enqueueIfValid(Queue<Class<?>> queue, Class<?> cls) {
+        if (cls != null && cls != Object.class) {
+            queue.add(cls);
+        }
     }
 
     public boolean isFullClassPath(String path) {
@@ -135,12 +229,19 @@ public class ScriptingClassResolver {
         return knownPackagePrefixes.contains(path);
     }
 
-    public String getRuntimeName(String yarnName) {
-        return classMap.get(yarnName);
+    public String getRuntimeName(String namedName) {
+        return classMap.get(namedName);
     }
 
-    public Map<String, String> getRuntimeToYarnMap() {
-        return runtimeToYarn;
+    public List<String> findNamedClassesBySimpleName(String simpleName) {
+        if (simpleName == null || simpleName.isBlank()) {
+            return Collections.emptyList();
+        }
+        return simpleNameToNamedClasses.getOrDefault(simpleName, Collections.emptyList());
+    }
+
+    public Map<String, String> getRuntimeToNamedMap() {
+        return runtimeToNamed;
     }
 
     public Set<String> getKnownPackagePrefixes() {
@@ -175,17 +276,29 @@ public class ScriptingClassResolver {
         return wrapperCache.computeIfAbsent(runtime, r -> {
             try {
                 return createActualJsClassWrapper(r);
-            } catch (Exception e) {
-                LOGGER.error("Failed to create JsClassWrapper for {}", runtime, e);
-                throw new RuntimeException("Failed to create class wrapper for " + runtime, e);
+            } catch (ClassNotFoundException ignored) {
+                LOGGER.error("Failed to create JsClassWrapper for {}", runtime);
+                throw new IllegalStateException("Failed to create class wrapper for " + runtime);
             }
         });
     }
 
     public JsClassWrapper createActualJsClassWrapper(String runtime) throws ClassNotFoundException {
         Class<?> cls = Class.forName(runtime, false, getClass().getClassLoader());
-        var cm = MappingUtils.combineMappings(cls, runtimeToYarn, methodMap, fieldMap);
-        return new JsClassWrapper(runtime, cm.methods(), cm.fields(), this.mappingsManager, this.scriptManager);
+        WrapperMetadata metadata = getOrCreateWrapperMetadata(cls);
+        return new JsClassWrapper(cls, metadata.methods(), metadata.fields(), this.mappingsManager, this.scriptManager);
+    }
+
+    public WrapperMetadata getOrCreateWrapperMetadata(Class<?> runtimeClass) {
+        return wrapperMetadataCache.computeIfAbsent(runtimeClass, cls -> {
+            MappingUtils.ClassMappings classMappings = MappingUtils.combineMappings(cls, runtimeToNamed, methodMap, fieldMap);
+            return new WrapperMetadata(cls, classMappings.methods(), classMappings.fields());
+        });
+    }
+
+    public record WrapperMetadata(Class<?> runtimeClass,
+                                  Map<String, List<String>> methods,
+                                  Map<String, String> fields) {
     }
 
 }

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,11 +20,12 @@ package net.me.mixin.client.mixins;
 
 import net.me.event.MQSEventBus;
 import net.me.event.events.render.WorldRenderEvent;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.render.state.GuiRenderState;
+import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -37,16 +38,23 @@ public class MQSGameRendererMixin {
 
     @Shadow
     @Final
-    private Camera camera;
-
+    GuiRenderState guiRenderState;
     @Shadow
     @Final
-    private MinecraftClient client;
+    private Camera mainCamera;
+    @Shadow
+    @Final
+    private Minecraft minecraft;
 
-    @Inject(method = "renderWorld", at = @At("HEAD"))
-    private void onRenderWorld(RenderTickCounter tickCounter, CallbackInfo ci) {
-        DrawContext drawContext = new DrawContext(client, client.getBufferBuilders().getEntityVertexConsumers());
-        WorldRenderEvent event = new WorldRenderEvent(drawContext, tickCounter, this.camera);
+    @Inject(method = "renderLevel", at = @At("HEAD"))
+    private void onRenderWorld(DeltaTracker tickCounter, CallbackInfo ci) {
+        GuiGraphics graphics = new GuiGraphics(
+                minecraft,
+                guiRenderState,
+                (int) minecraft.mouseHandler.xpos(),
+                (int) minecraft.mouseHandler.ypos()
+        );
+        WorldRenderEvent event = new WorldRenderEvent(graphics, tickCounter, this.mainCamera);
         MQSEventBus.post(event);
     }
 }

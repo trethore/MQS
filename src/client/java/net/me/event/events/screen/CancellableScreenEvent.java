@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,17 +18,16 @@
 
 package net.me.event.events.screen;
 
+import lombok.Getter;
 import net.me.event.CancellableEvent;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screens.Screen;
 
+@Getter
 public abstract class CancellableScreenEvent extends CancellableEvent {
     private final Screen screen;
 
-    public CancellableScreenEvent(Screen screen) {
+    protected CancellableScreenEvent(Screen screen) {
         this.screen = screen;
     }
 
-    public Screen getScreen() {
-        return screen;
-    }
 }

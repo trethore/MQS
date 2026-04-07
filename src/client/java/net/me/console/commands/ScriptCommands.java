@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,7 +22,10 @@ import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
 import net.me.scripting.ScriptingService;
 
-public class ScriptCommands {
+public final class ScriptCommands {
+
+    private ScriptCommands() {
+    }
 
     public static class ListScriptsCommand extends ConsoleCommand {
         private final ScriptingService scriptingService;

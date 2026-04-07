@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -40,46 +40,68 @@ public class SuperProxy implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        if (parentOverrides != null && parentOverrides.hasMember(key)) {
-            Value parentFunction = parentOverrides.getMember(key);
-            if (!parentFunction.canExecute()) return parentFunction;
-
-            return (ProxyExecutable) args -> {
-                ProxyObject temporaryThis = new ProxyObject() {
-                    @Override
-                    public Object getMember(String memberKey) {
-                        return WrapperConstants.SUPER.equals(memberKey) ? grandParentSuper : childInstance.getMember(memberKey);
-                    }
-
-                    @Override
-                    public boolean hasMember(String memberKey) {
-                        return WrapperConstants.SUPER.equals(memberKey) || childInstance.hasMember(memberKey);
-                    }
-
-                    @Override
-                    public void putMember(String memberKey, Value value) {
-                        childInstance.putMember(memberKey, value);
-                    }
-
-                    @Override
-                    public Object getMemberKeys() {
-                        return childInstance.getMemberKeys();
-                    }
-                };
-                return parentFunction.invokeMember("apply", temporaryThis, args);
-            };
+        Value override = getParentOverride(key);
+        if (override != null) {
+            return wrapParentOverride(override);
         }
 
-        List<String> runtimeNames = this.methodMappings.get(key);
-        if (runtimeNames != null && !runtimeNames.isEmpty()) {
-            for (String runtimeName : runtimeNames) {
-                if (grandParentSuper.hasMember(runtimeName)) {
-                    return grandParentSuper.getMember(runtimeName);
-                }
-            }
+        Value mappedMember = resolveMappedMember(key);
+        if (mappedMember != null) {
+            return mappedMember;
         }
 
         return grandParentSuper.getMember(key);
+    }
+
+    private Value getParentOverride(String key) {
+        if (parentOverrides == null || !parentOverrides.hasMember(key)) {
+            return null;
+        }
+        return parentOverrides.getMember(key);
+    }
+
+    private Object wrapParentOverride(Value parentFunction) {
+        if (!parentFunction.canExecute()) {
+            return parentFunction;
+        }
+        return (ProxyExecutable) args -> parentFunction.invokeMember("apply", createTemporaryThis(), args);
+    }
+
+    private Value resolveMappedMember(String key) {
+        List<String> runtimeNames = this.methodMappings.get(key);
+        if (runtimeNames == null || runtimeNames.isEmpty()) {
+            return null;
+        }
+        for (String runtimeName : runtimeNames) {
+            if (grandParentSuper.hasMember(runtimeName)) {
+                return grandParentSuper.getMember(runtimeName);
+            }
+        }
+        return null;
+    }
+
+    private ProxyObject createTemporaryThis() {
+        return new ProxyObject() {
+            @Override
+            public Object getMember(String memberKey) {
+                return WrapperConstants.SUPER.equals(memberKey) ? grandParentSuper : childInstance.getMember(memberKey);
+            }
+
+            @Override
+            public boolean hasMember(String memberKey) {
+                return WrapperConstants.SUPER.equals(memberKey) || childInstance.hasMember(memberKey);
+            }
+
+            @Override
+            public void putMember(String memberKey, Value value) {
+                childInstance.putMember(memberKey, value);
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return childInstance.getMemberKeys();
+            }
+        };
     }
 
     @Override

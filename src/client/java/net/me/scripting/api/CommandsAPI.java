@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,123 +20,169 @@ package net.me.scripting.api;
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.api.internal.HandleTracker;
+import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.commands.CommandAPIService;
+import net.me.scripting.commands.CommandAPIService.CommandRegistration;
 import net.me.scripting.commands.CommandBuilder;
 import net.me.scripting.commands.ScriptArgumentType;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsMember;
+import net.me.scripting.typings.schema.TsObject;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
-import static net.me.scripting.api.ApiConstants.*;
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class CommandsAPI implements ProxyObject {
 
-    private static final Set<String> MEMBER_KEYS = Set.of(BUILDER, LITERAL, ARGUMENT, REGISTER, UNREGISTER, UNREGISTER_ALL, ARG_TYPE);
-    private static final ProxyObject ARG_TYPE_PROXY = createArgTypeProxy();
+    private static final String LIT = "lit";
+    private static final String ARG = "arg";
+    private static final String REG = "reg";
+    private static final String UNREG = "unreg";
+    private static final String CLEAR = "clear";
+    private static final String TYPES = "types";
+    private static final String QUICK = "quick";
+    private static final String ARG_USAGE = "cmd.arg(name, type) requires two string arguments.";
+    private static final String LIT_USAGE = "cmd.lit(name) requires one string argument.";
+    private static final String REG_USAGE = "cmd.reg(builder) requires one argument.";
+    private static final String UNREG_USAGE = "cmd.unreg(commandName) requires one string argument.";
+    private static final String CLEAR_USAGE = "cmd.clear() takes no arguments.";
+    private static final String QUICK_USAGE = "cmd.quick(name, handler) requires a name and handler.";
+    private static final String COMMAND_BUILDER_TYPE = "MQSCommandBuilder";
+    private static final String COMMAND_TYPES = "MQSCommandTypes";
+
+    private static final Set<String> MEMBER_KEYS = Set.of(
+            LIT,
+            ARG,
+            REG,
+            UNREG,
+            CLEAR,
+            TYPES,
+            QUICK
+    );
+    private static final ProxyObject TYPES_PROXY = createTypesProxy();
     private final CommandAPIService service;
     private final ScriptManager scriptManager;
+    private final ScriptContextHelper contextHelper;
+    private final HandleTracker<CommandRegistration> commandTracker;
 
     public CommandsAPI(ScriptManager scriptManager, CommandAPIService service) {
         this.scriptManager = scriptManager;
         this.service = service;
+        this.contextHelper = new ScriptContextHelper(scriptManager);
+        this.commandTracker = new HandleTracker<>();
     }
 
-    private static ProxyObject createArgTypeProxy() {
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(
+                        alias("MQSCommandSuggestions", TypingsConstants.STRING + " | " + TypingsConstants.STRING + "[] | ArrayLike<" + TypingsConstants.UNKNOWN + "> | Promise<" + TypingsConstants.STRING + " | " + TypingsConstants.STRING + "[] | ArrayLike<" + TypingsConstants.UNKNOWN + "> | null> | null"),
+                        alias("MQSCommandSuggestionProvider", "((context: MQSCommandContext) => MQSCommandSuggestions) | MQSCommandSuggestions")
+                ),
+                List.of(),
+                List.of(),
+                List.of(
+                        describeCommandContext(),
+                        describeCommandBuilder(),
+                        describeCommandTypes(),
+                        describeCommandApi()
+                )
+        );
+    }
+
+    private static TsObject describeCommandContext() {
+        return new TsObject(
+                "MQSCommandContext",
+                List.of(
+                        method("source", fn("any")),
+                        method("arg", fn(TypingsConstants.UNKNOWN, p("name", TypingsConstants.STRING))),
+                        method("str", fn(TypingsConstants.STRING, p("name", TypingsConstants.STRING)))
+                )
+        );
+    }
+
+    private static TsObject describeCommandBuilder() {
+        return new TsObject(
+                COMMAND_BUILDER_TYPE,
+                List.of(
+                        method("then", fn(COMMAND_BUILDER_TYPE, p("child", COMMAND_BUILDER_TYPE))),
+                        method(LIT, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING))),
+                        method(ARG, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING), p("typeName", TypingsConstants.STRING))),
+                        method("run", fn(COMMAND_BUILDER_TYPE, p("handler", "(context: MQSCommandContext) => " + TypingsConstants.UNKNOWN))),
+                        method("suggest", fn(COMMAND_BUILDER_TYPE, p("suggestions", "MQSCommandSuggestionProvider")))
+                )
+        );
+    }
+
+    private static TsObject describeCommandTypes() {
+        List<TsMember> members = new ArrayList<>();
+        for (ScriptArgumentType argumentType : ScriptArgumentType.values()) {
+            String typeName = argumentType.toString();
+            members.add(ro(typeName, "\"" + typeName + "\""));
+        }
+        return new TsObject(COMMAND_TYPES, List.copyOf(members));
+    }
+
+    private static TsObject describeCommandApi() {
+        return new TsObject(
+                "MQSCommandApi",
+                List.of(
+                        ro(TYPES, COMMAND_TYPES),
+                        method(LIT, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING), opt("configure", "(builder: " + COMMAND_BUILDER_TYPE + ") => " + TypingsConstants.UNKNOWN))),
+                        method(ARG, fn(COMMAND_BUILDER_TYPE, p("name", TypingsConstants.STRING), p("type", TypingsConstants.STRING))),
+                        method(REG, fn(TypingsConstants.MQS_DISPOSER, p("builder", COMMAND_BUILDER_TYPE))),
+                        method(UNREG, fn(TypingsConstants.VOID, p("commandName", TypingsConstants.STRING))),
+                        method(CLEAR, fn(TypingsConstants.VOID)),
+                        method(QUICK, fn(TypingsConstants.MQS_DISPOSER, p("name", TypingsConstants.STRING), p("handler", "(context: MQSCommandContext) => " + TypingsConstants.UNKNOWN)))
+                )
+        );
+    }
+
+    private static ProxyObject createTypesProxy() {
         return new ProxyObject() {
             @Override
             public Object getMember(String key) {
-                return Arrays.stream(ScriptArgumentType.values())
-                        .filter(type -> type.name().equals(key))
-                        .findFirst()
-                        .map(ScriptArgumentType::toString)
-                        .orElse(null);
+                ScriptArgumentType type = ScriptArgumentType.resolve(key);
+                return type != null ? type.toString() : null;
             }
 
             @Override
             public Object getMemberKeys() {
-                return Arrays.stream(ScriptArgumentType.values()).map(Enum::name).toArray(String[]::new);
+                return Arrays.stream(ScriptArgumentType.values())
+                        .map(ScriptArgumentType::toString)
+                        .toArray(String[]::new);
             }
 
             @Override
             public boolean hasMember(String key) {
-                return Arrays.stream(ScriptArgumentType.values()).anyMatch(type -> type.name().equals(key));
+                return ScriptArgumentType.resolve(key) != null;
             }
 
             @Override
             public void putMember(String key, Value value) {
-                throw new UnsupportedOperationException("Cannot modify the ArgType object.");
+                throw new UnsupportedOperationException("Cannot modify cmd.types.");
             }
         };
-    }
-
-    private RunningScript getCurrentScript() {
-        RunningScript script = scriptManager.getCurrentScript();
-        if (script == null) {
-            throw new IllegalStateException("Commands API can only be used within a running script context (e.g., onEnable, onDisable, or an event).");
-        }
-        return script;
     }
 
     @Override
     public Object getMember(String key) {
-        if (ARG_TYPE.equals(key)) {
-            return ARG_TYPE_PROXY;
+        if (TYPES.equals(key)) {
+            return TYPES_PROXY;
         }
-
-        return (ProxyExecutable) args -> {
-            RunningScript owner = getCurrentScript();
-            switch (key) {
-                case BUILDER: {
-                    if (args.length != 1 || !args[0].isString())
-                        throw new IllegalArgumentException("Commands.builder(name) requires one string argument.");
-                    return new CommandBuilder(args[0].asString(), owner, this.scriptManager);
-                }
-                case LITERAL: {
-                    if (args.length != 1 || !args[0].isString()) {
-                        throw new IllegalArgumentException("Commands.literal(name) requires one string argument.");
-                    }
-                    return new CommandBuilder(ClientCommandManager.literal(args[0].asString()), owner, this.scriptManager);
-                }
-                case ARGUMENT: {
-                    if (args.length != 2 || !args[0].isString() || !args[1].isString()) {
-                        throw new IllegalArgumentException("Commands.argument(name, type) requires two string arguments.");
-                    }
-                    String name = args[0].asString();
-                    String typeStr = args[1].asString();
-                    var type = ScriptArgumentType.fromString(typeStr);
-                    return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, this.scriptManager);
-                }
-                case REGISTER: {
-                    if (args.length != 1)
-                        throw new IllegalArgumentException("Commands.register(builder) requires one argument.");
-                    if (!args[0].isHostObject() || !(args[0].asHostObject() instanceof CommandBuilder)) {
-                        throw new IllegalArgumentException("Argument must be a CommandBuilder instance.");
-                    }
-                    CommandBuilder builder = args[0].asHostObject();
-                    service.register(owner, builder);
-                    return null;
-                }
-                case UNREGISTER: {
-                    if (args.length != 1 || !args[0].isString())
-                        throw new IllegalArgumentException("Commands.unregister(commandName) requires one string argument.");
-                    String commandName = args[0].asString();
-                    service.unregister(owner, commandName);
-                    return null;
-                }
-                case UNREGISTER_ALL: {
-                    if (args.length != 0)
-                        throw new IllegalArgumentException("Commands.unregisterAll() takes no arguments.");
-                    service.unregisterAllFor(owner);
-                    return null;
-                }
-                default:
-                    throw new UnsupportedOperationException("Unsupported Commands operation: " + key);
-            }
-        };
+        if (!MEMBER_KEYS.contains(key)) {
+            return null;
+        }
+        return (ProxyExecutable) args -> executeCommand(key, args, contextHelper.require("Commands API"));
     }
 
     @Override
@@ -152,5 +198,87 @@ public class CommandsAPI implements ProxyObject {
     @Override
     public void putMember(String key, Value value) {
         throw new UnsupportedOperationException("Cannot modify the Commands API object.");
+    }
+
+    private Object executeCommand(String key, Value[] args, RunningScript owner) {
+        return switch (key) {
+            case LIT -> buildLiteral(args, owner);
+            case ARG -> buildArgument(args, owner);
+            case REG -> register(args, owner);
+            case UNREG -> unregister(args, owner);
+            case CLEAR -> clear(args, owner);
+            case QUICK -> quick(args, owner);
+            default -> throw new UnsupportedOperationException("Unsupported Commands operation: " + key);
+        };
+    }
+
+    private CommandBuilder buildLiteral(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCountAtLeast(args, 1, LIT_USAGE);
+        String name = ApiArgumentChecks.requireString(args, 0, LIT_USAGE);
+        CommandBuilder builder = new CommandBuilder(ClientCommandManager.literal(name), owner, this.scriptManager);
+        if (args.length > 1) {
+            Value configure = args[1];
+            if (configure != null && configure.canExecute()) {
+                contextHelper.executeWithScript(owner, () -> {
+                    Value jsInstance = owner.getJsInstance();
+                    configure.invokeMember("call", jsInstance, builder);
+                });
+            }
+        }
+        return builder;
+    }
+
+    private CommandBuilder buildArgument(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 2, ARG_USAGE);
+        String name = ApiArgumentChecks.requireString(args, 0, ARG_USAGE);
+        String typeStr = ApiArgumentChecks.requireString(args, 1, ARG_USAGE);
+        ScriptArgumentType type = ScriptArgumentType.fromString(typeStr);
+        return new CommandBuilder(ClientCommandManager.argument(name, type.get()), owner, this.scriptManager);
+    }
+
+    private Value register(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 1, REG_USAGE);
+        CommandBuilder builder = ApiArgumentChecks.requireHostObject(args, 0, CommandBuilder.class, "Argument must be a CommandBuilder instance.");
+        return registerCommand(owner, builder);
+    }
+
+    private Void unregister(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 1, UNREG_USAGE);
+        String commandName = ApiArgumentChecks.requireString(args, 0, UNREG_USAGE);
+        service.unregister(owner, commandName);
+        disposeTrackedCommands(owner, commandName);
+        return null;
+    }
+
+    private Void clear(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCount(args, 0, CLEAR_USAGE);
+        service.unregisterAllFor(owner);
+        commandTracker.disposeAll(owner, ignored -> {
+        });
+        return null;
+    }
+
+    private Value quick(Value[] args, RunningScript owner) {
+        ApiArgumentChecks.requireArgCountAtLeast(args, 2, QUICK_USAGE);
+        String name = ApiArgumentChecks.requireString(args, 0, QUICK_USAGE);
+        Value handler = ApiArgumentChecks.requireExecutable(args, 1, "Handler must be executable.");
+        CommandBuilder builder = new CommandBuilder(name, owner, scriptManager);
+        builder.run(handler);
+        return registerCommand(owner, builder);
+    }
+
+    private Value registerCommand(RunningScript owner, CommandBuilder builder) {
+        CommandRegistration registration = service.register(owner, builder);
+        disposeTrackedCommands(owner, registration.name());
+        commandTracker.track(owner, registration);
+        return contextHelper.createIdempotentDisposer(owner, () -> {
+            service.unregister(registration);
+            commandTracker.remove(owner, registration);
+        });
+    }
+
+    private void disposeTrackedCommands(RunningScript owner, String commandName) {
+        commandTracker.dispose(owner, tracked -> tracked.name().equals(commandName), ignored -> {
+        });
     }
 }

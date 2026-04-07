@@ -1,16 +1,15 @@
-const Text = net.minecraft.text.Text;
-// @module(main=TestEvent, name=Test MQS Event, version=0.0.1)
+// @script(id=TestEvent, name=Test MQS Event, version=0.0.1)
 class TestEvent {
     disposer = null;
     onEnable() {
-        // triggered when the module is enabled
+        // triggered when the script is enabled
         println("Hello from Test Event!");
-        MQS.utils.chat.addInfoChatMessage("Hello from Test Event Module!", true);
+        MQS.utils.chat.addInfoChatMessage("Hello from Test Event Script!", true);
         this.disposer = MQS.events.onEndClientTick(this.onTick.bind(this));
     }
 
     onDisable() {
-        // triggered when the module is disabled
+        // triggered when the script is disabled
         println("Goodbye from Test Event!");
         if (this.disposer) {
             this.disposer();
@@ -19,11 +18,11 @@ class TestEvent {
     }
 
     onTick(event) { // Mqs events return the event instance
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
-            player.sendMessage(Text.literal("Hello from Test Event!"), false);
+           MQS.utils.chat.addInfoChatMessage("Hello from Test Event!", true);
         }
     }
 }
 
-exportModule(TestEvent);
+exportScript(TestEvent);

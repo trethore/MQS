@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,7 +21,6 @@ package net.me.console.commands;
 import net.me.config.GlobalConfigManager;
 import net.me.console.ConsoleCommand;
 import net.me.console.ConsoleManager;
-import net.me.console.ConsoleUtils;
 
 import java.util.Optional;
 
@@ -36,19 +35,12 @@ public class LogRedirectCommand extends ConsoleCommand {
     @Override
     public void execute(String[] args) {
         ConsoleManager cm = getConsoleManager();
-        if (args.length != 1) {
-            cm.logError("Invalid arguments. Usage: " + getUsage());
-            return;
-        }
-
-        Optional<Boolean> enableOpt = ConsoleUtils.parseBooleanArg(args[0]);
-
+        Optional<Boolean> enableOpt = parseRequiredBooleanArg(args);
         if (enableOpt.isEmpty()) {
-            cm.logError("Invalid argument '" + args[0] + "'. Must be '" + ConsoleUtils.TRUE_STRING + "' or '" + ConsoleUtils.FALSE_STRING + "'.");
             return;
         }
 
-        boolean enable = enableOpt.get();
+        boolean enable = enableOpt.orElseThrow();
 
         if (globalConfigManager.isLogRedirectEnabled() == enable) {
             cm.logInfo("Log redirection is already " + (enable ? "enabled" : "disabled") + ".");

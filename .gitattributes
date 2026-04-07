@@ -1,9 +1,31 @@
-#
-# https://help.github.com/articles/dealing-with-line-endings/
-#
-# Linux start script should use lf
-/gradlew        text eol=lf
+# Global text normalization
+* text=auto
 
-# These are Windows script files and should use crlf
-*.bat           text eol=crlf
+## Gradle and shell scripts
+/gradlew              text eol=lf
+*.sh                  text eol=lf
 
+# Windows
+*.bat                 text eol=crlf
+*.cmd                 text eol=crlf
+*.ps1                 text eol=crlf
+
+# Source code files
+*.java                text eol=lf
+*.gradle              text eol=lf
+*.properties          text eol=lf
+*.json                text eol=lf
+*.md                  text eol=lf
+*.ts                  text eol=lf
+*.tsx                 text eol=lf
+*.js                  text eol=lf
+*.css                 text eol=lf
+*.html                text eol=lf
+
+# Binary files
+*.png                 binary
+*.jpg                 binary
+*.jpeg                binary
+*.ogg                 binary
+*.jar                 binary
+*.zip                 binary

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,28 +23,40 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
 
+@SuppressWarnings("java:S3011") // Accessibility bypass is intentional for this reflection utility
 public final class ReflectionUtils {
 
     private ReflectionUtils() {
     }
 
     public static Field findField(Class<?> cls, String name) throws NoSuchFieldException {
+        return findField(cls, name, true);
+    }
+
+    public static Field findField(Class<?> cls, String name, boolean makeAccessible) throws NoSuchFieldException {
         for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
             try {
                 Field f = c.getDeclaredField(name);
-                f.setAccessible(true);
+                if (makeAccessible) {
+                    f.setAccessible(true);
+                }
                 return f;
             } catch (NoSuchFieldException ignored) {
+                // Continue searching in superclass
             }
         }
         throw new NoSuchFieldException("Field '" + name + "' not found in class " + cls + " or its superclasses.");
     }
 
     public static List<Method> findMethods(Class<?> cls, List<String> names, boolean isStatic) {
-        List<Method> list = new ArrayList<>();
+        return findMethods(cls, names, isStatic, true);
+    }
+
+    public static List<Method> findMethods(Class<?> cls, List<String> names, boolean isStatic, boolean makeAccessible) {
+        List<Method> result = new ArrayList<>();
         Set<String> foundSignatures = new HashSet<>();
-        Queue<Class<?>> toSearch = new LinkedList<>();
         Set<Class<?>> visited = new HashSet<>();
+        Queue<Class<?>> toSearch = new LinkedList<>();
 
         if (cls != null) {
             toSearch.add(cls);
@@ -56,21 +68,36 @@ public final class ReflectionUtils {
                 continue;
             }
 
-            for (Method m : current.getDeclaredMethods()) {
-                if (names.contains(m.getName()) && Modifier.isStatic(m.getModifiers()) == isStatic) {
-                    String signature = m.getName() + Arrays.toString(m.getParameterTypes());
-                    if (foundSignatures.add(signature)) {
-                        m.setAccessible(true);
-                        list.add(m);
-                    }
-                }
-            }
-
-            if (current.getSuperclass() != null) {
-                toSearch.add(current.getSuperclass());
-            }
-            toSearch.addAll(Arrays.asList(current.getInterfaces()));
+            collectMatchingMethods(current, names, isStatic, makeAccessible, foundSignatures, result);
+            enqueueRelatedClasses(current, toSearch);
         }
-        return list;
+        return result;
+    }
+
+    private static void collectMatchingMethods(Class<?> cls, List<String> names, boolean isStatic, boolean makeAccessible,
+                                               Set<String> foundSignatures, List<Method> result) {
+        for (Method method : cls.getDeclaredMethods()) {
+            if (!isMethodMatch(method, names, isStatic)) {
+                continue;
+            }
+            String signature = method.getName() + Arrays.toString(method.getParameterTypes());
+            if (foundSignatures.add(signature)) {
+                if (makeAccessible) {
+                    method.setAccessible(true);
+                }
+                result.add(method);
+            }
+        }
+    }
+
+    private static boolean isMethodMatch(Method method, List<String> names, boolean isStatic) {
+        return names.contains(method.getName()) && Modifier.isStatic(method.getModifiers()) == isStatic;
+    }
+
+    private static void enqueueRelatedClasses(Class<?> cls, Queue<Class<?>> toSearch) {
+        if (cls.getSuperclass() != null) {
+            toSearch.add(cls.getSuperclass());
+        }
+        Collections.addAll(toSearch, cls.getInterfaces());
     }
 }

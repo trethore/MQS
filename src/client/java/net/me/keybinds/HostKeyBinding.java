@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -59,9 +59,13 @@ public class HostKeyBinding implements KeybindEntry {
             }
             action.run();
             hasBeenPressed = true;
-        } else if (glfwAction == GLFW.GLFW_RELEASE && !(currentTime - lastReleaseTime < debounceTime) && hasBeenPressed) {
+        } else if (glfwAction == GLFW.GLFW_RELEASE && currentTime - lastReleaseTime >= debounceTime && hasBeenPressed) {
             lastReleaseTime = System.currentTimeMillis();
             hasBeenPressed = false;
         }
+    }
+
+    public String getKeyName() {
+        return Keys.toDisplayName(this.key);
     }
 }

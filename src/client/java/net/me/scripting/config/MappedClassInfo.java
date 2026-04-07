@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 public record MappedClassInfo(
-        String yarnName,
+        String namedClassName,
         Class<?> targetClass,
         Map<String, List<String>> methodMappings,
         Map<String, String> fieldMappings

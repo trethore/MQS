@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,7 +18,7 @@
 
 package net.me.scripting.commands;
 
-import com.mojang.brigadier.arguments.*;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import org.graalvm.polyglot.HostAccess;
@@ -32,37 +32,17 @@ public class JSCommandContext {
     }
 
     @HostAccess.Export
-    public FabricClientCommandSource getSource() {
+    public FabricClientCommandSource source() {
         return context.getSource();
     }
 
     @HostAccess.Export
-    public String getArgumentAsString(String name) {
+    public Object arg(String name) {
+        return context.getArgument(name, Object.class);
+    }
+
+    @HostAccess.Export
+    public String str(String name) {
         return StringArgumentType.getString(context, name);
-    }
-
-    @HostAccess.Export
-    public int getArgumentAsInt(String name) {
-        return IntegerArgumentType.getInteger(context, name);
-    }
-
-    @HostAccess.Export
-    public boolean getArgumentAsBool(String name) {
-        return BoolArgumentType.getBool(context, name);
-    }
-
-    @HostAccess.Export
-    public double getArgumentAsDouble(String name) {
-        return DoubleArgumentType.getDouble(context, name);
-    }
-
-    @HostAccess.Export
-    public float getArgumentAsFloat(String name) {
-        return FloatArgumentType.getFloat(context, name);
-    }
-
-    @HostAccess.Export
-    public long getArgumentAsLong(String name) {
-        return LongArgumentType.getLong(context, name);
     }
 }

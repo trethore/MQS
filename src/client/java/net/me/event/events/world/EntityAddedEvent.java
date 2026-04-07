@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,11 +18,13 @@
 
 package net.me.event.events.world;
 
+import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
 
 
+@Getter
 public class EntityAddedEvent extends Event {
     private final Entity entity;
 
@@ -30,12 +32,8 @@ public class EntityAddedEvent extends Event {
         this.entity = entity;
     }
 
-    public Entity getEntity() {
-        return entity;
-    }
-
     @Override
     public Events getType() {
-        return Events.EntityAddedEvent;
+        return Events.ENTITY_ADDED_EVENT;
     }
 }

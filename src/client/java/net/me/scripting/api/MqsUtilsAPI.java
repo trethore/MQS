@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,76 +19,182 @@
 package net.me.scripting.api;
 
 import net.me.Main;
+import net.me.config.ConfigKeys;
+import net.me.config.GlobalConfigManager;
 import net.me.scripting.ScriptManager;
+import net.me.scripting.api.internal.ScriptContextHelper;
 import net.me.scripting.engine.ScriptingClassResolver;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.typings.MqsApiFragment;
+import net.me.scripting.typings.ReflectedJavaTypeDescriptors;
+import net.me.scripting.typings.TypingsConstants;
+import net.me.scripting.typings.schema.TsObject;
 import net.me.scripting.utils.ScriptUtils;
-import net.me.utils.*;
-import net.me.utils.math.*;
-import net.minecraft.client.MinecraftClient;
+import net.me.utils.ChatUtils;
+import net.me.utils.McUtils;
+import net.me.utils.ScriptScheduler;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
-import static net.me.scripting.api.ApiConstants.*;
+import static net.me.scripting.typings.schema.TsDescriptors.*;
 
 public class MqsUtilsAPI implements ProxyObject {
-    private static final String MC_RAW = "raw";
-    private static final String MC_GET_MC = "getMc";
-    private static final String MC_GET_PLAYER = "getPlayer";
-    private static final String MC_GET_WORLD = "getWorld";
-    private static final String MC_CLIENT = "client";
-    private static final String MC_PLAYER = "player";
-    private static final String MC_WORLD = "world";
-    private static final String MC_RUN_ON_CLIENT_THREAD = "runOnClientThread";
-    private static final String SCHEDULE_TICK_TIMEOUT = "tickTimeout";
-    private static final String SCHEDULE_MS_TIMEOUT = "msTimeout";
-    private static final String SCHEDULE_TICK_INTERVAL = "tickInterval";
+    private static final String MC = "mc";
+    private static final String RUN_ON_CLIENT_THREAD = "runOnClientThread";
+    private static final String WORLD = "world";
+    private static final String PLAYER = "player";
+    private static final String SCHEDULER = "scheduler";
+    private static final String SCHEDULER_TIMEOUT = "timeout";
+    private static final String SCHEDULER_INTERVAL = "interval";
+    private static final String CHAT = "chat";
+    private static final String MATH = "math";
+    private static final String OPTIONS = "options";
+    private static final String MESSAGE = "message";
+    private static final String PREFIX = "prefix";
+    private static final String COMMAND = "command";
+    private static final String LEVEL = "Level";
+    private static final String CHAT_LEVEL_API = "MQSUtilsChatLevelApi";
+    private static final String CHAT_LEVEL_INSTANCE = "MQSUtilsChatLevelInstance";
+    private static final String MATH_API = "MQSUtilsMathApi";
+    private static final String MINECRAFT_INSTANCE_TYPE = "net.minecraft.client.Minecraft$Instance";
+    private static final String CLIENT_LEVEL_INSTANCE_TYPE = "net.minecraft.client.multiplayer.ClientLevel$Instance";
+    private static final String LOCAL_PLAYER_INSTANCE_TYPE = "net.minecraft.client.player.LocalPlayer$Instance";
+    private static final String REQUIRE_CALLBACK_FUNCTION_ERROR = "runOnClientThread requires a callback function.";
 
     private final ScriptingClassResolver classResolver;
     private final ScriptManager scriptManager;
-    private final ScriptScheduler scheduler;
-    private final Map<String, Object> memberExports = new HashMap<>();
+    private final ScriptScheduler scriptScheduler;
+    private final GlobalConfigManager globalConfigManager;
+    private final ScriptContextHelper contextHelper;
+    private final ProxyObject schedulerProxy;
+    private final ProxyObject optionsProxy;
+    private final Set<String> memberKeys;
 
-    public MqsUtilsAPI(ScriptingClassResolver classResolver, ScriptManager scriptManager, ScriptScheduler scheduler) {
+    public MqsUtilsAPI(ScriptingClassResolver classResolver, ScriptManager scriptManager, ScriptScheduler scheduler, GlobalConfigManager globalConfigManager) {
         this.classResolver = classResolver;
         this.scriptManager = scriptManager;
-        this.scheduler = scheduler;
+        this.scriptScheduler = scheduler;
+        this.globalConfigManager = globalConfigManager;
+        this.contextHelper = new ScriptContextHelper(scriptManager);
+        this.schedulerProxy = createSchedulerProxy();
+        this.optionsProxy = createOptionsProxy();
+        this.memberKeys = Set.of(
+                MC,
+                RUN_ON_CLIENT_THREAD,
+                WORLD,
+                PLAYER,
+                SCHEDULER,
+                CHAT,
+                MATH,
+                OPTIONS
+        );
+    }
 
-        memberExports.put("chat", ChatUtils.class);
-        memberExports.put("camera", CameraUtils.class);
-        memberExports.put("assets", AssetIdentifiers.class);
+    public static MqsApiFragment describeTypeScript() {
+        return new MqsApiFragment(
+                List.of(
+                        alias(CHAT_LEVEL_INSTANCE, "JavaInstance"),
+                        alias(
+                                CHAT_LEVEL_API,
+                                "JavaClass<" + CHAT_LEVEL_INSTANCE + "> & { readonly ERROR: " + CHAT_LEVEL_INSTANCE + "; readonly INFO: " + CHAT_LEVEL_INSTANCE + "; readonly WARN: " + CHAT_LEVEL_INSTANCE + "; readonly SUCCESS: " + CHAT_LEVEL_INSTANCE + "; }"
+                        ),
+                        alias(MATH_API, TypingsConstants.JAVA_CLASS_ANY + " & MQSUtilsMathStatics")
+                ),
+                List.of(),
+                List.of(),
+                List.of(describeSchedulerApi(), describeChatApi(), describeMathApi(), describeOptionsApi(), describeUtilsApi())
+        );
+    }
 
-        ProxyObject mathProxy = createMathProxy();
-        ProxyObject mcProxy = createMcProxy();
-        ProxyObject scheduleProxy = createScheduleProxy();
+    private static TsObject describeSchedulerApi() {
+        return new TsObject(
+                "MQSUtilsSchedulerApi",
+                List.of(
+                        method(SCHEDULER_TIMEOUT, fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.MQS_ANY_FUNCTION), opt("delayTicks", TypingsConstants.NUMBER))),
+                        method(SCHEDULER_INTERVAL, fn(TypingsConstants.MQS_DISPOSER, p(TypingsConstants.CALLBACK, TypingsConstants.MQS_ANY_FUNCTION), p("intervalTicks", TypingsConstants.NUMBER)))
+                )
+        );
+    }
 
-        memberExports.put(MATH, mathProxy);
-        memberExports.put(MC, mcProxy);
-        memberExports.put(SCHEDULE, scheduleProxy);
+    private static TsObject describeUtilsApi() {
+        return new TsObject(
+                "MQSUtilsApi",
+                List.of(
+                        method(MC, fn(MINECRAFT_INSTANCE_TYPE)),
+                        method(RUN_ON_CLIENT_THREAD, fn(TypingsConstants.VOID, p(TypingsConstants.CALLBACK, TypingsConstants.MQS_ANY_FUNCTION))),
+                        method(WORLD, fn(CLIENT_LEVEL_INSTANCE_TYPE + " | null")),
+                        method(PLAYER, fn(LOCAL_PLAYER_INSTANCE_TYPE + " | null")),
+                        ro(SCHEDULER, "MQSUtilsSchedulerApi"),
+                        ro(CHAT, "MQSUtilsChatApi"),
+                        ro(MATH, MATH_API),
+                        ro(OPTIONS, "MQSUtilsOptionsApi")
+                )
+        );
+    }
+
+    private static TsObject describeMathApi() {
+        return ReflectedJavaTypeDescriptors.describeStaticClass("MQSUtilsMathStatics", Math.class);
+    }
+
+    private static TsObject describeOptionsApi() {
+        return new TsObject(
+                "MQSUtilsOptionsApi",
+                List.of(
+                        ro(ConfigKeys.LOG_REDIRECT, TypingsConstants.BOOLEAN),
+                        ro(ConfigKeys.ALLOW_ALL_CLASSES, TypingsConstants.BOOLEAN),
+                        ro(ConfigKeys.ADDITIONAL_SCRIPT_DIRS, "readonly string[]"),
+                        ro(ConfigKeys.DEFAULT_IDE_COMMAND, TypingsConstants.STRING),
+                        ro(ConfigKeys.DEFAULT_PROJECT_PATH, TypingsConstants.STRING)
+                )
+        );
+    }
+
+    private static TsObject describeChatApi() {
+        return new TsObject(
+                "MQSUtilsChatApi",
+                List.of(
+                        ro("TAG", TypingsConstants.STRING),
+                        ro(LEVEL, CHAT_LEVEL_API),
+                        method("sendChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING))),
+                        method("sendChatCommand", fn(TypingsConstants.VOID, p(COMMAND, TypingsConstants.STRING))),
+                        method("addInfoChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p(PREFIX, TypingsConstants.BOOLEAN))),
+                        method("addWarnChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p(PREFIX, TypingsConstants.BOOLEAN))),
+                        method("addErrorChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p(PREFIX, TypingsConstants.BOOLEAN))),
+                        method("addSuccessChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p(PREFIX, TypingsConstants.BOOLEAN))),
+                        method("addRawMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING))),
+                        method("addChatMessage", fn(TypingsConstants.VOID, p(MESSAGE, TypingsConstants.STRING), p("level", CHAT_LEVEL_INSTANCE), p(PREFIX, TypingsConstants.BOOLEAN)))
+                )
+        );
     }
 
     @Override
     public Object getMember(String key) {
-        Object export = memberExports.get(key);
-        if (export instanceof Class<?> utilClass) {
-            return classResolver.getOrCreateWrapper(utilClass.getName());
-        }
-        return export;
+        return switch (key) {
+            case MC -> mcMember();
+            case RUN_ON_CLIENT_THREAD -> runOnClientThreadMember();
+            case WORLD -> worldMember();
+            case PLAYER -> playerMember();
+            case SCHEDULER -> schedulerProxy;
+            case CHAT -> chatMember();
+            case MATH -> mathMember();
+            case OPTIONS -> optionsProxy;
+            default -> null;
+        };
     }
 
     @Override
     public Object getMemberKeys() {
-        return memberExports.keySet().toArray(new String[0]);
+        return memberKeys.toArray(new String[0]);
     }
 
     @Override
     public boolean hasMember(String key) {
-        return memberExports.containsKey(key);
+        return memberKeys.contains(key);
     }
 
     @Override
@@ -96,208 +202,188 @@ public class MqsUtilsAPI implements ProxyObject {
         throw new UnsupportedOperationException("Cannot modify the MQS.utils object.");
     }
 
-    private ProxyObject createMathProxy() {
-        Map<String, Class<?>> mathClasses = Map.of(
-                "Vector3f", Vector3f.class,
-                "Box6f", Box6f.class,
-                "Box6d", Box6d.class,
-                "Boxable", Boxable.class,
-                "Position", Position.class
-        );
-
+    private ProxyObject createSchedulerProxy() {
         return new ProxyObject() {
+            private final Set<String> keys = Set.of(
+                    SCHEDULER_TIMEOUT,
+                    SCHEDULER_INTERVAL
+            );
+
             @Override
             public Object getMember(String key) {
-                Class<?> type = mathClasses.get(key);
-                if (type == null) {
+                return switch (key) {
+                    case SCHEDULER_TIMEOUT -> schedulerTimeoutMember();
+                    case SCHEDULER_INTERVAL -> schedulerIntervalMember();
+                    default -> null;
+                };
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return keys.toArray(new String[0]);
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return keys.contains(key);
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify MQS.utils.scheduler.");
+            }
+        };
+    }
+
+    private ProxyObject createOptionsProxy() {
+        return new ProxyObject() {
+            private final Set<String> keys = Set.of(
+                    ConfigKeys.LOG_REDIRECT,
+                    ConfigKeys.ALLOW_ALL_CLASSES,
+                    ConfigKeys.ADDITIONAL_SCRIPT_DIRS,
+                    ConfigKeys.DEFAULT_IDE_COMMAND,
+                    ConfigKeys.DEFAULT_PROJECT_PATH
+            );
+
+            @Override
+            public Object getMember(String key) {
+                GlobalConfigManager.OptionsSnapshot optionsSnapshot = globalConfigManager.getOptionsSnapshot();
+                return switch (key) {
+                    case ConfigKeys.LOG_REDIRECT -> optionsSnapshot.logRedirect();
+                    case ConfigKeys.ALLOW_ALL_CLASSES -> optionsSnapshot.allowAllClasses();
+                    case ConfigKeys.ADDITIONAL_SCRIPT_DIRS ->
+                            createReadOnlyStringArray(optionsSnapshot.additionalScriptDirs());
+                    case ConfigKeys.DEFAULT_IDE_COMMAND -> optionsSnapshot.defaultIdeCommand();
+                    case ConfigKeys.DEFAULT_PROJECT_PATH -> optionsSnapshot.defaultProjectPath();
+                    default -> null;
+                };
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return keys.toArray(new String[0]);
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return keys.contains(key);
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Cannot modify MQS.utils.options.");
+            }
+        };
+    }
+
+    private ProxyArray createReadOnlyStringArray(List<String> values) {
+        return new ProxyArray() {
+            @Override
+            public Object get(long index) {
+                if (index < 0 || index >= values.size()) {
                     return null;
                 }
-                return classResolver.getOrCreateWrapper(type.getName());
+                return values.get((int) index);
             }
 
             @Override
-            public Object getMemberKeys() {
-                return mathClasses.keySet().toArray(new String[0]);
+            public void set(long index, Value value) {
+                throw new UnsupportedOperationException("Cannot modify MQS.utils.options.additionalScriptDirs.");
             }
 
             @Override
-            public boolean hasMember(String key) {
-                return mathClasses.containsKey(key);
-            }
-
-            @Override
-            public void putMember(String key, Value value) {
-                throw new UnsupportedOperationException("Cannot modify MQS.utils.math.");
+            public long getSize() {
+                return values.size();
             }
         };
     }
 
-    private ProxyObject createMcProxy() {
-        return new ProxyObject() {
-            private final Set<String> keys = Set.of(
-                    MC_RAW,
-                    MC_GET_MC,
-                    MC_GET_PLAYER,
-                    MC_GET_WORLD,
-                    MC_CLIENT,
-                    MC_PLAYER,
-                    MC_WORLD,
-                    MC_RUN_ON_CLIENT_THREAD
-            );
+    private ProxyExecutable mcMember() {
+        return ignored -> ScriptUtils.wrapReturn(
+                McUtils.getMc(),
+                classResolver.getMappingsManager(),
+                scriptManager
+        );
+    }
 
-            @Override
-            public Object getMember(String key) {
-                return switch (key) {
-                    case MC_RAW -> classResolver.getOrCreateWrapper(McUtils.class.getName());
-                    case MC_GET_MC -> (ProxyExecutable) args -> McUtils.getMc();
-                    case MC_GET_PLAYER -> (ProxyExecutable) args -> McUtils.getPlayer();
-                    case MC_GET_WORLD -> (ProxyExecutable) args -> McUtils.getWorld();
-                    case MC_CLIENT -> (ProxyExecutable) args -> ScriptUtils.wrapReturn(
-                            MinecraftClient.getInstance(),
-                            classResolver.getMappingsManager(),
-                            scriptManager
-                    );
-                    case MC_PLAYER -> (ProxyExecutable) args -> {
-                        MinecraftClient client = MinecraftClient.getInstance();
-                        return client != null
-                                ? ScriptUtils.wrapReturn(client.player, classResolver.getMappingsManager(), scriptManager)
-                                : null;
-                    };
-                    case MC_WORLD -> (ProxyExecutable) args -> {
-                        MinecraftClient client = MinecraftClient.getInstance();
-                        return client != null
-                                ? ScriptUtils.wrapReturn(client.world, classResolver.getMappingsManager(), scriptManager)
-                                : null;
-                    };
-                    case MC_RUN_ON_CLIENT_THREAD -> (ProxyExecutable) args -> {
-                        if (args.length != 1 || args[0] == null || !args[0].canExecute()) {
-                            throw new IllegalArgumentException("runOnClientThread requires a callback function.");
-                        }
-                        RunningScript owner = currentScript();
-                        Value callback = args[0];
-                        MinecraftClient client = MinecraftClient.getInstance();
-                        client.send(() -> executeCallback(owner, callback));
-                        return null;
-                    };
-                    default -> null;
-                };
-            }
+    private ProxyExecutable runOnClientThreadMember() {
+        return this::runOnClientThread;
+    }
 
-            @Override
-            public Object getMemberKeys() {
-                return keys.toArray(new String[0]);
-            }
+    private ProxyExecutable worldMember() {
+        return ignored -> McUtils.getWorld()
+                .map(world -> ScriptUtils.wrapReturn(world, classResolver.getMappingsManager(), scriptManager))
+                .orElse(null);
+    }
 
-            @Override
-            public boolean hasMember(String key) {
-                return keys.contains(key);
-            }
+    private ProxyExecutable playerMember() {
+        return ignored -> McUtils.getPlayer()
+                .map(player -> ScriptUtils.wrapReturn(player, classResolver.getMappingsManager(), scriptManager))
+                .orElse(null);
+    }
 
-            @Override
-            public void putMember(String key, Value value) {
-                throw new UnsupportedOperationException("Cannot modify MQS.utils.mc.");
-            }
+    private Object chatMember() {
+        return classResolver.getOrCreateWrapper(ChatUtils.class.getName());
+    }
+
+    private Object mathMember() {
+        return classResolver.getOrCreateWrapper(Math.class.getName());
+    }
+
+    private ProxyExecutable schedulerTimeoutMember() {
+        return args -> {
+            ensureCallback(args);
+            RunningScript owner = requireCurrentScript();
+            Value callback = args[0];
+            int delay = args.length > 1 ? Math.max(0, args[1].asInt()) : 0;
+            Runnable cancel = scriptScheduler.scheduleTickTimeout(owner, callback, delay);
+            return contextHelper.createIdempotentDisposer(owner, cancel);
         };
     }
 
-    private ProxyObject createScheduleProxy() {
-        return new ProxyObject() {
-            private final Set<String> keys = Set.of(
-                    SCHEDULE_TICK_TIMEOUT,
-                    SCHEDULE_MS_TIMEOUT,
-                    SCHEDULE_TICK_INTERVAL
-            );
-
-            @Override
-            public Object getMember(String key) {
-                return switch (key) {
-                    case SCHEDULE_TICK_TIMEOUT -> (ProxyExecutable) args -> {
-                        ensureCallback(args);
-                        RunningScript owner = currentScript();
-                        Value callback = args[0];
-                        int delay = args.length > 1 ? Math.max(0, args[1].asInt()) : 0;
-                        Runnable cancel = scheduler.scheduleTickTimeout(owner, callback, delay);
-                        return toDisposer(owner, cancel);
-                    };
-                    case SCHEDULE_MS_TIMEOUT -> (ProxyExecutable) args -> {
-                        ensureCallback(args);
-                        RunningScript owner = currentScript();
-                        Value callback = args[0];
-                        long delay = args.length > 1 ? Math.max(0L, args[1].asLong()) : 0L;
-                        Runnable cancel = scheduler.scheduleMsTimeout(owner, callback, delay);
-                        return toDisposer(owner, cancel);
-                    };
-                    case SCHEDULE_TICK_INTERVAL -> (ProxyExecutable) args -> {
-                        ensureCallback(args);
-                        if (args.length < 2 || !args[1].isNumber()) {
-                            throw new IllegalArgumentException("tickInterval requires an interval in ticks.");
-                        }
-                        RunningScript owner = currentScript();
-                        Value callback = args[0];
-                        int interval = Math.max(1, args[1].asInt());
-                        Runnable cancel = scheduler.scheduleTickInterval(owner, callback, interval);
-                        return toDisposer(owner, cancel);
-                    };
-                    default -> null;
-                };
+    private ProxyExecutable schedulerIntervalMember() {
+        return args -> {
+            ensureCallback(args);
+            if (args.length < 2 || !args[1].isNumber()) {
+                throw new IllegalArgumentException("interval requires an interval in ticks.");
             }
-
-            @Override
-            public Object getMemberKeys() {
-                return keys.toArray(new String[0]);
-            }
-
-            @Override
-            public boolean hasMember(String key) {
-                return keys.contains(key);
-            }
-
-            @Override
-            public void putMember(String key, Value value) {
-                throw new UnsupportedOperationException("Cannot modify MQS.utils.schedule.");
-            }
+            RunningScript owner = requireCurrentScript();
+            Value callback = args[0];
+            int interval = Math.max(1, args[1].asInt());
+            Runnable cancel = scriptScheduler.scheduleTickInterval(owner, callback, interval);
+            return contextHelper.createIdempotentDisposer(owner, cancel);
         };
+    }
+
+    private Object runOnClientThread(Value[] args) {
+        ApiArgumentChecks.requireArgCount(args, 1, REQUIRE_CALLBACK_FUNCTION_ERROR);
+        ApiArgumentChecks.requireExecutable(args, 0, REQUIRE_CALLBACK_FUNCTION_ERROR);
+        RunningScript owner = requireCurrentScript();
+        Value callback = args[0];
+        McUtils.getMc().execute(() -> executeCallback(owner, callback));
+        return null;
     }
 
     private void ensureCallback(Value[] args) {
-        if (args.length == 0 || args[0] == null || !args[0].canExecute()) {
-            throw new IllegalArgumentException("First argument must be a callback function.");
-        }
-        if (args.length > 1 && args[1] != null && !args[1].isNumber()) {
-            throw new IllegalArgumentException("Delay must be numeric.");
+        ApiArgumentChecks.requireExecutable(args, 0, "First argument must be a callback function.");
+        if (args.length > 1 && args[1] != null) {
+            ApiArgumentChecks.requireNumber(args, 1, "Delay must be numeric.");
         }
     }
 
-    private RunningScript currentScript() {
-        RunningScript script = scriptManager.getCurrentScript();
-        if (script == null) {
-            throw new IllegalStateException("MQS.utils helpers must be invoked from an active script.");
-        }
-        return script;
-    }
-
-    private Value toDisposer(RunningScript owner, Runnable cancel) {
-        ProxyExecutable exec = disposeArgs -> {
-            cancel.run();
-            return null;
-        };
-        return owner.getContext().asValue(exec);
+    private RunningScript requireCurrentScript() {
+        return contextHelper.require("MQS.utils");
     }
 
     private void executeCallback(RunningScript owner, Value callback) {
-        RunningScript previous = scriptManager.getCurrentScript();
-        scriptManager.setCurrentScript(owner);
-        try {
-            callback.execute();
-        } catch (IllegalStateException ignored) {
-        } catch (Exception e) {
-            Main.LOGGER.error("runOnClientThread callback threw for script '{}'", owner.getName(), e);
-        } finally {
-            if (previous != null) {
-                scriptManager.setCurrentScript(previous);
-            } else {
-                scriptManager.clearCurrentScript();
+        contextHelper.executeWithScript(owner, () -> {
+            try {
+                callback.execute();
+            } catch (IllegalStateException ignored) {
+                // Ignore script cancellation exceptions
+            } catch (Exception e) {
+                Main.LOGGER.error("runOnClientThread callback threw for script '{}'", owner.getName(), e);
             }
-        }
+        });
     }
 }

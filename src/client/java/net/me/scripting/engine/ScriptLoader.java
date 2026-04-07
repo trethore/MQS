@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -29,11 +29,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ScriptLoader {
-    public ScriptLoader() {
+public final class ScriptLoader {
+    private ScriptLoader() {
+        throw new UnsupportedOperationException("Utility class");
     }
 
-    public Map<String, Value> loadModules(Path scriptPath, Context context, ThreadLocal<Map<String, Value>> perFileExports) {
+    public static Map<String, Value> loadScripts(Path scriptPath, Context context, ThreadLocal<Map<String, Value>> perFileExports) {
         perFileExports.set(new HashMap<>());
         try {
             Source source = Source.newBuilder(ScriptConstants.JS, scriptPath.toFile())
@@ -46,7 +47,7 @@ public class ScriptLoader {
             if (e instanceof PolyglotException polyEx && polyEx.isHostException()) {
                 Main.LOGGER.error("A Java error occurred while loading script: {}", scriptPath, polyEx.asHostException());
             } else {
-                Main.LOGGER.error("Failed to load or parse script file for modules: {}", scriptPath, e);
+                Main.LOGGER.error("Failed to load or parse script file for scripts: {}", scriptPath, e);
             }
             return Collections.emptyMap();
         } finally {

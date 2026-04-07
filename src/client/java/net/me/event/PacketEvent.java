@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,13 +19,13 @@
 package net.me.event;
 
 import lombok.Getter;
-import net.minecraft.network.packet.Packet;
+import net.minecraft.network.protocol.Packet;
 
 @Getter
 public abstract class PacketEvent<T extends Packet<?>> extends CancellableEvent {
     private final T packet;
 
-    public PacketEvent(T packet) {
+    protected PacketEvent(T packet) {
         this.packet = packet;
     }
 

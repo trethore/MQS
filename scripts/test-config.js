@@ -1,21 +1,21 @@
-const Text = net.minecraft.text.Text;
-// @module(main=TestConfigModule, name=Test Config Module, version=0.0.1)
-class TestConfigModule {
+const Component = net.minecraft.network.chat.Component;
+// @script(id=TestConfigScript, name=Test Config Script, version=0.0.1)
+class TestConfigScript {
     onEnable() {
-        // triggered when the module is enabled
-        println("Hello from Test Config Module!");
+        // triggered when the script is enabled
+        println("Hello from Test Config Script!");
         const name = MQS.config.getString("name", "Toto");
-        //MQS.config.set("name", "Tata");
-        const player = MQS.utils.mc.player();
+        const player = MQS.utils.player();
         if (player) {
-            player.sendMessage(Text.literal(`Hello ${name}`), false);
+            const message = `Hello ${name}`;
+            player.displayClientMessage(Component.literal(message), false);
         }
     }
 
     onDisable() {
-        // triggered when the module is disabled
-        println("Goodbye from Test Config Module!");
+        // triggered when the script is disabled
+        println("Goodbye from Test Config Script!");
     }
 }
 
-exportModule(TestConfigModule);
+exportScript(TestConfigScript);

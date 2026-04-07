@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,24 +20,24 @@ package net.me.event.events.world;
 
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.world.ClientWorld;
+import net.minecraft.client.multiplayer.ClientLevel;
 import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("unused")
 public class WorldChangeEvent extends Event {
-    private final ClientWorld world;
+    private final ClientLevel world;
 
-    public WorldChangeEvent(@Nullable ClientWorld world) {
+    public WorldChangeEvent(@Nullable ClientLevel world) {
         this.world = world;
     }
 
     @Nullable
-    public ClientWorld getWorld() {
+    public ClientLevel getWorld() {
         return world;
     }
 
     @Override
     public Events getType() {
-        return Events.WorldChangeEvent;
+        return Events.WORLD_CHANGE_EVENT;
     }
 }

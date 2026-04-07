@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,9 +21,9 @@ package net.me.scripting.engine;
 import net.me.Main;
 import net.me.config.ConfigKeys;
 import net.me.config.GlobalConfigManager;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.ScriptDescriptor;
+import net.me.utils.PathUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 public class ScriptDiscoverer {
 
-    private static final Pattern MODULE_ANNOTATION_PATTERN = Pattern.compile("^//\\s*@module\\((.*)\\)");
+    private static final Pattern SCRIPT_ANNOTATION_PATTERN = Pattern.compile("^//\\s*@script\\((.*)\\)");
     private final GlobalConfigManager globalConfigManager;
     private final Path defaultScriptsDir = Main.MOD_DIR.resolve("scripts");
 
@@ -52,7 +52,7 @@ public class ScriptDiscoverer {
             discoverScriptsInDirectory(directory, availableScripts);
         }
 
-        Main.LOGGER.info("Discovered {} available script modules from {} directories.", availableScripts.size(), scriptDirectories.size());
+        Main.LOGGER.info("Discovered {} available scripts from {} directories.", availableScripts.size(), scriptDirectories.size());
         return availableScripts;
     }
 
@@ -65,58 +65,70 @@ public class ScriptDiscoverer {
         try (Stream<Path> paths = Files.walk(directory)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".js"))
-                    .forEach(path -> discoverModulesInFile(path, availableScripts));
+                    .forEach(path -> discoverScriptsInFile(path, availableScripts));
         } catch (IOException e) {
             Main.LOGGER.error("Error discovering scripts in {}", directory, e);
         }
     }
 
-    private void discoverModulesInFile(Path path, Map<String, ScriptDescriptor> availableScripts) {
+    private void discoverScriptsInFile(Path path, Map<String, ScriptDescriptor> availableScripts) {
         try {
             List<String> lines = Files.readAllLines(path);
-            for (String line : lines) {
-                Matcher matcher = MODULE_ANNOTATION_PATTERN.matcher(line.trim());
-                if (matcher.matches()) {
-                    String content = matcher.group(1);
-                    Map<String, String> metadata = parseModuleMetadata(content);
-
-                    String mainClass = metadata.get(ConfigKeys.SCRIPT_META_MAIN);
-                    String moduleName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
-
-                    if (mainClass == null || moduleName == null) {
-                        Main.LOGGER.warn("Skipping malformed @module in {}: 'main' and 'name' properties are required. Found: {}", path.getFileName(), line);
-                        continue;
-                    }
-
-                    String version = metadata.getOrDefault(ConfigKeys.SCRIPT_META_VERSION, "N/A");
-                    ScriptDescriptor descriptor = new ScriptDescriptor(path, moduleName, version, mainClass);
-
-                    if (availableScripts.containsKey(descriptor.getId())) {
-                        Main.LOGGER.warn("Duplicate script ID found in {}: {}. The last one found will be used.", path.getFileName(), descriptor.getId());
-                    }
-                    availableScripts.put(descriptor.getId(), descriptor);
-                }
-            }
+            lines.stream()
+                    .map(String::trim)
+                    .map(SCRIPT_ANNOTATION_PATTERN::matcher)
+                    .filter(Matcher::matches)
+                    .forEach(matcher -> processScriptAnnotation(path, matcher.group(1), availableScripts));
         } catch (IOException e) {
             Main.LOGGER.error("Could not read script file for metadata: {}", path, e);
         }
     }
 
-    private Map<String, String> parseModuleMetadata(String content) {
+    private void processScriptAnnotation(Path path, String content, Map<String, ScriptDescriptor> availableScripts) {
+        Map<String, String> metadata = parseScriptMetadata(content);
+
+        String scriptExportId = metadata.get(ConfigKeys.SCRIPT_META_ID);
+        String scriptName = metadata.get(ConfigKeys.SCRIPT_META_NAME);
+
+        if (scriptExportId == null || scriptName == null) {
+            Main.LOGGER.warn("Skipping malformed @script in {}: 'id' and 'name' are required.", path.getFileName());
+            return;
+        }
+
+        String version = metadata.getOrDefault(ConfigKeys.SCRIPT_META_VERSION, "N/A");
+        ScriptDescriptor descriptor = new ScriptDescriptor(path, scriptName, version, scriptExportId);
+
+        if (availableScripts.containsKey(descriptor.getId())) {
+            Main.LOGGER.warn("Duplicate script ID found in {}: {}. The last one found will be used.",
+                    path.getFileName(), descriptor.getId());
+        }
+        availableScripts.put(descriptor.getId(), descriptor);
+    }
+
+    private Map<String, String> parseScriptMetadata(String content) {
         Map<String, String> metadata = new HashMap<>();
-        String[] pairs = content.split(",");
-        for (String pair : pairs) {
+        for (String pair : content.split(",")) {
             String[] keyValue = pair.split("=", 2);
-            if (keyValue.length == 2) {
-                String key = keyValue[0].trim();
-                String value = keyValue[1].trim();
-                if (value.startsWith("'") && value.endsWith("'") || value.startsWith("\"") && value.endsWith("\"")) {
-                    value = value.substring(1, value.length() - 1);
-                }
-                metadata.put(key, value);
+            if (keyValue.length != 2) {
+                continue;
             }
+            String key = keyValue[0].trim();
+            String value = stripQuotes(keyValue[1].trim());
+            metadata.put(key, value);
         }
         return metadata;
+    }
+
+    private String stripQuotes(String value) {
+        if (value.length() < 2) {
+            return value;
+        }
+        char first = value.charAt(0);
+        char last = value.charAt(value.length() - 1);
+        if ((first == '\'' || first == '"') && first == last) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 
     private void ensureDirectoryExists(Path directory) {
@@ -134,20 +146,16 @@ public class ScriptDiscoverer {
         directories.add(defaultScriptsDir);
 
         if (globalConfigManager != null) {
-            List<String> configured = globalConfigManager.getAdditionalScriptDirectories();
-            for (String entry : configured) {
-                Path resolved = resolveConfiguredPath(entry);
-                if (resolved != null) {
-                    directories.add(resolved);
-                }
-            }
+            globalConfigManager.getAdditionalScriptDirectories().stream()
+                    .map(this::resolveConfiguredPath)
+                    .filter(Objects::nonNull)
+                    .forEach(directories::add);
         }
 
-        Set<Path> unique = new LinkedHashSet<>();
-        for (Path directory : directories) {
-            unique.add(directory.normalize());
-        }
-        return new ArrayList<>(unique);
+        return directories.stream()
+                .map(Path::normalize)
+                .distinct()
+                .toList();
     }
 
     private Path resolveConfiguredPath(String entry) {
@@ -159,7 +167,7 @@ public class ScriptDiscoverer {
             return null;
         }
 
-        String expanded = expandHomeDirectory(trimmed);
+        String expanded = PathUtils.expandHomeDirectory(trimmed);
         Path candidate;
         try {
             candidate = Path.of(expanded);
@@ -172,20 +180,5 @@ public class ScriptDiscoverer {
             candidate = Main.MOD_DIR.resolve(candidate);
         }
         return candidate.normalize();
-    }
-
-    private String expandHomeDirectory(String path) {
-        if (path.startsWith("~")) {
-            String home = System.getProperty("user.home");
-            if (home != null && !home.isBlank()) {
-                if (path.equals("~")) {
-                    return home;
-                }
-                if (path.startsWith("~" + File.separator) || path.startsWith("~/") || path.startsWith("~\\")) {
-                    return home + path.substring(1);
-                }
-            }
-        }
-        return path;
     }
 }

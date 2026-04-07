@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -36,8 +36,8 @@ public class MethodLookup {
     }
 
     private static List<Method> findAndCache(Class<?> cls, String cacheKey, List<String> namesToSearch) {
-        Map<String, List<Method>> classCache = methodCache.computeIfAbsent(cls, k -> new ConcurrentHashMap<>());
-        return classCache.computeIfAbsent(cacheKey, k -> ReflectionUtils.findMethods(cls, namesToSearch, false));
+        Map<String, List<Method>> classCache = methodCache.computeIfAbsent(cls, ignored -> new ConcurrentHashMap<>());
+        return classCache.computeIfAbsent(cacheKey, ignored -> ReflectionUtils.findMethods(cls, namesToSearch, false));
     }
 
     public static List<Method> findDirect(Class<?> cls, String key) {

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("java:S3011") // Accessibility bypass is intentional for this reflection utility
 public final class FastAccessorUtils {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
@@ -41,7 +42,7 @@ public final class FastAccessorUtils {
                 m.setAccessible(true);
                 return LOOKUP.unreflect(m);
             } catch (IllegalAccessException e) {
-                throw new RuntimeException("Failed to create MethodHandle for: " + m, e);
+                throw new ReflectionAccessException("Failed to create MethodHandle for: " + m, e);
             }
         });
     }
@@ -52,7 +53,7 @@ public final class FastAccessorUtils {
                 f.setAccessible(true);
                 return LOOKUP.unreflectGetter(f);
             } catch (IllegalAccessException e) {
-                throw new RuntimeException("Failed to create getter MethodHandle for: " + f, e);
+                throw new ReflectionAccessException("Failed to create getter MethodHandle for: " + f, e);
             }
         });
     }
@@ -63,8 +64,14 @@ public final class FastAccessorUtils {
                 f.setAccessible(true);
                 return LOOKUP.unreflectSetter(f);
             } catch (IllegalAccessException e) {
-                throw new RuntimeException("Failed to create setter MethodHandle for: " + f, e);
+                throw new ReflectionAccessException("Failed to create setter MethodHandle for: " + f, e);
             }
         });
+    }
+
+    public static class ReflectionAccessException extends RuntimeException {
+        public ReflectionAccessException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

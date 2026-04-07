@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,6 +20,8 @@ package net.me.console;
 
 import lombok.Getter;
 
+import java.util.Optional;
+
 @Getter
 public abstract class ConsoleCommand {
     private final ConsoleManager consoleManager;
@@ -27,8 +29,7 @@ public abstract class ConsoleCommand {
     private final String description;
     private final String usage;
 
-
-    public ConsoleCommand(ConsoleManager consoleManager, String name, String description, String usage) {
+    protected ConsoleCommand(ConsoleManager consoleManager, String name, String description, String usage) {
         this.consoleManager = consoleManager;
         this.name = name;
         this.description = description;
@@ -36,5 +37,20 @@ public abstract class ConsoleCommand {
     }
 
     public abstract void execute(String[] args);
+
+    protected Optional<Boolean> parseRequiredBooleanArg(String[] args) {
+        if (args.length != 1) {
+            consoleManager.logError("Invalid arguments. Usage: " + getUsage());
+            return Optional.empty();
+        }
+
+        Optional<Boolean> parsedBoolean = ConsoleUtils.parseBooleanArg(args[0]);
+        if (parsedBoolean.isEmpty()) {
+            consoleManager.logError(
+                    "Invalid argument '" + args[0] + "'. Must be '" + ConsoleUtils.TRUE_STRING + "' or '" + ConsoleUtils.FALSE_STRING + "'."
+            );
+        }
+        return parsedBoolean;
+    }
 
 }

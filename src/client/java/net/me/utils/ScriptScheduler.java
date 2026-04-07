@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,7 +21,7 @@ package net.me.utils;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.Main;
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
 import org.graalvm.polyglot.Value;
 
 import java.util.*;
@@ -36,7 +36,7 @@ public class ScriptScheduler {
 
     public ScriptScheduler(ScriptManager scriptManager) {
         this.scriptManager = scriptManager;
-        ClientTickEvents.END_CLIENT_TICK.register(client -> onTick());
+        ClientTickEvents.END_CLIENT_TICK.register(ignored -> onTick());
     }
 
     public Runnable scheduleTickTimeout(RunningScript owner, Value callback, int delayTicks) {
@@ -85,7 +85,7 @@ public class ScriptScheduler {
         AtomicBoolean disposed = new AtomicBoolean(false);
         synchronized (tasks) {
             tasks.add(task);
-            tasksByScript.computeIfAbsent(task.owner(), key -> new HashSet<>()).add(task);
+            tasksByScript.computeIfAbsent(task.owner(), ignored -> new HashSet<>()).add(task);
         }
         return () -> cancelTask(task, disposed);
     }
@@ -94,18 +94,7 @@ public class ScriptScheduler {
         if (!guard.compareAndSet(false, true)) {
             return;
         }
-        synchronized (tasks) {
-            if (tasks.remove(task)) {
-                Set<ScheduledTask> owned = tasksByScript.get(task.owner());
-                if (owned != null) {
-                    owned.remove(task);
-                    if (owned.isEmpty()) {
-                        tasksByScript.remove(task.owner());
-                    }
-                }
-            }
-        }
-        task.markCancelled();
+        cancelTaskInternal(task);
     }
 
     private void cancelTaskInternal(ScheduledTask task) {
@@ -135,23 +124,25 @@ public class ScriptScheduler {
         }
 
         for (ScheduledTask task : snapshot) {
-            if (task.isCancelled()) {
-                continue;
-            }
-            try {
-                if (!task.shouldRun(tickCounter, now)) {
-                    continue;
-                }
-                executeTask(task);
-                if (task.isInterval()) {
-                    task.reschedule(tickCounter, now);
-                } else {
-                    cancelTaskInternal(task);
-                }
-            } catch (Exception e) {
-                Main.LOGGER.error("Error running scheduled task for script '{}'", task.owner().getName(), e);
+            processTask(task, tickCounter, now);
+        }
+    }
+
+    private void processTask(ScheduledTask task, long currentTick, long now) {
+        if (task.isCancelled() || !task.shouldRun(currentTick, now)) {
+            return;
+        }
+
+        try {
+            executeTask(task);
+            if (task.isInterval()) {
+                task.reschedule(currentTick, now);
+            } else {
                 cancelTaskInternal(task);
             }
+        } catch (Exception e) {
+            Main.LOGGER.error("Error running scheduled task for script '{}'", task.owner().getName(), e);
+            cancelTaskInternal(task);
         }
     }
 
@@ -166,6 +157,7 @@ public class ScriptScheduler {
         try {
             callback.execute();
         } catch (IllegalStateException ignored) {
+            // Script engine has been disposed.
         } catch (Exception e) {
             Main.LOGGER.error("Scheduled callback threw for script '{}'", owner.getName(), e);
         } finally {

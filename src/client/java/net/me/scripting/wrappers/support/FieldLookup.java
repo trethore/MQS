@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -38,7 +38,7 @@ public class FieldLookup {
         try {
             accessField(cls, key);
             return true;
-        } catch (NoSuchFieldException e) {
+        } catch (NoSuchFieldException ignored) {
             return false;
         }
     }
@@ -48,7 +48,7 @@ public class FieldLookup {
     }
 
     public Field accessField(Class<?> cls, String key) throws NoSuchFieldException {
-        Map<String, Field> classCache = fieldCache.computeIfAbsent(cls, k -> new ConcurrentHashMap<>());
+        Map<String, Field> classCache = fieldCache.computeIfAbsent(cls, ignored -> new ConcurrentHashMap<>());
         Field cachedField = classCache.get(key);
         if (cachedField != null) {
             return cachedField;

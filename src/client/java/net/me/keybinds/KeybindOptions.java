@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,16 +22,13 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
 public final class KeybindOptions {
-    private static final String KEY_PROP = "key";
     private static final String REPEATABLE_PROP = "repeatable";
     private static final String DEBOUNCE_PROP = "debounce";
 
-    private final int keyCode;
     private final boolean repeatable;
     private final int debounceMillis;
 
-    private KeybindOptions(int keyCode, boolean repeatable, int debounceMillis) {
-        this.keyCode = keyCode;
+    private KeybindOptions(boolean repeatable, int debounceMillis) {
         this.repeatable = repeatable;
         this.debounceMillis = debounceMillis;
     }
@@ -40,42 +37,63 @@ public final class KeybindOptions {
         return new Builder();
     }
 
-    public static KeybindOptions fromScript(Value optionsValue, int defaultKeyCode) {
+    public static KeybindOptions fromScript(Value optionsValue) {
         if (optionsValue == null) {
-            return builder().keyCode(defaultKeyCode).build();
+            return builder().build();
         }
-        if (optionsValue.isHostObject()) {
-            Object hostObject = optionsValue.asHostObject();
-            if (hostObject instanceof KeybindOptions options) {
-                return options.withKeyCode(defaultKeyCode);
-            }
-            if (hostObject instanceof KeybindOptions.Builder builder) {
-                return builder.buildWithDefaultKey(defaultKeyCode);
-            }
+        KeybindOptions hostOptions = fromHostObject(optionsValue);
+        if (hostOptions != null) {
+            return hostOptions;
         }
 
-        int keyCode = defaultKeyCode;
         boolean repeatable = false;
         int debounceMillis = 100;
 
-        if (optionsValue.hasMembers()) {
-            if (optionsValue.hasMember(KEY_PROP) && optionsValue.getMember(KEY_PROP).isNumber()) {
-                keyCode = optionsValue.getMember(KEY_PROP).asInt();
-            }
-            if (optionsValue.hasMember(REPEATABLE_PROP) && optionsValue.getMember(REPEATABLE_PROP).isBoolean()) {
-                repeatable = optionsValue.getMember(REPEATABLE_PROP).asBoolean();
-            }
-            if (optionsValue.hasMember(DEBOUNCE_PROP) && optionsValue.getMember(DEBOUNCE_PROP).isNumber()) {
-                int candidate = optionsValue.getMember(DEBOUNCE_PROP).asInt();
-                debounceMillis = Math.max(0, candidate);
-            }
+        if (!optionsValue.hasMembers()) {
+            return new KeybindOptions(repeatable, debounceMillis);
         }
 
-        return new KeybindOptions(keyCode, repeatable, debounceMillis);
+        repeatable = readRepeatableMember(optionsValue, repeatable);
+        debounceMillis = readDebounceMember(optionsValue, debounceMillis);
+
+        return new KeybindOptions(repeatable, debounceMillis);
     }
 
-    public int keyCode() {
-        return keyCode;
+    private static KeybindOptions fromHostObject(Value optionsValue) {
+        if (!optionsValue.isHostObject()) {
+            return null;
+        }
+        Object hostObject = optionsValue.asHostObject();
+        if (hostObject instanceof KeybindOptions options) {
+            return options;
+        }
+        if (hostObject instanceof KeybindOptions.Builder builder) {
+            return builder.build();
+        }
+        return null;
+    }
+
+    private static boolean readRepeatableMember(Value optionsValue, boolean defaultValue) {
+        if (!optionsValue.hasMember(REPEATABLE_PROP)) {
+            return defaultValue;
+        }
+        Value memberValue = optionsValue.getMember(REPEATABLE_PROP);
+        if (!memberValue.isBoolean()) {
+            return defaultValue;
+        }
+        return memberValue.asBoolean();
+    }
+
+    private static int readDebounceMember(Value optionsValue, int defaultValue) {
+        if (!optionsValue.hasMember(DEBOUNCE_PROP)) {
+            return defaultValue;
+        }
+        Value memberValue = optionsValue.getMember(DEBOUNCE_PROP);
+        if (!memberValue.isNumber()) {
+            return defaultValue;
+        }
+        int value = memberValue.asInt();
+        return Math.max(0, value);
     }
 
     public boolean repeatable() {
@@ -86,26 +104,14 @@ public final class KeybindOptions {
         return debounceMillis;
     }
 
-    public KeybindOptions withKeyCode(int keyCode) {
-        if (this.keyCode == keyCode) {
-            return this;
-        }
-        return new KeybindOptions(keyCode, repeatable, debounceMillis);
-    }
-
     public static final class Builder {
-        private int keyCode = Keys.UNBOUND.getCode();
         private boolean repeatable;
         private int debounceMillis = 100;
 
         @HostAccess.Export
-        public Builder key(int keyCode) {
-            this.keyCode = keyCode;
+        public Builder repeatable() {
+            this.repeatable = true;
             return this;
-        }
-
-        public Builder keyCode(int keyCode) {
-            return key(keyCode);
         }
 
         @HostAccess.Export
@@ -130,14 +136,7 @@ public final class KeybindOptions {
 
         @HostAccess.Export
         public KeybindOptions build() {
-            return new KeybindOptions(keyCode, repeatable, debounceMillis);
-        }
-
-        public KeybindOptions buildWithDefaultKey(int defaultKeyCode) {
-            if (keyCode == Keys.UNBOUND.getCode()) {
-                return build().withKeyCode(defaultKeyCode);
-            }
-            return build();
+            return new KeybindOptions(repeatable, debounceMillis);
         }
     }
 }

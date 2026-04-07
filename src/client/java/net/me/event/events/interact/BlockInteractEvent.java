@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,18 +21,18 @@ package net.me.event.events.interact;
 import lombok.Getter;
 import net.me.event.CancellableEvent;
 import net.me.event.Events;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
 
 @Getter
 @SuppressWarnings("unused")
 public class BlockInteractEvent extends CancellableEvent {
-    private final PlayerEntity player;
-    private final Hand hand;
+    private final Player player;
+    private final InteractionHand hand;
     private final BlockHitResult hitResult;
 
-    public BlockInteractEvent(PlayerEntity player, Hand hand, BlockHitResult hitResult) {
+    public BlockInteractEvent(Player player, InteractionHand hand, BlockHitResult hitResult) {
         this.player = player;
         this.hand = hand;
         this.hitResult = hitResult;
@@ -40,6 +40,6 @@ public class BlockInteractEvent extends CancellableEvent {
 
     @Override
     public Events getType() {
-        return Events.BlockInteractEvent;
+        return Events.BLOCK_INTERACT_EVENT;
     }
 }

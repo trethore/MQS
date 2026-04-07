@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,8 +18,8 @@
 
 package net.me.scripting;
 
-import net.me.scripting.module.RunningScript;
-import net.me.scripting.module.ScriptDescriptor;
+import net.me.scripting.script.RunningScript;
+import net.me.scripting.script.ScriptDescriptor;
 
 import java.util.Collection;
 import java.util.List;
@@ -73,14 +73,14 @@ public class ScriptingService {
     public String getFormattedScriptList() {
         Collection<ScriptDescriptor> available = listAvailable();
         if (available.isEmpty()) {
-            return "No scripts found. Add .js files to the 'my-qol-scripts/scripts' folder.";
+            return "No scripts found. Add .js files to the 'myqolscripts/scripts' folder.";
         }
 
         return available.stream()
                 .map(descriptor -> {
                     boolean isRunning = isRunning(descriptor.getId());
                     String status = isRunning ? "§a[ENABLED]" : "§c[DISABLED]";
-                    return String.format(" - %s (%s) %s", descriptor.moduleName(), descriptor.getId(), status);
+                    return String.format(" - %s (%s) %s", descriptor.scriptName(), descriptor.getId(), status);
                 })
                 .collect(Collectors.joining("\n"));
     }
@@ -107,6 +107,12 @@ public class ScriptingService {
     }
 
     public int saveAll() {
-        return configManager.saveAllConfigs();
+        Collection<RunningScript> runningScripts = scriptManager.getRunningScripts();
+        if (runningScripts.isEmpty()) {
+            return 0;
+        }
+
+        runningScripts.forEach(configManager::saveConfig);
+        return runningScripts.size();
     }
 }

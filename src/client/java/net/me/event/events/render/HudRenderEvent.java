@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,26 +21,26 @@ package net.me.event.events.render;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.gui.GuiGraphics;
 
 @Getter
 @SuppressWarnings("unused")
 public class HudRenderEvent extends Event {
-    private final DrawContext drawContext;
-    private final RenderTickCounter tickCounter;
+    private final GuiGraphics drawContext;
+    private final DeltaTracker tickCounter;
 
-    public HudRenderEvent(DrawContext drawContext, RenderTickCounter tickCounter) {
+    public HudRenderEvent(GuiGraphics drawContext, DeltaTracker tickCounter) {
         this.drawContext = drawContext;
         this.tickCounter = tickCounter;
     }
 
     public float getPartialTicks() {
-        return tickCounter.getTickDelta(true);
+        return tickCounter.getGameTimeDeltaPartialTick(true);
     }
 
     @Override
     public Events getType() {
-        return Events.HudRenderEvent;
+        return Events.HUD_RENDER_EVENT;
     }
 }

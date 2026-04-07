@@ -1,23 +1,20 @@
-const Text = net.minecraft.text.Text;
-const KEY_CODE = 66;
-// @module(main=TestKeybind, name=Test Keybind Module, version=0.0.1)
+const KEY_CODE = 66; // B
+// @script(id=TestKeybind, name=Test Keybind Script, version=0.0.1)
 class TestKeybind {
 
     disposer = null;
     onEnable() {
-        // triggered when the module is enabled
-        println("Hello from Test Keybind Module!");
+        MQS.utils.chat.addInfoChatMessage("Hello from Test Keybind Script!", true);
         this.disposer = MQS.keybinds.bind(
             "test_keybind",
             KEY_CODE,
             this.onKeyPress.bind(this),
-            MQS.keybinds.options().repeatable(true).build()
+            MQS.keybinds.options().repeatable().build()
         );
     }
 
     onDisable() {
-        // triggered when the module is disabled
-        println("Goodbye from Test Keybind Module!");
+        MQS.utils.chat.addInfoChatMessage("Goodbye from Test Keybind Script!", true);
         if (this.disposer) {
             this.disposer();
             this.disposer = null;
@@ -25,11 +22,8 @@ class TestKeybind {
     }
 
     onKeyPress() {
-        const player = MQS.utils.mc.player();
-        if (player) {
-            player.sendMessage(Text.literal("Hello from Test Keybind!"), false);
-        }
+        MQS.utils.chat.addInfoChatMessage("Hello from Test Keybind!", true);
     }
 }
 
-exportModule(TestKeybind);
+exportScript(TestKeybind);

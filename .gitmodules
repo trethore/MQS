@@ -1,4 +1,0 @@
-[submodule "libs-docs/minegui"]
-	path = libs-docs/minegui
-	url = https://github.com/trethore/MineGui.git
-	branch = main

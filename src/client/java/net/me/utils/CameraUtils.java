@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,25 +18,20 @@
 
 package net.me.utils;
 
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 
 @SuppressWarnings("unused")
 public final class CameraUtils {
     private CameraUtils() {
     }
 
-    public static Vec3d getCameraPos() {
-        return McUtils.getMc()
-                .map(mc -> mc.getBlockEntityRenderDispatcher().camera.getPos())
-                .orElse(Vec3d.ZERO);
+    public static Vec3 getCameraPos() {
+        return McUtils.getMc().gameRenderer.getMainCamera().position();
     }
 
-
     public static BlockPos getCameraBlockPos() {
-        return McUtils.getMc()
-                .map(mc -> mc.getBlockEntityRenderDispatcher().camera.getBlockPos())
-                .orElse(BlockPos.ORIGIN);
+        return McUtils.getMc().gameRenderer.getMainCamera().blockPosition();
     }
 
 }

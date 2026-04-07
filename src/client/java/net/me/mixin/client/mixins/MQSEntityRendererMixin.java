@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,14 +18,15 @@
 
 package net.me.mixin.client.mixins;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.me.event.MQSEventBus;
 import net.me.event.events.render.EntityRenderEvent;
 import net.me.event.events.render.NameTagRenderEvent;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderer;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.CameraRenderState;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -34,9 +35,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(EntityRenderer.class)
 public class MQSEntityRendererMixin<S extends EntityRenderState> {
 
-    @Inject(method = "render", at = @At("HEAD"), cancellable = true)
-    private void onRenderPre(S state, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        EntityRenderEvent.Pre<S> event = new EntityRenderEvent.Pre<>(state, matrices, vertexConsumers, light);
+    @Inject(method = "submit", at = @At("HEAD"), cancellable = true)
+    private void onRenderPre(S state, PoseStack matrices, SubmitNodeCollector submitNodeCollector, CameraRenderState cameraRenderState, CallbackInfo ci) {
+        EntityRenderEvent.Pre<S> event = new EntityRenderEvent.Pre<>(state, matrices, submitNodeCollector, state.lightCoords);
         MQSEventBus.post(event);
 
         if (event.isCancelled()) {
@@ -44,15 +45,16 @@ public class MQSEntityRendererMixin<S extends EntityRenderState> {
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
-    private void onRenderPost(S state, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        EntityRenderEvent.Post<S> event = new EntityRenderEvent.Post<>(state, matrices, vertexConsumers, light);
+    @Inject(method = "submit", at = @At("TAIL"))
+    private void onRenderPost(S state, PoseStack matrices, SubmitNodeCollector submitNodeCollector, CameraRenderState cameraRenderState, CallbackInfo ci) {
+        EntityRenderEvent.Post<S> event = new EntityRenderEvent.Post<>(state, matrices, submitNodeCollector, state.lightCoords);
         MQSEventBus.post(event);
     }
 
-    @Inject(method = "renderLabelIfPresent", at = @At("HEAD"), cancellable = true)
-    private void onRenderLabelHead(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        NameTagRenderEvent<S> event = new NameTagRenderEvent<>(state, text, matrices, vertexConsumers, light);
+    @Inject(method = "submitNameTag", at = @At("HEAD"), cancellable = true)
+    private void onRenderLabelHead(S state, PoseStack matrices, SubmitNodeCollector submitNodeCollector, CameraRenderState cameraRenderState, CallbackInfo ci) {
+        Component text = state.nameTag;
+        NameTagRenderEvent<S> event = new NameTagRenderEvent<>(state, text, matrices, submitNodeCollector, state.lightCoords);
         MQSEventBus.post(event);
         if (event.isCancelled()) {
             ci.cancel();

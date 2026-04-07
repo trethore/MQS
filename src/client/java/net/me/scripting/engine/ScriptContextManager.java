@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -18,6 +18,7 @@
 
 package net.me.scripting.engine;
 
+import lombok.Getter;
 import net.me.Main;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -30,12 +31,17 @@ public class ScriptContextManager {
 
     private final Queue<Context> contextPool = new ConcurrentLinkedQueue<>();
     private final ScriptContextFactory contextFactory;
-    private final ThreadLocal<Map<String, Value>> perFileExports;
+    @Getter
+    private final ThreadLocal<Map<String, Value>> perFileExports = new ThreadLocal<>();
 
-    public ScriptContextManager(ScriptContextFactory contextFactory, ThreadLocal<Map<String, Value>> perFileExports) {
+    private ScriptContextManager(ScriptContextFactory contextFactory) {
         this.contextFactory = contextFactory;
-        this.perFileExports = perFileExports;
-        prewarmContextPool();
+    }
+
+    public static ScriptContextManager create(ScriptContextFactory contextFactory) {
+        ScriptContextManager manager = new ScriptContextManager(contextFactory);
+        manager.prewarmContextPool();
+        return manager;
     }
 
     public Context getContext() {
@@ -48,20 +54,20 @@ public class ScriptContextManager {
     }
 
     public void returnContext(Context context) {
-        if (context != null) {
-            contextFactory.resetContext(context);
-            contextPool.offer(context);
+        try {
+            if (context != null) {
+                contextFactory.resetContext(context);
+                contextPool.offer(context);
+            }
+        } finally {
+            perFileExports.remove();
         }
     }
 
     private void prewarmContextPool() {
         Main.LOGGER.info("Pre-warming script context pool...");
         Context context = contextFactory.createContext(perFileExports);
-        if (context != null) {
-            contextPool.offer(context);
-            Main.LOGGER.info("Context pool pre-warmed successfully.");
-        } else {
-            Main.LOGGER.error("Failed to create a context for the pre-warming pool.");
-        }
+        contextPool.offer(context);
+        Main.LOGGER.info("Context pool pre-warmed successfully.");
     }
 }

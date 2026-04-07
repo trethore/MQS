@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,7 +21,7 @@ package net.me.event.events.player;
 import lombok.Getter;
 import net.me.event.Event;
 import net.me.event.Events;
-import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.world.damagesource.DamageSource;
 
 @Getter
 @SuppressWarnings("unused")
@@ -36,6 +36,6 @@ public class PlayerDamageEvent extends Event {
 
     @Override
     public Events getType() {
-        return Events.PlayerDamageEvent;
+        return Events.PLAYER_DAMAGE_EVENT;
     }
 }

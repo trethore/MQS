@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -50,7 +50,10 @@ public enum ScriptArgumentType {
         this.supplier = supplier;
     }
 
-    public static ScriptArgumentType fromString(String name) {
+    public static ScriptArgumentType resolve(String name) {
+        if (name == null) {
+            return null;
+        }
         for (ScriptArgumentType type : values()) {
             for (String typeName : type.names) {
                 if (typeName.equalsIgnoreCase(name)) {
@@ -58,11 +61,21 @@ public enum ScriptArgumentType {
                 }
             }
         }
+        return null;
+    }
+
+    public static ScriptArgumentType fromString(String name) {
+        ScriptArgumentType resolved = resolve(name);
+        if (resolved != null) {
+            return resolved;
+        }
         throw new IllegalArgumentException("Unknown argument type: " + name + ". Available: " + Arrays.toString(values()));
     }
 
-    public ArgumentType<?> get() {
-        return supplier.get();
+    public <T> ArgumentType<T> get() {
+        @SuppressWarnings("unchecked")
+        ArgumentType<T> argumentType = (ArgumentType<T>) supplier.get();
+        return argumentType;
     }
 
     @Override

@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,7 +19,7 @@
 package net.me.event.events.screen;
 
 import net.me.event.Events;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screens.Screen;
 
 public class ScreenDisplayedEvent extends ScreenEvent {
     public ScreenDisplayedEvent(Screen screen) {
@@ -28,6 +28,6 @@ public class ScreenDisplayedEvent extends ScreenEvent {
 
     @Override
     public Events getType() {
-        return Events.ScreenDisplayedEvent;
+        return Events.SCREEN_DISPLAYED_EVENT;
     }
 }

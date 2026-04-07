@@ -1,6 +1,6 @@
 /*
  * My QOL Scripts - A powerful scripting mod for Minecraft.
- * Copyright (C) 2025 tytoo
+ * Copyright (C) 2026 Titouan Réthoré
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,7 +22,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.me.event.events.tick.EndClientTickEvent;
 import net.me.event.events.tick.StartClientTickEvent;
 import net.me.scripting.ScriptManager;
-import net.me.scripting.module.RunningScript;
+import net.me.scripting.script.RunningScript;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,24 +55,22 @@ public class EventManager {
             return;
         }
 
-        // PRE phase
-        List<Listener> preListeners = phaseListeners.get(EventPhase.PRE);
-        if (preListeners != null) {
-            for (Listener listener : preListeners) {
-                executeListener(listener, event, EventPhase.PRE);
-            }
-        }
+        executePhase(phaseListeners, event, EventPhase.PRE);
 
-        if (event instanceof CancellableEvent && ((CancellableEvent) event).isCancelled()) {
+        if (event instanceof CancellableEvent cancellable && cancellable.isCancelled()) {
             return;
         }
 
-        // POST phase
-        List<Listener> postListeners = phaseListeners.get(EventPhase.POST);
-        if (postListeners != null) {
-            for (Listener listener : postListeners) {
-                executeListener(listener, event, EventPhase.POST);
-            }
+        executePhase(phaseListeners, event, EventPhase.POST);
+    }
+
+    private void executePhase(Map<EventPhase, List<Listener>> phaseListeners, Event event, EventPhase phase) {
+        List<Listener> phaseSpecificListeners = phaseListeners.get(phase);
+        if (phaseSpecificListeners == null) {
+            return;
+        }
+        for (Listener listener : phaseSpecificListeners) {
+            executeListener(listener, event, phase);
         }
     }
 
@@ -80,9 +79,13 @@ public class EventManager {
         scriptManager.setCurrentScript(listener.owner());
         try {
             listener.callback().execute(event);
-        } catch (Exception e) {
-            LOGGER.error("Error executing event listener for {} in script '{}' during phase {}",
-                    event.getClass().getSimpleName(), listener.owner().getName(), phase, e);
+        } catch (PolyglotException exception) {
+            LOGGER.atError().setCause(exception).log(
+                    "Error executing event listener for {} in script '{}' during phase {}",
+                    event.getClass().getSimpleName(),
+                    listener.owner().getName(),
+                    phase
+            );
         } finally {
             scriptManager.setCurrentScript(previousScript);
         }
@@ -93,8 +96,8 @@ public class EventManager {
     }
 
     public void register(RunningScript owner, Class<? extends Event> eventType, EventPhase phase, Value callback) {
-        listeners.computeIfAbsent(eventType, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(phase, k -> new CopyOnWriteArrayList<>())
+        listeners.computeIfAbsent(eventType, ignored -> new ConcurrentHashMap<>())
+                .computeIfAbsent(phase, ignored -> new CopyOnWriteArrayList<>())
                 .add(new Listener(owner, callback));
     }
 
