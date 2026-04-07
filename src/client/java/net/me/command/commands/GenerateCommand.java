@@ -61,7 +61,12 @@ public class GenerateCommand extends Command {
         ChatUtils.addInfoChatMessage(buildGenerationMessage(target), true);
         Minecraft client = context.getSource().getClient();
 
-        CompletableFuture.runAsync(() -> generateDefinitions(client, target));
+        CompletableFuture.runAsync(() -> generateDefinitions(client, target))
+                .exceptionally(exception -> {
+                    Main.LOGGER.error("Unexpected failure while generating TypeScript definitions for target {}.", target, exception);
+                    client.execute(() -> ChatUtils.addErrorChatMessage("Failed to generate TypeScript definitions. Check logs for details.", true));
+                    return null;
+                });
         return CommandManager.COMMAND_SUCCESS;
     }
 

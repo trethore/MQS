@@ -584,31 +584,52 @@ final class MinecraftMappingsDtsEmitter {
     }
 
     private String buildTypeAccess(String className) {
-        String[] parts = className.split("\\.");
-        if (parts.length == 0 || parts[0].isEmpty()) {
+        List<String> parts = splitQualifiedName(className);
+        if (parts.isEmpty() || parts.getFirst().isEmpty()) {
             return "globalThis";
         }
 
-        StringBuilder builder = new StringBuilder(resolveRootAccess(parts[0]));
-        for (int index = 1; index < parts.length; index++) {
-            builder.append(resolveChildAccess(parts[index]));
+        StringBuilder builder = new StringBuilder(resolveRootAccess(parts.getFirst()));
+        for (int index = 1; index < parts.size(); index++) {
+            builder.append(resolveChildAccess(parts.get(index)));
         }
 
         return builder.toString();
     }
 
     private String buildInstanceTypeAccess(String className) {
-        String[] parts = className.split("\\.");
-        if (parts.length == 0 || parts[0].isEmpty()) {
+        List<String> parts = splitQualifiedName(className);
+        if (parts.isEmpty() || parts.getFirst().isEmpty()) {
             return JAVA_INSTANCE + " | any";
         }
 
-        StringBuilder builder = new StringBuilder(resolveRootAccess(parts[0]));
-        for (int index = 1; index < parts.length - 1; index++) {
-            builder.append(resolveChildAccess(parts[index]));
+        StringBuilder builder = new StringBuilder(resolveRootAccess(parts.getFirst()));
+        for (int index = 1; index < parts.size() - 1; index++) {
+            builder.append(resolveChildAccess(parts.get(index)));
         }
-        builder.append(resolveChildAccess(parts[parts.length - 1] + "$Instance"));
+        builder.append(resolveChildAccess(parts.getLast() + "$Instance"));
         return builder.toString();
+    }
+
+    private List<String> splitQualifiedName(String className) {
+        if (className.isEmpty()) {
+            return List.of("");
+        }
+
+        List<String> parts = new ArrayList<>();
+        int segmentStart = 0;
+        while (segmentStart <= className.length()) {
+            int separatorIndex = className.indexOf('.', segmentStart);
+            if (separatorIndex < 0) {
+                parts.add(className.substring(segmentStart));
+                return parts;
+            }
+
+            parts.add(className.substring(segmentStart, separatorIndex));
+            segmentStart = separatorIndex + 1;
+        }
+
+        return parts;
     }
 
     private String resolveRootAccess(String part) {
@@ -667,7 +688,7 @@ final class MinecraftMappingsDtsEmitter {
 
     private void appendIndent(StringBuilder builder, int depth) {
         if (depth > 0) {
-            builder.append(INDENT.repeat(depth));
+            builder.repeat(INDENT, depth);
         }
     }
 

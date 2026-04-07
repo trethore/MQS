@@ -3,6 +3,7 @@ import net.fabricmc.loom.task.RemapJarTask
 import org.gradle.api.file.Directory
 import org.gradle.api.tasks.Delete
 import tytoo.myqolscripts.UnpackSourcesTask
+import tytoo.myqolscripts.VerifyCodePlugin
 import java.time.Year
 import java.util.Date
 
@@ -57,6 +58,7 @@ val sourceDeps: Configuration by configurations.creating {
 // --- Repositories ---
 
 repositories {
+    gradlePluginPortal()
     mavenCentral()
     maven { url = uri("https://packages.graalvm.org/maven") }
 }
@@ -71,6 +73,8 @@ loom {
         }
     }
 }
+
+apply<VerifyCodePlugin>()
 
 java {
     withSourcesJar()
@@ -114,6 +118,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")
     "clientCompileOnly"("org.projectlombok:lombok:$lombokVersion")
     "clientAnnotationProcessor"("org.projectlombok:lombok:$lombokVersion")
+
 }
 
 // --- Tasks ---

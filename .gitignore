@@ -46,5 +46,8 @@ replay_*.log
 # Notes
 notes.md
 
+# Kotlin
+buildSrc/.kotlin/
+
 # libs source
 references/
