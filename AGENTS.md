@@ -37,22 +37,6 @@ Here is the structure of the repository:
 └── settings.gradle.kts
 ```
 
-## Design & Philosophy
-
-- **Scripts are treated as first-class modules with explicit lifecycles**: Managers ensure that enabling a script
-  registers its events, keybinds, hooks, and config, and that disabling it unwinds that state. `ScriptingService`
-  exposes these lifecycle controls to commands, the console, and other surfaces without leaking implementation details.
-- **Performance and stability drive host-side choices**: `ScriptContextManager` pools Graal contexts, hook
-  retransformation only occurs while entries exist, and Minecraft-facing work is scheduled back onto the client thread
-  through `McUtils`. Official Mojang mappings are loaded up front so JavaScript can rely on stable names.
-- **Security defaults stay conservative**: `ScriptingClassResolver` restricts class access to whitelisted packages
-  unless `GlobalConfigManager`'s `allowAllClasses` flag is explicitly enabled, and global toggles (log redirect, class
-  access) are surfaced via console commands. Scripts are discovered from the user-controlled `myqolscripts/scripts`
-  folder, keeping ownership with the player.
-- **Contributor ergonomics matter**: APIs expand through explicit utilities (for example `MQSUtils`, rendering helpers,
-  config accessors) instead of broad inheritance trees. Host code targets Java 21 and follows Fabric/Mojang abstractions,
-  so new features should extend the existing managers or adapters rather than bypass them.
-
 ## General Coding Conventions
 
 - Target Java 21, use 4-space indentation, and keep packages under `net.me*`.
@@ -61,10 +45,8 @@ Here is the structure of the repository:
   methods, public methods, protected and private helper methods, then getters and setters at the bottom.
 - Import types instead of using fully qualified names inside method bodies.
 - When adding shared utilities, express behavior through clear method names and arguments rather than abstract hierarchies.
-- Avoid comments unless documentation is explicitly requested.
-- Keep edits minimal and consistent with surrounding style; avoid unrelated refactors or formatting-only changes.
+- Avoid adding comments unless it is explicitly requested.
 - Assume contributors use IntelliJ IDEA, and keep code free of IDE warnings.
-- If requirements are unclear or infeasible, ask for clarification before proceeding.
 
 ## Java 21 Expectations
 
@@ -84,15 +66,13 @@ Here is the structure of the repository:
 
 ## Dependencies & External Sources
 
-- Fabric Loader and Fabric API are versioned in `gradle.properties`; Fabric Loom integrates official Mojang mappings
-  into the client source set and remaps game classes during packaging. Keep these aligned with Minecraft `1.21.11` before updating APIs.
-- GraalVM JavaScript artifacts (`graal-sdk`, `truffle-api`, `js-language`, `js-scriptengine`) are bundled through
-  Shadow, relocated to `net.me.libs.graalvm`, and used by the scripting engine.
-- Byte Buddy (`byte-buddy`, `byte-buddy-agent`) is shaded to `net.me.libs.bytebuddy` and powers runtime interception in `HookManager`.
-- Graphene (`graphene-ui`) is a modern, Chromium-based UI library for Minecraft.
-- Lombok ships as a dependency; prefer its annotations to reduce boilerplate.
-- Library sources are fetched through the `sourceDeps` configuration (see `build.gradle.kts`) and unpacked per library using
-  `./gradlew unpackSources` into `references/<library>`. Use these sources to explore library source code.
+- Fabric Loader, Fabric API, and official Mojang mappings are the core dependencies; keep their versions aligned with Minecraft `1.21.11`.
+- GraalJS is the embedded JavaScript engine and is relocated to `net.me.libs.graalvm` during the build.
+- Byte Buddy powers the `HookManager` and is shaded to `net.me.libs.bytebuddy`.
+- Graphene is a modern, Chromium-based UI library for Minecraft.
+- Lombok is included as a dependency; prefer its annotations to reduce boilerplate.
+
+The source code for all these dependencies is included in `references/<library>`. Use these sources to explore the library APIs.
 
 ## Testing & Verification
 
@@ -100,7 +80,7 @@ Here is the structure of the repository:
 - Encourage running `./gradlew compileJava` after changes, `./gradlew build` for full validation, and `./gradlew runDebugClient` to test UI flows.
 - Document manual validation steps and remaining risks before completing work.
 
-## Pull Requests
+## Pull Requests & Commits
 
 - Keep PRs focused on a single concern and avoid unrelated cleanups.
 - Provide clear summaries, rationale, and manual test steps; include visuals for UI changes when relevant.
