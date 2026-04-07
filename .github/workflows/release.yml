@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout main
+      - name: Checkout master
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: master
           fetch-depth: 0
 
       - name: Set up JDK 21
@@ -70,11 +70,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          git fetch --force --tags origin main
+          git fetch --force --tags origin master
 
-          range="origin/main"
+          range="origin/master"
           if [[ -n "${{ steps.meta.outputs.previous_tag }}" ]] && git rev-parse -q --verify "refs/tags/${{ steps.meta.outputs.previous_tag }}" >/dev/null; then
-            range="${{ steps.meta.outputs.previous_tag }}..origin/main"
+            range="${{ steps.meta.outputs.previous_tag }}..origin/master"
           fi
 
           mapfile -t commits < <(git log "${range}" --pretty=format:%s -n 10)
@@ -127,7 +127,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.version }}
-          target_commitish: main
+          target_commitish: master
           name: MQS ${{ steps.meta.outputs.version }}
           body_path: ${{ steps.notes.outputs.path }}
           files: ${{ steps.jar.outputs.path }}
