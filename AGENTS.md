@@ -1,43 +1,44 @@
 # Repository Guidelines
 
-This is just an example mod.
+My QOL Packages (MQP) is a client-side Minecraft mod that provides an API and JavaScript engine for creating and
+distributing packages that modify the game at runtime.
 
 ## Project Structure
 
 Here is an overview of the project:
 
 ```text
-example-mod/                                # You are here!
-  .github/                                  # GitHub config and workflows.
-  build-logic/                              # Included Gradle build for custom build logic.
-    sonar/                                  # Gradle plugin for running SonarQube analysis.
-    unpack-sources/                         # Gradle plugin that unpacks dependency and Git reference sources.
+myqolpackages/                                  # You are here!
+  .github/                                      # GitHub config and workflows.
+  build-logic/                                  # Included Gradle build for custom build logic.
+    sonar/                                      # Gradle plugin for running SonarQube analysis.
+    unpack-sources/                             # Gradle plugin that unpacks dependency and Git reference sources.
   docs/
   packages/
-    common/                                 # Shared mod logic with no Minecraft or Fabric dependencies.
-      src/main/java/com/example/
-        api/                                # Public entry points used by loader/version implementations.
+    common/                                     # Shared mod logic with no Minecraft or Fabric dependencies.
+      src/main/java/io/github/trethore/myqolpackages/
+        api/                                    # Public entry points used by loader/version implementations.
           Main.java
-        internal/                           # Private common implementation details.
+        internal/                               # Private common implementation details.
       build.gradle.kts
-    fabric-1.21.11/                         # Fabric implementation for Minecraft 1.21.11.
+    fabric-1.21.11/                             # Fabric implementation for Minecraft 1.21.11.
       src/main/
-        java/com/example/
-          mixin/                            # Minecraft/Fabric-version-specific mixins.
-          FabricBootstrap.java              # Fabric ModInitializer that boots common code.
+        java/io/github/trethore/myqolpackages/
+          mixin/                                # Minecraft/Fabric-version-specific mixins.
+          FabricBootstrap.java                  # Fabric ModInitializer that boots common code.
         resources/
-          assets/example-mod/               # Fabric mod assets.
-          example-mod.mixins.json
+          assets/myqolpackages/                 # Fabric mod assets.
+          myqolpackages.mixins.json
           fabric.mod.json
       build.gradle.kts
-  references/                               # Dependency source code for browsing and reference.
+  references/                                   # Dependency source code for browsing and reference.
     net.fabricmc.fabric-api-fabric-api-0.141.4-1.21.11/
-      nested/                               # Source code of the nested jars.
+      nested/                                   # Source code of the nested jars.
     com.mojang-minecraft-1.21.11/
     <group>-<lib-name>-<version>/
   .gitignore
-  build.gradle.kts                          # Root Gradle config shared by all projects
-  gradle.properties                         # Shared version and dependency properties.
+  build.gradle.kts                              # Root Gradle config shared by all projects
+  gradle.properties                             # Shared version and dependency properties.
   README.md
   settings.gradle.kts
 ```
@@ -52,8 +53,8 @@ example-mod/                                # You are here!
 ## Java Expectations
 
 - Prefer explicit types over `var`, and use descriptive names instead of one-letter identifiers.
-- Keep member order consistent in Java classes: static constants, static fields, instance fields, constructors, overridden methods,
-  public methods, protected and private helper methods, then getters and setters at the bottom.
+- Keep member order consistent in Java classes: static constants, static fields, instance fields, constructors,
+  overridden methods, public methods, protected and private helper methods, then getters and setters at the bottom.
 - Import types instead of using fully qualified names inside method bodies.
 
 ## Testing & Verification
@@ -71,5 +72,5 @@ example-mod/                                # You are here!
 
 ## Pull Requests & Commits
 
-- Pull request summaries should include the related issue(s), a brief description of the changes, and how the changes were tested.
+- Pull request summaries should include the related issue (s), a brief description of the changes, and how the changes were tested.
 - Follow the Conventional Commits specification for commit messages.

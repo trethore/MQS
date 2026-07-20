@@ -16,7 +16,7 @@ pluginManagement {
 }
 
 // Should match your modid
-rootProject.name = "example-mod"
+rootProject.name = "myqolpackages"
 
 include("packages:common")
 

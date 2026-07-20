@@ -1,4 +1,4 @@
-package com.example.mixin;
+package io.github.trethore.myqolpackages.mixin;
 
 import net.minecraft.server.MinecraftServer;
 import org.spongepowered.asm.mixin.Mixin;

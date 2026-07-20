@@ -1,12 +1,12 @@
-package com.example;
+package io.github.trethore.myqolpackages;
 
-import com.example.api.Main;
+import io.github.trethore.myqolpackages.api.Main;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class FabricBootstrap implements ModInitializer {
-  public static final String MOD_ID = "example-mod";
+  public static final String MOD_ID = "myqolpackages";
   public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
   @Override

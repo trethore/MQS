@@ -1,7 +1,6 @@
-# Example Mod Documentation
+# My QOL Packages Documentation
 
-This is just an example mod.
+My QOL Packages (MQP) is a client-side Minecraft mod for creating and sharing packages that modify the game at runtime.
 
-- [Create your mod from this example](create-your-mod.md)
 - [Running the mod](running.md)
 - [Source references](references.md)
