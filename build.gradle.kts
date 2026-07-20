@@ -12,9 +12,16 @@ spotless {
   java {
     target("**/src/**/*.java")
     targetExclude("references/**", "**/build/**")
+    licenseHeaderFile(rootProject.file("HEADER"))
     googleJavaFormat()
     removeUnusedImports()
     formatAnnotations()
+  }
+
+  format("javaPackageInfo") {
+    target("**/src/**/package-info.java")
+    targetExclude("references/**", "**/build/**")
+    licenseHeaderFile(rootProject.file("HEADER"), "(?=/\\*\\*)")
   }
 
   kotlinGradle {
