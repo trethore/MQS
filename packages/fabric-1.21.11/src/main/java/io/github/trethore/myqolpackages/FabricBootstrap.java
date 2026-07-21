@@ -29,12 +29,10 @@ public final class FabricBootstrap implements ClientModInitializer {
   public static final String MOD_ID = "myqolpackages";
   public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-  private MqpRuntime runtime;
-
   @Override
   public void onInitializeClient() {
     Path mqpDirectory = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
-    runtime = MqpRuntime.create(mqpDirectory);
+    MqpRuntime runtime = MqpRuntime.create(mqpDirectory);
     runtime.start();
     new MqpClientCommand(runtime.getPackageManager()).register();
     LOGGER.info("Initialized {} with data directory {}", MOD_ID, mqpDirectory);
