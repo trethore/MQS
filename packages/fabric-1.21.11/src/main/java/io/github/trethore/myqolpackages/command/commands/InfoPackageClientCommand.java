@@ -20,10 +20,14 @@ package io.github.trethore.myqolpackages.command.commands;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
@@ -38,7 +42,9 @@ public final class InfoPackageClientCommand {
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
     return ClientCommandManager.literal("info")
         .then(
-            ClientCommandManager.argument("id", StringArgumentType.word()).executes(this::execute));
+            ClientCommandManager.argument("id", StringArgumentType.word())
+                .suggests((context, builder) -> suggestPackageIds(builder))
+                .executes(this::execute));
   }
 
   private int execute(CommandContext<FabricClientCommandSource> context) {
@@ -56,5 +62,15 @@ public final class InfoPackageClientCommand {
     source.sendFeedback(Component.literal("Description: " + packageInfo.description()));
     source.sendFeedback(Component.literal("Entrypoint: " + packageInfo.entrypoint()));
     return ClientCommandResult.SUCCESS;
+  }
+
+  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
+    String remaining = builder.getRemainingLowerCase();
+    for (PackageInfo packageInfo : packageManager.getPackages()) {
+      if (packageInfo.id().toLowerCase(Locale.ROOT).contains(remaining)) {
+        builder.suggest(packageInfo.id());
+      }
+    }
+    return builder.buildFuture();
   }
 }
