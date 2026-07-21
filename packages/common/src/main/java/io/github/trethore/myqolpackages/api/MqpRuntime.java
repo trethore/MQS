@@ -17,9 +17,12 @@
  */
 package io.github.trethore.myqolpackages.api;
 
+import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
+import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootProvider;
+import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
 import io.github.trethore.myqolpackages.internal.packages.DefaultPackageManager;
 import io.github.trethore.myqolpackages.internal.packages.FileSystemPackageDiscovery;
 import java.nio.file.Path;
@@ -30,17 +33,22 @@ import org.slf4j.LoggerFactory;
 public final class MqpRuntime {
   private static final Logger LOGGER = LoggerFactory.getLogger(MqpRuntime.class);
 
+  private final GsonMqpConfigManager configManager;
   private final PackageManager packageManager;
 
-  private MqpRuntime(PackageManager packageManager) {
+  private MqpRuntime(GsonMqpConfigManager configManager, PackageManager packageManager) {
+    this.configManager = configManager;
     this.packageManager = packageManager;
   }
 
-  public static MqpRuntime create(Path packageDirectory) {
-    Objects.requireNonNull(packageDirectory, "packageDirectory");
+  public static MqpRuntime create(Path mqpDirectory) {
+    Objects.requireNonNull(mqpDirectory, "mqpDirectory");
+    GsonMqpConfigManager configManager = new GsonMqpConfigManager(mqpDirectory);
     PackageManager packageManager =
-        new DefaultPackageManager(packageDirectory, new FileSystemPackageDiscovery());
-    return new MqpRuntime(packageManager);
+        new DefaultPackageManager(
+            new ConfiguredPackageRootProvider(mqpDirectory, configManager),
+            new FileSystemPackageDiscovery());
+    return new MqpRuntime(configManager, packageManager);
   }
 
   public PackageDiscoveryResult start() {
@@ -51,7 +59,7 @@ public final class MqpRuntime {
         result.diagnostics().size());
     for (PackageDiagnostic diagnostic : result.diagnostics()) {
       LOGGER.warn(
-          "Could not discover package {} at {}: {}",
+          "MQP diagnostic for {} at {}: {}",
           diagnostic.packageId(),
           diagnostic.packageDirectory(),
           diagnostic.message());
@@ -61,5 +69,9 @@ public final class MqpRuntime {
 
   public PackageManager getPackageManager() {
     return packageManager;
+  }
+
+  public MqpConfig getConfig() {
+    return configManager.getConfig();
   }
 }

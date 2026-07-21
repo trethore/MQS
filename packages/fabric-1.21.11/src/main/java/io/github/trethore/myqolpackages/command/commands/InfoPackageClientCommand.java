@@ -61,6 +61,7 @@ public final class InfoPackageClientCommand {
     source.sendFeedback(Component.literal("Version: " + packageInfo.version()));
     source.sendFeedback(Component.literal("Description: " + packageInfo.description()));
     source.sendFeedback(Component.literal("Entrypoint: " + packageInfo.entrypoint()));
+    source.sendFeedback(Component.literal("Directory: " + packageInfo.packageDirectory()));
     return ClientCommandResult.SUCCESS;
   }
 

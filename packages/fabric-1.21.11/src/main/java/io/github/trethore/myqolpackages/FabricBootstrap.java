@@ -33,10 +33,10 @@ public final class FabricBootstrap implements ClientModInitializer {
 
   @Override
   public void onInitializeClient() {
-    Path packageDirectory = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
-    runtime = MqpRuntime.create(packageDirectory);
+    Path mqpDirectory = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
+    runtime = MqpRuntime.create(mqpDirectory);
     runtime.start();
     new MqpClientCommand(runtime.getPackageManager()).register();
-    LOGGER.info("Initialized {} with package directory {}", MOD_ID, packageDirectory);
+    LOGGER.info("Initialized {} with data directory {}", MOD_ID, mqpDirectory);
   }
 }

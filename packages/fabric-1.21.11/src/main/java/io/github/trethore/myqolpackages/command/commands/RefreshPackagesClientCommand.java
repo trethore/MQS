@@ -49,7 +49,13 @@ public final class RefreshPackagesClientCommand {
                 + result.diagnostics().size()
                 + " diagnostic(s)."));
     for (PackageDiagnostic diagnostic : result.diagnostics()) {
-      source.sendError(Component.literal(diagnostic.packageId() + ": " + diagnostic.message()));
+      source.sendError(
+          Component.literal(
+              diagnostic.packageId()
+                  + " ("
+                  + diagnostic.packageDirectory()
+                  + "): "
+                  + diagnostic.message()));
     }
     return result.diagnostics().isEmpty()
         ? ClientCommandResult.SUCCESS

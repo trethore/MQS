@@ -12,6 +12,7 @@ By default, packages are loaded from the `myqolpackages` directory inside the Mi
 ```text
 <minecraft-directory>/
   myqolpackages/
+    config.json
     <package-name>/
       manifest.json
       src/
@@ -26,6 +27,8 @@ Each direct child of `myqolpackages` is treated as a package directory. For exam
 
 The directory name is the package identifier. In this example, the package identifier is `example-package`, while the
 manifest `name` is its display name.
+
+Additional package roots can be configured in [`config.json`](configuration.md).
 
 ## Manifest
 

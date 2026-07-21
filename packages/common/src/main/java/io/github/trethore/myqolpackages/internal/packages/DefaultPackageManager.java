@@ -17,10 +17,12 @@
  */
 package io.github.trethore.myqolpackages.internal.packages;
 
+import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,26 +32,41 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class DefaultPackageManager implements PackageManager {
-  private final Path packageDirectory;
   private final FileSystemPackageDiscovery packageDiscovery;
+  private final PackageRootProvider packageRootProvider;
 
   private final AtomicReference<Map<String, PackageDescriptor>> packages =
       new AtomicReference<>(Map.of());
 
-  public DefaultPackageManager(Path packageDirectory, FileSystemPackageDiscovery packageDiscovery) {
-    this.packageDirectory = Objects.requireNonNull(packageDirectory, "packageDirectory");
+  public DefaultPackageManager(
+      PackageRootProvider packageRootProvider, FileSystemPackageDiscovery packageDiscovery) {
+    this.packageRootProvider = Objects.requireNonNull(packageRootProvider, "packageRootProvider");
     this.packageDiscovery = Objects.requireNonNull(packageDiscovery, "packageDiscovery");
   }
 
   @Override
   public synchronized PackageDiscoveryResult refresh() {
-    PackageDiscoverySnapshot snapshot = packageDiscovery.discover(packageDirectory);
+    PackageRootResolution rootResolution = packageRootProvider.resolvePackageRoots();
+    List<PackageDiagnostic> diagnostics = new ArrayList<>(rootResolution.diagnostics());
     Map<String, PackageDescriptor> discoveredPackages = new LinkedHashMap<>();
-    for (PackageDescriptor descriptor : snapshot.packages()) {
-      discoveredPackages.put(descriptor.id(), descriptor);
+    for (Path packageRoot : rootResolution.packageRoots()) {
+      PackageDiscoverySnapshot snapshot = packageDiscovery.discover(packageRoot);
+      diagnostics.addAll(snapshot.diagnostics());
+      for (PackageDescriptor descriptor : snapshot.packages()) {
+        PackageDescriptor existingDescriptor =
+            discoveredPackages.putIfAbsent(descriptor.id(), descriptor);
+        if (existingDescriptor != null) {
+          diagnostics.add(
+              new PackageDiagnostic(
+                  descriptor.id(),
+                  descriptor.packageDirectory(),
+                  "Duplicate package ID; already discovered at "
+                      + existingDescriptor.packageDirectory()));
+        }
+      }
     }
     packages.set(Collections.unmodifiableMap(discoveredPackages));
-    return new PackageDiscoveryResult(getPackages(), snapshot.diagnostics());
+    return new PackageDiscoveryResult(getPackages(), diagnostics);
   }
 
   @Override

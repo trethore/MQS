@@ -24,6 +24,11 @@ record PackageDescriptor(
     String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
   PackageInfo toInfo() {
     return new PackageInfo(
-        id, manifest.name(), manifest.description(), manifest.version(), manifest.entrypoint());
+        id,
+        manifest.name(),
+        manifest.description(),
+        manifest.version(),
+        manifest.entrypoint(),
+        packageDirectory);
   }
 }

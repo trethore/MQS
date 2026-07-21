@@ -45,7 +45,9 @@ public final class FileSystemPackageDiscovery {
     List<PackageDiagnostic> diagnostics = new ArrayList<>();
 
     try {
-      Files.createDirectories(packageDirectory);
+      if (!Files.isDirectory(packageDirectory)) {
+        throw new IOException("Package root does not exist or is not a directory");
+      }
       for (Path candidate : listPackageDirectories(packageDirectory)) {
         discoverPackage(candidate, packages, diagnostics);
       }
