@@ -14,13 +14,11 @@
   "icon": "assets/myqolpackages/icon.png",
   "environment": "client",
   "entrypoints": {
-    "main": [
+    "client": [
       "io.github.trethore.myqolpackages.FabricBootstrap"
     ]
   },
-  "mixins": [
-    "myqolpackages.mixins.json"
-  ],
+  "mixins": [],
   "depends": {
     "fabricloader": ">=${loaderVersion}",
     "minecraft": "~${minecraftVersion}",

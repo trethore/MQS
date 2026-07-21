@@ -15,17 +15,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api;
+package io.github.trethore.myqolpackages.api.packages;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.nio.file.Path;
 
-public final class Main {
-  private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
-
-  private Main() {}
-
-  public static void initialize() {
-    LOGGER.info("Hello from My QOL Packages!");
-  }
-}
+public record PackageDiagnostic(String packageId, Path packageDirectory, String message) {}

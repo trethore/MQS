@@ -19,6 +19,7 @@ dependencies {
   unpack(implementation("net.bytebuddy:byte-buddy:$byteBuddyVersion"))
   unpack(implementation("net.bytebuddy:byte-buddy-agent:$byteBuddyVersion"))
 
+  implementation("com.google.code.gson:gson:${providers.gradleProperty("gson_version").get()}")
   implementation("org.slf4j:slf4j-api:${providers.gradleProperty("common_slf4j_version").get()}")
 }
 
