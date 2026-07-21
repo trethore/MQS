@@ -25,6 +25,7 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -61,8 +62,27 @@ public final class InfoPackageClientCommand {
     source.sendFeedback(Component.literal("Version: " + packageInfo.version()));
     source.sendFeedback(Component.literal("Description: " + packageInfo.description()));
     source.sendFeedback(Component.literal("Entrypoint: " + packageInfo.entrypoint()));
-    source.sendFeedback(Component.literal("Directory: " + packageInfo.packageDirectory()));
+    source.sendFeedback(
+        Component.literal("Directory: " + anonymizeDirectory(packageInfo.packageDirectory())));
     return ClientCommandResult.SUCCESS;
+  }
+
+  private static String anonymizeDirectory(Path directory) {
+    String userHome = System.getProperty("user.home");
+    if (userHome == null || userHome.isBlank()) {
+      return directory.toString();
+    }
+
+    Path normalizedDirectory = directory.toAbsolutePath().normalize();
+    Path normalizedUserHome = Path.of(userHome).toAbsolutePath().normalize();
+    if (!normalizedDirectory.startsWith(normalizedUserHome)) {
+      return directory.toString();
+    }
+
+    Path anonymizedUserHome = normalizedUserHome.resolveSibling("user");
+    return anonymizedUserHome
+        .resolve(normalizedUserHome.relativize(normalizedDirectory))
+        .toString();
   }
 
   private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
