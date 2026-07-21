@@ -25,14 +25,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public final class FileSystemPackageDiscovery {
   private static final String ENTRYPOINT_EXTENSION = ".js";
   private static final String MANIFEST_FILE_NAME = "manifest.json";
-  private static final Pattern INVALID_DERIVED_ID_CHARACTERS = Pattern.compile("[^a-z0-9]+");
-  private static final Pattern PACKAGE_ID_PATTERN = Pattern.compile("[a-z0-9]+(?:-[a-z0-9]+)*");
 
   private final PackageManifestReader manifestReader;
 
@@ -107,17 +104,57 @@ public final class FileSystemPackageDiscovery {
   private String resolvePackageId(PackageManifest manifest) throws PackageValidationException {
     String packageId = manifest.id();
     if (packageId == null) {
-      packageId =
-          INVALID_DERIVED_ID_CHARACTERS
-              .matcher(manifest.name().strip().toLowerCase(Locale.ROOT))
-              .replaceAll("-")
-              .replaceAll("^-|-$", "");
+      packageId = derivePackageId(manifest.name());
     }
-    if (!PACKAGE_ID_PATTERN.matcher(packageId).matches()) {
+    if (!isValidPackageId(packageId)) {
       throw new PackageValidationException(
           "Package ID must contain lowercase letters, numbers, and single hyphens between words");
     }
     return packageId;
+  }
+
+  private static String derivePackageId(String packageName) {
+    String normalizedName = packageName.toLowerCase(Locale.ROOT);
+    StringBuilder packageId = new StringBuilder(normalizedName.length());
+    for (int index = 0; index < normalizedName.length(); index++) {
+      char character = normalizedName.charAt(index);
+      if (isPackageIdWordCharacter(character)) {
+        packageId.append(character);
+      } else if (!packageId.isEmpty() && packageId.charAt(packageId.length() - 1) != '-') {
+        packageId.append('-');
+      }
+    }
+
+    if (!packageId.isEmpty() && packageId.charAt(packageId.length() - 1) == '-') {
+      packageId.deleteCharAt(packageId.length() - 1);
+    }
+    return packageId.toString();
+  }
+
+  private static boolean isValidPackageId(String packageId) {
+    if (packageId.isEmpty()) {
+      return false;
+    }
+
+    for (int index = 0; index < packageId.length(); index++) {
+      char character = packageId.charAt(index);
+      if (isPackageIdWordCharacter(character)) {
+        continue;
+      }
+      if (character != '-'
+          || index == 0
+          || index == packageId.length() - 1
+          || packageId.charAt(index - 1) == '-') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean isPackageIdWordCharacter(char character) {
+    boolean isLowercaseLetter = character >= 'a' && character <= 'z';
+    boolean isNumber = character >= '0' && character <= '9';
+    return isLowercaseLetter || isNumber;
   }
 
   private void requireValue(String value, String fieldName) throws PackageValidationException {

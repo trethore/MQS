@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -114,6 +115,30 @@ class FileSystemPackageDiscoveryTest {
     assertEquals(
         "Package ID must contain lowercase letters, numbers, and single hyphens between words",
         result.diagnostics().getFirst().message());
+  }
+
+  @Test
+  void rejectsImproperlyPlacedPackageIdHyphens() throws IOException {
+    List<String> invalidPackageIds = List.of("-package", "package-", "package--id");
+    for (int index = 0; index < invalidPackageIds.size(); index++) {
+      createPackage(
+          "package-directory-" + index,
+          """
+          {
+            "id": "%s",
+            "name": "Example Package",
+            "description": "An example package.",
+            "version": "1.0.0",
+            "entrypoint": "src/index.js"
+          }
+          """
+              .formatted(invalidPackageIds.get(index)));
+    }
+
+    PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+    assertTrue(result.packages().isEmpty());
+    assertEquals(invalidPackageIds.size(), result.diagnostics().size());
   }
 
   @Test
