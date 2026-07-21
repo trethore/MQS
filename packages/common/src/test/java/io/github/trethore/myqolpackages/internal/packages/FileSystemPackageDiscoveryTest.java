@@ -32,7 +32,7 @@ class FileSystemPackageDiscoveryTest {
   @Test
   void discoversValidPackage() throws IOException {
     createPackage(
-        "example-package",
+        "unrelated-directory-name",
         """
         {
           "name": "Example Package",
@@ -50,6 +50,92 @@ class FileSystemPackageDiscoveryTest {
     assertEquals("example-package", descriptor.id());
     assertEquals("Example Package", descriptor.manifest().name());
     assertEquals("src/index.js", descriptor.manifest().entrypoint());
+  }
+
+  @Test
+  void usesExplicitPackageId() throws IOException {
+    createPackage(
+        "package-directory",
+        """
+        {
+          "id": "custom-package-id",
+          "name": "A Different Display Name",
+          "description": "An example package.",
+          "version": "1.0.0",
+          "entrypoint": "src/index.js"
+        }
+        """);
+
+    PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+    assertEquals(1, result.packages().size());
+    assertEquals("custom-package-id", result.packages().getFirst().id());
+    assertTrue(result.diagnostics().isEmpty());
+  }
+
+  @Test
+  void derivesNormalizedPackageIdFromName() throws IOException {
+    createPackage(
+        "package-directory",
+        """
+        {
+          "name": "  My Cool & Useful Package!  ",
+          "description": "An example package.",
+          "version": "1.0.0",
+          "entrypoint": "src/index.js"
+        }
+        """);
+
+    PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+    assertEquals(1, result.packages().size());
+    assertEquals("my-cool-useful-package", result.packages().getFirst().id());
+    assertTrue(result.diagnostics().isEmpty());
+  }
+
+  @Test
+  void rejectsInvalidExplicitPackageId() throws IOException {
+    createPackage(
+        "package-directory",
+        """
+        {
+          "id": "Invalid Package ID",
+          "name": "Example Package",
+          "description": "An example package.",
+          "version": "1.0.0",
+          "entrypoint": "src/index.js"
+        }
+        """);
+
+    PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+    assertTrue(result.packages().isEmpty());
+    assertEquals(1, result.diagnostics().size());
+    assertEquals(
+        "Package ID must contain lowercase letters, numbers, and single hyphens between words",
+        result.diagnostics().getFirst().message());
+  }
+
+  @Test
+  void rejectsEmptyDerivedPackageId() throws IOException {
+    createPackage(
+        "package-directory",
+        """
+        {
+          "name": "!!!",
+          "description": "An example package.",
+          "version": "1.0.0",
+          "entrypoint": "src/index.js"
+        }
+        """);
+
+    PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+    assertTrue(result.packages().isEmpty());
+    assertEquals(1, result.diagnostics().size());
+    assertEquals(
+        "Package ID must contain lowercase letters, numbers, and single hyphens between words",
+        result.diagnostics().getFirst().message());
   }
 
   @Test

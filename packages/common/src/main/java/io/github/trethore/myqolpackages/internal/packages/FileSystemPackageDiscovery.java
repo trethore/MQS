@@ -24,11 +24,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public final class FileSystemPackageDiscovery {
   private static final String ENTRYPOINT_EXTENSION = ".js";
   private static final String MANIFEST_FILE_NAME = "manifest.json";
+  private static final Pattern INVALID_DERIVED_ID_CHARACTERS = Pattern.compile("[^a-z0-9]+");
+  private static final Pattern PACKAGE_ID_PATTERN = Pattern.compile("[a-z0-9]+(?:-[a-z0-9]+)*");
 
   private final PackageManifestReader manifestReader;
 
@@ -75,7 +79,7 @@ public final class FileSystemPackageDiscovery {
       Path packageDirectory,
       List<PackageDescriptor> packages,
       List<PackageDiagnostic> diagnostics) {
-    String packageId = packageDirectory.getFileName().toString();
+    String diagnosticId = packageDirectory.getFileName().toString();
     try {
       Path manifestPath = packageDirectory.resolve(MANIFEST_FILE_NAME);
       if (!Files.isRegularFile(manifestPath)) {
@@ -84,10 +88,12 @@ public final class FileSystemPackageDiscovery {
 
       PackageManifest manifest = manifestReader.read(manifestPath);
       validateManifest(manifest);
+      String packageId = resolvePackageId(manifest);
       Path entrypoint = resolveEntrypoint(packageDirectory, manifest.entrypoint());
       packages.add(new PackageDescriptor(packageId, packageDirectory, entrypoint, manifest));
     } catch (IOException | PackageValidationException exception) {
-      diagnostics.add(new PackageDiagnostic(packageId, packageDirectory, exception.getMessage()));
+      diagnostics.add(
+          new PackageDiagnostic(diagnosticId, packageDirectory, exception.getMessage()));
     }
   }
 
@@ -96,6 +102,22 @@ public final class FileSystemPackageDiscovery {
     requireValue(manifest.description(), "description");
     requireValue(manifest.version(), "version");
     requireValue(manifest.entrypoint(), "entrypoint");
+  }
+
+  private String resolvePackageId(PackageManifest manifest) throws PackageValidationException {
+    String packageId = manifest.id();
+    if (packageId == null) {
+      packageId =
+          INVALID_DERIVED_ID_CHARACTERS
+              .matcher(manifest.name().strip().toLowerCase(Locale.ROOT))
+              .replaceAll("-")
+              .replaceAll("^-|-$", "");
+    }
+    if (!PACKAGE_ID_PATTERN.matcher(packageId).matches()) {
+      throw new PackageValidationException(
+          "Package ID must contain lowercase letters, numbers, and single hyphens between words");
+    }
+    return packageId;
   }
 
   private void requireValue(String value, String fieldName) throws PackageValidationException {

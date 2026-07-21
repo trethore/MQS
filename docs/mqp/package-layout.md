@@ -13,7 +13,7 @@ By default, packages are loaded from the `myqolpackages` directory inside the Mi
 <minecraft-directory>/
   myqolpackages/
     config.json
-    <package-name>/
+    <package-directory>/
       manifest.json
       src/
         index.js
@@ -25,8 +25,8 @@ Each direct child of `myqolpackages` is treated as a package directory. For exam
 <minecraft-directory>/myqolpackages/example-package/
 ```
 
-The directory name is the package identifier. In this example, the package identifier is `example-package`, while the
-manifest `name` is its display name.
+The directory name does not determine the package identifier. It only identifies the package on the filesystem.
+The package identifier comes from the manifest's optional `id` field or is derived from its display name.
 
 Additional package roots can be configured in [`config.json`](configuration.md).
 
@@ -34,6 +34,7 @@ Additional package roots can be configured in [`config.json`](configuration.md).
 
 The package manifest is named `manifest.json` and contains:
 
+- `id`: The optional package identifier.
 - `name`: The package name.
 - `description`: A short description of the package.
 - `version`: The package version.
@@ -43,12 +44,20 @@ Example:
 
 ```json
 {
+  "id": "example-package",
   "name": "Example Package",
   "description": "An example MQP package.",
   "version": "1.0.0",
   "entrypoint": "src/index.js"
 }
 ```
+
+Package identifiers must contain lowercase ASCII letters, numbers, and single hyphens between words. When `id` is
+omitted, it is derived from `name` by trimming it, converting it to lowercase, replacing runs of non-alphanumeric
+characters with hyphens, and removing leading or trailing hyphens. For example, `My Cool Package!` becomes
+`my-cool-package`.
+
+If multiple discovered packages have the same identifier, none of the packages sharing that identifier are loaded.
 
 The resulting package layout is:
 

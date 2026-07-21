@@ -20,6 +20,7 @@ package io.github.trethore.myqolpackages.internal.packages;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootProvider;
@@ -52,19 +53,28 @@ class DefaultPackageManagerTest {
   }
 
   @Test
-  void keepsFirstPackageWhenIdsAreDuplicated() throws IOException {
+  void rejectsAllPackagesWhenIdsAreDuplicated() throws IOException {
     Path defaultRoot = temporaryDirectory.resolve("default");
     Path additionalRoot = temporaryDirectory.resolve("additional");
-    createPackage(defaultRoot, "duplicate", "Default Package");
-    createPackage(additionalRoot, "duplicate", "Additional Package");
+    createPackage(defaultRoot, "first-directory", "Default Package", "duplicate");
+    createPackage(additionalRoot, "second-directory", "Additional Package", "duplicate");
     DefaultPackageManager packageManager = createPackageManager(defaultRoot, additionalRoot);
 
     PackageDiscoveryResult result = packageManager.refresh();
 
-    assertEquals(1, result.packages().size());
-    assertEquals("Default Package", result.packages().getFirst().name());
-    assertEquals(1, result.diagnostics().size());
-    assertTrue(result.diagnostics().getFirst().message().startsWith("Duplicate package ID;"));
+    assertTrue(result.packages().isEmpty());
+    assertTrue(packageManager.findPackage("duplicate").isEmpty());
+    assertEquals(2, result.diagnostics().size());
+    assertEquals(
+        List.of(defaultRoot.resolve("first-directory"), additionalRoot.resolve("second-directory")),
+        result.diagnostics().stream().map(PackageDiagnostic::packageDirectory).toList());
+    assertTrue(
+        result.diagnostics().stream()
+            .allMatch(
+                diagnostic ->
+                    diagnostic
+                        .message()
+                        .equals("Duplicate package ID; all packages with this ID were ignored")));
   }
 
   @Test
@@ -106,19 +116,26 @@ class DefaultPackageManagerTest {
   }
 
   private static void createPackage(Path root, String id, String name) throws IOException {
-    Path packageDirectory = root.resolve(id);
+    createPackage(root, id, name, null);
+  }
+
+  private static void createPackage(Path root, String directoryName, String name, String id)
+      throws IOException {
+    Path packageDirectory = root.resolve(directoryName);
     Files.createDirectories(packageDirectory.resolve("src"));
+    String idField = id == null ? "" : "\"id\": \"%s\",%n".formatted(id);
     Files.writeString(
         packageDirectory.resolve("manifest.json"),
         """
         {
+          %s
           "name": "%s",
           "description": "A test package.",
           "version": "1.0.0",
           "entrypoint": "src/index.js"
         }
         """
-            .formatted(name));
+            .formatted(idField, name));
     Files.writeString(packageDirectory.resolve("src/index.js"), "");
   }
 

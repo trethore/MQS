@@ -32,7 +32,8 @@ Relative paths are resolved from the directory containing `config.json`. Absolut
 directory expansion, environment variables, and glob patterns are not supported.
 
 The default `myqolpackages` root is searched first, followed by additional roots in configuration order. When multiple
-roots contain the same package identifier, the first package is used and a diagnostic is reported for each duplicate.
+packages have the same package identifier, none of the packages sharing that identifier are loaded and a diagnostic is
+reported for each one.
 
 Additional package roots must already exist. MQP does not create configured roots automatically.
 

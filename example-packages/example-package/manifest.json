@@ -1,4 +1,5 @@
 {
+  "id": "example-package",
   "name": "Example Package",
   "description": "An example MQP package used during development.",
   "version": "1.0.0",

@@ -48,21 +48,28 @@ public final class DefaultPackageManager implements PackageManager {
   public synchronized PackageDiscoveryResult refresh() {
     PackageRootResolution rootResolution = packageRootProvider.resolvePackageRoots();
     List<PackageDiagnostic> diagnostics = new ArrayList<>(rootResolution.diagnostics());
-    Map<String, PackageDescriptor> discoveredPackages = new LinkedHashMap<>();
+    Map<String, List<PackageDescriptor>> packagesById = new LinkedHashMap<>();
     for (Path packageRoot : rootResolution.packageRoots()) {
       PackageDiscoverySnapshot snapshot = packageDiscovery.discover(packageRoot);
       diagnostics.addAll(snapshot.diagnostics());
       for (PackageDescriptor descriptor : snapshot.packages()) {
-        PackageDescriptor existingDescriptor =
-            discoveredPackages.putIfAbsent(descriptor.id(), descriptor);
-        if (existingDescriptor != null) {
-          diagnostics.add(
-              new PackageDiagnostic(
-                  descriptor.id(),
-                  descriptor.packageDirectory(),
-                  "Duplicate package ID; already discovered at "
-                      + existingDescriptor.packageDirectory()));
-        }
+        packagesById.computeIfAbsent(descriptor.id(), ignored -> new ArrayList<>()).add(descriptor);
+      }
+    }
+
+    Map<String, PackageDescriptor> discoveredPackages = new LinkedHashMap<>();
+    for (Map.Entry<String, List<PackageDescriptor>> entry : packagesById.entrySet()) {
+      List<PackageDescriptor> matchingPackages = entry.getValue();
+      if (matchingPackages.size() == 1) {
+        discoveredPackages.put(entry.getKey(), matchingPackages.getFirst());
+        continue;
+      }
+      for (PackageDescriptor descriptor : matchingPackages) {
+        diagnostics.add(
+            new PackageDiagnostic(
+                descriptor.id(),
+                descriptor.packageDirectory(),
+                "Duplicate package ID; all packages with this ID were ignored"));
       }
     }
     packages.set(Collections.unmodifiableMap(discoveredPackages));
