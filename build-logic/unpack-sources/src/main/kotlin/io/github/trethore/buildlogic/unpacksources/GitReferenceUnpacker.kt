@@ -1,12 +1,16 @@
 package io.github.trethore.buildlogic.unpacksources
 
-import org.gradle.api.Project
+import org.gradle.api.file.FileSystemOperations
+import org.gradle.api.logging.Logger
 import java.io.File
 import java.net.URI
 
-internal class GitReferenceUnpacker(private val project: Project) {
-    private val commandRunner = CommandRunner(project)
-
+internal class GitReferenceUnpacker(
+    private val logger: Logger,
+    private val rootDirectory: File,
+    private val fileSystemOperations: FileSystemOperations,
+    private val commandRunner: CommandRunner,
+) {
     fun unpackAll(gitReferences: Iterable<GitReference>, referencesDir: File) {
         gitReferences.forEach { gitReference ->
             unpack(gitReference, referencesDir)
@@ -18,7 +22,9 @@ internal class GitReferenceUnpacker(private val project: Project) {
         val revision = gitReference.commit ?: gitReference.branch
         val targetDir = referencesDir.resolve(ReferencePaths.safePathSegment("$label-$revision"))
 
-        project.delete(targetDir)
+        fileSystemOperations.delete {
+            delete(targetDir)
+        }
         targetDir.parentFile.mkdirs()
 
         val cloneArgs = mutableListOf("clone", "--branch", gitReference.branch)
@@ -27,8 +33,8 @@ internal class GitReferenceUnpacker(private val project: Project) {
         }
         cloneArgs += listOf(gitReference.url, targetDir.absolutePath)
 
-        val relativeTargetDir = ReferencePaths.relativeToRoot(project, targetDir)
-        project.logger.lifecycle("Cloning ${gitReference.url} (${gitReference.branch}) -> $relativeTargetDir")
+        val relativeTargetDir = ReferencePaths.relativeToRoot(rootDirectory, targetDir)
+        logger.lifecycle("Cloning ${gitReference.url} (${gitReference.branch}) -> $relativeTargetDir")
         commandRunner.run(listOf("git") + cloneArgs)
 
         if (gitReference.commit != null) {

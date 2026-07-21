@@ -1,17 +1,25 @@
 package io.github.trethore.buildlogic.unpacksources
 
-import org.gradle.api.Project
+import org.gradle.process.ExecOperations
+import java.io.File
 
-internal class CommandRunner(private val project: Project) {
+internal class CommandRunner(
+    private val execOperations: ExecOperations,
+    private val rootDirectory: File,
+) {
     fun run(command: List<String>) {
-        val process = ProcessBuilder(command)
-            .directory(project.rootDir)
-            .inheritIO()
-            .start()
+        execOperations.exec {
+            workingDir(rootDirectory)
+            commandLine(command)
+        }
+    }
 
-        val exitCode = process.waitFor()
-        require(exitCode == 0) {
-            "Command failed with exit code $exitCode: ${command.joinToString(" ")}"
+    fun runJava(classpath: Iterable<File>, mainClassName: String, arguments: List<String>) {
+        execOperations.javaexec {
+            workingDir(rootDirectory)
+            classpath(classpath)
+            mainClass.set(mainClassName)
+            args(arguments)
         }
     }
 }

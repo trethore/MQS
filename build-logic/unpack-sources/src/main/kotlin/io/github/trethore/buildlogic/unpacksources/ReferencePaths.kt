@@ -1,12 +1,15 @@
 package io.github.trethore.buildlogic.unpacksources
 
-import org.gradle.api.Project
 import java.io.File
 import java.security.MessageDigest
 
 internal object ReferencePaths {
-    fun relativeToRoot(project: Project, file: File): String {
-        return file.relativeTo(project.rootProject.rootDir).path
+    fun coordinatePath(coordinate: ModuleCoordinate): String {
+        return safePathSegment("${coordinate.group}-${coordinate.name}-${coordinate.version}")
+    }
+
+    fun relativeToRoot(rootDirectory: File, file: File): String {
+        return file.relativeTo(rootDirectory).path
     }
 
     fun safePathSegment(value: String): String {

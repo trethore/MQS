@@ -2,6 +2,7 @@ package io.github.trethore.buildlogic.sonar
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
@@ -17,10 +18,14 @@ abstract class SonarIssuesTask : DefaultTask() {
     @get:Internal
     abstract val token: Property<String>
 
+    @get:Internal
+    abstract val reportTaskFile: RegularFileProperty
+
     @TaskAction
     fun listIssues() {
         val sonarProjectKey = projectKey.get()
         val client = SonarApiClient.create(hostUrl.get(), token.orNull)
+        client.waitForAnalysis(reportTaskFile.get().asFile)
         val issues = fetchIssues(client, sonarProjectKey)
         if (issues.isEmpty()) {
             logger.lifecycle("No unresolved SonarQube issues found for $sonarProjectKey.")

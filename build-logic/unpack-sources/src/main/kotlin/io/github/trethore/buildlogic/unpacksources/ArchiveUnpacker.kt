@@ -1,19 +1,23 @@
 package io.github.trethore.buildlogic.unpacksources
 
-import org.gradle.api.Project
+import org.gradle.api.file.ArchiveOperations
 import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.file.FileSystemOperations
 import java.io.File
 
-internal class ArchiveUnpacker(private val project: Project) {
+internal class ArchiveUnpacker(
+    private val fileSystemOperations: FileSystemOperations,
+    private val archiveOperations: ArchiveOperations,
+) {
     fun unpackArchive(archive: File, targetDir: File) {
         when {
-            ArchiveFiles.isArchive(archive) -> project.copy {
-                from(project.zipTree(archive))
+            ArchiveFiles.isArchive(archive) -> fileSystemOperations.copy {
+                from(archiveOperations.zipTree(archive))
                 into(targetDir)
                 duplicatesStrategy = DuplicatesStrategy.EXCLUDE
             }
 
-            else -> project.copy {
+            else -> fileSystemOperations.copy {
                 from(archive)
                 into(targetDir)
             }
@@ -25,8 +29,8 @@ internal class ArchiveUnpacker(private val project: Project) {
             return
         }
 
-        project.copy {
-            from(project.zipTree(archive)) {
+        fileSystemOperations.copy {
+            from(archiveOperations.zipTree(archive)) {
                 exclude("**/*.class")
             }
             into(targetDir)

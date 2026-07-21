@@ -49,6 +49,7 @@ class SonarConventionsPlugin : Plugin<Project> {
             dependsOn(SonarConstants.SONAR_TASK_NAME)
             hostUrl.set(sonarHostUrl)
             projectKey.set(project.rootProject.name)
+            reportTaskFile.set(sonarMetadataFile)
             token.set(sonarToken)
         }
 

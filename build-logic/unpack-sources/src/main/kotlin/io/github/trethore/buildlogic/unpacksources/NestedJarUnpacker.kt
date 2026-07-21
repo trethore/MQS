@@ -2,16 +2,18 @@ package io.github.trethore.buildlogic.unpacksources
 
 import groovy.json.JsonSlurper
 import org.gradle.api.GradleException
-import org.gradle.api.Project
+import org.gradle.api.logging.Logger
 import java.io.File
 import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
 internal class NestedJarUnpacker(
-    private val project: Project,
+    private val logger: Logger,
+    private val rootDirectory: File,
     private val archiveUnpacker: ArchiveUnpacker,
     private val cfrDecompiler: CfrDecompiler,
+    private val nestedArtifactsDirectory: File,
 ) {
     fun unpackIfRequested(archive: File, targetDir: File, options: UnpackOptions) {
         if (!options.unpackNestedJars || !ArchiveFiles.isArchive(archive)) {
@@ -32,7 +34,7 @@ internal class NestedJarUnpacker(
                 return
             }
             if (depth >= UnpackSourcesConstants.MAX_NESTED_JAR_DEPTH) {
-                project.logger.warn(
+                logger.warn(
                     "Skipping nested jars in ${archive.name}: maximum depth " +
                         "${UnpackSourcesConstants.MAX_NESTED_JAR_DEPTH} reached."
                 )
@@ -43,7 +45,7 @@ internal class NestedJarUnpacker(
                 val nestedJar = extractNestedJar(zipFile, entry, archive)
                 val nestedHash = fileHash(nestedJar)
                 if (nestedHash in ancestorHashes) {
-                    project.logger.warn("Skipping recursive nested jar ${entry.name} in ${archive.name}.")
+                    logger.warn("Skipping recursive nested jar ${entry.name} in ${archive.name}.")
                     return@forEach
                 }
 
@@ -56,8 +58,8 @@ internal class NestedJarUnpacker(
                     .resolve(outputName)
 
                 nestedTargetDir.mkdirs()
-                val relativeNestedTargetDir = ReferencePaths.relativeToRoot(project, nestedTargetDir)
-                project.logger.lifecycle("Decompiling nested jar ${entry.name} -> $relativeNestedTargetDir")
+                val relativeNestedTargetDir = ReferencePaths.relativeToRoot(rootDirectory, nestedTargetDir)
+                logger.lifecycle("Decompiling nested jar ${entry.name} -> $relativeNestedTargetDir")
                 archiveUnpacker.unpackBinaryResources(nestedJar, nestedTargetDir)
                 cfrDecompiler.decompile(nestedJar, nestedTargetDir)
                 unpackNestedJars(
@@ -104,10 +106,7 @@ internal class NestedJarUnpacker(
         val parentKey = ReferencePaths.shortHash(parentArchive.absolutePath)
         val nestedFileName = ReferencePaths.safePathSegment(File(entry.name).name)
         val entryKey = ReferencePaths.shortHash(entry.name)
-        val nestedJar = project.layout.buildDirectory
-            .file("unpackSources/nested/$parentKey/$entryKey-$nestedFileName")
-            .get()
-            .asFile
+        val nestedJar = nestedArtifactsDirectory.resolve("$parentKey/$entryKey-$nestedFileName")
 
         nestedJar.parentFile.mkdirs()
         zipFile.getInputStream(entry).use { input ->
