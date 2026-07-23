@@ -18,7 +18,6 @@ myqolpackages/                                  # You are here!
     common/                                     # Shared mod logic with no Minecraft or Fabric dependencies.
       src/main/java/io/github/trethore/myqolpackages/
         api/                                    # Public entry points used by loader/version implementations.
-          MqpRuntime.java
         internal/                               # Private common implementation details.
       build.gradle.kts
     fabric-1.21.11/                             # Fabric implementation for Minecraft 1.21.11.
