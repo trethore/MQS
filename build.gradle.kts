@@ -1,6 +1,8 @@
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.testing.Test
 
+val modVersion = libs.versions.mod.get()
+
 plugins {
   `maven-publish`
   id("com.diffplug.spotless") version "8.8.0"
@@ -39,7 +41,7 @@ spotless {
 }
 
 allprojects {
-  version = providers.gradleProperty("mod_version").get()
+  version = modVersion
   group = providers.gradleProperty("maven_group").get()
 
   repositories {
@@ -58,9 +60,7 @@ allprojects {
 subprojects {
   plugins.withType<JavaPlugin> {
     dependencies {
-      "testImplementation"(
-          "org.junit.jupiter:junit-jupiter:${providers.gradleProperty("junit_version").get()}"
-      )
+      "testImplementation"(libs.junit.jupiter)
       "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }
 

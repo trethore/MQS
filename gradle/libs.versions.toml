@@ -1,0 +1,25 @@
+[versions]
+mod = "0.0.1"
+fabric-loom = "1.17-SNAPSHOT"
+fabric-loader = "0.19.3"
+junit = "6.1.2"
+slf4j = "2.0.7"
+gson = "2.13.2"
+graal = "25.1.3"
+byte-buddy = "1.18.11"
+
+[libraries]
+fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+graal-sdk = { module = "org.graalvm.sdk:graal-sdk", version.ref = "graal" }
+graal-truffle-api = { module = "org.graalvm.truffle:truffle-api", version.ref = "graal" }
+graal-js-core = { module = "org.graalvm.js:js", version.ref = "graal" }
+graal-js-language = { module = "org.graalvm.js:js-language", version.ref = "graal" }
+graal-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "graal" }
+bytebuddy-core = { module = "net.bytebuddy:byte-buddy", version.ref = "byte-buddy" }
+bytebuddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version.ref = "byte-buddy" }
+
+[plugins]
+fabric-loom-remap = { id = "net.fabricmc.fabric-loom-remap", version.ref = "fabric-loom" }

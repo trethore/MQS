@@ -9,4 +9,4 @@ rootProject.name = "build-logic"
 
 include("unpack-sources")
 
-include("sonar")
+include("sonar-analysis")

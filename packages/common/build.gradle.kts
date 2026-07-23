@@ -10,26 +10,21 @@ configurations.testRuntimeOnly {
 }
 
 dependencies {
-  val graalVersion = providers.gradleProperty("graal_version").get()
-  val byteBuddyVersion = providers.gradleProperty("byte_buddy_version").get()
-  val gsonVersion = providers.gradleProperty("gson_version").get()
-  val slf4jApiVersion = providers.gradleProperty("slf4j_api_version").get()
-
   // GraalVM
-  unpack(implementation("org.graalvm.sdk:graal-sdk:$graalVersion"))
-  unpack(implementation("org.graalvm.truffle:truffle-api:$graalVersion"))
-  implementation("org.graalvm.js:js:$graalVersion")
-  unpack(implementation("org.graalvm.js:js-scriptengine:$graalVersion"))
+  unpack(implementation(libs.graal.sdk.get()))
+  unpack(implementation(libs.graal.truffle.api.get()))
+  implementation(libs.graal.js.core)
+  unpack(implementation(libs.graal.js.scriptengine.get()))
   // ByteBuddy
-  unpack(implementation("net.bytebuddy:byte-buddy:$byteBuddyVersion"))
-  unpack(implementation("net.bytebuddy:byte-buddy-agent:$byteBuddyVersion"))
+  unpack(implementation(libs.bytebuddy.core.get()))
+  unpack(implementation(libs.bytebuddy.agent.get()))
 
   // Source
-  unpack(create("org.graalvm.js:js-language:$graalVersion"))
+  unpack(create(libs.graal.js.language.get()))
 
   // GSON & SLF4J provided at runtime
-  compileOnly("com.google.code.gson:gson:$gsonVersion")
-  compileOnly("org.slf4j:slf4j-api:$slf4jApiVersion")
+  compileOnly(libs.gson)
+  compileOnly(libs.slf4j.api)
 }
 
 tasks.withType<JavaCompile>().configureEach {

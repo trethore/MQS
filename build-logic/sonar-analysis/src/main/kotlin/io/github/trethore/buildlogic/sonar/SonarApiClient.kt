@@ -18,7 +18,7 @@ internal class SonarApiClient private constructor(
     private val hostUrl: String,
     private val authorizationHeader: String,
     private val httpClient: HttpClient,
-) {
+) : SonarClient {
     companion object {
         fun create(hostUrl: String, token: String?): SonarApiClient {
             if (token.isNullOrBlank()) {
@@ -35,7 +35,7 @@ internal class SonarApiClient private constructor(
         }
     }
 
-    fun get(
+    override fun get(
         path: String,
         parameters: Map<String, String>,
         responseName: String,
@@ -44,7 +44,7 @@ internal class SonarApiClient private constructor(
         return send(url, responseName)
     }
 
-    fun waitForAnalysis(reportTaskFile: File) {
+    override fun waitForAnalysis(reportTaskFile: File) {
         if (!reportTaskFile.isFile) {
             throw GradleException("SonarQube analysis metadata was not found at $reportTaskFile.")
         }
@@ -101,7 +101,12 @@ internal class SonarApiClient private constructor(
             )
         }
 
-        return JsonSlurper().parseText(response.body()) as? Map<*, *>
+        val payload = try {
+            JsonSlurper().parseText(response.body())
+        } catch (exception: RuntimeException) {
+            throw GradleException("SonarQube $responseName response was not valid JSON.", exception)
+        }
+        return payload as? Map<*, *>
             ?: throw GradleException("SonarQube $responseName response was not a JSON object.")
     }
 

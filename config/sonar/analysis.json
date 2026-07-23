@@ -1,0 +1,13 @@
+{
+  "properties": {
+    "sonar.inclusions": ["**/*.java"],
+    "sonar.exclusions": ["references/**", "**/build/**"],
+    "sonar.gradle.scanAll": false
+  },
+  "issueExclusions": [
+    {
+      "ruleKey": "java:S4032",
+      "filePattern": "packages/common/src/main/java/io/github/trethore/myqolpackages/internal/package-info.java"
+    }
+  ]
+}

@@ -11,14 +11,14 @@ Here is an overview of the project:
 myqolpackages/                                  # You are here!
   .github/                                      # GitHub config and workflows.
   build-logic/                                  # Included Gradle build for custom build logic.
-    sonar/                                      # Gradle plugin for running SonarQube analysis.
+    sonar-analysis/                             # Gradle plugin for running SonarQube analysis.
     unpack-sources/                             # Gradle plugin that unpacks dependency and Git reference sources.
   docs/
   packages/
     common/                                     # Shared mod logic with no Minecraft or Fabric dependencies.
       src/main/java/io/github/trethore/myqolpackages/
         api/                                    # Public entry points used by loader/version implementations.
-          Main.java
+          MqpRuntime.java
         internal/                               # Private common implementation details.
       build.gradle.kts
     fabric-1.21.11/                             # Fabric implementation for Minecraft 1.21.11.
@@ -38,6 +38,7 @@ myqolpackages/                                  # You are here!
     <group>-<lib-name>-<version>/
   .gitignore
   build.gradle.kts                              # Root Gradle config shared by all projects
+  CHANGELOG.md
   gradle.properties                             # Shared version and dependency properties.
   README.md
   settings.gradle.kts

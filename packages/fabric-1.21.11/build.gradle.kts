@@ -1,12 +1,12 @@
 import io.github.trethore.buildlogic.unpack
 
 plugins {
-  id("net.fabricmc.fabric-loom-remap")
+  alias(libs.plugins.fabric.loom.remap)
   `maven-publish`
 }
 
 val minecraftVersion = "1.21.11"
-val loaderVersion = providers.gradleProperty("loader_version").get()
+val loaderVersion = libs.versions.fabric.loader.get()
 val fabricApiVersion = "0.141.4+1.21.11"
 
 base {
@@ -38,7 +38,7 @@ configurations.implementation {
 dependencies {
   unpack(minecraft("com.mojang:minecraft:$minecraftVersion"))
   mappings(loom.officialMojangMappings())
-  modImplementation("net.fabricmc:fabric-loader:$loaderVersion")
+  modImplementation(libs.fabric.loader)
   unpack(modImplementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion"))
 
   include(project(":packages:common"))
