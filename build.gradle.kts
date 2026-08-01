@@ -1,9 +1,11 @@
+import net.fabricmc.loom.api.LoomGradleExtensionAPI
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.testing.Test
 
 val modVersion = libs.versions.mod.get()
 
 plugins {
+  alias(libs.plugins.fabric.loom.remap) apply false
   `maven-publish`
   id("com.diffplug.spotless") version "8.8.0"
   id("example.unpack-sources")
@@ -58,6 +60,14 @@ allprojects {
 }
 
 subprojects {
+  pluginManager.withPlugin("net.fabricmc.fabric-loom-remap") {
+    extensions.configure<LoomGradleExtensionAPI> {
+      runs.configureEach {
+        preferGradleTask.set(true)
+      }
+    }
+  }
+
   plugins.withType<JavaPlugin> {
     dependencies {
       "testImplementation"(libs.junit.jupiter)
