@@ -15,24 +15,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.config;
+package io.github.trethore.myqolpackages.internal.runtime;
 
-import java.util.List;
-
-public record MqpConfig(List<String> additionalPackageRoots, List<String> enabledPackages) {
-  public MqpConfig {
-    additionalPackageRoots =
-        additionalPackageRoots == null ? List.of() : additionalPackageRoots.stream().toList();
-    enabledPackages =
-        enabledPackages == null
-            ? List.of()
-            : enabledPackages.stream()
-                .filter(packageId -> packageId != null && !packageId.isBlank())
-                .distinct()
-                .toList();
+public final class PackageLifecycleException extends Exception {
+  public PackageLifecycleException(String message) {
+    super(message);
   }
 
-  public static MqpConfig defaults() {
-    return new MqpConfig(List.of(), List.of());
+  public PackageLifecycleException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

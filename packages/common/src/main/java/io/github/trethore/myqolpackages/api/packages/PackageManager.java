@@ -20,10 +20,21 @@ package io.github.trethore.myqolpackages.api.packages;
 import java.util.List;
 import java.util.Optional;
 
-public interface PackageManager {
+public interface PackageManager extends AutoCloseable {
   PackageDiscoveryResult refresh();
+
+  PackageDiscoveryResult reload();
+
+  PackageOperationResult enablePackage(String id);
+
+  PackageOperationResult disablePackage(String id);
 
   List<PackageInfo> getPackages();
 
   Optional<PackageInfo> findPackage(String id);
+
+  List<String> getConfiguredEnabledPackageIds();
+
+  @Override
+  void close();
 }

@@ -27,8 +27,11 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -39,6 +42,7 @@ public final class GsonMqpConfigManager {
   private final Path configPath;
   private final Gson gson;
   private final AtomicReference<MqpConfig> config = new AtomicReference<>(MqpConfig.defaults());
+  private boolean configLoadedSuccessfully;
 
   public GsonMqpConfigManager(Path mqpDirectory) {
     configPath = mqpDirectory.resolve(CONFIG_FILE_NAME);
@@ -54,10 +58,12 @@ public final class GsonMqpConfigManager {
 
       MqpConfig loadedConfig = readConfig();
       config.set(loadedConfig);
+      configLoadedSuccessfully = true;
       return new MqpConfigLoadResult(loadedConfig, List.of());
     } catch (IOException | JsonIOException | JsonSyntaxException exception) {
       MqpConfig defaultConfig = MqpConfig.defaults();
       config.set(defaultConfig);
+      configLoadedSuccessfully = false;
       PackageDiagnostic diagnostic =
           new PackageDiagnostic(
               CONFIG_DIAGNOSTIC_ID,
@@ -75,6 +81,23 @@ public final class GsonMqpConfigManager {
     return configPath;
   }
 
+  public synchronized void addEnabledPackage(String packageId) throws IOException {
+    List<String> enabledPackages = new ArrayList<>(config.get().enabledPackages());
+    if (enabledPackages.contains(packageId)) {
+      return;
+    }
+    enabledPackages.add(packageId);
+    saveEnabledPackages(enabledPackages);
+  }
+
+  public synchronized void removeEnabledPackage(String packageId) throws IOException {
+    List<String> enabledPackages = new ArrayList<>(config.get().enabledPackages());
+    if (!enabledPackages.remove(packageId)) {
+      return;
+    }
+    saveEnabledPackages(enabledPackages);
+  }
+
   private MqpConfig readConfig() throws IOException {
     try (Reader reader = Files.newBufferedReader(configPath, StandardCharsets.UTF_8)) {
       MqpConfig loadedConfig = gson.fromJson(reader, MqpConfig.class);
@@ -86,9 +109,44 @@ public final class GsonMqpConfigManager {
   }
 
   private void writeDefaultConfig() throws IOException {
-    try (Writer writer = Files.newBufferedWriter(configPath, StandardCharsets.UTF_8)) {
-      gson.toJson(MqpConfig.defaults(), writer);
-      writer.write(System.lineSeparator());
+    writeConfig(MqpConfig.defaults());
+  }
+
+  private void saveEnabledPackages(List<String> enabledPackages) throws IOException {
+    if (!configLoadedSuccessfully) {
+      throw new IOException("Configuration cannot be saved because config.json failed to load");
+    }
+    MqpConfig currentConfig = config.get();
+    MqpConfig updatedConfig =
+        new MqpConfig(currentConfig.additionalPackageRoots(), enabledPackages);
+    writeConfig(updatedConfig);
+    config.set(updatedConfig);
+  }
+
+  private void writeConfig(MqpConfig updatedConfig) throws IOException {
+    Files.createDirectories(configPath.getParent());
+    Path temporaryConfig =
+        Files.createTempFile(configPath.getParent(), CONFIG_FILE_NAME + ".", ".tmp");
+    try {
+      try (Writer writer = Files.newBufferedWriter(temporaryConfig, StandardCharsets.UTF_8)) {
+        gson.toJson(updatedConfig, writer);
+        writer.write(System.lineSeparator());
+      }
+      moveConfigIntoPlace(temporaryConfig);
+    } finally {
+      Files.deleteIfExists(temporaryConfig);
+    }
+  }
+
+  private void moveConfigIntoPlace(Path temporaryConfig) throws IOException {
+    try {
+      Files.move(
+          temporaryConfig,
+          configPath,
+          StandardCopyOption.ATOMIC_MOVE,
+          StandardCopyOption.REPLACE_EXISTING);
+    } catch (AtomicMoveNotSupportedException exception) {
+      Files.move(temporaryConfig, configPath, StandardCopyOption.REPLACE_EXISTING);
     }
   }
 }

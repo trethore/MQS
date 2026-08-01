@@ -19,10 +19,8 @@ package io.github.trethore.myqolpackages.command.commands;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
@@ -48,17 +46,6 @@ public final class RefreshPackagesClientCommand {
                 + " MQP package(s) with "
                 + result.diagnostics().size()
                 + " diagnostic(s)."));
-    for (PackageDiagnostic diagnostic : result.diagnostics()) {
-      source.sendError(
-          Component.literal(
-              diagnostic.packageId()
-                  + " ("
-                  + diagnostic.packageDirectory()
-                  + "): "
-                  + diagnostic.message()));
-    }
-    return result.diagnostics().isEmpty()
-        ? ClientCommandResult.SUCCESS
-        : ClientCommandResult.FAILURE;
+    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
   }
 }

@@ -13,7 +13,9 @@ dependencies {
   // GraalVM
   unpack(implementation(libs.graal.sdk.get()))
   unpack(implementation(libs.graal.truffle.api.get()))
-  implementation(libs.graal.js.core)
+  implementation(libs.graal.js.core) {
+    exclude(group = "org.graalvm.truffle", module = "truffle-runtime")
+  }
   unpack(implementation(libs.graal.js.scriptengine.get()))
   // ByteBuddy
   unpack(implementation(libs.bytebuddy.core.get()))
@@ -24,6 +26,7 @@ dependencies {
 
   // GSON & SLF4J provided at runtime
   compileOnly(libs.gson)
+  compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.slf4j.api)
 }
 

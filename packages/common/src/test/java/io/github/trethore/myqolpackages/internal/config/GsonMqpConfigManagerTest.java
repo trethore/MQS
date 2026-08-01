@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -36,11 +37,15 @@ class GsonMqpConfigManagerTest {
     MqpConfigLoadResult result = configManager.load();
 
     assertTrue(result.config().additionalPackageRoots().isEmpty());
+    assertTrue(result.config().enabledPackages().isEmpty());
     assertTrue(result.diagnostics().isEmpty());
     assertTrue(Files.isRegularFile(temporaryDirectory.resolve("config.json")));
     assertTrue(
         Files.readString(temporaryDirectory.resolve("config.json"))
             .contains("\"additionalPackageRoots\""));
+    assertTrue(
+        Files.readString(temporaryDirectory.resolve("config.json"))
+            .contains("\"enabledPackages\""));
   }
 
   @Test
@@ -52,6 +57,7 @@ class GsonMqpConfigManagerTest {
     MqpConfigLoadResult result = configManager.load();
 
     assertTrue(result.config().additionalPackageRoots().isEmpty());
+    assertTrue(result.config().enabledPackages().isEmpty());
     assertEquals(1, result.diagnostics().size());
     assertEquals("{", Files.readString(configPath));
   }
@@ -64,6 +70,21 @@ class GsonMqpConfigManagerTest {
     MqpConfigLoadResult result = configManager.load();
 
     assertTrue(result.config().additionalPackageRoots().isEmpty());
+    assertTrue(result.config().enabledPackages().isEmpty());
     assertTrue(result.diagnostics().isEmpty());
+  }
+
+  @Test
+  void savesEnabledPackages() throws IOException {
+    GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
+    configManager.load();
+
+    configManager.addEnabledPackage("first-package");
+    configManager.addEnabledPackage("second-package");
+    configManager.removeEnabledPackage("first-package");
+
+    GsonMqpConfigManager reloadedManager = new GsonMqpConfigManager(temporaryDirectory);
+    MqpConfigLoadResult result = reloadedManager.load();
+    assertEquals(List.of("second-package"), result.config().enabledPackages());
   }
 }

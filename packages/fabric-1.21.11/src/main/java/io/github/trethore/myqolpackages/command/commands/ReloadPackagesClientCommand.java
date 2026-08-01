@@ -19,48 +19,33 @@ package io.github.trethore.myqolpackages.command.commands;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import io.github.trethore.myqolpackages.api.packages.PackageInfo;
+import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.command.ClientCommandResult;
-import java.util.List;
-import java.util.Locale;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
 
-public final class ListPackagesClientCommand {
+public final class ReloadPackagesClientCommand {
   private final PackageManager packageManager;
 
-  public ListPackagesClientCommand(PackageManager packageManager) {
+  public ReloadPackagesClientCommand(PackageManager packageManager) {
     this.packageManager = packageManager;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("list").executes(this::execute);
+    return ClientCommandManager.literal("reload").executes(this::execute);
   }
 
   private int execute(CommandContext<FabricClientCommandSource> context) {
     FabricClientCommandSource source = context.getSource();
-    List<PackageInfo> packages = packageManager.getPackages();
-    if (packages.isEmpty()) {
-      source.sendFeedback(Component.literal("No MQP packages discovered."));
-      return ClientCommandResult.SUCCESS;
-    }
-
-    source.sendFeedback(Component.literal("Discovered MQP packages: " + packages.size()));
-    for (PackageInfo packageInfo : packages) {
-      source.sendFeedback(
-          Component.literal(
-              "- "
-                  + packageInfo.id()
-                  + ": "
-                  + packageInfo.name()
-                  + " ("
-                  + packageInfo.version()
-                  + ") ["
-                  + packageInfo.state().name().toLowerCase(Locale.ROOT)
-                  + "]"));
-    }
-    return packages.size();
+    PackageDiscoveryResult result = packageManager.reload();
+    source.sendFeedback(
+        Component.literal(
+            "Reloaded "
+                + result.packages().size()
+                + " MQP package(s) with "
+                + result.diagnostics().size()
+                + " diagnostic(s)."));
+    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
   }
 }

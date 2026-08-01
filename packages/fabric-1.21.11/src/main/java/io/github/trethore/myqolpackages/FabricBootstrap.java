@@ -21,6 +21,7 @@ import io.github.trethore.myqolpackages.api.MqpRuntime;
 import io.github.trethore.myqolpackages.command.MqpClientCommand;
 import java.nio.file.Path;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ public final class FabricBootstrap implements ClientModInitializer {
     MqpRuntime runtime = MqpRuntime.create(mqpDirectory);
     runtime.start();
     new MqpClientCommand(runtime.getPackageManager()).register();
+    ClientLifecycleEvents.CLIENT_STOPPING.register(client -> runtime.stop());
     LOGGER.info("Initialized {} with data directory {}", MOD_ID, mqpDirectory);
   }
 }

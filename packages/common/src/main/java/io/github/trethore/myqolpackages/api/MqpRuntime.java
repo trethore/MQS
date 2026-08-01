@@ -25,6 +25,7 @@ import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootPro
 import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
 import io.github.trethore.myqolpackages.internal.packages.DefaultPackageManager;
 import io.github.trethore.myqolpackages.internal.packages.FileSystemPackageDiscovery;
+import io.github.trethore.myqolpackages.internal.runtime.GraalPackageContextFactory;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -47,12 +48,14 @@ public final class MqpRuntime {
     PackageManager packageManager =
         new DefaultPackageManager(
             new ConfiguredPackageRootProvider(mqpDirectory, configManager),
-            new FileSystemPackageDiscovery());
+            new FileSystemPackageDiscovery(),
+            configManager,
+            new GraalPackageContextFactory());
     return new MqpRuntime(configManager, packageManager);
   }
 
   public PackageDiscoveryResult start() {
-    PackageDiscoveryResult result = packageManager.refresh();
+    PackageDiscoveryResult result = packageManager.reload();
     LOGGER.info(
         "Discovered {} package(s) with {} diagnostic(s)",
         result.packages().size(),
@@ -65,6 +68,10 @@ public final class MqpRuntime {
           diagnostic.message());
     }
     return result;
+  }
+
+  public void stop() {
+    packageManager.close();
   }
 
   public PackageManager getPackageManager() {

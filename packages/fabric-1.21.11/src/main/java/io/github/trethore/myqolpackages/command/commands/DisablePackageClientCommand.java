@@ -22,26 +22,24 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
+import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
-import java.nio.file.Path;
-import java.util.Locale;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
 
-public final class InfoPackageClientCommand {
+public final class DisablePackageClientCommand {
   private final PackageManager packageManager;
 
-  public InfoPackageClientCommand(PackageManager packageManager) {
+  public DisablePackageClientCommand(PackageManager packageManager) {
     this.packageManager = packageManager;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("info")
+    return ClientCommandManager.literal("disable")
         .then(
             ClientCommandManager.argument("id", StringArgumentType.word())
                 .suggests((context, builder) -> suggestPackageIds(builder))
@@ -51,44 +49,16 @@ public final class InfoPackageClientCommand {
   private int execute(CommandContext<FabricClientCommandSource> context) {
     FabricClientCommandSource source = context.getSource();
     String packageId = StringArgumentType.getString(context, "id");
-    Optional<PackageInfo> optionalPackage = packageManager.findPackage(packageId);
-    if (optionalPackage.isEmpty()) {
-      source.sendError(Component.literal("Unknown MQP package: " + packageId));
-      return ClientCommandResult.FAILURE;
+    PackageOperationResult result = packageManager.disablePackage(packageId);
+    if (result.successful()) {
+      source.sendFeedback(Component.literal("Disabled MQP package: " + packageId));
+      return ClientCommandResult.SUCCESS;
     }
-
-    PackageInfo packageInfo = optionalPackage.get();
-    source.sendFeedback(Component.literal(packageInfo.name() + " (" + packageInfo.id() + ")"));
-    source.sendFeedback(Component.literal("Version: " + packageInfo.version()));
-    source.sendFeedback(Component.literal("Description: " + packageInfo.description()));
-    source.sendFeedback(Component.literal("Entrypoint: " + packageInfo.entrypoint()));
-    source.sendFeedback(
-        Component.literal("State: " + packageInfo.state().name().toLowerCase(Locale.ROOT)));
-    source.sendFeedback(
-        Component.literal("Directory: " + anonymizeDirectory(packageInfo.packageDirectory())));
-    return ClientCommandResult.SUCCESS;
-  }
-
-  private static String anonymizeDirectory(Path directory) {
-    String userHome = System.getProperty("user.home");
-    if (userHome == null || userHome.isBlank()) {
-      return directory.toString();
-    }
-
-    Path normalizedDirectory = directory.toAbsolutePath().normalize();
-    Path normalizedUserHome = Path.of(userHome).toAbsolutePath().normalize();
-    if (!normalizedDirectory.startsWith(normalizedUserHome)) {
-      return directory.toString();
-    }
-
-    Path anonymizedUserHome = normalizedUserHome.resolveSibling("user");
-    return anonymizedUserHome
-        .resolve(normalizedUserHome.relativize(normalizedDirectory))
-        .toString();
+    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
   }
 
   private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
     return PackageCommandSupport.suggestPackageIds(
-        builder, packageManager.getPackages(), PackageInfo::id);
+        builder, packageManager.getConfiguredEnabledPackageIds(), Function.identity());
   }
 }

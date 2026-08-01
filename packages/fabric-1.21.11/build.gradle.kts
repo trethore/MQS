@@ -42,6 +42,17 @@ dependencies {
   unpack(modImplementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion"))
 
   include(project(":packages:common"))
+  // Loom includes are non-transitive, so GraalJS runtime dependencies must be nested explicitly.
+  include(libs.graal.collections)
+  include(libs.graal.nativeimage)
+  include(libs.graal.word)
+  include(libs.graal.jniutils)
+  include(libs.graal.polyglot)
+  include(libs.graal.truffle.api)
+  include(libs.graal.js.language)
+  include(libs.graal.regex)
+  include(libs.graal.shadowed.icu4j)
+  include(libs.graal.shadowed.xz)
 }
 
 tasks.processResources {

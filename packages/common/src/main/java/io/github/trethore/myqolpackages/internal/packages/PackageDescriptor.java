@@ -18,17 +18,19 @@
 package io.github.trethore.myqolpackages.internal.packages;
 
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
+import io.github.trethore.myqolpackages.api.packages.PackageState;
 import java.nio.file.Path;
 
 record PackageDescriptor(
     String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
-  PackageInfo toInfo() {
+  PackageInfo toInfo(PackageState state) {
     return new PackageInfo(
         id,
         manifest.name(),
         manifest.description(),
         manifest.version(),
         manifest.entrypoint(),
-        packageDirectory);
+        packageDirectory,
+        state);
   }
 }
