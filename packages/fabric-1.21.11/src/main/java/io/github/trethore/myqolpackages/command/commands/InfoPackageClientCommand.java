@@ -25,8 +25,8 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import java.nio.file.Path;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -53,19 +53,23 @@ public final class InfoPackageClientCommand {
     String packageId = StringArgumentType.getString(context, "id");
     Optional<PackageInfo> optionalPackage = packageManager.findPackage(packageId);
     if (optionalPackage.isEmpty()) {
-      source.sendError(Component.literal("Unknown MQP package: " + packageId));
+      MqpCommandFeedback.sendError(source, "Unknown package: " + packageId);
       return ClientCommandResult.FAILURE;
     }
 
     PackageInfo packageInfo = optionalPackage.get();
-    source.sendFeedback(Component.literal(packageInfo.name() + " (" + packageInfo.id() + ")"));
-    source.sendFeedback(Component.literal("Version: " + packageInfo.version()));
-    source.sendFeedback(Component.literal("Description: " + packageInfo.description()));
-    source.sendFeedback(Component.literal("Entrypoint: " + packageInfo.entrypoint()));
-    source.sendFeedback(
-        Component.literal("State: " + packageInfo.state().name().toLowerCase(Locale.ROOT)));
-    source.sendFeedback(
-        Component.literal("Directory: " + anonymizeDirectory(packageInfo.packageDirectory())));
+    MqpCommandFeedback.sendHeader(source);
+    MqpCommandFeedback.sendLine(source, packageInfo.name() + " (" + packageInfo.id() + ")");
+    MqpCommandFeedback.sendLine(source, "Version: " + packageInfo.version());
+    MqpCommandFeedback.sendLine(source, "Description: " + packageInfo.description());
+    MqpCommandFeedback.sendLine(source, "Entrypoint: " + packageInfo.entrypoint());
+    MqpCommandFeedback.sendLine(
+        source,
+        Component.empty()
+            .append(Component.literal("State: "))
+            .append(PackageCommandSupport.formatState(packageInfo.state())));
+    MqpCommandFeedback.sendLine(
+        source, "Directory: " + anonymizeDirectory(packageInfo.packageDirectory()));
     return ClientCommandResult.SUCCESS;
   }
 

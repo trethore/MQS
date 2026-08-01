@@ -21,9 +21,9 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.network.chat.Component;
 
 public final class PackagesClientCommand {
   private final DisablePackageClientCommand disablePackageClientCommand;
@@ -54,11 +54,8 @@ public final class PackagesClientCommand {
   }
 
   private int execute(CommandContext<FabricClientCommandSource> context) {
-    context
-        .getSource()
-        .sendFeedback(
-            Component.literal(
-                "Use enable, disable, list, info, refresh, or reload to manage MQP packages."));
+    MqpCommandFeedback.sendInfo(
+        context.getSource(), "Available actions: enable, disable, list, info, refresh, reload.");
     return ClientCommandResult.SUCCESS;
   }
 }

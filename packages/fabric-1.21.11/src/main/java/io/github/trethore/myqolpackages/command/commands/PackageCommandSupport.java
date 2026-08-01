@@ -20,12 +20,15 @@ package io.github.trethore.myqolpackages.command.commands;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 
 final class PackageCommandSupport {
@@ -34,15 +37,23 @@ final class PackageCommandSupport {
   static int sendDiagnostics(
       FabricClientCommandSource source, List<PackageDiagnostic> diagnostics) {
     for (PackageDiagnostic diagnostic : diagnostics) {
-      source.sendError(
-          Component.literal(
-              diagnostic.packageId()
-                  + " ("
-                  + diagnostic.packageDirectory()
-                  + "): "
-                  + diagnostic.message()));
+      MqpCommandFeedback.sendError(source, diagnostic.packageId() + ": " + diagnostic.message());
     }
     return diagnostics.isEmpty() ? ClientCommandResult.SUCCESS : ClientCommandResult.FAILURE;
+  }
+
+  static Component formatState(PackageState state) {
+    return Component.literal(state.name().toLowerCase(Locale.ROOT)).withStyle(stateColor(state));
+  }
+
+  static void sendEnabled(FabricClientCommandSource source, String packageId) {
+    MqpCommandFeedback.sendInfo(
+        source, createStateChange("Enabled", ChatFormatting.GREEN, packageId));
+  }
+
+  static void sendDisabled(FabricClientCommandSource source, String packageId) {
+    MqpCommandFeedback.sendInfo(
+        source, createStateChange("Disabled", ChatFormatting.RED, packageId));
   }
 
   static <T> CompletableFuture<Suggestions> suggestPackageIds(
@@ -55,5 +66,19 @@ final class PackageCommandSupport {
       }
     }
     return builder.buildFuture();
+  }
+
+  private static Component createStateChange(
+      String action, ChatFormatting color, String packageId) {
+    return Component.empty()
+        .append(Component.literal(action).withStyle(color))
+        .append(Component.literal(": " + packageId));
+  }
+
+  private static ChatFormatting stateColor(PackageState state) {
+    return switch (state) {
+      case ENABLED -> ChatFormatting.GREEN;
+      case DISABLED, ERROR -> ChatFormatting.RED;
+    };
   }
 }

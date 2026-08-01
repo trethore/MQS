@@ -24,7 +24,6 @@ import io.github.trethore.myqolpackages.command.commands.PackagesClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.network.chat.Component;
 
 public final class MqpClientCommand {
   private final PackagesClientCommand packagesClientCommand;
@@ -45,9 +44,7 @@ public final class MqpClientCommand {
   }
 
   private int execute(CommandContext<FabricClientCommandSource> context) {
-    context
-        .getSource()
-        .sendFeedback(Component.literal("Use /mqp packages to manage MQP packages."));
+    MqpCommandFeedback.sendInfo(context.getSource(), "Manage packages with /mqp packages.");
     return ClientCommandResult.SUCCESS;
   }
 }

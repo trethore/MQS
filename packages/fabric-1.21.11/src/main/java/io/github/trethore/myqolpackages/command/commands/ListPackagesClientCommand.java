@@ -22,8 +22,8 @@ import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import java.util.List;
-import java.util.Locale;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
@@ -43,23 +43,26 @@ public final class ListPackagesClientCommand {
     FabricClientCommandSource source = context.getSource();
     List<PackageInfo> packages = packageManager.getPackages();
     if (packages.isEmpty()) {
-      source.sendFeedback(Component.literal("No MQP packages discovered."));
+      MqpCommandFeedback.sendInfo(source, "No packages discovered.");
       return ClientCommandResult.SUCCESS;
     }
 
-    source.sendFeedback(Component.literal("Discovered MQP packages: " + packages.size()));
+    MqpCommandFeedback.sendHeader(source);
+    MqpCommandFeedback.sendLine(source, "Packages discovered: " + packages.size());
     for (PackageInfo packageInfo : packages) {
-      source.sendFeedback(
-          Component.literal(
-              "- "
-                  + packageInfo.id()
-                  + ": "
-                  + packageInfo.name()
-                  + " ("
-                  + packageInfo.version()
-                  + ") ["
-                  + packageInfo.state().name().toLowerCase(Locale.ROOT)
-                  + "]"));
+      MqpCommandFeedback.sendLine(
+          source,
+          Component.empty()
+              .append(
+                  Component.literal(
+                      packageInfo.name()
+                          + " ("
+                          + packageInfo.id()
+                          + ") - "
+                          + packageInfo.version()
+                          + " ["))
+              .append(PackageCommandSupport.formatState(packageInfo.state()))
+              .append(Component.literal("]")));
     }
     return packages.size();
   }

@@ -21,9 +21,9 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
+import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.network.chat.Component;
 
 public final class RefreshPackagesClientCommand {
   private final PackageManager packageManager;
@@ -39,13 +39,13 @@ public final class RefreshPackagesClientCommand {
   private int execute(CommandContext<FabricClientCommandSource> context) {
     FabricClientCommandSource source = context.getSource();
     PackageDiscoveryResult result = packageManager.refresh();
-    source.sendFeedback(
-        Component.literal(
-            "Discovered "
-                + result.packages().size()
-                + " MQP package(s) with "
-                + result.diagnostics().size()
-                + " diagnostic(s)."));
+    MqpCommandFeedback.sendInfo(
+        source,
+        "Discovered: "
+            + result.packages().size()
+            + " package(s), "
+            + result.diagnostics().size()
+            + " diagnostic(s).");
     return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
   }
 }

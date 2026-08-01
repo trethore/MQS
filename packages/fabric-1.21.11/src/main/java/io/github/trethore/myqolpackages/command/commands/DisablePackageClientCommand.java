@@ -29,7 +29,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.network.chat.Component;
 
 public final class DisablePackageClientCommand {
   private final PackageManager packageManager;
@@ -51,7 +50,7 @@ public final class DisablePackageClientCommand {
     String packageId = StringArgumentType.getString(context, "id");
     PackageOperationResult result = packageManager.disablePackage(packageId);
     if (result.successful()) {
-      source.sendFeedback(Component.literal("Disabled MQP package: " + packageId));
+      PackageCommandSupport.sendDisabled(source, packageId);
       return ClientCommandResult.SUCCESS;
     }
     return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());

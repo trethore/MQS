@@ -91,16 +91,16 @@ public final class DefaultPackageManager implements PackageManager {
   public synchronized PackageOperationResult enablePackage(String id) {
     PackageInstance packageInstance = packages.get(id);
     if (packageInstance == null || !packageInstance.isAvailable()) {
-      return failedOperation(id, configManager.getConfigPath(), "Unknown MQP package");
+      return failedOperation(id, configManager.getConfigPath(), "Unknown package");
+    }
+    if (packageInstance.getState() == PackageState.ENABLED) {
+      return failedOperation(packageInstance, "Already enabled");
     }
 
-    boolean enabledByOperation = packageInstance.getState() != PackageState.ENABLED;
-    if (enabledByOperation) {
-      try {
-        enablePackageInstance(packageInstance);
-      } catch (PackageLifecycleException exception) {
-        return failedOperation(packageInstance, exception.getMessage());
-      }
+    try {
+      enablePackageInstance(packageInstance);
+    } catch (PackageLifecycleException exception) {
+      return failedOperation(packageInstance, exception.getMessage());
     }
 
     try {
@@ -114,12 +114,10 @@ public final class DefaultPackageManager implements PackageManager {
               id,
               configManager.getConfigPath(),
               "Could not save enabled package state: " + exception.getMessage()));
-      if (enabledByOperation) {
-        try {
-          packageInstance.disable();
-        } catch (PackageLifecycleException disableException) {
-          diagnostics.add(createLifecycleDiagnostic(packageInstance, disableException));
-        }
+      try {
+        packageInstance.disable();
+      } catch (PackageLifecycleException disableException) {
+        diagnostics.add(createLifecycleDiagnostic(packageInstance, disableException));
       }
       enabledPackageOrder.remove(id);
       return new PackageOperationResult(false, diagnostics);
@@ -130,8 +128,14 @@ public final class DefaultPackageManager implements PackageManager {
   public synchronized PackageOperationResult disablePackage(String id) {
     List<PackageDiagnostic> diagnostics = new ArrayList<>();
     PackageInstance packageInstance = packages.get(id);
-    if (packageInstance == null && !configManager.getConfig().enabledPackages().contains(id)) {
-      return failedOperation(id, configManager.getConfigPath(), "Unknown MQP package");
+    boolean configuredEnabled = configManager.getConfig().enabledPackages().contains(id);
+    if (packageInstance == null && !configuredEnabled) {
+      return failedOperation(id, configManager.getConfigPath(), "Unknown package");
+    }
+    if (packageInstance != null
+        && packageInstance.getState() == PackageState.DISABLED
+        && !configuredEnabled) {
+      return failedOperation(packageInstance, "Already disabled");
     }
 
     try {

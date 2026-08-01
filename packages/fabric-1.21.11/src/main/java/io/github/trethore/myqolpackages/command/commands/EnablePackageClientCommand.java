@@ -29,7 +29,6 @@ import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.network.chat.Component;
 
 public final class EnablePackageClientCommand {
   private final PackageManager packageManager;
@@ -51,7 +50,7 @@ public final class EnablePackageClientCommand {
     String packageId = StringArgumentType.getString(context, "id");
     PackageOperationResult result = packageManager.enablePackage(packageId);
     if (result.successful()) {
-      source.sendFeedback(Component.literal("Enabled MQP package: " + packageId));
+      PackageCommandSupport.sendEnabled(source, packageId);
       return ClientCommandResult.SUCCESS;
     }
     return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());

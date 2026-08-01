@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
+import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootProvider;
 import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
@@ -162,6 +163,33 @@ class DefaultPackageManagerRuntimeTest {
       assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
 
       assertTrue(packageManager.disablePackage("example-package").successful());
+      assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
+      assertEquals(
+          List.of("enable:example-package", "disable:example-package", "close:example-package"),
+          contextFactory.events);
+    }
+  }
+
+  @Test
+  void rejectsRepeatedEnableAndDisableOperations() throws IOException {
+    createPackage("example-package");
+    RecordingContextFactory contextFactory = new RecordingContextFactory();
+    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+      packageManager.refresh();
+
+      assertTrue(packageManager.enablePackage("example-package").successful());
+      PackageOperationResult repeatedEnable = packageManager.enablePackage("example-package");
+
+      assertFalse(repeatedEnable.successful());
+      assertEquals("Already enabled", repeatedEnable.diagnostics().getFirst().message());
+      assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
+      assertEquals(List.of("enable:example-package"), contextFactory.events);
+
+      assertTrue(packageManager.disablePackage("example-package").successful());
+      PackageOperationResult repeatedDisable = packageManager.disablePackage("example-package");
+
+      assertFalse(repeatedDisable.successful());
+      assertEquals("Already disabled", repeatedDisable.diagnostics().getFirst().message());
       assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
       assertEquals(
           List.of("enable:example-package", "disable:example-package", "close:example-package"),
