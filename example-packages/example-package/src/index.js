@@ -1,5 +1,5 @@
 export function onEnable() {
-  console.log("Example Package enabled!");
+  console.log("Example Package enabled! MQP version: " + mqp.version);
 }
 
 export function onDisable() {

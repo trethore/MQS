@@ -26,6 +26,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;
+import io.github.trethore.myqolpackages.internal.runtime.PackagePermissionResolver;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -49,6 +50,7 @@ public final class DefaultPackageManager implements PackageManager {
 
   private final LinkedHashSet<String> enabledPackageOrder = new LinkedHashSet<>();
   private final Map<String, PackageInstance> packages = new LinkedHashMap<>();
+  private List<Path> packageRoots = List.of();
 
   public DefaultPackageManager(
       PackageRootProvider packageRootProvider,
@@ -95,7 +97,7 @@ public final class DefaultPackageManager implements PackageManager {
     boolean enabledByOperation = packageInstance.getState() != PackageState.ENABLED;
     if (enabledByOperation) {
       try {
-        packageInstance.enable();
+        enablePackageInstance(packageInstance);
       } catch (PackageLifecycleException exception) {
         return failedOperation(packageInstance, exception.getMessage());
       }
@@ -189,6 +191,7 @@ public final class DefaultPackageManager implements PackageManager {
 
   private DiscoveredPackages discoverPackages() {
     PackageRootResolution rootResolution = packageRootProvider.resolvePackageRoots();
+    packageRoots = rootResolution.packageRoots();
     List<PackageDiagnostic> diagnostics = new ArrayList<>(rootResolution.diagnostics());
     Map<String, List<PackageDescriptor>> packagesById = new LinkedHashMap<>();
     for (Path packageRoot : rootResolution.packageRoots()) {
@@ -277,11 +280,21 @@ public final class DefaultPackageManager implements PackageManager {
       return;
     }
     try {
-      packageInstance.enable();
+      enablePackageInstance(packageInstance);
       enabledPackageOrder.add(packageId);
     } catch (PackageLifecycleException exception) {
       diagnostics.add(createLifecycleDiagnostic(packageInstance, exception));
     }
+  }
+
+  private void enablePackageInstance(PackageInstance packageInstance)
+      throws PackageLifecycleException {
+    packageInstance.enable(
+        PackagePermissionResolver.resolve(
+            packageInstance.getId(),
+            packageInstance.getDescriptor().manifest().permissions(),
+            configManager.getConfig().permissions()),
+        packageRoots);
   }
 
   private PackageOperationResult failedOperation(PackageInstance packageInstance, String message) {

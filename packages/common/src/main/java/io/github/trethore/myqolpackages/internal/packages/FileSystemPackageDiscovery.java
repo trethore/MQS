@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 public final class FileSystemPackageDiscovery {
   private static final String ENTRYPOINT_EXTENSION = ".js";
   private static final String MANIFEST_FILE_NAME = "manifest.json";
+  private static final String PACKAGE_DATA_DIRECTORY_NAME = ".data";
 
   private final PackageManifestReader manifestReader;
 
@@ -67,6 +68,7 @@ public final class FileSystemPackageDiscovery {
     try (Stream<Path> children = Files.list(packageDirectory)) {
       return children
           .filter(Files::isDirectory)
+          .filter(path -> !path.getFileName().toString().equals(PACKAGE_DATA_DIRECTORY_NAME))
           .sorted(Comparator.comparing(path -> path.getFileName().toString()))
           .toList();
     }

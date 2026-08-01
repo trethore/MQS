@@ -17,10 +17,8 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime;
 
-import java.nio.file.Path;
-
 public interface PackageContextFactory extends AutoCloseable {
-  PackageScriptContext create(String packageId, Path entrypoint) throws PackageLifecycleException;
+  PackageScriptContext create(PackageContextSpec spec) throws PackageLifecycleException;
 
   @Override
   default void close() throws PackageLifecycleException {}

@@ -26,6 +26,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootProvider;
 import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
+import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -168,6 +169,55 @@ class DefaultPackageManagerRuntimeTest {
     }
   }
 
+  @Test
+  void explicitEnableRejectsPermissionsAboveUserGrant() throws IOException {
+    createPermissionPackage();
+    RecordingContextFactory contextFactory = new RecordingContextFactory();
+    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+      packageManager.refresh();
+
+      assertFalse(packageManager.enablePackage("example-package").successful());
+      assertEquals(
+          PackageState.DISABLED,
+          packageManager.findPackage("example-package").orElseThrow().state());
+      assertTrue(contextFactory.events.isEmpty());
+    }
+  }
+
+  @Test
+  void reloadChecksConfiguredPermissionGrants() throws IOException {
+    createPermissionPackage();
+    Files.writeString(
+        temporaryDirectory.resolve("config.json"),
+        """
+        {
+          "enabledPackages": ["example-package"],
+          "permissions": {
+            "packages": {
+              "example-package": {
+                "hostAccess": "full",
+                "hostClassLookup": "minecraft",
+                "filesystem": {
+                  "read": "package",
+                  "write": "data"
+                }
+              }
+            }
+          }
+        }
+        """);
+    RecordingContextFactory contextFactory = new RecordingContextFactory();
+    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+      PackageDiscoveryResult result = packageManager.reload();
+
+      assertTrue(result.diagnostics().isEmpty());
+      assertEquals(
+          PackageState.ENABLED,
+          packageManager.findPackage("example-package").orElseThrow().state());
+      assertEquals(List.of("enable:example-package"), contextFactory.events);
+    }
+  }
+
   private DefaultPackageManager createPackageManager(PackageContextFactory contextFactory) {
     GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
     return new DefaultPackageManager(
@@ -178,8 +228,28 @@ class DefaultPackageManagerRuntimeTest {
   }
 
   private Path createPackage(String packageId) throws IOException {
+    return createPackage(packageId, false);
+  }
+
+  private Path createPackage(String packageId, boolean includePermissions) throws IOException {
     Path packageDirectory = temporaryDirectory.resolve(packageId);
     Files.createDirectories(packageDirectory.resolve("src"));
+    String runtimeFields =
+        includePermissions
+            ? """
+              "entrypoint": "src/index.js",
+              "permissions": {
+                "hostAccess": "full",
+                "hostClassLookup": "minecraft",
+                "filesystem": {
+                  "read": "package",
+                  "write": "data"
+                }
+              }
+              """
+            : """
+              "entrypoint": "src/index.js"
+              """;
     Files.writeString(
         packageDirectory.resolve("manifest.json"),
         """
@@ -188,12 +258,16 @@ class DefaultPackageManagerRuntimeTest {
           "name": "%s",
           "description": "A test package.",
           "version": "1.0.0",
-          "entrypoint": "src/index.js"
+          %s
         }
         """
-            .formatted(packageId, packageId));
+            .formatted(packageId, packageId, runtimeFields));
     Files.writeString(packageDirectory.resolve("src/index.js"), "");
     return packageDirectory;
+  }
+
+  private void createPermissionPackage() throws IOException {
+    createPackage("example-package", true);
   }
 
   private void writeEnabledPackages(String... packageIds) throws IOException {
@@ -223,21 +297,21 @@ class DefaultPackageManagerRuntimeTest {
     private final List<String> events = new ArrayList<>();
 
     @Override
-    public PackageScriptContext create(String packageId, Path entrypoint) {
+    public PackageScriptContext create(PackageContextSpec spec) {
       return new PackageScriptContext() {
         @Override
         public void invokeEnable() {
-          events.add("enable:" + packageId);
+          events.add("enable:" + spec.packageId());
         }
 
         @Override
         public void invokeDisable() {
-          events.add("disable:" + packageId);
+          events.add("disable:" + spec.packageId());
         }
 
         @Override
         public void close() {
-          events.add("close:" + packageId);
+          events.add("close:" + spec.packageId());
         }
       };
     }

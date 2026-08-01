@@ -32,8 +32,16 @@ public final class FabricBootstrap implements ClientModInitializer {
 
   @Override
   public void onInitializeClient() {
-    Path mqpDirectory = FabricLoader.getInstance().getGameDir().resolve(MOD_ID);
-    MqpRuntime runtime = MqpRuntime.create(mqpDirectory);
+    FabricLoader fabricLoader = FabricLoader.getInstance();
+    Path mqpDirectory = fabricLoader.getGameDir().resolve(MOD_ID);
+    String mqpVersion =
+        fabricLoader
+            .getModContainer(MOD_ID)
+            .orElseThrow()
+            .getMetadata()
+            .getVersion()
+            .getFriendlyString();
+    MqpRuntime runtime = MqpRuntime.create(mqpDirectory, mqpVersion);
     runtime.start();
     new MqpClientCommand(runtime.getPackageManager()).register();
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> runtime.stop());

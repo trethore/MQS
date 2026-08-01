@@ -20,6 +20,10 @@ package io.github.trethore.myqolpackages.internal.packages;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
+import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
+import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
+import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -239,6 +243,72 @@ class FileSystemPackageDiscoveryTest {
     assertEquals(
         "Entrypoint must be inside the package directory",
         result.diagnostics().getFirst().message());
+  }
+
+  @Test
+  void readsPackagePermissions() throws IOException {
+    createPackage(
+        "package-directory",
+        """
+        {
+          "name": "Example Package",
+          "description": "An example package.",
+          "version": "1.0.0",
+          "entrypoint": "src/index.js",
+          "permissions": {
+            "hostAccess": "full",
+            "hostClassLookup": "minecraft",
+            "filesystem": {
+              "read": "package",
+              "write": "data"
+            }
+          }
+        }
+        """);
+
+    PackageManifest manifest =
+        new FileSystemPackageDiscovery()
+            .discover(temporaryDirectory)
+            .packages()
+            .getFirst()
+            .manifest();
+
+    assertEquals(HostAccessPermission.FULL, manifest.permissions().hostAccess());
+    assertEquals(HostClassLookupPermission.MINECRAFT, manifest.permissions().hostClassLookup());
+    assertEquals(FileSystemReadPermission.PACKAGE, manifest.permissions().filesystem().read());
+    assertEquals(FileSystemWritePermission.DATA, manifest.permissions().filesystem().write());
+  }
+
+  @Test
+  void ignoresPackageDataDirectory() throws IOException {
+    Files.createDirectories(temporaryDirectory.resolve(".data/example-package"));
+
+    PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+    assertTrue(result.packages().isEmpty());
+    assertTrue(result.diagnostics().isEmpty());
+  }
+
+  @Test
+  void rejectsUnknownPackagePermissionValue() throws IOException {
+    createPackage(
+        "package-directory",
+        """
+        {
+          "name": "Example Package",
+          "description": "An example package.",
+          "version": "1.0.0",
+          "entrypoint": "src/index.js",
+          "permissions": {
+            "hostClassLookup": "java"
+          }
+        }
+        """);
+
+    PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+    assertTrue(result.packages().isEmpty());
+    assertTrue(result.diagnostics().getFirst().message().contains("java"));
   }
 
   private void createPackage(String id, String manifest) throws IOException {

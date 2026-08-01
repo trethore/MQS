@@ -3,5 +3,13 @@
   "name": "Example Package",
   "description": "An example MQP package used during development.",
   "version": "1.0.0",
-  "entrypoint": "src/index.js"
+  "entrypoint": "src/index.js",
+  "permissions": {
+    "hostAccess": "none",
+    "hostClassLookup": "none",
+    "filesystem": {
+      "read": "none",
+      "write": "none"
+    }
+  }
 }

@@ -15,18 +15,23 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.api.config;
 
-import io.github.trethore.myqolpackages.api.config.PackagePermissions;
+public record PackagePermissions(
+    HostAccessPermission hostAccess,
+    HostClassLookupPermission hostClassLookup,
+    FileSystemPermissions filesystem) {
+  private static final PackagePermissions NONE =
+      new PackagePermissions(
+          HostAccessPermission.NONE, HostClassLookupPermission.NONE, FileSystemPermissions.none());
 
-record PackageManifest(
-    String id,
-    String name,
-    String description,
-    String version,
-    String entrypoint,
-    PackagePermissions permissions) {
-  PackageManifest {
-    permissions = permissions == null ? PackagePermissions.none() : permissions;
+  public PackagePermissions {
+    hostAccess = hostAccess == null ? HostAccessPermission.NONE : hostAccess;
+    hostClassLookup = hostClassLookup == null ? HostClassLookupPermission.NONE : hostClassLookup;
+    filesystem = filesystem == null ? FileSystemPermissions.none() : filesystem;
+  }
+
+  public static PackagePermissions none() {
+    return NONE;
   }
 }

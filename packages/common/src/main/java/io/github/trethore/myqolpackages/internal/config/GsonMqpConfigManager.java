@@ -18,7 +18,6 @@
 package io.github.trethore.myqolpackages.internal.config;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
@@ -46,7 +45,7 @@ public final class GsonMqpConfigManager {
 
   public GsonMqpConfigManager(Path mqpDirectory) {
     configPath = mqpDirectory.resolve(CONFIG_FILE_NAME);
-    gson = new GsonBuilder().setPrettyPrinting().create();
+    gson = MqpGson.newBuilder().setPrettyPrinting().create();
   }
 
   public synchronized MqpConfigLoadResult load() {
@@ -118,7 +117,8 @@ public final class GsonMqpConfigManager {
     }
     MqpConfig currentConfig = config.get();
     MqpConfig updatedConfig =
-        new MqpConfig(currentConfig.additionalPackageRoots(), enabledPackages);
+        new MqpConfig(
+            currentConfig.additionalPackageRoots(), enabledPackages, currentConfig.permissions());
     writeConfig(updatedConfig);
     config.set(updatedConfig);
   }

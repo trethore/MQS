@@ -15,18 +15,24 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.runtime;
 
 import io.github.trethore.myqolpackages.api.config.PackagePermissions;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Objects;
 
-record PackageManifest(
-    String id,
-    String name,
-    String description,
-    String version,
-    String entrypoint,
-    PackagePermissions permissions) {
-  PackageManifest {
-    permissions = permissions == null ? PackagePermissions.none() : permissions;
+public record PackageContextSpec(
+    String packageId,
+    Path packageDirectory,
+    Path entrypoint,
+    PackagePermissions permissions,
+    List<Path> packageRoots) {
+  public PackageContextSpec {
+    Objects.requireNonNull(packageId, "packageId");
+    Objects.requireNonNull(packageDirectory, "packageDirectory");
+    Objects.requireNonNull(entrypoint, "entrypoint");
+    Objects.requireNonNull(permissions, "permissions");
+    packageRoots = List.copyOf(Objects.requireNonNull(packageRoots, "packageRoots"));
   }
 }

@@ -20,6 +20,7 @@ package io.github.trethore.myqolpackages.internal.packages;
 import com.google.gson.Gson;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
+import io.github.trethore.myqolpackages.internal.config.MqpGson;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
@@ -29,7 +30,7 @@ final class PackageManifestReader {
   private final Gson gson;
 
   PackageManifestReader() {
-    gson = new Gson();
+    gson = MqpGson.newBuilder().create();
   }
 
   PackageManifest read(Path manifestPath) throws IOException, PackageValidationException {

@@ -36,7 +36,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 class DefaultPackageManagerTest {
   private static final PackageContextFactory TEST_CONTEXT_FACTORY =
-      (packageId, entrypoint) -> new TestPackageScriptContext();
+      spec -> new TestPackageScriptContext();
 
   @TempDir Path temporaryDirectory;
 

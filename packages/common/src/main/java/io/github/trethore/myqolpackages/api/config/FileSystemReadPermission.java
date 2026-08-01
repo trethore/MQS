@@ -15,18 +15,15 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.api.config;
 
-import io.github.trethore.myqolpackages.api.config.PackagePermissions;
+public enum FileSystemReadPermission {
+  NONE,
+  PACKAGE,
+  MQP,
+  ALL;
 
-record PackageManifest(
-    String id,
-    String name,
-    String description,
-    String version,
-    String entrypoint,
-    PackagePermissions permissions) {
-  PackageManifest {
-    permissions = permissions == null ? PackagePermissions.none() : permissions;
+  public boolean allows(FileSystemReadPermission requested) {
+    return ordinal() >= requested.ordinal();
   }
 }
