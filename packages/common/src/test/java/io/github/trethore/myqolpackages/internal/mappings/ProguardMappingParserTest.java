@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.internal.mappings;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,11 +38,23 @@ class ProguardMappingParserTest {
                     # metadata
                     net.minecraft.network.chat.Component -> abc:
                         java.lang.String value -> a
+                        10:12:java.lang.String render(int) -> b
+                        13:13:java.lang.String render(java.lang.String) -> c
+                        14:14:void <init>() -> <init>
                     net.minecraft.client.OptionInstance$UnitDouble -> def:
                     """));
 
     assertEquals(
         "abc", mappings.mappings().getRuntimeClassName("net.minecraft.network.chat.Component"));
+    MappingIndex.ClassMapping componentMapping =
+        mappings.mappings().getClassMapping("net.minecraft.network.chat.Component");
+    assertEquals("a", componentMapping.fieldMappings().get("value"));
+    assertEquals(
+        List.of(
+            new MappingIndex.MethodMapping("b", List.of("int")),
+            new MappingIndex.MethodMapping("c", List.of("java.lang.String"))),
+        componentMapping.methodMappings().get("render"));
+    assertFalse(componentMapping.methodMappings().containsKey("<init>"));
     assertTrue(mappings.catalog().containsPackage("net.minecraft.network.chat"));
     assertEquals(
         List.of("net.minecraft.network.chat.Component"),

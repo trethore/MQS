@@ -332,7 +332,8 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
         "__mqpHostClassLookup", permissionName(spec.permissions().hostClassLookup()));
     bindings.putMember("__mqpFilesystemRead", permissionName(filesystemPermissions.read()));
     bindings.putMember("__mqpFilesystemWrite", permissionName(filesystemPermissions.write()));
-    classInteropInstaller.install(bindings, spec.permissions().hostClassLookup());
+    classInteropInstaller.install(
+        bindings, spec.permissions().hostAccess(), spec.permissions().hostClassLookup());
     context.eval(MQP_API_SOURCE);
   }
 

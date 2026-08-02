@@ -20,27 +20,33 @@ package io.github.trethore.myqolpackages.internal.mappings;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Arrays;
+import java.util.List;
 
 public final class ProguardMappingParser {
   public ParsedMappings parse(Reader source) throws IOException {
     ClassCatalog.Builder catalog = ClassCatalog.builder();
     MappingIndex.Builder mappings = MappingIndex.builder();
     BufferedReader reader = new BufferedReader(source);
+    String currentClassName = null;
     String line;
     int lineNumber = 0;
     while ((line = reader.readLine()) != null) {
       lineNumber++;
       String trimmedLine = line.trim();
-      if (!line.isBlank()
-          && !Character.isWhitespace(line.charAt(0))
-          && !trimmedLine.startsWith("#")) {
-        parseClassLine(trimmedLine, lineNumber, catalog, mappings);
+      if (trimmedLine.isEmpty() || trimmedLine.startsWith("#")) {
+        continue;
+      }
+      if (!Character.isWhitespace(line.charAt(0))) {
+        currentClassName = parseClassLine(trimmedLine, lineNumber, catalog, mappings);
+      } else if (currentClassName != null) {
+        parseMemberLine(currentClassName, trimmedLine, mappings);
       }
     }
     return new ParsedMappings(catalog.build(), mappings.build());
   }
 
-  private static void parseClassLine(
+  private static String parseClassLine(
       String line, int lineNumber, ClassCatalog.Builder catalog, MappingIndex.Builder mappings) {
     int arrowIndex = line.indexOf("->");
     if (arrowIndex < 0 || !line.endsWith(":")) {
@@ -53,6 +59,56 @@ public final class ProguardMappingParser {
     }
     catalog.add(namedClassName);
     mappings.add(namedClassName, runtimeClassName);
+    return namedClassName;
+  }
+
+  private static void parseMemberLine(
+      String namedClassName, String line, MappingIndex.Builder mappings) {
+    int arrowIndex = line.indexOf("->");
+    if (arrowIndex < 0) {
+      return;
+    }
+    String declaration = line.substring(0, arrowIndex).trim();
+    String runtimeName = line.substring(arrowIndex + 2).trim();
+    if (declaration.isEmpty() || runtimeName.isEmpty()) {
+      return;
+    }
+    int parenthesisIndex = declaration.indexOf('(');
+    if (parenthesisIndex >= 0) {
+      String namedMethodName = extractMemberName(declaration, parenthesisIndex);
+      if (!namedMethodName.isEmpty()
+          && !namedMethodName.equals("<init>")
+          && !namedMethodName.equals("<clinit>")) {
+        mappings.addMethod(
+            namedClassName,
+            namedMethodName,
+            runtimeName,
+            extractParameterTypes(declaration, parenthesisIndex));
+      }
+      return;
+    }
+    String namedFieldName = extractMemberName(declaration, declaration.length());
+    if (!namedFieldName.isEmpty()) {
+      mappings.addField(namedClassName, namedFieldName, runtimeName);
+    }
+  }
+
+  private static String extractMemberName(String declaration, int endIndex) {
+    int spaceIndex = declaration.lastIndexOf(' ', endIndex - 1);
+    int startIndex = spaceIndex < 0 ? 0 : spaceIndex + 1;
+    return declaration.substring(startIndex, endIndex).trim();
+  }
+
+  private static List<String> extractParameterTypes(String declaration, int parenthesisIndex) {
+    int closingParenthesisIndex = declaration.lastIndexOf(')');
+    if (closingParenthesisIndex <= parenthesisIndex + 1) {
+      return List.of();
+    }
+    return Arrays.stream(
+            declaration.substring(parenthesisIndex + 1, closingParenthesisIndex).split(","))
+        .map(String::trim)
+        .map(ProguardMappingParser::normalize)
+        .toList();
   }
 
   private static String normalize(String className) {

@@ -251,6 +251,151 @@ class GraalPackageContextFactoryTest {
   }
 
   @Test
+  void exposesMappedConstructorsMethodsAndFieldsWithFullHostAccess()
+      throws IOException, PackageLifecycleException {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            const Fixture = importClass("net.minecraft.test.FakeMappedClass");
+            if (Fixture !== packages.net.minecraft.test.FakeMappedClass) {
+              throw new Error("class proxy identity differs");
+            }
+            const AlphaComponent = importClass("net.minecraft.alpha.Component");
+            const BetaComponent = importClass("net.minecraft.beta.Component");
+            if (AlphaComponent.alphaValue !== "initial-static"
+                || BetaComponent.betaValue !== "initial-static") {
+              throw new Error("class alias mappings interfered");
+            }
+            if (Fixture.greeting("MQP") !== "hello MQP") throw new Error("static method failed");
+            if (Fixture.choose(4) !== "number:4") throw new Error("numeric overload failed");
+            if (Fixture.choose("four") !== "string:four") throw new Error("string overload failed");
+            if (Fixture.specific("value") !== "string:value") {
+              throw new Error("specific overload failed");
+            }
+            if (Fixture.specific(null) !== "string:null") {
+              throw new Error("null overload specificity failed");
+            }
+            if (Fixture.numberOnly(4) !== "shared-number:4") {
+              throw new Error("mapped numeric signature failed");
+            }
+            if (Fixture.stringOnly("four") !== "shared-string:four") {
+              throw new Error("mapped string signature failed");
+            }
+            let mismatchedSignatureRejected = false;
+            try { Fixture.numberOnly("four"); } catch (error) { mismatchedSignatureRejected = true; }
+            if (!mismatchedSignatureRejected) throw new Error("mapped signature leaked overload");
+            if (Fixture.staticValue !== "initial-static") throw new Error("static field failed");
+            if (Fixture.staticValue$ !== "initial-static") throw new Error("static $ field failed");
+            Fixture.staticValue$ = "changed-static";
+            if (Fixture.staticValue !== "changed-static") throw new Error("static write failed");
+            if (typeof Fixture.staticCollision !== "function") {
+              throw new Error("static method did not win collision");
+            }
+            if (Fixture.staticCollision() !== "static-method") {
+              throw new Error("static collision method failed");
+            }
+            if (Fixture.staticCollision$ !== "static-field") {
+              throw new Error("static collision field failed");
+            }
+            let ambiguousWriteRejected = false;
+            try { Fixture.staticCollision = "changed"; } catch (error) { ambiguousWriteRejected = true; }
+            if (!ambiguousWriteRejected) throw new Error("ambiguous static write was accepted");
+
+            const instance = new Fixture("fixture", 2);
+            if (instance.name !== "fixture" || instance.count !== 2) {
+              throw new Error("private constructor or fields failed");
+            }
+            if (instance.increment(3) !== 5 || instance.count$ !== 5) {
+              throw new Error("instance method failed");
+            }
+            instance.name$ = "renamed";
+            if (instance.name !== "renamed") throw new Error("instance write failed");
+            instance.name = "renamed-again";
+            if (instance.name$ !== "renamed-again") throw new Error("plain field write failed");
+            if (typeof instance.value !== "function") {
+              throw new Error("instance method did not win collision");
+            }
+            if (instance.value() !== "instance-method" || instance.value$ !== "instance-field") {
+              throw new Error("instance collision failed");
+            }
+            ambiguousWriteRejected = false;
+            try { instance.value = "changed"; } catch (error) { ambiguousWriteRejected = true; }
+            if (!ambiguousWriteRejected) throw new Error("ambiguous instance write was accepted");
+            instance.value$ = "changed-field";
+            if (instance.value$ !== "changed-field") throw new Error("collision write failed");
+            if (instance.join("joined", "a", "b") !== "joined:a,b") {
+              throw new Error("varargs method failed");
+            }
+            if (instance.baseValue !== "base-field" || instance.baseMethod() !== "base-method") {
+              throw new Error("inherited private members failed");
+            }
+
+            const copy = instance.copy();
+            if (copy.name !== "renamed-again" || copy.count !== 5) {
+              throw new Error("return wrapping failed");
+            }
+            if (!instance.same(instance) || instance.same(copy)) {
+              throw new Error("wrapped object argument failed");
+            }
+            if (!instance._self || !instance._class || Fixture._class !== instance._class) {
+              throw new Error("raw escape members failed");
+            }
+
+            let finalWriteRejected = false;
+            try { instance.finalValue$ = "changed"; } catch (error) { finalWriteRejected = true; }
+            if (!finalWriteRejected || instance.finalValue !== "instance-final") {
+              throw new Error("final instance field was writable");
+            }
+            finalWriteRejected = false;
+            try { Fixture.staticFinalValue$ = "changed"; } catch (error) { finalWriteRejected = true; }
+            if (!finalWriteRejected || Fixture.staticFinalValue !== "static-final") {
+              throw new Error("final static field was writable");
+            }
+
+            export function onEnable() {}
+            export function onDisable() {}
+            """);
+    PackagePermissions permissions =
+        new PackagePermissions(
+            HostAccessPermission.FULL,
+            HostClassLookupPermission.MINECRAFT,
+            FileSystemPermissions.none());
+
+    try (GraalPackageContextFactory contextFactory = createMappedContextFactory();
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
+      assertDoesNotThrow(context::invokeEnable);
+    }
+  }
+
+  @Test
+  void keepsMappedClassOpaqueWithoutHostAccess() throws IOException, PackageLifecycleException {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            const Fixture = importClass("net.minecraft.test.FakeMappedClass");
+            if ("_class" in Fixture || "greeting" in Fixture || Fixture.greeting !== undefined) {
+              throw new Error("opaque class exposed members");
+            }
+            let constructionRejected = false;
+            try { new Fixture("fixture", 1); } catch (error) { constructionRejected = true; }
+            if (!constructionRejected) throw new Error("opaque class was instantiable");
+
+            export function onEnable() {}
+            export function onDisable() {}
+            """);
+    PackagePermissions permissions =
+        new PackagePermissions(
+            HostAccessPermission.NONE,
+            HostClassLookupPermission.MINECRAFT,
+            FileSystemPermissions.none());
+
+    try (GraalPackageContextFactory contextFactory = createMappedContextFactory();
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
+      assertDoesNotThrow(context::invokeEnable);
+    }
+  }
+
+  @Test
   void resolvesPartialClassesFromIdentityCatalog() throws IOException, PackageLifecycleException {
     Path entrypoint =
         createEntrypoint(

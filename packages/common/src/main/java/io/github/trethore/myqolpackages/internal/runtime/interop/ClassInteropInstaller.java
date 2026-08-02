@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.internal.runtime.interop;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
+import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
 import io.github.trethore.myqolpackages.internal.mappings.ClassInteropMetadata;
 import org.graalvm.polyglot.Value;
@@ -32,8 +33,12 @@ public final class ClassInteropInstaller {
     this.metadata = ClassInteropMetadata.load(environment);
   }
 
-  public void install(Value bindings, HostClassLookupPermission permission) {
-    HostClassResolver resolver = new HostClassResolver(metadata, environment, permission);
+  public void install(
+      Value bindings,
+      HostAccessPermission hostAccessPermission,
+      HostClassLookupPermission classLookupPermission) {
+    HostClassResolver resolver =
+        new HostClassResolver(metadata, environment, hostAccessPermission, classLookupPermission);
     JavaPackageProxy packages = new JavaPackageProxy("", resolver);
     ProxyExecutable importClass =
         arguments -> {

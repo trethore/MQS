@@ -20,7 +20,7 @@ package io.github.trethore.myqolpackages.internal.runtime.interop;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
-final class JavaClassProxy implements ProxyObject {
+class JavaClassProxy implements ProxyObject {
   private final String namedClassName;
   private final Class<?> targetClass;
 
@@ -46,11 +46,19 @@ final class JavaClassProxy implements ProxyObject {
 
   @Override
   public void putMember(String key, Value value) {
-    throw new UnsupportedOperationException("Java class proxies are read-only");
+    throw new UnsupportedOperationException("Java class proxy is opaque without full host access");
+  }
+
+  final String getNamedClassName() {
+    return namedClassName;
+  }
+
+  final Class<?> getTargetClass() {
+    return targetClass;
   }
 
   @Override
-  public String toString() {
+  public final String toString() {
     return namedClassName.equals(targetClass.getName())
         ? namedClassName
         : namedClassName + " -> " + targetClass.getName();

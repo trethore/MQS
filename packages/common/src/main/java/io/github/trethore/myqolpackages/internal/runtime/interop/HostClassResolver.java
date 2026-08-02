@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.internal.runtime.interop;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
+import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
 import io.github.trethore.myqolpackages.internal.mappings.ClassInteropMetadata;
 import java.util.HashMap;
@@ -25,23 +26,28 @@ import java.util.List;
 import java.util.Map;
 
 final class HostClassResolver {
-  private final Map<Class<?>, JavaClassProxy> classProxies = new HashMap<>();
+  private final Map<ClassProxyKey, JavaClassProxy> classProxies = new HashMap<>();
   private final MqpRuntimeEnvironment environment;
+  private final HostAccessPermission hostAccessPermission;
+  private final JavaInteropService interopService;
   private final ClassInteropMetadata metadata;
-  private final HostClassLookupPermission permission;
+  private final HostClassLookupPermission classLookupPermission;
 
   HostClassResolver(
       ClassInteropMetadata metadata,
       MqpRuntimeEnvironment environment,
-      HostClassLookupPermission permission) {
+      HostAccessPermission hostAccessPermission,
+      HostClassLookupPermission classLookupPermission) {
     this.metadata = metadata;
     this.environment = environment;
-    this.permission = permission;
+    this.hostAccessPermission = hostAccessPermission;
+    this.classLookupPermission = classLookupPermission;
+    this.interopService = new JavaInteropService(metadata.mappings());
   }
 
   JavaClassProxy resolveImport(String requestedName) {
     String normalizedName = normalizeRequestedName(requestedName);
-    if (permission == HostClassLookupPermission.NONE) {
+    if (classLookupPermission == HostClassLookupPermission.NONE) {
       throw new SecurityException("Host class lookup is not permitted");
     }
 
@@ -93,10 +99,10 @@ final class HostClassResolver {
   }
 
   boolean canTraverse(String path) {
-    if (permission == HostClassLookupPermission.ALL) {
+    if (classLookupPermission == HostClassLookupPermission.ALL) {
       return true;
     }
-    if (permission == HostClassLookupPermission.NONE) {
+    if (classLookupPermission == HostClassLookupPermission.NONE) {
       return false;
     }
     return environment.isMinecraftNamespacePath(path);
@@ -123,15 +129,20 @@ final class HostClassResolver {
   }
 
   private JavaClassProxy getOrCreateProxy(String namedClassName, Class<?> targetClass) {
+    ClassProxyKey key = new ClassProxyKey(namedClassName, targetClass);
     return classProxies.computeIfAbsent(
-        targetClass, ignored -> new JavaClassProxy(namedClassName, targetClass));
+        key,
+        ignored ->
+            hostAccessPermission == HostAccessPermission.FULL
+                ? new AccessibleJavaClassProxy(namedClassName, targetClass, interopService)
+                : new JavaClassProxy(namedClassName, targetClass));
   }
 
   private boolean isClassAllowed(String className) {
-    if (permission == HostClassLookupPermission.ALL) {
+    if (classLookupPermission == HostClassLookupPermission.ALL) {
       return true;
     }
-    if (permission == HostClassLookupPermission.NONE) {
+    if (classLookupPermission == HostClassLookupPermission.NONE) {
       return false;
     }
     return environment.isMinecraftClass(className);
@@ -147,4 +158,6 @@ final class HostClassResolver {
     }
     return normalizedName;
   }
+
+  private record ClassProxyKey(String namedClassName, Class<?> targetClass) {}
 }
