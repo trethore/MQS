@@ -1,0 +1,4 @@
+# Test mappings
+net.minecraft.test.FakeMappedClass -> io.github.trethore.myqolpackages.internal.runtime.MappedClassFixture:
+net.minecraft.alpha.Component -> io.github.trethore.myqolpackages.internal.runtime.MappedClassFixture:
+net.minecraft.beta.Component -> io.github.trethore.myqolpackages.internal.runtime.MappedClassFixture:

@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.api.config.FileSystemPermissions;
 import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
@@ -31,6 +32,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -198,6 +200,107 @@ class GraalPackageContextFactoryTest {
   }
 
   @Test
+  void importsArbitraryClassesByFullyQualifiedName() throws IOException, PackageLifecycleException {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            const imported = importClass("java.lang.Double");
+            const packaged = packages.java.lang.Double;
+            if (!imported || imported !== packaged) throw new Error("class proxies differ");
+
+            export function onEnable() {}
+            export function onDisable() {}
+            """);
+    PackagePermissions permissions =
+        new PackagePermissions(
+            HostAccessPermission.NONE, HostClassLookupPermission.ALL, FileSystemPermissions.none());
+
+    try (GraalPackageContextFactory contextFactory = createContextFactory();
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
+      assertDoesNotThrow(context::invokeEnable);
+    }
+  }
+
+  @Test
+  void resolvesMappedMinecraftClassesThroughAllMqpApis()
+      throws IOException, PackageLifecycleException {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            const fullyQualified = importClass("net.minecraft.test.FakeMappedClass");
+            const partial = importClass("FakeMappedClass");
+            const packaged = packages.net.minecraft.test.FakeMappedClass;
+            const aliased = net.minecraft.test.FakeMappedClass;
+            if (fullyQualified !== partial || partial !== packaged || packaged !== aliased) {
+              throw new Error("class proxies differ");
+            }
+
+            export function onEnable() {}
+            export function onDisable() {}
+            """);
+    PackagePermissions permissions =
+        new PackagePermissions(
+            HostAccessPermission.NONE,
+            HostClassLookupPermission.MINECRAFT,
+            FileSystemPermissions.none());
+
+    try (GraalPackageContextFactory contextFactory = createMappedContextFactory();
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
+      assertDoesNotThrow(context::invokeEnable);
+    }
+  }
+
+  @Test
+  void resolvesPartialClassesFromIdentityCatalog() throws IOException, PackageLifecycleException {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            const fullyQualified = importClass(
+              "io.github.trethore.myqolpackages.internal.runtime.MappedClassFixture"
+            );
+            const partial = importClass("MappedClassFixture");
+            if (fullyQualified !== partial) throw new Error("class proxies differ");
+
+            export function onEnable() {}
+            export function onDisable() {}
+            """);
+    PackagePermissions permissions =
+        new PackagePermissions(
+            HostAccessPermission.NONE, HostClassLookupPermission.ALL, FileSystemPermissions.none());
+
+    try (GraalPackageContextFactory contextFactory = createCatalogContextFactory();
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
+      assertDoesNotThrow(context::invokeEnable);
+    }
+  }
+
+  @Test
+  void rejectsAmbiguousPartialClassImports() throws IOException, PackageLifecycleException {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            importClass("Component");
+            export function onEnable() {}
+            export function onDisable() {}
+            """);
+    PackagePermissions permissions =
+        new PackagePermissions(
+            HostAccessPermission.NONE,
+            HostClassLookupPermission.MINECRAFT,
+            FileSystemPermissions.none());
+
+    PackageLifecycleException exception;
+    try (GraalPackageContextFactory contextFactory = createMappedContextFactory()) {
+      exception =
+          assertThrows(
+              PackageLifecycleException.class,
+              () -> contextFactory.create(createSpec(entrypoint, permissions)));
+    }
+
+    assertTrue(exception.getMessage().contains("Ambiguous class name"));
+  }
+
+  @Test
   void minecraftHostClassLookupRejectsJavaClasses() throws IOException, PackageLifecycleException {
     Path entrypoint =
         createEntrypoint(
@@ -254,6 +357,26 @@ class GraalPackageContextFactoryTest {
 
   private GraalPackageContextFactory createContextFactory() {
     return new GraalPackageContextFactory(temporaryDirectory, "0.0.1");
+  }
+
+  private GraalPackageContextFactory createMappedContextFactory() {
+    MqpRuntimeEnvironment environment =
+        new MqpRuntimeEnvironment(
+            getClass().getClassLoader(),
+            List.of("net.minecraft.", "com.mojang."),
+            Optional.empty(),
+            Optional.of("mappings/test-client.txt"));
+    return new GraalPackageContextFactory(temporaryDirectory, "0.0.1", environment);
+  }
+
+  private GraalPackageContextFactory createCatalogContextFactory() {
+    MqpRuntimeEnvironment environment =
+        new MqpRuntimeEnvironment(
+            getClass().getClassLoader(),
+            List.of(),
+            Optional.of("catalog/test-client.txt"),
+            Optional.empty());
+    return new GraalPackageContextFactory(temporaryDirectory, "0.0.1", environment);
   }
 
   private PackageContextSpec createSpec(Path entrypoint) {

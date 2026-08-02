@@ -45,15 +45,24 @@ public final class MqpRuntime {
   }
 
   public static MqpRuntime create(Path mqpDirectory, String mqpVersion) {
+    return create(
+        mqpDirectory,
+        mqpVersion,
+        MqpRuntimeEnvironment.identity(MqpRuntime.class.getClassLoader()));
+  }
+
+  public static MqpRuntime create(
+      Path mqpDirectory, String mqpVersion, MqpRuntimeEnvironment environment) {
     Objects.requireNonNull(mqpDirectory, "mqpDirectory");
     Objects.requireNonNull(mqpVersion, "mqpVersion");
+    Objects.requireNonNull(environment, "environment");
     GsonMqpConfigManager configManager = new GsonMqpConfigManager(mqpDirectory);
     PackageManager packageManager =
         new DefaultPackageManager(
             new ConfiguredPackageRootProvider(mqpDirectory, configManager),
             new FileSystemPackageDiscovery(),
             configManager,
-            new GraalPackageContextFactory(mqpDirectory, mqpVersion));
+            new GraalPackageContextFactory(mqpDirectory, mqpVersion, environment));
     return new MqpRuntime(configManager, packageManager);
   }
 

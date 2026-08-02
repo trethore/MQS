@@ -3,6 +3,15 @@
   const hostClassLookup = globalThis.__mqpHostClassLookup;
   const filesystemRead = globalThis.__mqpFilesystemRead;
   const filesystemWrite = globalThis.__mqpFilesystemWrite;
+  const importClassBridge = globalThis.__mqpImportClass;
+  const packagesBridge = globalThis.__mqpPackages;
+  const netBridge = globalThis.__mqpNet;
+  const defineGlobal = (name, value) => Object.defineProperty(globalThis, name, {
+    value,
+    configurable: false,
+    enumerable: true,
+    writable: false
+  });
   const permissions = Object.freeze({
     hostAccess,
     hostClassLookup,
@@ -45,10 +54,16 @@
     enumerable: true,
     writable: false
   });
+  defineGlobal("importClass", (...args) => importClassBridge(...args));
+  defineGlobal("packages", packagesBridge);
+  defineGlobal("net", netBridge);
   delete globalThis.__mqpVersion;
   delete globalThis.__mqpPackageId;
   delete globalThis.__mqpHostAccess;
   delete globalThis.__mqpHostClassLookup;
   delete globalThis.__mqpFilesystemRead;
   delete globalThis.__mqpFilesystemWrite;
+  delete globalThis.__mqpImportClass;
+  delete globalThis.__mqpPackages;
+  delete globalThis.__mqpNet;
 }

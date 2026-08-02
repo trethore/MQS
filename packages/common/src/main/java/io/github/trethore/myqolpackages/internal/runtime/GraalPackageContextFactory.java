@@ -17,11 +17,13 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime;
 
+import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.api.config.FileSystemPermissions;
 import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.internal.runtime.interop.ClassInteropInstaller;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -62,15 +64,27 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
 
   private final EnumMap<HostAccessPermission, Engine> engines =
       new EnumMap<>(HostAccessPermission.class);
+  private final ClassInteropInstaller classInteropInstaller;
+  private final MqpRuntimeEnvironment environment;
   private final Path mqpDirectory;
   private final String mqpVersion;
 
   private boolean closed;
 
   public GraalPackageContextFactory(Path mqpDirectory, String mqpVersion) {
+    this(
+        mqpDirectory,
+        mqpVersion,
+        MqpRuntimeEnvironment.identity(GraalPackageContextFactory.class.getClassLoader()));
+  }
+
+  public GraalPackageContextFactory(
+      Path mqpDirectory, String mqpVersion, MqpRuntimeEnvironment environment) {
     this.mqpDirectory =
         Objects.requireNonNull(mqpDirectory, "mqpDirectory").toAbsolutePath().normalize();
     this.mqpVersion = Objects.requireNonNull(mqpVersion, "mqpVersion");
+    this.environment = Objects.requireNonNull(environment, "environment");
+    this.classInteropInstaller = new ClassInteropInstaller(environment);
     getOrCreateEngine(HostAccessPermission.NONE);
   }
 
@@ -230,15 +244,14 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     return permission == HostAccessPermission.FULL ? HostAccess.ALL : HostAccess.NONE;
   }
 
-  private static boolean isHostClassAllowed(PackageContextSpec spec, String className) {
+  private boolean isHostClassAllowed(PackageContextSpec spec, String className) {
     if (spec == null) {
       return false;
     }
     HostClassLookupPermission permission = spec.permissions().hostClassLookup();
     return permission == HostClassLookupPermission.ALL
         || (permission == HostClassLookupPermission.MINECRAFT
-            && (className.startsWith("net.minecraft.")
-                || className.startsWith("com.mojang.blaze3d.")));
+            && environment.isMinecraftClass(className));
   }
 
   private IOAccess createIoAccess(PackageContextSpec spec) throws IOException {
@@ -319,6 +332,7 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
         "__mqpHostClassLookup", permissionName(spec.permissions().hostClassLookup()));
     bindings.putMember("__mqpFilesystemRead", permissionName(filesystemPermissions.read()));
     bindings.putMember("__mqpFilesystemWrite", permissionName(filesystemPermissions.write()));
+    classInteropInstaller.install(bindings, spec.permissions().hostClassLookup());
     context.eval(MQP_API_SOURCE);
   }
 
