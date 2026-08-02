@@ -43,7 +43,7 @@ public final class FabricBootstrap implements ClientModInitializer {
             .getFriendlyString();
     MqpRuntime runtime = MqpRuntime.create(mqpDirectory, mqpVersion);
     runtime.start();
-    new MqpClientCommand(runtime.getPackageManager()).register();
+    new MqpClientCommand(runtime).register();
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> runtime.stop());
     LOGGER.info("Initialized {} with data directory {}", MOD_ID, mqpDirectory);
   }

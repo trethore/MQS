@@ -19,17 +19,20 @@ package io.github.trethore.myqolpackages.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.command.commands.PackagesClientCommand;
+import io.github.trethore.myqolpackages.api.MqpRuntime;
+import io.github.trethore.myqolpackages.command.commands.packages.PackagesClientCommand;
+import io.github.trethore.myqolpackages.command.commands.permissions.PermissionsClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class MqpClientCommand {
   private final PackagesClientCommand packagesClientCommand;
+  private final PermissionsClientCommand permissionsClientCommand;
 
-  public MqpClientCommand(PackageManager packageManager) {
-    packagesClientCommand = new PackagesClientCommand(packageManager);
+  public MqpClientCommand(MqpRuntime runtime) {
+    packagesClientCommand = new PackagesClientCommand(runtime.getPackageManager());
+    permissionsClientCommand = new PermissionsClientCommand(runtime);
   }
 
   public void register() {
@@ -40,11 +43,12 @@ public final class MqpClientCommand {
   private LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
     return ClientCommandManager.literal("mqp")
         .executes(this::execute)
-        .then(packagesClientCommand.buildCommand());
+        .then(packagesClientCommand.buildCommand())
+        .then(permissionsClientCommand.buildCommand());
   }
 
   private int execute(CommandContext<FabricClientCommandSource> context) {
-    MqpCommandFeedback.sendInfo(context.getSource(), "Manage packages with /mqp packages.");
+    MqpCommandFeedback.sendInfo(context.getSource(), "Available actions: packages, permissions.");
     return ClientCommandResult.SUCCESS;
   }
 }

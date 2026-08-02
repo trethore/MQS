@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.commands;
+package io.github.trethore.myqolpackages.command.commands.packages;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -24,21 +24,24 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import java.nio.file.Path;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.minecraft.network.chat.Component;
 
-public final class EnablePackageClientCommand {
+public final class InfoPackageClientCommand {
   private final PackageManager packageManager;
 
-  public EnablePackageClientCommand(PackageManager packageManager) {
+  public InfoPackageClientCommand(PackageManager packageManager) {
     this.packageManager = packageManager;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("enable")
+    return ClientCommandManager.literal("info")
         .then(
             ClientCommandManager.argument("id", StringArgumentType.word())
                 .suggests((context, builder) -> suggestPackageIds(builder))
@@ -48,12 +51,44 @@ public final class EnablePackageClientCommand {
   private int execute(CommandContext<FabricClientCommandSource> context) {
     FabricClientCommandSource source = context.getSource();
     String packageId = StringArgumentType.getString(context, "id");
-    PackageOperationResult result = packageManager.enablePackage(packageId);
-    if (result.successful()) {
-      PackageCommandSupport.sendEnabled(source, packageId);
-      return ClientCommandResult.SUCCESS;
+    Optional<PackageInfo> optionalPackage = packageManager.findPackage(packageId);
+    if (optionalPackage.isEmpty()) {
+      MqpCommandFeedback.sendError(source, "Unknown package: " + packageId);
+      return ClientCommandResult.FAILURE;
     }
-    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+
+    PackageInfo packageInfo = optionalPackage.get();
+    MqpCommandFeedback.sendHeader(source);
+    MqpCommandFeedback.sendLine(source, packageInfo.name() + " (" + packageInfo.id() + ")");
+    MqpCommandFeedback.sendLine(source, "Version: " + packageInfo.version());
+    MqpCommandFeedback.sendLine(source, "Description: " + packageInfo.description());
+    MqpCommandFeedback.sendLine(source, "Entrypoint: " + packageInfo.entrypoint());
+    MqpCommandFeedback.sendLine(
+        source,
+        Component.empty()
+            .append(Component.literal("State: "))
+            .append(PackageCommandSupport.formatState(packageInfo.state())));
+    MqpCommandFeedback.sendLine(
+        source, "Directory: " + anonymizeDirectory(packageInfo.packageDirectory()));
+    return ClientCommandResult.SUCCESS;
+  }
+
+  private static String anonymizeDirectory(Path directory) {
+    String userHome = System.getProperty("user.home");
+    if (userHome == null || userHome.isBlank()) {
+      return directory.toString();
+    }
+
+    Path normalizedDirectory = directory.toAbsolutePath().normalize();
+    Path normalizedUserHome = Path.of(userHome).toAbsolutePath().normalize();
+    if (!normalizedDirectory.startsWith(normalizedUserHome)) {
+      return directory.toString();
+    }
+
+    Path anonymizedUserHome = normalizedUserHome.resolveSibling("user");
+    return anonymizedUserHome
+        .resolve(normalizedUserHome.relativize(normalizedDirectory))
+        .toString();
   }
 
   private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {

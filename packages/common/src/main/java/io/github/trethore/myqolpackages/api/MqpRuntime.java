@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.api;
 
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
+import io.github.trethore.myqolpackages.api.config.PackagePermissionOverrides;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
@@ -26,6 +27,7 @@ import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
 import io.github.trethore.myqolpackages.internal.packages.DefaultPackageManager;
 import io.github.trethore.myqolpackages.internal.packages.FileSystemPackageDiscovery;
 import io.github.trethore.myqolpackages.internal.runtime.GraalPackageContextFactory;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -81,5 +83,13 @@ public final class MqpRuntime {
 
   public MqpConfig getConfig() {
     return configManager.getConfig();
+  }
+
+  public PackagePermissionOverrides getGlobalPermissions() {
+    return configManager.getConfig().permissions().defaults();
+  }
+
+  public void setGlobalPermissions(PackagePermissionOverrides permissions) throws IOException {
+    configManager.setGlobalPermissions(permissions);
   }
 }

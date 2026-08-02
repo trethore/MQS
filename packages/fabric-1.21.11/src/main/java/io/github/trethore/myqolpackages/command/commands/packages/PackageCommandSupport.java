@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.commands;
+package io.github.trethore.myqolpackages.command.commands.packages;
 
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -48,18 +49,29 @@ final class PackageCommandSupport {
 
   static void sendEnabled(FabricClientCommandSource source, String packageId) {
     MqpCommandFeedback.sendInfo(
-        source, createStateChange("Enabled", ChatFormatting.GREEN, packageId));
+        source, createStateChange(packageId, "enabled", ChatFormatting.GREEN));
   }
 
   static void sendDisabled(FabricClientCommandSource source, String packageId) {
     MqpCommandFeedback.sendInfo(
-        source, createStateChange("Disabled", ChatFormatting.RED, packageId));
+        source, createStateChange(packageId, "disabled", ChatFormatting.RED));
   }
 
   static <T> CompletableFuture<Suggestions> suggestPackageIds(
       SuggestionsBuilder builder, Iterable<T> packages, Function<T, String> idProvider) {
+    return suggestPackageIds(builder, packages, idProvider, packageValue -> true);
+  }
+
+  static <T> CompletableFuture<Suggestions> suggestPackageIds(
+      SuggestionsBuilder builder,
+      Iterable<T> packages,
+      Function<T, String> idProvider,
+      Predicate<T> packageFilter) {
     String remaining = builder.getRemainingLowerCase();
     for (T packageValue : packages) {
+      if (!packageFilter.test(packageValue)) {
+        continue;
+      }
       String packageId = idProvider.apply(packageValue);
       if (packageId.toLowerCase(Locale.ROOT).contains(remaining)) {
         builder.suggest(packageId);
@@ -68,11 +80,10 @@ final class PackageCommandSupport {
     return builder.buildFuture();
   }
 
-  private static Component createStateChange(
-      String action, ChatFormatting color, String packageId) {
+  private static Component createStateChange(String packageId, String state, ChatFormatting color) {
     return Component.empty()
-        .append(Component.literal(action).withStyle(color))
-        .append(Component.literal(": " + packageId));
+        .append(Component.literal(packageId + " is now "))
+        .append(Component.literal(state).withStyle(color));
   }
 
   private static ChatFormatting stateColor(PackageState state) {

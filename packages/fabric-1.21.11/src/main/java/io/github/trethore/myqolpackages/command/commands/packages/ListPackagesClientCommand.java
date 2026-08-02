@@ -15,49 +15,55 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.commands;
+package io.github.trethore.myqolpackages.command.commands.packages;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
+import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import java.util.List;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.minecraft.network.chat.Component;
 
-public final class DisablePackageClientCommand {
+public final class ListPackagesClientCommand {
   private final PackageManager packageManager;
 
-  public DisablePackageClientCommand(PackageManager packageManager) {
+  public ListPackagesClientCommand(PackageManager packageManager) {
     this.packageManager = packageManager;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("disable")
-        .then(
-            ClientCommandManager.argument("id", StringArgumentType.word())
-                .suggests((context, builder) -> suggestPackageIds(builder))
-                .executes(this::execute));
+    return ClientCommandManager.literal("list").executes(this::execute);
   }
 
   private int execute(CommandContext<FabricClientCommandSource> context) {
     FabricClientCommandSource source = context.getSource();
-    String packageId = StringArgumentType.getString(context, "id");
-    PackageOperationResult result = packageManager.disablePackage(packageId);
-    if (result.successful()) {
-      PackageCommandSupport.sendDisabled(source, packageId);
+    List<PackageInfo> packages = packageManager.getPackages();
+    if (packages.isEmpty()) {
+      MqpCommandFeedback.sendInfo(source, "No packages discovered.");
       return ClientCommandResult.SUCCESS;
     }
-    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
-  }
 
-  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
-    return PackageCommandSupport.suggestPackageIds(
-        builder, packageManager.getConfiguredEnabledPackageIds(), Function.identity());
+    MqpCommandFeedback.sendHeader(source);
+    MqpCommandFeedback.sendLine(source, "Packages discovered: " + packages.size());
+    for (PackageInfo packageInfo : packages) {
+      MqpCommandFeedback.sendLine(
+          source,
+          Component.empty()
+              .append(
+                  Component.literal(
+                      packageInfo.name()
+                          + " ("
+                          + packageInfo.id()
+                          + ") - "
+                          + packageInfo.version()
+                          + " ["))
+              .append(PackageCommandSupport.formatState(packageInfo.state()))
+              .append(Component.literal("]")));
+    }
+    return packages.size();
   }
 }

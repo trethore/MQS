@@ -15,37 +15,49 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.commands;
+package io.github.trethore.myqolpackages.command.commands.packages;
 
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
+import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
-public final class RefreshPackagesClientCommand {
+public final class DisablePackageClientCommand {
   private final PackageManager packageManager;
 
-  public RefreshPackagesClientCommand(PackageManager packageManager) {
+  public DisablePackageClientCommand(PackageManager packageManager) {
     this.packageManager = packageManager;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("refresh").executes(this::execute);
+    return ClientCommandManager.literal("disable")
+        .then(
+            ClientCommandManager.argument("id", StringArgumentType.word())
+                .suggests((context, builder) -> suggestPackageIds(builder))
+                .executes(this::execute));
   }
 
   private int execute(CommandContext<FabricClientCommandSource> context) {
     FabricClientCommandSource source = context.getSource();
-    PackageDiscoveryResult result = packageManager.refresh();
-    MqpCommandFeedback.sendInfo(
-        source,
-        "Discovered: "
-            + result.packages().size()
-            + " package(s), "
-            + result.diagnostics().size()
-            + " diagnostic(s).");
+    String packageId = StringArgumentType.getString(context, "id");
+    PackageOperationResult result = packageManager.disablePackage(packageId);
+    if (result.successful()) {
+      PackageCommandSupport.sendDisabled(source, packageId);
+      return ClientCommandResult.SUCCESS;
+    }
     return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+  }
+
+  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
+    return PackageCommandSupport.suggestPackageIds(
+        builder, packageManager.getConfiguredEnabledPackageIds(), Function.identity());
   }
 }

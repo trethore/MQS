@@ -21,6 +21,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
+import io.github.trethore.myqolpackages.api.config.MqpPermissionsConfig;
+import io.github.trethore.myqolpackages.api.config.PackagePermissionOverrides;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import java.io.IOException;
 import java.io.Reader;
@@ -32,6 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class GsonMqpConfigManager {
@@ -97,6 +100,19 @@ public final class GsonMqpConfigManager {
     saveEnabledPackages(enabledPackages);
   }
 
+  public synchronized void setGlobalPermissions(PackagePermissionOverrides permissions)
+      throws IOException {
+    Objects.requireNonNull(permissions, "permissions");
+    MqpConfig currentConfig = config.get();
+    MqpPermissionsConfig updatedPermissions =
+        new MqpPermissionsConfig(permissions, currentConfig.permissions().packages());
+    saveConfig(
+        new MqpConfig(
+            currentConfig.additionalPackageRoots(),
+            currentConfig.enabledPackages(),
+            updatedPermissions));
+  }
+
   private MqpConfig readConfig() throws IOException {
     try (Reader reader = Files.newBufferedReader(configPath, StandardCharsets.UTF_8)) {
       MqpConfig loadedConfig = gson.fromJson(reader, MqpConfig.class);
@@ -112,15 +128,22 @@ public final class GsonMqpConfigManager {
   }
 
   private void saveEnabledPackages(List<String> enabledPackages) throws IOException {
+    MqpConfig currentConfig = config.get();
+    saveConfig(
+        new MqpConfig(
+            currentConfig.additionalPackageRoots(), enabledPackages, currentConfig.permissions()));
+  }
+
+  private void saveConfig(MqpConfig updatedConfig) throws IOException {
+    ensureConfigCanBeSaved();
+    writeConfig(updatedConfig);
+    config.set(updatedConfig);
+  }
+
+  private void ensureConfigCanBeSaved() throws IOException {
     if (!configLoadedSuccessfully) {
       throw new IOException("Configuration cannot be saved because config.json failed to load");
     }
-    MqpConfig currentConfig = config.get();
-    MqpConfig updatedConfig =
-        new MqpConfig(
-            currentConfig.additionalPackageRoots(), enabledPackages, currentConfig.permissions());
-    writeConfig(updatedConfig);
-    config.set(updatedConfig);
   }
 
   private void writeConfig(MqpConfig updatedConfig) throws IOException {

@@ -20,10 +20,13 @@ package io.github.trethore.myqolpackages.internal.config;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.trethore.myqolpackages.api.config.FileSystemPermissionOverrides;
 import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.api.config.MqpConfig;
+import io.github.trethore.myqolpackages.api.config.PackagePermissionOverrides;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -137,6 +140,45 @@ class GsonMqpConfigManagerTest {
   }
 
   @Test
+  void savesGlobalPermissionsAndPreservesPackageOverrides() throws IOException {
+    Files.writeString(
+        temporaryDirectory.resolve("config.json"),
+        """
+        {
+          "additionalPackageRoots": ["/example/root"],
+          "enabledPackages": ["example-package"],
+          "permissions": {
+            "packages": {
+              "example-package": {
+                "hostAccess": "full"
+              }
+            }
+          }
+        }
+        """);
+    MqpConfigLoadResult result =
+        saveGlobalPermissionsAndReload(
+            new PackagePermissionOverrides(
+                HostAccessPermission.FULL,
+                HostClassLookupPermission.MINECRAFT,
+                new FileSystemPermissionOverrides(
+                    FileSystemReadPermission.PACKAGE, FileSystemWritePermission.DATA)));
+
+    MqpConfig config = result.config();
+    PackagePermissionOverrides defaultPermissions = config.permissions().defaults();
+    FileSystemPermissionOverrides defaultFilesystem = defaultPermissions.filesystem();
+    assertEquals(List.of("/example/root"), config.additionalPackageRoots());
+    assertEquals(List.of("example-package"), config.enabledPackages());
+    assertEquals(HostAccessPermission.FULL, defaultPermissions.hostAccess());
+    assertEquals(HostClassLookupPermission.MINECRAFT, defaultPermissions.hostClassLookup());
+    assertEquals(FileSystemReadPermission.PACKAGE, defaultFilesystem.read());
+    assertEquals(FileSystemWritePermission.DATA, defaultFilesystem.write());
+    assertEquals(
+        HostAccessPermission.FULL,
+        config.permissions().packages().get("example-package").hostAccess());
+  }
+
+  @Test
   void rejectsUnknownPermissionValue() throws IOException {
     Files.writeString(
         temporaryDirectory.resolve("config.json"),
@@ -155,5 +197,13 @@ class GsonMqpConfigManagerTest {
 
     assertEquals(1, result.diagnostics().size());
     assertTrue(result.diagnostics().getFirst().message().contains("trusted"));
+  }
+
+  private MqpConfigLoadResult saveGlobalPermissionsAndReload(PackagePermissionOverrides permissions)
+      throws IOException {
+    GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
+    configManager.load();
+    configManager.setGlobalPermissions(permissions);
+    return new GsonMqpConfigManager(temporaryDirectory).load();
   }
 }
