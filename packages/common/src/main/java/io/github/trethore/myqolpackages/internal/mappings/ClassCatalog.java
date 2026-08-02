@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ClassCatalog {
+  private static final char INNER_CLASS_SEPARATOR = '$';
+
   private final Set<String> classes;
   private final Set<String> packages;
   private final Map<String, List<String>> suffixMatches;
@@ -100,7 +102,7 @@ public final class ClassCatalog {
         addSuffix(suffixMatches, className.substring(separatorIndex + 1), className);
         separatorIndex = className.indexOf('.', separatorIndex + 1);
       }
-      int innerClassIndex = className.lastIndexOf('$');
+      int innerClassIndex = className.lastIndexOf(INNER_CLASS_SEPARATOR);
       if (innerClassIndex >= 0 && innerClassIndex < className.length() - 1) {
         addSuffix(suffixMatches, className.substring(innerClassIndex + 1), className);
       }

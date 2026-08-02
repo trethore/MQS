@@ -340,6 +340,24 @@ class GraalPackageContextFactoryTest {
             if (!instance._self || !instance._class || Fixture._class !== instance._class) {
               throw new Error("raw escape members failed");
             }
+            if (!instance._equals(instance) || !instance._equals(instance._self)) {
+              throw new Error("Java equality failed for the same object");
+            }
+            if (instance._equals(copy) || instance._equals(copy._self)) {
+              throw new Error("Java equality failed for different objects");
+            }
+            const BaseFixture = importClass("net.minecraft.test.FakeMappedBase");
+            if (!instance._instanceof(Fixture)
+                || !instance._instanceof(Fixture._class)
+                || !instance._instanceof(BaseFixture)) {
+              throw new Error("Java instanceof failed");
+            }
+            let objectTypeRejected = false;
+            try { instance._instanceof(copy); } catch (error) { objectTypeRejected = true; }
+            if (!objectTypeRejected) throw new Error("instanceof accepted an object as a type");
+            let nullTypeRejected = false;
+            try { instance._instanceof(null); } catch (error) { nullTypeRejected = true; }
+            if (!nullTypeRejected) throw new Error("instanceof accepted null as a type");
             const wrappedAgain = wrap(instance._self);
             if (wrappedAgain.hiddenName !== "renamed-again") {
               throw new Error("wrapped field read failed");

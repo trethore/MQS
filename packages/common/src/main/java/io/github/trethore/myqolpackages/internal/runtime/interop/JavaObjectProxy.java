@@ -25,9 +25,6 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 final class JavaObjectProxy implements ProxyObject {
-  private static final String CLASS_MEMBER = "_class";
-  private static final String SELF_MEMBER = "_self";
-
   private final Object instance;
   private final JavaInteropMembers members;
   private final String preferredNamedClassName;
@@ -42,11 +39,19 @@ final class JavaObjectProxy implements ProxyObject {
 
   @Override
   public Object getMember(String key) {
-    if (SELF_MEMBER.equals(key)) {
+    if (JavaInteropMembers.SELF_MEMBER.equals(key)) {
       return instance;
     }
-    if (CLASS_MEMBER.equals(key)) {
+    if (JavaInteropMembers.CLASS_MEMBER.equals(key)) {
       return instance.getClass();
+    }
+    if (JavaInteropMembers.EQUALS_MEMBER.equals(key)) {
+      return (ProxyExecutable)
+          arguments -> service.objectsEqual(instance, requireSingleArgument(key, arguments));
+    }
+    if (JavaInteropMembers.INSTANCEOF_MEMBER.equals(key)) {
+      return (ProxyExecutable)
+          arguments -> service.isInstance(instance, requireSingleArgument(key, arguments));
     }
     JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
     if (memberName.explicitField()) {
@@ -69,7 +74,7 @@ final class JavaObjectProxy implements ProxyObject {
 
   @Override
   public boolean hasMember(String key) {
-    if (SELF_MEMBER.equals(key) || CLASS_MEMBER.equals(key)) {
+    if (JavaInteropMembers.isReservedInstanceMember(key)) {
       return true;
     }
     JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
@@ -82,7 +87,7 @@ final class JavaObjectProxy implements ProxyObject {
 
   @Override
   public void putMember(String key, Value value) {
-    if (SELF_MEMBER.equals(key) || CLASS_MEMBER.equals(key)) {
+    if (JavaInteropMembers.isReservedInstanceMember(key)) {
       throw new UnsupportedOperationException("Cannot replace reserved member " + key);
     }
     JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
@@ -91,8 +96,8 @@ final class JavaObjectProxy implements ProxyObject {
           "Ambiguous write to member '"
               + memberName.name()
               + "'. Use "
-              + memberName.name()
-              + "$ to write the field");
+              + JavaInteropMembers.explicitFieldName(memberName.name())
+              + " to write the field");
     }
     Field field = members.instanceFields().get(memberName.name());
     service.writeField(instance, field, memberName.name(), value);
@@ -104,5 +109,12 @@ final class JavaObjectProxy implements ProxyObject {
 
   private Object readField(Field field) {
     return field == null ? null : service.readField(instance, preferredNamedClassName, field);
+  }
+
+  private static Value requireSingleArgument(String member, Value[] arguments) {
+    if (arguments.length != 1) {
+      throw new IllegalArgumentException(member + " requires exactly one argument");
+    }
+    return arguments[0];
   }
 }

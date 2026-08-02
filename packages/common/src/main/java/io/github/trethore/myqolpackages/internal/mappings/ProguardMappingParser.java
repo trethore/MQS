@@ -24,6 +24,10 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class ProguardMappingParser {
+  private static final String CLASS_MAPPING_SUFFIX = ":";
+  private static final String COMMENT_PREFIX = "#";
+  private static final String MAPPING_SEPARATOR = "->";
+
   public ParsedMappings parse(Reader source) throws IOException {
     ClassCatalog.Builder catalog = ClassCatalog.builder();
     MappingIndex.Builder mappings = MappingIndex.builder();
@@ -34,7 +38,7 @@ public final class ProguardMappingParser {
     while ((line = reader.readLine()) != null) {
       lineNumber++;
       String trimmedLine = line.trim();
-      if (trimmedLine.isEmpty() || trimmedLine.startsWith("#")) {
+      if (trimmedLine.isEmpty() || trimmedLine.startsWith(COMMENT_PREFIX)) {
         continue;
       }
       if (!Character.isWhitespace(line.charAt(0))) {
@@ -48,12 +52,16 @@ public final class ProguardMappingParser {
 
   private static String parseClassLine(
       String line, int lineNumber, ClassCatalog.Builder catalog, MappingIndex.Builder mappings) {
-    int arrowIndex = line.indexOf("->");
-    if (arrowIndex < 0 || !line.endsWith(":")) {
+    int arrowIndex = line.indexOf(MAPPING_SEPARATOR);
+    if (arrowIndex < 0 || !line.endsWith(CLASS_MAPPING_SUFFIX)) {
       throw new IllegalArgumentException("Invalid class mapping at line " + lineNumber);
     }
     String namedClassName = normalize(line.substring(0, arrowIndex));
-    String runtimeClassName = normalize(line.substring(arrowIndex + 2, line.length() - 1));
+    String runtimeClassName =
+        normalize(
+            line.substring(
+                arrowIndex + MAPPING_SEPARATOR.length(),
+                line.length() - CLASS_MAPPING_SUFFIX.length()));
     if (namedClassName.isEmpty() || runtimeClassName.isEmpty()) {
       throw new IllegalArgumentException("Invalid class mapping at line " + lineNumber);
     }
@@ -64,12 +72,12 @@ public final class ProguardMappingParser {
 
   private static void parseMemberLine(
       String namedClassName, String line, MappingIndex.Builder mappings) {
-    int arrowIndex = line.indexOf("->");
+    int arrowIndex = line.indexOf(MAPPING_SEPARATOR);
     if (arrowIndex < 0) {
       return;
     }
     String declaration = line.substring(0, arrowIndex).trim();
-    String runtimeName = line.substring(arrowIndex + 2).trim();
+    String runtimeName = line.substring(arrowIndex + MAPPING_SEPARATOR.length()).trim();
     if (declaration.isEmpty() || runtimeName.isEmpty()) {
       return;
     }

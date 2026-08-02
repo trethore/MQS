@@ -136,6 +136,19 @@ final class JavaInteropService {
     return wrapReturn(value.asHostObject(), null);
   }
 
+  boolean objectsEqual(Object instance, Value other) {
+    return instance.equals(executableResolver.convertValue(other, Object.class));
+  }
+
+  boolean isInstance(Object instance, Value type) {
+    Object convertedType = executableResolver.convertValue(type, Class.class);
+    if (!(convertedType instanceof Class<?> targetClass)) {
+      throw new IllegalArgumentException(
+          JavaInteropMembers.INSTANCEOF_MEMBER + " requires a Java class");
+    }
+    return targetClass.isInstance(instance);
+  }
+
   private static IllegalStateException invocationFailure(
       String description, ReflectiveOperationException exception) {
     Throwable cause =

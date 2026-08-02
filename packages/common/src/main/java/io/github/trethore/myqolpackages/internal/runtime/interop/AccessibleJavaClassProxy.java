@@ -25,8 +25,6 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 
 final class AccessibleJavaClassProxy extends JavaClassProxy implements ProxyInstantiable {
-  private static final String CLASS_MEMBER = "_class";
-
   private final JavaInteropMembers members;
   private final JavaInteropService service;
 
@@ -45,7 +43,7 @@ final class AccessibleJavaClassProxy extends JavaClassProxy implements ProxyInst
 
   @Override
   public Object getMember(String key) {
-    if (CLASS_MEMBER.equals(key)) {
+    if (JavaInteropMembers.CLASS_MEMBER.equals(key)) {
       return getTargetClass();
     }
     JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
@@ -69,7 +67,7 @@ final class AccessibleJavaClassProxy extends JavaClassProxy implements ProxyInst
 
   @Override
   public boolean hasMember(String key) {
-    if (CLASS_MEMBER.equals(key)) {
+    if (JavaInteropMembers.CLASS_MEMBER.equals(key)) {
       return true;
     }
     JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
@@ -82,8 +80,9 @@ final class AccessibleJavaClassProxy extends JavaClassProxy implements ProxyInst
 
   @Override
   public void putMember(String key, Value value) {
-    if (CLASS_MEMBER.equals(key)) {
-      throw new UnsupportedOperationException("Cannot replace reserved member _class");
+    if (JavaInteropMembers.CLASS_MEMBER.equals(key)) {
+      throw new UnsupportedOperationException(
+          "Cannot replace reserved member " + JavaInteropMembers.CLASS_MEMBER);
     }
     JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
     if (!memberName.explicitField() && members.staticMethods().containsKey(memberName.name())) {
@@ -91,8 +90,8 @@ final class AccessibleJavaClassProxy extends JavaClassProxy implements ProxyInst
           "Ambiguous write to static member '"
               + memberName.name()
               + "'. Use "
-              + memberName.name()
-              + "$ to write the field");
+              + JavaInteropMembers.explicitFieldName(memberName.name())
+              + " to write the field");
     }
     Field field = members.staticFields().get(memberName.name());
     service.writeField(null, field, memberName.name(), value);

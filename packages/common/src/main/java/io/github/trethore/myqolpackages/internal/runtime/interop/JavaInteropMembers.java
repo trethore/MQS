@@ -35,6 +35,17 @@ import java.util.TreeSet;
 import org.graalvm.polyglot.proxy.ProxyArray;
 
 final class JavaInteropMembers {
+  static final String CLASS_MEMBER = "_class";
+  static final String EQUALS_MEMBER = "_equals";
+  static final String INSTANCEOF_MEMBER = "_instanceof";
+  static final String SELF_MEMBER = "_self";
+
+  private static final String ARRAY_TYPE_SUFFIX = "[]";
+  private static final String EXPLICIT_FIELD_ACCESS_SUFFIX = "$";
+  private static final Set<String> INSTANCE_RESERVED_MEMBERS =
+      Set.of(CLASS_MEMBER, EQUALS_MEMBER, INSTANCEOF_MEMBER, SELF_MEMBER);
+  private static final String VARARGS_TYPE_SUFFIX = "...";
+
   private final List<Constructor<?>> constructors;
   private final Map<String, Field> instanceFields;
   private final ProxyArray instanceMemberKeys;
@@ -74,10 +85,21 @@ final class JavaInteropMembers {
   }
 
   static MemberName parseMemberName(String key) {
-    if (key != null && key.endsWith("$") && key.length() > 1) {
-      return new MemberName(key.substring(0, key.length() - 1), true);
+    if (key != null
+        && key.endsWith(EXPLICIT_FIELD_ACCESS_SUFFIX)
+        && key.length() > EXPLICIT_FIELD_ACCESS_SUFFIX.length()) {
+      return new MemberName(
+          key.substring(0, key.length() - EXPLICIT_FIELD_ACCESS_SUFFIX.length()), true);
     }
     return new MemberName(key, false);
+  }
+
+  static String explicitFieldName(String fieldName) {
+    return fieldName + EXPLICIT_FIELD_ACCESS_SUFFIX;
+  }
+
+  static boolean isReservedInstanceMember(String key) {
+    return INSTANCE_RESERVED_MEMBERS.contains(key);
   }
 
   List<Constructor<?>> constructors() {
@@ -217,21 +239,24 @@ final class JavaInteropMembers {
 
   private static boolean matches(
       Class<?> runtimeType, String namedTypeName, MappingIndex mappingIndex) {
-    String normalizedNamedTypeName = namedTypeName.replace("...", "[]");
+    String normalizedNamedTypeName = namedTypeName.replace(VARARGS_TYPE_SUFFIX, ARRAY_TYPE_SUFFIX);
     if (runtimeType.getTypeName().equals(normalizedNamedTypeName)) {
       return true;
     }
     int arrayDimensions = 0;
     String namedComponentType = normalizedNamedTypeName;
-    while (namedComponentType.endsWith("[]")) {
+    while (namedComponentType.endsWith(ARRAY_TYPE_SUFFIX)) {
       arrayDimensions++;
-      namedComponentType = namedComponentType.substring(0, namedComponentType.length() - 2);
+      namedComponentType =
+          namedComponentType.substring(0, namedComponentType.length() - ARRAY_TYPE_SUFFIX.length());
     }
     String runtimeComponentType = mappingIndex.getRuntimeClassName(namedComponentType);
     if (runtimeComponentType == null) {
       return false;
     }
-    return runtimeType.getTypeName().equals(runtimeComponentType + "[]".repeat(arrayDimensions));
+    return runtimeType
+        .getTypeName()
+        .equals(runtimeComponentType + ARRAY_TYPE_SUFFIX.repeat(arrayDimensions));
   }
 
   private static Map<String, List<Method>> immutableMethodMap(Map<String, List<Method>> methods) {
@@ -251,11 +276,11 @@ final class JavaInteropMembers {
       if (!methods.containsKey(fieldName)) {
         keys.add(fieldName);
       }
-      keys.add(fieldName + "$");
+      keys.add(explicitFieldName(fieldName));
     }
-    keys.add("_class");
+    keys.add(CLASS_MEMBER);
     if (instanceMembers) {
-      keys.add("_self");
+      keys.addAll(INSTANCE_RESERVED_MEMBERS);
     }
     return ProxyArray.fromArray(keys.toArray());
   }
