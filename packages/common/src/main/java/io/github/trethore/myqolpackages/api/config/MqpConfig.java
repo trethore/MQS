@@ -41,6 +41,6 @@ public record MqpConfig(
   }
 
   public static MqpConfig defaults() {
-    return new MqpConfig(List.of(), List.of(), MqpPermissionsConfig.restricted());
+    return new MqpConfig(List.of(), List.of());
   }
 }

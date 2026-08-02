@@ -96,19 +96,18 @@ public final class MappingIndex {
   public static final class Builder {
     private final Map<String, MutableClassMapping> classMappings = new LinkedHashMap<>();
 
-    public Builder add(String namedClassName, String runtimeClassName) {
+    public void add(String namedClassName, String runtimeClassName) {
       MutableClassMapping existingMapping = classMappings.get(namedClassName);
       if (existingMapping != null) {
         if (!existingMapping.runtimeClassName.equals(runtimeClassName)) {
           throw new IllegalArgumentException("Conflicting mapping for class " + namedClassName);
         }
-        return this;
+        return;
       }
       classMappings.put(namedClassName, new MutableClassMapping(runtimeClassName));
-      return this;
     }
 
-    public Builder addMethod(
+    public void addMethod(
         String namedClassName,
         String namedMethodName,
         String runtimeMethodName,
@@ -121,10 +120,9 @@ public final class MappingIndex {
       if (!methodMappings.contains(methodMapping)) {
         methodMappings.add(methodMapping);
       }
-      return this;
     }
 
-    public Builder addField(String namedClassName, String namedFieldName, String runtimeFieldName) {
+    public void addField(String namedClassName, String namedFieldName, String runtimeFieldName) {
       MutableClassMapping classMapping = requireClassMapping(namedClassName);
       String existingName =
           classMapping.fieldMappings.putIfAbsent(namedFieldName, runtimeFieldName);
@@ -132,7 +130,6 @@ public final class MappingIndex {
         throw new IllegalArgumentException(
             "Conflicting mapping for field " + namedClassName + "." + namedFieldName);
       }
-      return this;
     }
 
     public MappingIndex build() {

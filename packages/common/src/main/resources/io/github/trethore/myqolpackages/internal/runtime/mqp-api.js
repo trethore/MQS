@@ -4,6 +4,7 @@
   const filesystemRead = globalThis.__mqpFilesystemRead;
   const filesystemWrite = globalThis.__mqpFilesystemWrite;
   const importClassBridge = globalThis.__mqpImportClass;
+  const wrapBridge = globalThis.__mqpWrap;
   const packagesBridge = globalThis.__mqpPackages;
   const netBridge = globalThis.__mqpNet;
   const defineGlobal = (name, value) => Object.defineProperty(globalThis, name, {
@@ -55,6 +56,7 @@
     writable: false
   });
   defineGlobal("importClass", (...args) => importClassBridge(...args));
+  defineGlobal("wrap", (...args) => wrapBridge(...args));
   defineGlobal("packages", packagesBridge);
   defineGlobal("net", netBridge);
   delete globalThis.__mqpVersion;
@@ -64,6 +66,7 @@
   delete globalThis.__mqpFilesystemRead;
   delete globalThis.__mqpFilesystemWrite;
   delete globalThis.__mqpImportClass;
+  delete globalThis.__mqpWrap;
   delete globalThis.__mqpPackages;
   delete globalThis.__mqpNet;
 }

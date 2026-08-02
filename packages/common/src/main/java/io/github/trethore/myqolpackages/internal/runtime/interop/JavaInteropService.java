@@ -120,6 +120,22 @@ final class JavaInteropService {
     return new JavaObjectProxy(value, preferredNamedClassName, this);
   }
 
+  Object wrap(Value value) {
+    if (value.isNull()) {
+      return null;
+    }
+    if (value.isProxyObject()) {
+      Object proxy = value.asProxyObject();
+      if (proxy instanceof JavaObjectProxy) {
+        return proxy;
+      }
+    }
+    if (!value.isHostObject()) {
+      throw new IllegalArgumentException("wrap requires a Java object");
+    }
+    return wrapReturn(value.asHostObject(), null);
+  }
+
   private static IllegalStateException invocationFailure(
       String description, ReflectiveOperationException exception) {
     Throwable cause =

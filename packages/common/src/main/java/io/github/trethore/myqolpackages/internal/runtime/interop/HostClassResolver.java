@@ -24,6 +24,7 @@ import io.github.trethore.myqolpackages.internal.mappings.ClassInteropMetadata;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.graalvm.polyglot.Value;
 
 final class HostClassResolver {
   private final Map<ClassProxyKey, JavaClassProxy> classProxies = new HashMap<>();
@@ -96,6 +97,13 @@ final class HostClassResolver {
     }
     Class<?> resolvedClass = resolveExactClass(className);
     return resolvedClass == null ? null : getOrCreateProxy(className, resolvedClass);
+  }
+
+  Object wrap(Value value) {
+    if (hostAccessPermission != HostAccessPermission.FULL) {
+      throw new SecurityException("Host access is not permitted");
+    }
+    return interopService.wrap(value);
   }
 
   boolean canTraverse(String path) {

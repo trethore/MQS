@@ -340,6 +340,16 @@ class GraalPackageContextFactoryTest {
             if (!instance._self || !instance._class || Fixture._class !== instance._class) {
               throw new Error("raw escape members failed");
             }
+            const wrappedAgain = wrap(instance._self);
+            if (wrappedAgain.hiddenName !== "renamed-again") {
+              throw new Error("wrapped field read failed");
+            }
+            if (!wrappedAgain.hiddenSame(instance)) {
+              throw new Error("wrapped object identity failed");
+            }
+            if (!wrap(instance).same(instance)) {
+              throw new Error("wrapper wrapping failed");
+            }
 
             let finalWriteRejected = false;
             try { instance.finalValue$ = "changed"; } catch (error) { finalWriteRejected = true; }
@@ -379,6 +389,9 @@ class GraalPackageContextFactoryTest {
             let constructionRejected = false;
             try { new Fixture("fixture", 1); } catch (error) { constructionRejected = true; }
             if (!constructionRejected) throw new Error("opaque class was instantiable");
+            let wrapRejected = false;
+            try { wrap(Fixture); } catch (error) { wrapRejected = true; }
+            if (!wrapRejected) throw new Error("wrap was available without host access");
 
             export function onEnable() {}
             export function onDisable() {}

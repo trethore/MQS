@@ -48,7 +48,15 @@ public final class ClassInteropInstaller {
           }
           return resolver.resolveImport(arguments[0].asString());
         };
+    ProxyExecutable wrap =
+        arguments -> {
+          if (arguments.length != 1) {
+            throw new IllegalArgumentException("wrap requires exactly one object");
+          }
+          return resolver.wrap(arguments[0]);
+        };
     bindings.putMember("__mqpImportClass", importClass);
+    bindings.putMember("__mqpWrap", wrap);
     bindings.putMember("__mqpPackages", packages);
     bindings.putMember("__mqpNet", packages.getNetPackage());
   }

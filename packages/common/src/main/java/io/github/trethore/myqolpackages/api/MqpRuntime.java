@@ -66,6 +66,7 @@ public final class MqpRuntime {
     return new MqpRuntime(configManager, packageManager);
   }
 
+  @SuppressWarnings("UnusedReturnValue")
   public PackageDiscoveryResult start() {
     PackageDiscoveryResult result = packageManager.reload();
     LOGGER.info(
