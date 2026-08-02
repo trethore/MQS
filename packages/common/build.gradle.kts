@@ -23,6 +23,12 @@ dependencies {
 
   // Source
   unpack(create(libs.graal.js.language.get()))
+  unpack(create(libs.graal.polyglot.get()))
+  unpack(create(libs.graal.regex.get()))
+  unpack(create(libs.graal.collections.get()))
+  unpack(create(libs.graal.nativeimage.get()))
+  unpack(create(libs.graal.word.get()))
+  unpack(create(libs.graal.jniutils.get()))
 
   // GSON & SLF4J provided at runtime
   compileOnly(libs.gson)
