@@ -1,4 +1,4 @@
-function installJavaInterop(host, bootstrap) {
+export default function installJavaInterop(host, bootstrap) {
   const interop = host.interop;
   bootstrap.defineGlobal("importClass", (...args) => interop.importClass(...args));
   bootstrap.defineGlobal("wrap", (...args) => interop.wrap(...args));

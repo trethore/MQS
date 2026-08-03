@@ -24,26 +24,27 @@ import org.graalvm.polyglot.Source;
 
 final class MqpApiSourceLoader {
   private static final String JAVASCRIPT_LANGUAGE_ID = "js";
+  private static final String JAVASCRIPT_MODULE_MIME_TYPE = "application/javascript+module";
 
   private MqpApiSourceLoader() {}
 
   static MqpApiSources load() {
     return new MqpApiSources(
-        load("bootstrap.js", "createMqpBootstrap"),
-        load("permissions.js", "createMqpPermissions"),
-        load("mqp.js", "installMqp"),
-        load("java-interop.js", "installJavaInterop"),
-        load("fetch.js", "installFetch"));
+        load("bootstrap.js"),
+        load("permissions.js"),
+        load("mqp.js"),
+        load("java-interop.js"),
+        load("fetch.js"));
   }
 
-  private static Source load(String resourceName, String installerName) {
+  private static Source load(String resourceName) {
     try (InputStream input = MqpApiSourceLoader.class.getResourceAsStream(resourceName)) {
       if (input == null) {
         throw new IllegalStateException("Missing JavaScript API resource: " + resourceName);
       }
-      String resourceSource = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-      String source = "(() => {%n%s%nreturn %s;%n})()".formatted(resourceSource, installerName);
+      String source = new String(input.readAllBytes(), StandardCharsets.UTF_8);
       return Source.newBuilder(JAVASCRIPT_LANGUAGE_ID, source, resourceName)
+          .mimeType(JAVASCRIPT_MODULE_MIME_TYPE)
           .cached(true)
           .buildLiteral();
     } catch (IOException exception) {

@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -46,11 +47,11 @@ public final class MqpApiInstaller {
   public void install(
       Context context, PackageContextSpec spec, PackageHttpClient packageHttpClient) {
     ProxyObject hostBridge = createHostBridge(spec, packageHttpClient);
-    Value bootstrap = context.eval(SOURCES.bootstrap()).execute();
-    Value permissions = context.eval(SOURCES.permissions()).execute(hostBridge);
-    context.eval(SOURCES.mqp()).execute(hostBridge, bootstrap, permissions);
-    context.eval(SOURCES.javaInterop()).execute(hostBridge, bootstrap);
-    context.eval(SOURCES.fetch()).execute(hostBridge, bootstrap);
+    Value bootstrap = getInstaller(context, SOURCES.bootstrap()).execute();
+    Value permissions = getInstaller(context, SOURCES.permissions()).execute(hostBridge);
+    getInstaller(context, SOURCES.mqp()).execute(hostBridge, bootstrap, permissions);
+    getInstaller(context, SOURCES.javaInterop()).execute(hostBridge, bootstrap);
+    getInstaller(context, SOURCES.fetch()).execute(hostBridge, bootstrap);
   }
 
   private ProxyObject createHostBridge(
@@ -81,5 +82,14 @@ public final class MqpApiInstaller {
 
   private static String permissionName(Enum<?> permission) {
     return permission.name().toLowerCase(Locale.ROOT);
+  }
+
+  private static Value getInstaller(Context context, Source source) {
+    Value installer = context.eval(source).getMember("default");
+    if (installer == null || !installer.canExecute()) {
+      throw new IllegalStateException(
+          "JavaScript API resource must have a default function export: " + source.getName());
+    }
+    return installer;
   }
 }

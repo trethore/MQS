@@ -1,4 +1,4 @@
-function installFetch(host, bootstrap) {
+export default function installFetch(host, bootstrap) {
   if (Object.hasOwn(globalThis, "fetch")) {
     throw new Error("MQP cannot install fetch because globalThis.fetch already exists");
   }

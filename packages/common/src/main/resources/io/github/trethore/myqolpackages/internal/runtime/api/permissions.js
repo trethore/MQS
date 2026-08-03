@@ -1,4 +1,4 @@
-function createMqpPermissions(host) {
+export default function createMqpPermissions(host) {
   const hostAccess = String(host.permissions.hostAccess);
   const hostClassLookup = String(host.permissions.hostClassLookup);
   const filesystemRead = String(host.permissions.filesystemRead);

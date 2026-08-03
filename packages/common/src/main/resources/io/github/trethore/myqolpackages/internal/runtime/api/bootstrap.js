@@ -1,4 +1,4 @@
-function createMqpBootstrap() {
+export default function createMqpBootstrap() {
   return Object.freeze({
     defineGlobal(name, value) {
       Object.defineProperty(globalThis, name, {
