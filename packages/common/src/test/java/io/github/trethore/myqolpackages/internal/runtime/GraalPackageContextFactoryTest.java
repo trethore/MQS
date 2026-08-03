@@ -127,8 +127,32 @@ class GraalPackageContextFactoryTest {
             if (mqp.permissions.internet.domains.length !== 0) throw new Error("unexpected domains");
             if (mqp.permissions.has("hostAccess.full")) throw new Error("unexpected full access");
             if (typeof fetch !== "function") throw new Error("missing fetch");
-            const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, "fetch");
-            if (fetchDescriptor.configurable || fetchDescriptor.writable) throw new Error("mutable fetch");
+            for (const name of ["mqp", "importClass", "wrap", "packages", "net", "fetch"]) {
+              const descriptor = Object.getOwnPropertyDescriptor(globalThis, name);
+              if (!descriptor || descriptor.configurable || !descriptor.enumerable || descriptor.writable) {
+                throw new Error(`invalid global descriptor: ${name}`);
+              }
+            }
+            if (!Object.isFrozen(mqp)
+                || !Object.isFrozen(mqp.package)
+                || !Object.isFrozen(mqp.permissions)
+                || !Object.isFrozen(mqp.permissions.filesystem)
+                || !Object.isFrozen(mqp.permissions.internet)
+                || !Object.isFrozen(mqp.permissions.internet.domains)) {
+              throw new Error("mutable MQP metadata");
+            }
+            for (const name of Object.getOwnPropertyNames(globalThis)) {
+              if (name.startsWith("__mqp")) throw new Error(`leaked host bridge: ${name}`);
+            }
+            for (const name of [
+              "createMqpBootstrap",
+              "createMqpPermissions",
+              "installMqp",
+              "installJavaInterop",
+              "installFetch"
+            ]) {
+              if (Object.hasOwn(globalThis, name)) throw new Error(`leaked API installer: ${name}`);
+            }
             try { mqp.version = "changed"; } catch (error) {}
             if (mqp.version !== "0.0.1") throw new Error("mutable MQP API");
 

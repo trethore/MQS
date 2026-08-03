@@ -21,22 +21,21 @@ import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
 import io.github.trethore.myqolpackages.internal.mappings.ClassInteropMetadata;
-import org.graalvm.polyglot.Value;
+import java.util.Map;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 
-public final class ClassInteropInstaller {
+public final class ClassInteropBridgeFactory {
   private final MqpRuntimeEnvironment environment;
   private final ClassInteropMetadata metadata;
 
-  public ClassInteropInstaller(MqpRuntimeEnvironment environment) {
+  public ClassInteropBridgeFactory(MqpRuntimeEnvironment environment) {
     this.environment = environment;
     this.metadata = ClassInteropMetadata.load(environment);
   }
 
-  public void install(
-      Value bindings,
-      HostAccessPermission hostAccessPermission,
-      HostClassLookupPermission classLookupPermission) {
+  public ProxyObject create(
+      HostAccessPermission hostAccessPermission, HostClassLookupPermission classLookupPermission) {
     HostClassResolver resolver =
         new HostClassResolver(metadata, environment, hostAccessPermission, classLookupPermission);
     JavaPackageProxy packages = new JavaPackageProxy("", resolver);
@@ -55,9 +54,11 @@ public final class ClassInteropInstaller {
           }
           return resolver.wrap(arguments[0]);
         };
-    bindings.putMember("__mqpImportClass", importClass);
-    bindings.putMember("__mqpWrap", wrap);
-    bindings.putMember("__mqpPackages", packages);
-    bindings.putMember("__mqpNet", packages.getNetPackage());
+    return ProxyObject.fromMap(
+        Map.of(
+            "importClass", importClass,
+            "wrap", wrap,
+            "packages", packages,
+            "net", packages.getNetPackage()));
   }
 }

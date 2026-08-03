@@ -1,75 +1,8 @@
-{
-  const hostAccess = globalThis.__mqpHostAccess;
-  const hostClassLookup = globalThis.__mqpHostClassLookup;
-  const filesystemRead = globalThis.__mqpFilesystemRead;
-  const filesystemWrite = globalThis.__mqpFilesystemWrite;
-  const internetAccess = globalThis.__mqpInternetAccess;
-  const internetDomains = Object.freeze(Array.from(globalThis.__mqpInternetDomains));
-  const fetchBridge = globalThis.__mqpFetch;
-  const importClassBridge = globalThis.__mqpImportClass;
-  const wrapBridge = globalThis.__mqpWrap;
-  const packagesBridge = globalThis.__mqpPackages;
-  const netBridge = globalThis.__mqpNet;
-  const defineGlobal = (name, value) => Object.defineProperty(globalThis, name, {
-    value,
-    configurable: false,
-    enumerable: true,
-    writable: false
-  });
-  const permissions = Object.freeze({
-    hostAccess,
-    hostClassLookup,
-    filesystem: Object.freeze({ read: filesystemRead, write: filesystemWrite }),
-    internet: Object.freeze({ access: internetAccess, domains: internetDomains }),
-    has(permission) {
-      if (permission === "hostAccess.full") return hostAccess === "full";
-      if (permission === "hostClassLookup.minecraft") {
-        return hostClassLookup === "minecraft" || hostClassLookup === "all";
-      }
-      if (permission === "hostClassLookup.all") return hostClassLookup === "all";
-      if (permission === "filesystem.read.package") {
-        return filesystemRead === "package" || filesystemRead === "mqp" || filesystemRead === "all";
-      }
-      if (permission === "filesystem.read.data") {
-        return filesystemWrite === "data" || filesystemWrite === "mqp" || filesystemWrite === "all";
-      }
-      if (permission === "filesystem.read.mqp") {
-        return filesystemRead === "mqp" || filesystemRead === "all" || filesystemWrite === "mqp" || filesystemWrite === "all";
-      }
-      if (permission === "filesystem.read.all") {
-        return filesystemRead === "all" || filesystemWrite === "all";
-      }
-      if (permission === "filesystem.write.data") {
-        return filesystemWrite === "data" || filesystemWrite === "mqp" || filesystemWrite === "all";
-      }
-      if (permission === "filesystem.write.mqp") {
-        return filesystemWrite === "mqp" || filesystemWrite === "all";
-      }
-      if (permission === "filesystem.write.all") return filesystemWrite === "all";
-      if (permission === "internet.domains") {
-        return internetAccess === "domains" || internetAccess === "full";
-      }
-      if (permission === "internet.full") return internetAccess === "full";
-      return false;
-    }
-  });
-  Object.defineProperty(globalThis, "mqp", {
-    value: Object.freeze({
-      version: globalThis.__mqpVersion,
-      package: Object.freeze({ id: globalThis.__mqpPackageId }),
-      permissions
-    }),
-    configurable: false,
-    enumerable: true,
-    writable: false
-  });
-  defineGlobal("importClass", (...args) => importClassBridge(...args));
-  defineGlobal("wrap", (...args) => wrapBridge(...args));
-  defineGlobal("packages", packagesBridge);
-  defineGlobal("net", netBridge);
-  if (Object.prototype.hasOwnProperty.call(globalThis, "fetch")) {
+function installFetch(host, bootstrap) {
+  if (Object.hasOwn(globalThis, "fetch")) {
     throw new Error("MQP cannot install fetch because globalThis.fetch already exists");
   }
+  const fetchBridge = host.fetch;
   const normalizeHeaders = (headers) => {
     if (headers === undefined || headers === null) return [];
     if (Array.isArray(headers)) {
@@ -85,7 +18,9 @@
   };
   const decodeBase64 = (value) => {
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    const clean = value.replace(/=+$/, "");
+    let end = value.length;
+    while (end > 0 && value[end - 1] === "=") end--;
+    const clean = value.slice(0, end);
     const bytes = new Uint8Array(Math.floor(clean.length * 6 / 8));
     let accumulator = 0;
     let bits = 0;
@@ -141,7 +76,7 @@
       this.ok = this.status >= 200 && this.status <= 299;
       this.url = String(response.url);
       this.redirected = Boolean(response.redirected);
-      this.headers = new MqpHeaders(Array.from(response.headers, (entry) => Array.from(entry)));
+      this.headers = new MqpHeaders(Array.from(response.headers, (entry) => [entry[0], entry[1]]));
       this.#body = String(response.text);
       this.#base64 = String(response.base64);
       Object.defineProperties(this, {
@@ -168,7 +103,7 @@
     }
     arrayBuffer() { return this.#consume(decodeBase64(this.#base64)); }
   }
-  defineGlobal("fetch", (input, init = {}) => {
+  bootstrap.defineGlobal("fetch", (input, init = {}) => {
     if (typeof input !== "string") return Promise.reject(new TypeError("fetch URL must be a string"));
     if (init === null || typeof init !== "object") return Promise.reject(new TypeError("fetch options must be an object"));
     for (const option of Object.keys(init)) {
@@ -187,17 +122,4 @@
       (message) => reject(new TypeError(String(message)))
     ));
   });
-  delete globalThis.__mqpVersion;
-  delete globalThis.__mqpPackageId;
-  delete globalThis.__mqpHostAccess;
-  delete globalThis.__mqpHostClassLookup;
-  delete globalThis.__mqpFilesystemRead;
-  delete globalThis.__mqpFilesystemWrite;
-  delete globalThis.__mqpInternetAccess;
-  delete globalThis.__mqpInternetDomains;
-  delete globalThis.__mqpFetch;
-  delete globalThis.__mqpImportClass;
-  delete globalThis.__mqpWrap;
-  delete globalThis.__mqpPackages;
-  delete globalThis.__mqpNet;
 }

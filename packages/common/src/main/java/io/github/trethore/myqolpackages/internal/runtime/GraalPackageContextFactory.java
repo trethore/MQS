@@ -23,23 +23,20 @@ import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.internal.runtime.api.MqpApiInstaller;
 import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
-import io.github.trethore.myqolpackages.internal.runtime.interop.ClassInteropInstaller;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -50,14 +47,12 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
-import org.graalvm.polyglot.proxy.ProxyArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class GraalPackageContextFactory implements PackageContextFactory {
   private static final String JAVASCRIPT_LANGUAGE_ID = "js";
   private static final String JAVASCRIPT_MODULE_MIME_TYPE = "application/javascript+module";
-  private static final String MQP_API_RESOURCE_NAME = "mqp-api.js";
   private static final String PACKAGE_DATA_DIRECTORY_NAME = ".data";
   private static final Logger LOGGER = LoggerFactory.getLogger(GraalPackageContextFactory.class);
   private static final Source WARM_UP_SOURCE =
@@ -68,15 +63,12 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
           .mimeType(JAVASCRIPT_MODULE_MIME_TYPE)
           .cached(false)
           .buildLiteral();
-  private static final Source MQP_API_SOURCE = loadMqpApiSource();
-
   private final EnumMap<HostAccessPermission, Engine> engines =
       new EnumMap<>(HostAccessPermission.class);
-  private final ClassInteropInstaller classInteropInstaller;
   private final MqpRuntimeEnvironment environment;
   private final HttpClient httpClient;
+  private final MqpApiInstaller mqpApiInstaller;
   private final Path mqpDirectory;
-  private final String mqpVersion;
 
   private boolean closed;
 
@@ -91,9 +83,9 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
       Path mqpDirectory, String mqpVersion, MqpRuntimeEnvironment environment) {
     this.mqpDirectory =
         Objects.requireNonNull(mqpDirectory, "mqpDirectory").toAbsolutePath().normalize();
-    this.mqpVersion = Objects.requireNonNull(mqpVersion, "mqpVersion");
     this.environment = Objects.requireNonNull(environment, "environment");
-    this.classInteropInstaller = new ClassInteropInstaller(environment);
+    this.mqpApiInstaller =
+        new MqpApiInstaller(Objects.requireNonNull(mqpVersion, "mqpVersion"), environment);
     this.httpClient =
         HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -178,7 +170,7 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     Context context = null;
     try {
       context = createContext(spec, output, errorOutput);
-      installMqpApi(context, spec, packageHttpClient);
+      mqpApiInstaller.install(context, spec, packageHttpClient);
       return new GraalPackageContextResources(context, output, errorOutput, packageHttpClient);
     } catch (IOException | RuntimeException exception) {
       if (context != null) {
@@ -338,48 +330,6 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
 
   private Path getPackageDataDirectory(PackageContextSpec spec) {
     return mqpDirectory.resolve(PACKAGE_DATA_DIRECTORY_NAME).resolve(spec.packageId());
-  }
-
-  private void installMqpApi(
-      Context context, PackageContextSpec spec, PackageHttpClient packageHttpClient) {
-    FileSystemPermissions filesystemPermissions = spec.permissions().filesystem();
-    Value bindings = context.getBindings(JAVASCRIPT_LANGUAGE_ID);
-    bindings.putMember("__mqpVersion", mqpVersion);
-    bindings.putMember("__mqpPackageId", spec.packageId());
-    bindings.putMember("__mqpHostAccess", permissionName(spec.permissions().hostAccess()));
-    bindings.putMember(
-        "__mqpHostClassLookup", permissionName(spec.permissions().hostClassLookup()));
-    bindings.putMember("__mqpFilesystemRead", permissionName(filesystemPermissions.read()));
-    bindings.putMember("__mqpFilesystemWrite", permissionName(filesystemPermissions.write()));
-    bindings.putMember(
-        "__mqpInternetAccess", permissionName(spec.permissions().internet().access()));
-    bindings.putMember(
-        "__mqpInternetDomains",
-        ProxyArray.fromArray(spec.permissions().internet().domains().toArray()));
-    bindings.putMember("__mqpFetch", packageHttpClient);
-    classInteropInstaller.install(
-        bindings, spec.permissions().hostAccess(), spec.permissions().hostClassLookup());
-    context.eval(MQP_API_SOURCE);
-  }
-
-  private static String permissionName(Enum<?> permission) {
-    return permission.name().toLowerCase(Locale.ROOT);
-  }
-
-  private static Source loadMqpApiSource() {
-    try (InputStream input =
-        GraalPackageContextFactory.class.getResourceAsStream(MQP_API_RESOURCE_NAME)) {
-      if (input == null) {
-        throw new IllegalStateException("Missing JavaScript resource: " + MQP_API_RESOURCE_NAME);
-      }
-      String source = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-      return Source.newBuilder(JAVASCRIPT_LANGUAGE_ID, source, MQP_API_RESOURCE_NAME)
-          .cached(true)
-          .buildLiteral();
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Could not read JavaScript resource: " + MQP_API_RESOURCE_NAME, exception);
-    }
   }
 
   @SuppressWarnings("resource")
