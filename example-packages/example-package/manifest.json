@@ -12,7 +12,7 @@
       "write": "none"
     },
     "internet": {
-      "access": "none"
+      "access": "full"
     }
   }
 }

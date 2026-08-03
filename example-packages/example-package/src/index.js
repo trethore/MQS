@@ -15,6 +15,24 @@ export function onEnable() {
 
   console.log("Are the 2 BlockPos equal? " + blockPos1._equals(blockPos2));
   console.log("Is blockPos1 an instance of BlockPos? " + blockPos1._instanceof(BlockPos));
+
+  fetch("https://geocoding-api.open-meteo.com/v1/search?name=Paris&count=1")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        return response.json();
+      })
+      .then((content) => {
+        const location = content.results[0];
+        const lat = location.latitude;
+        const long = location.longitude;
+        console.log(`Latitude: ${lat}, Longitude: ${long}`);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
 }
 
 export function onDisable() {
