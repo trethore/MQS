@@ -87,6 +87,10 @@ public final class MqpRuntime {
     packageManager.close();
   }
 
+  public void tick() {
+    packageManager.tick();
+  }
+
   public PackageManager getPackageManager() {
     return packageManager;
   }

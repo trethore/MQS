@@ -27,6 +27,7 @@ import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.api.config.InternetAccessPermission;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Locale;
@@ -47,7 +48,10 @@ public final class MqpGson {
             new LowercaseEnumAdapter<>(FileSystemReadPermission.class))
         .registerTypeAdapter(
             FileSystemWritePermission.class,
-            new LowercaseEnumAdapter<>(FileSystemWritePermission.class));
+            new LowercaseEnumAdapter<>(FileSystemWritePermission.class))
+        .registerTypeAdapter(
+            InternetAccessPermission.class,
+            new LowercaseEnumAdapter<>(InternetAccessPermission.class));
   }
 
   private static final class LowercaseEnumAdapter<T extends Enum<T>> extends TypeAdapter<T> {

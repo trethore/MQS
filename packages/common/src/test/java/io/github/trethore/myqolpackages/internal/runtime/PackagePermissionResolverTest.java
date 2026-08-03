@@ -27,9 +27,11 @@ import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.api.config.InternetPermissions;
 import io.github.trethore.myqolpackages.api.config.MqpPermissionsConfig;
 import io.github.trethore.myqolpackages.api.config.PackagePermissionOverrides;
 import io.github.trethore.myqolpackages.api.config.PackagePermissions;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -116,5 +118,45 @@ class PackagePermissionResolverTest {
 
     assertEquals(
         requested, PackagePermissionResolver.resolve("example-package", requested, configuration));
+  }
+
+  @Test
+  void acceptsRequestedInternetDomainsCoveredByGrant() throws PackageLifecycleException {
+    PackagePermissions requested =
+        new PackagePermissions(
+            HostAccessPermission.NONE,
+            HostClassLookupPermission.NONE,
+            FileSystemPermissions.none(),
+            InternetPermissions.domains(List.of("api.example.com", "*.assets.example.com")));
+    MqpPermissionsConfig configuration =
+        new MqpPermissionsConfig(
+            new PackagePermissionOverrides(
+                null, null, null, InternetPermissions.domains(List.of("*.example.com"))),
+            Map.of());
+
+    assertEquals(
+        requested, PackagePermissionResolver.resolve("example-package", requested, configuration));
+  }
+
+  @Test
+  void rejectsInternetDomainsOutsideGrant() {
+    PackagePermissions requested =
+        new PackagePermissions(
+            HostAccessPermission.NONE,
+            HostClassLookupPermission.NONE,
+            FileSystemPermissions.none(),
+            InternetPermissions.domains(List.of("api.example.org")));
+    MqpPermissionsConfig configuration =
+        new MqpPermissionsConfig(
+            new PackagePermissionOverrides(
+                null, null, null, InternetPermissions.domains(List.of("*.example.com"))),
+            Map.of());
+
+    PackageLifecycleException exception =
+        assertThrows(
+            PackageLifecycleException.class,
+            () -> PackagePermissionResolver.resolve("example-package", requested, configuration));
+
+    assertTrue(exception.getMessage().contains("internet=domains"));
   }
 }

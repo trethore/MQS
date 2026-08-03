@@ -169,6 +169,11 @@ class DefaultPackageManagerTest {
     }
 
     @Override
+    public void tick() {
+      ensureOpen();
+    }
+
+    @Override
     public void close() {
       closed = true;
     }

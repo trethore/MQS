@@ -107,6 +107,13 @@ final class PackageInstance {
     }
   }
 
+  void tick() throws PackageLifecycleException {
+    PackageScriptContext activeContext = scriptContext;
+    if (activeContext != null) {
+      activeContext.tick();
+    }
+  }
+
   void updateDescriptor(PackageDescriptor updatedDescriptor) {
     descriptor = Objects.requireNonNull(updatedDescriptor, "updatedDescriptor");
     available = true;

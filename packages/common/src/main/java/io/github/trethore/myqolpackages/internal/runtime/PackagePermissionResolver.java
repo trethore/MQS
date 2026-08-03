@@ -65,7 +65,8 @@ public final class PackagePermissionResolver {
         overrides.hostClassLookup() == null
             ? permissions.hostClassLookup()
             : overrides.hostClassLookup(),
-        filesystem);
+        filesystem,
+        overrides.internet() == null ? permissions.internet() : overrides.internet());
   }
 
   private static List<String> findDeniedPermissions(
@@ -85,6 +86,16 @@ public final class PackagePermissionResolver {
     if (!granted.filesystem().write().allows(requested.filesystem().write())) {
       addDeniedPermission(
           denied, "filesystem.write", requested.filesystem().write(), granted.filesystem().write());
+    }
+    if (!granted.internet().allows(requested.internet())) {
+      denied.add(
+          "internet="
+              + permissionName(requested.internet().access())
+              + requested.internet().domains()
+              + " (granted "
+              + permissionName(granted.internet().access())
+              + granted.internet().domains()
+              + ")");
     }
     return denied;
   }

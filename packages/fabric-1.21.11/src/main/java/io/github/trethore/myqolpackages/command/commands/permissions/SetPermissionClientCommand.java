@@ -26,10 +26,13 @@ import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.api.config.InternetAccessPermission;
+import io.github.trethore.myqolpackages.api.config.InternetPermissions;
 import io.github.trethore.myqolpackages.api.config.PackagePermissionOverrides;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import java.io.IOException;
+import java.util.List;
 import java.util.Locale;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -81,7 +84,16 @@ public final class SetPermissionClientCommand {
                             (context, builder) ->
                                 PermissionCommandSupport.suggestValues(
                                     builder, FileSystemWritePermission.values()))
-                        .executes(this::setFilesystemWrite)));
+                        .executes(this::setFilesystemWrite)))
+        .then(
+            ClientCommandManager.literal("internet")
+                .then(
+                    ClientCommandManager.argument(VALUE_ARGUMENT, StringArgumentType.word())
+                        .suggests(
+                            (context, builder) ->
+                                PermissionCommandSupport.suggestValues(
+                                    builder, InternetAccessPermission.values()))
+                        .executes(this::setInternet)));
   }
 
   private int setHostAccess(CommandContext<FabricClientCommandSource> context) {
@@ -94,7 +106,8 @@ public final class SetPermissionClientCommand {
         context,
         "host-access",
         value,
-        new PackagePermissionOverrides(value, current.hostClassLookup(), current.filesystem()));
+        new PackagePermissionOverrides(
+            value, current.hostClassLookup(), current.filesystem(), current.internet()));
   }
 
   private int setHostClassLookup(CommandContext<FabricClientCommandSource> context) {
@@ -107,7 +120,8 @@ public final class SetPermissionClientCommand {
         context,
         "host-class-lookup",
         value,
-        new PackagePermissionOverrides(current.hostAccess(), value, current.filesystem()));
+        new PackagePermissionOverrides(
+            current.hostAccess(), value, current.filesystem(), current.internet()));
   }
 
   private int setFilesystemRead(CommandContext<FabricClientCommandSource> context) {
@@ -125,7 +139,8 @@ public final class SetPermissionClientCommand {
         new PackagePermissionOverrides(
             current.hostAccess(),
             current.hostClassLookup(),
-            new FileSystemPermissionOverrides(value, write)));
+            new FileSystemPermissionOverrides(value, write),
+            current.internet()));
   }
 
   private int setFilesystemWrite(CommandContext<FabricClientCommandSource> context) {
@@ -143,7 +158,28 @@ public final class SetPermissionClientCommand {
         new PackagePermissionOverrides(
             current.hostAccess(),
             current.hostClassLookup(),
-            new FileSystemPermissionOverrides(read, value)));
+            new FileSystemPermissionOverrides(read, value),
+            current.internet()));
+  }
+
+  private int setInternet(CommandContext<FabricClientCommandSource> context) {
+    InternetAccessPermission value = parseValue(context, InternetAccessPermission.class);
+    if (value == null) {
+      return ClientCommandResult.FAILURE;
+    }
+    InternetPermissions internet =
+        switch (value) {
+          case NONE -> InternetPermissions.none();
+          case DOMAINS -> InternetPermissions.domains(List.of());
+          case FULL -> InternetPermissions.full();
+        };
+    PackagePermissionOverrides current = getPermissions();
+    return save(
+        context,
+        "internet",
+        value,
+        new PackagePermissionOverrides(
+            current.hostAccess(), current.hostClassLookup(), current.filesystem(), internet));
   }
 
   private int save(

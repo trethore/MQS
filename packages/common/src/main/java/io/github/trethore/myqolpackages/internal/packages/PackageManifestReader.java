@@ -18,8 +18,6 @@
 package io.github.trethore.myqolpackages.internal.packages;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonIOException;
-import com.google.gson.JsonSyntaxException;
 import io.github.trethore.myqolpackages.internal.config.MqpGson;
 import java.io.IOException;
 import java.io.Reader;
@@ -40,7 +38,7 @@ final class PackageManifestReader {
         throw new PackageValidationException("Manifest must contain a JSON object");
       }
       return manifest;
-    } catch (JsonIOException | JsonSyntaxException exception) {
+    } catch (RuntimeException exception) {
       throw new PackageValidationException("Invalid manifest.json: " + exception.getMessage());
     }
   }

@@ -25,6 +25,7 @@ import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.api.config.InternetAccessPermission;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.config.PackagePermissionOverrides;
 import java.io.IOException;
@@ -105,6 +106,10 @@ class GsonMqpConfigManagerTest {
             "defaults": {
               "filesystem": {
                 "read": "package"
+              },
+              "internet": {
+                "access": "domains",
+                "domains": ["api.example.com"]
               }
             },
             "packages": {
@@ -127,6 +132,11 @@ class GsonMqpConfigManagerTest {
     assertEquals(
         FileSystemReadPermission.PACKAGE,
         result.config().permissions().defaults().filesystem().read());
+    assertEquals(
+        InternetAccessPermission.DOMAINS,
+        result.config().permissions().defaults().internet().access());
+    assertEquals(
+        List.of("api.example.com"), result.config().permissions().defaults().internet().domains());
     assertEquals(
         HostAccessPermission.FULL,
         result.config().permissions().packages().get("example-package").hostAccess());

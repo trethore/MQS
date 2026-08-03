@@ -20,15 +20,27 @@ package io.github.trethore.myqolpackages.api.config;
 public record PackagePermissions(
     HostAccessPermission hostAccess,
     HostClassLookupPermission hostClassLookup,
-    FileSystemPermissions filesystem) {
+    FileSystemPermissions filesystem,
+    InternetPermissions internet) {
   private static final PackagePermissions NONE =
       new PackagePermissions(
-          HostAccessPermission.NONE, HostClassLookupPermission.NONE, FileSystemPermissions.none());
+          HostAccessPermission.NONE,
+          HostClassLookupPermission.NONE,
+          FileSystemPermissions.none(),
+          InternetPermissions.none());
+
+  public PackagePermissions(
+      HostAccessPermission hostAccess,
+      HostClassLookupPermission hostClassLookup,
+      FileSystemPermissions filesystem) {
+    this(hostAccess, hostClassLookup, filesystem, InternetPermissions.none());
+  }
 
   public PackagePermissions {
     hostAccess = hostAccess == null ? HostAccessPermission.NONE : hostAccess;
     hostClassLookup = hostClassLookup == null ? HostClassLookupPermission.NONE : hostClassLookup;
     filesystem = filesystem == null ? FileSystemPermissions.none() : filesystem;
+    internet = internet == null ? InternetPermissions.none() : internet;
   }
 
   public static PackagePermissions none() {

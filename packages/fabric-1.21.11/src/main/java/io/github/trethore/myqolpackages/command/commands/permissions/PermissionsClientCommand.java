@@ -23,10 +23,12 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class PermissionsClientCommand {
+  private final DomainPermissionsClientCommand domainPermissionsClientCommand;
   private final ListPermissionsClientCommand listPermissionsClientCommand;
   private final SetPermissionClientCommand setPermissionClientCommand;
 
   public PermissionsClientCommand(MqpRuntime runtime) {
+    domainPermissionsClientCommand = new DomainPermissionsClientCommand(runtime);
     listPermissionsClientCommand = new ListPermissionsClientCommand(runtime);
     setPermissionClientCommand = new SetPermissionClientCommand(runtime);
   }
@@ -35,6 +37,7 @@ public final class PermissionsClientCommand {
     return ClientCommandManager.literal("permissions")
         .executes(listPermissionsClientCommand::execute)
         .then(listPermissionsClientCommand.buildCommand())
-        .then(setPermissionClientCommand.buildCommand());
+        .then(setPermissionClientCommand.buildCommand())
+        .then(domainPermissionsClientCommand.buildCommand());
   }
 }

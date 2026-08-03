@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,7 @@ public final class FabricBootstrap implements ClientModInitializer {
     MqpRuntime runtime = MqpRuntime.create(mqpDirectory, mqpVersion, environment);
     runtime.start();
     new MqpClientCommand(runtime).register();
+    ClientTickEvents.END_CLIENT_TICK.register(client -> runtime.tick());
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> runtime.stop());
     LOGGER.info("Initialized {} with data directory {}", MOD_ID, mqpDirectory);
   }

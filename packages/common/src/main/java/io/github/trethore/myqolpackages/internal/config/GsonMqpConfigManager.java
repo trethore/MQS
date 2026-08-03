@@ -18,7 +18,6 @@
 package io.github.trethore.myqolpackages.internal.config;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.config.MqpPermissionsConfig;
@@ -62,7 +61,7 @@ public final class GsonMqpConfigManager {
       config.set(loadedConfig);
       configLoadedSuccessfully = true;
       return new MqpConfigLoadResult(loadedConfig, List.of());
-    } catch (IOException | JsonIOException | JsonSyntaxException exception) {
+    } catch (IOException | RuntimeException exception) {
       MqpConfig defaultConfig = MqpConfig.defaults();
       config.set(defaultConfig);
       configLoadedSuccessfully = false;

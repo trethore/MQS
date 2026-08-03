@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.internal.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -122,7 +123,12 @@ class GraalPackageContextFactoryTest {
             if (mqp.package.id !== "example-package") throw new Error("unexpected package ID");
             if (mqp.permissions.hostAccess !== "none") throw new Error("unexpected host access");
             if (mqp.permissions.filesystem.read !== "none") throw new Error("unexpected read access");
+            if (mqp.permissions.internet.access !== "none") throw new Error("unexpected internet access");
+            if (mqp.permissions.internet.domains.length !== 0) throw new Error("unexpected domains");
             if (mqp.permissions.has("hostAccess.full")) throw new Error("unexpected full access");
+            if (typeof fetch !== "function") throw new Error("missing fetch");
+            const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, "fetch");
+            if (fetchDescriptor.configurable || fetchDescriptor.writable) throw new Error("mutable fetch");
             try { mqp.version = "changed"; } catch (error) {}
             if (mqp.version !== "0.0.1") throw new Error("mutable MQP API");
 
@@ -520,6 +526,41 @@ class GraalPackageContextFactoryTest {
         PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
       assertDoesNotThrow(context::invokeEnable);
       assertTrue(Files.isDirectory(temporaryDirectory.resolve(".data/example-package")));
+    }
+  }
+
+  @Test
+  void rejectsFetchWithoutInternetPermission() throws Exception {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            let rejected = false;
+
+            export function onEnable() {
+              fetch("https://example.com").catch(() => { rejected = true; });
+            }
+
+            export function onDisable() {
+              if (!rejected) throw new Error("fetch rejection was not dispatched");
+            }
+            """);
+
+    try (GraalPackageContextFactory contextFactory = createContextFactory();
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
+      context.invokeEnable();
+      PackageLifecycleException failure = null;
+      for (int attempt = 0; attempt < 1000; attempt++) {
+        context.tick();
+        try {
+          context.invokeDisable();
+          failure = null;
+          break;
+        } catch (PackageLifecycleException exception) {
+          failure = exception;
+          Thread.yield();
+        }
+      }
+      assertNull(failure);
     }
   }
 

@@ -20,4 +20,12 @@ package io.github.trethore.myqolpackages.api.config;
 public record PackagePermissionOverrides(
     HostAccessPermission hostAccess,
     HostClassLookupPermission hostClassLookup,
-    FileSystemPermissionOverrides filesystem) {}
+    FileSystemPermissionOverrides filesystem,
+    InternetPermissions internet) {
+  public PackagePermissionOverrides(
+      HostAccessPermission hostAccess,
+      HostClassLookupPermission hostClassLookup,
+      FileSystemPermissionOverrides filesystem) {
+    this(hostAccess, hostClassLookup, filesystem, null);
+  }
+}

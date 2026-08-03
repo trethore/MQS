@@ -338,6 +338,11 @@ class DefaultPackageManagerRuntimeTest {
         }
 
         @Override
+        public void tick() {
+          events.add("tick:" + spec.packageId());
+        }
+
+        @Override
         public void close() {
           events.add("close:" + spec.packageId());
         }

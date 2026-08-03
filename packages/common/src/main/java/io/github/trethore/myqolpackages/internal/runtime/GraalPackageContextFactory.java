@@ -23,12 +23,19 @@ import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
 import io.github.trethore.myqolpackages.internal.runtime.interop.ClassInteropInstaller;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.SocketAddress;
+import java.net.URI;
+import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -43,6 +50,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +74,7 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
       new EnumMap<>(HostAccessPermission.class);
   private final ClassInteropInstaller classInteropInstaller;
   private final MqpRuntimeEnvironment environment;
+  private final HttpClient httpClient;
   private final Path mqpDirectory;
   private final String mqpVersion;
 
@@ -85,6 +94,12 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     this.mqpVersion = Objects.requireNonNull(mqpVersion, "mqpVersion");
     this.environment = Objects.requireNonNull(environment, "environment");
     this.classInteropInstaller = new ClassInteropInstaller(environment);
+    this.httpClient =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .proxy(new DirectProxySelector())
+            .build();
     getOrCreateEngine(HostAccessPermission.NONE);
   }
 
@@ -158,11 +173,13 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
   private GraalPackageContextResources createResources(PackageContextSpec spec) throws IOException {
     PackageLogOutputStream output = new PackageLogOutputStream(LOGGER, spec.packageId(), false);
     PackageLogOutputStream errorOutput = new PackageLogOutputStream(LOGGER, spec.packageId(), true);
+    PackageHttpClient packageHttpClient =
+        new PackageHttpClient(httpClient, spec.permissions().internet());
     Context context = null;
     try {
       context = createContext(spec, output, errorOutput);
-      installMqpApi(context, spec);
-      return new GraalPackageContextResources(context, output, errorOutput);
+      installMqpApi(context, spec, packageHttpClient);
+      return new GraalPackageContextResources(context, output, errorOutput, packageHttpClient);
     } catch (IOException | RuntimeException exception) {
       if (context != null) {
         try {
@@ -173,6 +190,7 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
       }
       output.close();
       errorOutput.close();
+      packageHttpClient.close();
       throw exception;
     }
   }
@@ -322,7 +340,8 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     return mqpDirectory.resolve(PACKAGE_DATA_DIRECTORY_NAME).resolve(spec.packageId());
   }
 
-  private void installMqpApi(Context context, PackageContextSpec spec) {
+  private void installMqpApi(
+      Context context, PackageContextSpec spec, PackageHttpClient packageHttpClient) {
     FileSystemPermissions filesystemPermissions = spec.permissions().filesystem();
     Value bindings = context.getBindings(JAVASCRIPT_LANGUAGE_ID);
     bindings.putMember("__mqpVersion", mqpVersion);
@@ -332,6 +351,12 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
         "__mqpHostClassLookup", permissionName(spec.permissions().hostClassLookup()));
     bindings.putMember("__mqpFilesystemRead", permissionName(filesystemPermissions.read()));
     bindings.putMember("__mqpFilesystemWrite", permissionName(filesystemPermissions.write()));
+    bindings.putMember(
+        "__mqpInternetAccess", permissionName(spec.permissions().internet().access()));
+    bindings.putMember(
+        "__mqpInternetDomains",
+        ProxyArray.fromArray(spec.permissions().internet().domains().toArray()));
+    bindings.putMember("__mqpFetch", packageHttpClient);
     classInteropInstaller.install(
         bindings, spec.permissions().hostAccess(), spec.permissions().hostClassLookup());
     context.eval(MQP_API_SOURCE);
@@ -374,6 +399,19 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     } catch (RuntimeException exception) {
       engines.remove(hostAccess);
       throw exception;
+    }
+  }
+
+  private static final class DirectProxySelector extends ProxySelector {
+    @Override
+    public List<Proxy> select(URI uri) {
+      Objects.requireNonNull(uri, "uri");
+      return List.of(Proxy.NO_PROXY);
+    }
+
+    @Override
+    public void connectFailed(URI uri, SocketAddress address, IOException exception) {
+      LOGGER.warn("Direct HTTP connection to {} via {} failed", uri, address, exception);
     }
   }
 }

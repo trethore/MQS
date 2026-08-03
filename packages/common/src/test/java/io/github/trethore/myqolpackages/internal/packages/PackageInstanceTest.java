@@ -102,6 +102,13 @@ class PackageInstanceTest {
     }
 
     @Override
+    public void tick() {
+      if (closed) {
+        throw new IllegalStateException("Script context is closed");
+      }
+    }
+
+    @Override
     public void close() {
       closed = true;
     }

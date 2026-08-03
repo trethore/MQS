@@ -25,6 +25,7 @@ import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.api.config.InternetPermissions;
 import io.github.trethore.myqolpackages.api.config.PackagePermissionOverrides;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
@@ -47,6 +48,8 @@ public final class ListPermissionsClientCommand {
   int execute(CommandContext<FabricClientCommandSource> context) {
     PackagePermissionOverrides permissions = runtime.getGlobalPermissions();
     FileSystemPermissionOverrides filesystem = permissions.filesystem();
+    InternetPermissions internet =
+        permissions.internet() == null ? InternetPermissions.none() : permissions.internet();
     MqpCommandFeedback.sendHeader(context.getSource());
     MqpCommandFeedback.sendLine(context.getSource(), "Global permissions:");
     sendPermission(
@@ -71,6 +74,10 @@ public final class ListPermissionsClientCommand {
         filesystem == null || filesystem.write() == null
             ? FileSystemWritePermission.NONE
             : filesystem.write());
+    sendPermission(context.getSource(), "internet", internet.access());
+    for (String domain : internet.domains()) {
+      MqpCommandFeedback.sendLine(context.getSource(), "  domain: " + domain);
+    }
     return ClientCommandResult.SUCCESS;
   }
 

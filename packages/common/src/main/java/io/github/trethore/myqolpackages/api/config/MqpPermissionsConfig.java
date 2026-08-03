@@ -29,7 +29,8 @@ public record MqpPermissionsConfig(
               HostAccessPermission.NONE,
               HostClassLookupPermission.NONE,
               new FileSystemPermissionOverrides(
-                  FileSystemReadPermission.NONE, FileSystemWritePermission.NONE)),
+                  FileSystemReadPermission.NONE, FileSystemWritePermission.NONE),
+              InternetPermissions.none()),
           Map.of());
 
   public MqpPermissionsConfig {

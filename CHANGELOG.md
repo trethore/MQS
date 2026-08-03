@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- Domain-scoped HTTP/HTTPS permissions and an asynchronous JavaScript `fetch()` API.
+- Client commands for selecting the internet permission mode and managing allowed domains.
+
 ## [0.0.1]
 
 ### Added

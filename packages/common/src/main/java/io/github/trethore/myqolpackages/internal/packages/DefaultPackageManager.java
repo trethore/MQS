@@ -178,6 +178,21 @@ public final class DefaultPackageManager implements PackageManager {
   }
 
   @Override
+  public synchronized void tick() {
+    for (String packageId : enabledPackageOrder) {
+      PackageInstance packageInstance = packages.get(packageId);
+      if (packageInstance == null) {
+        continue;
+      }
+      try {
+        packageInstance.tick();
+      } catch (PackageLifecycleException exception) {
+        LOGGER.warn("Could not process asynchronous work for package {}", packageId, exception);
+      }
+    }
+  }
+
+  @Override
   public synchronized void close() {
     for (PackageDiagnostic diagnostic : disableAllPackages()) {
       LOGGER.warn(

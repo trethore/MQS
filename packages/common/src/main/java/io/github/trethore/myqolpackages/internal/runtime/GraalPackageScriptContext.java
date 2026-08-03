@@ -45,6 +45,14 @@ final class GraalPackageScriptContext implements PackageScriptContext {
   }
 
   @Override
+  public void tick() throws PackageLifecycleException {
+    if (closed) {
+      return;
+    }
+    resources.tick();
+  }
+
+  @Override
   public void close() throws PackageLifecycleException {
     if (closed) {
       return;

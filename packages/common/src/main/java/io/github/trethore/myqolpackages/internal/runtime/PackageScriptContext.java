@@ -22,6 +22,8 @@ public interface PackageScriptContext extends AutoCloseable {
 
   void invokeDisable() throws PackageLifecycleException;
 
+  void tick() throws PackageLifecycleException;
+
   @Override
   void close() throws PackageLifecycleException;
 }

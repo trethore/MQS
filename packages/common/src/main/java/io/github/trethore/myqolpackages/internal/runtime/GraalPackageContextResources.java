@@ -17,20 +17,26 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime;
 
+import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
 import org.graalvm.polyglot.Context;
 
 final class GraalPackageContextResources implements AutoCloseable {
   private final Context context;
   private final PackageLogOutputStream errorOutput;
+  private final PackageHttpClient httpClient;
   private final PackageLogOutputStream output;
 
   private boolean closed;
 
   GraalPackageContextResources(
-      Context context, PackageLogOutputStream output, PackageLogOutputStream errorOutput) {
+      Context context,
+      PackageLogOutputStream output,
+      PackageLogOutputStream errorOutput,
+      PackageHttpClient httpClient) {
     this.context = context;
     this.output = output;
     this.errorOutput = errorOutput;
+    this.httpClient = httpClient;
   }
 
   @Override
@@ -40,6 +46,7 @@ final class GraalPackageContextResources implements AutoCloseable {
     }
     closed = true;
     try {
+      httpClient.close();
       context.close();
     } catch (RuntimeException exception) {
       throw new PackageLifecycleException("Could not close JavaScript context", exception);
@@ -51,5 +58,13 @@ final class GraalPackageContextResources implements AutoCloseable {
 
   Context getContext() {
     return context;
+  }
+
+  void tick() throws PackageLifecycleException {
+    try {
+      httpClient.tick();
+    } catch (RuntimeException exception) {
+      throw new PackageLifecycleException("Could not process an HTTP completion", exception);
+    }
   }
 }

@@ -24,6 +24,7 @@ import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
 import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
 import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
 import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
+import io.github.trethore.myqolpackages.api.config.InternetAccessPermission;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -261,6 +262,10 @@ class FileSystemPackageDiscoveryTest {
             "filesystem": {
               "read": "package",
               "write": "data"
+            },
+            "internet": {
+              "access": "domains",
+              "domains": ["api.example.com", "*.assets.example.com"]
             }
           }
         }
@@ -277,6 +282,10 @@ class FileSystemPackageDiscoveryTest {
     assertEquals(HostClassLookupPermission.MINECRAFT, manifest.permissions().hostClassLookup());
     assertEquals(FileSystemReadPermission.PACKAGE, manifest.permissions().filesystem().read());
     assertEquals(FileSystemWritePermission.DATA, manifest.permissions().filesystem().write());
+    assertEquals(InternetAccessPermission.DOMAINS, manifest.permissions().internet().access());
+    assertEquals(
+        List.of("api.example.com", "*.assets.example.com"),
+        manifest.permissions().internet().domains());
   }
 
   @Test
@@ -309,6 +318,31 @@ class FileSystemPackageDiscoveryTest {
 
     assertTrue(result.packages().isEmpty());
     assertTrue(result.diagnostics().getFirst().message().contains("java"));
+  }
+
+  @Test
+  void rejectsMalformedInternetDomain() throws IOException {
+    createPackage(
+        "package-directory",
+        """
+        {
+          "name": "Example Package",
+          "description": "An example package.",
+          "version": "1.0.0",
+          "entrypoint": "src/index.js",
+          "permissions": {
+            "internet": {
+              "access": "domains",
+              "domains": ["https://example.com"]
+            }
+          }
+        }
+        """);
+
+    PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+    assertTrue(result.packages().isEmpty());
+    assertTrue(result.diagnostics().getFirst().message().contains("example.com"));
   }
 
   private void createPackage(String id, String manifest) throws IOException {
