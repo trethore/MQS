@@ -6,6 +6,7 @@
 
 - Domain-scoped HTTP/HTTPS permissions and an asynchronous JavaScript `fetch()` API.
 - Client commands for selecting the internet permission mode and managing allowed domains.
+- Optional package ID argument for reloading a single enabled package without restarting others.
 
 ## [0.0.1]
 

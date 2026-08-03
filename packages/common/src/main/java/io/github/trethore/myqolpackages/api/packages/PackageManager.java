@@ -25,6 +25,8 @@ public interface PackageManager extends AutoCloseable {
 
   PackageDiscoveryResult reload();
 
+  PackageOperationResult reloadPackage(String id);
+
   PackageOperationResult enablePackage(String id);
 
   PackageOperationResult disablePackage(String id);

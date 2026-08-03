@@ -88,6 +88,44 @@ public final class DefaultPackageManager implements PackageManager {
   }
 
   @Override
+  public synchronized PackageOperationResult reloadPackage(String id) {
+    if (!configManager.getConfig().enabledPackages().contains(id)) {
+      return failedOperation(
+          id, configManager.getConfigPath(), "Package is not configured as enabled");
+    }
+
+    List<PackageDiagnostic> diagnostics = new ArrayList<>();
+    PackageInstance packageInstance = packages.get(id);
+    Path previousPackageDirectory =
+        packageInstance == null ? null : packageInstance.getDescriptor().packageDirectory();
+    if (packageInstance != null) {
+      try {
+        packageInstance.disable();
+      } catch (PackageLifecycleException exception) {
+        diagnostics.add(createLifecycleDiagnostic(packageInstance, exception));
+      }
+    }
+    enabledPackageOrder.remove(id);
+
+    DiscoveredPackages discovery = discoverPackages();
+    diagnostics.addAll(
+        getPackageDiagnostics(id, previousPackageDirectory, discovery.diagnostics()));
+    PackageDescriptor descriptor = discovery.packages().get(id);
+    if (descriptor == null) {
+      packages.remove(id);
+    } else if (packageInstance == null) {
+      packageInstance = new PackageInstance(descriptor, contextFactory);
+      packages.put(id, packageInstance);
+    } else {
+      packageInstance.updateDescriptor(descriptor);
+    }
+
+    enableConfiguredPackage(id, diagnostics);
+    rebuildEnabledPackageOrder();
+    return new PackageOperationResult(diagnostics.isEmpty(), diagnostics);
+  }
+
+  @Override
   public synchronized PackageOperationResult enablePackage(String id) {
     PackageInstance packageInstance = packages.get(id);
     if (packageInstance == null || !packageInstance.isAvailable()) {
@@ -304,6 +342,26 @@ public final class DefaultPackageManager implements PackageManager {
     } catch (PackageLifecycleException exception) {
       diagnostics.add(createLifecycleDiagnostic(packageInstance, exception));
     }
+  }
+
+  private void rebuildEnabledPackageOrder() {
+    enabledPackageOrder.clear();
+    for (String packageId : configManager.getConfig().enabledPackages()) {
+      PackageInstance packageInstance = packages.get(packageId);
+      if (packageInstance != null && packageInstance.getState() == PackageState.ENABLED) {
+        enabledPackageOrder.add(packageId);
+      }
+    }
+  }
+
+  private List<PackageDiagnostic> getPackageDiagnostics(
+      String packageId, Path previousPackageDirectory, List<PackageDiagnostic> diagnostics) {
+    return diagnostics.stream()
+        .filter(
+            diagnostic ->
+                diagnostic.packageId().equals(packageId)
+                    || diagnostic.packageDirectory().equals(previousPackageDirectory))
+        .toList();
   }
 
   private void enablePackageInstance(PackageInstance packageInstance)

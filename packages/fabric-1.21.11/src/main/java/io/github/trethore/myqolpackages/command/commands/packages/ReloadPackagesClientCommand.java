@@ -17,11 +17,15 @@
  */
 package io.github.trethore.myqolpackages.command.commands.packages;
 
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
+import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
+import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
@@ -33,10 +37,20 @@ public final class ReloadPackagesClientCommand {
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("reload").executes(this::execute);
+    return ClientCommandManager.literal("reload")
+        .executes(this::executeAll)
+        .then(
+            ClientCommandManager.argument("id", StringArgumentType.word())
+                .suggests(
+                    (context, builder) ->
+                        PackageCommandSupport.suggestPackageIds(
+                            builder,
+                            packageManager.getConfiguredEnabledPackageIds(),
+                            Function.identity()))
+                .executes(this::executePackage));
   }
 
-  private int execute(CommandContext<FabricClientCommandSource> context) {
+  private int executeAll(CommandContext<FabricClientCommandSource> context) {
     FabricClientCommandSource source = context.getSource();
     PackageDiscoveryResult result = packageManager.reload();
     MqpCommandFeedback.sendInfo(
@@ -46,6 +60,17 @@ public final class ReloadPackagesClientCommand {
             + " package(s), "
             + result.diagnostics().size()
             + " diagnostic(s).");
+    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+  }
+
+  private int executePackage(CommandContext<FabricClientCommandSource> context) {
+    FabricClientCommandSource source = context.getSource();
+    String packageId = StringArgumentType.getString(context, "id");
+    PackageOperationResult result = packageManager.reloadPackage(packageId);
+    if (result.successful()) {
+      MqpCommandFeedback.sendInfo(source, "Reloaded: " + packageId + ".");
+      return ClientCommandResult.SUCCESS;
+    }
     return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
   }
 }

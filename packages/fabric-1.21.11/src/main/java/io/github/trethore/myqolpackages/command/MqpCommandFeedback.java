@@ -53,11 +53,18 @@ public final class MqpCommandFeedback {
     source.sendFeedback(message);
   }
 
+  private static Component ensureTerminalPeriod(Component message) {
+    if (message.getString().endsWith(".")) {
+      return message;
+    }
+    return Component.empty().append(message).append(Component.literal("."));
+  }
+
   private static Component format(Component message, ChatFormatting labelColor) {
     MutableComponent formattedMessage = Component.empty();
     formattedMessage.append(createTag(labelColor));
     formattedMessage.append(Component.literal(" "));
-    formattedMessage.append(message);
+    formattedMessage.append(ensureTerminalPeriod(message));
     return formattedMessage;
   }
 
