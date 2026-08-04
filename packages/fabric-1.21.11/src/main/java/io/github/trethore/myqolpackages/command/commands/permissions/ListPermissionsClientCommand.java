@@ -84,8 +84,9 @@ public final class ListPermissionsClientCommand {
   private static void sendPermission(FabricClientCommandSource source, String name, Enum<?> value) {
     MqpCommandFeedback.sendLine(
         source,
-        Component.literal(name + ": ")
+        Component.literal(name + " [")
             .withStyle(ChatFormatting.WHITE)
-            .append(PermissionCommandSupport.formatPermission(value)));
+            .append(PermissionCommandSupport.formatPermission(value))
+            .append(Component.literal("]").withStyle(ChatFormatting.WHITE)));
   }
 }

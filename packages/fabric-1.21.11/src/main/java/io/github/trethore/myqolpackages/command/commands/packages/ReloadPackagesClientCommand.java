@@ -68,7 +68,7 @@ public final class ReloadPackagesClientCommand {
     String packageId = StringArgumentType.getString(context, "id");
     PackageOperationResult result = packageManager.reloadPackage(packageId);
     if (result.successful()) {
-      MqpCommandFeedback.sendInfo(source, "Reloaded: " + packageId + ".");
+      MqpCommandFeedback.sendInfo(source, "Reloaded " + packageId + ".");
       return ClientCommandResult.SUCCESS;
     }
     return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
