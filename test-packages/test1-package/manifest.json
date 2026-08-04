@@ -1,0 +1,7 @@
+{
+  "id": "test1-package",
+  "name": "Test 1 Package",
+  "description": "A test MQP package used during development.",
+  "version": "1.0.0",
+  "entrypoint": "src/index.js"
+}
