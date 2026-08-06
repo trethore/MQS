@@ -18,7 +18,9 @@
       "io.github.trethore.myqolpackages.FabricBootstrap"
     ]
   },
-  "mixins": [],
+  "mixins": [
+    "myqolpackages.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=${loaderVersion}",
     "minecraft": "~${minecraftVersion}",
