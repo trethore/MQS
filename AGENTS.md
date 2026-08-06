@@ -17,14 +17,19 @@ myqolpackages/
   gradle/libs.versions.toml
   packages/
     common/                                     # Shared mod logic with no Minecraft or Fabric dependencies.
-      src/main/java/io/github/trethore/myqolpackages/
-        api/                                    # Public entry points used by loader/version implementations.
-        internal/                               # Private common implementation details.
+      src/
+        main/
+          java/io/github/trethore/myqolpackages/
+            api/                                # Public entry points used by loader/version implementations.
+            internal/                           # Private common implementation details.
+        test/
+          java/io/github/trethore/myqolpackages/
+          resources/
       build.gradle.kts
     fabric-1.21.11/                             # Fabric implementation for Minecraft 1.21.11.
       src/main/
         java/io/github/trethore/myqolpackages/
-          mixin/                                # Minecraft/Fabric-version-specific mixins.
+          mixin/
           FabricBootstrap.java                  # Fabric ModInitializer that boots common code.
         resources/
           assets/myqolpackages/
