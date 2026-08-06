@@ -8,12 +8,13 @@ distributing packages that modify the game at runtime.
 Here is an overview of the project:
 
 ```text
-myqolpackages/                                  # You are here!
-  .github/                                      # GitHub config and workflows.
+myqolpackages/
+  .github/
   build-logic/                                  # Included Gradle build for custom build logic.
     sonar-analysis/                             # Gradle plugin for running SonarQube analysis.
     unpack-sources/                             # Gradle plugin that unpacks dependency and Git reference sources.
   docs/
+  gradle/libs.versions.toml
   packages/
     common/                                     # Shared mod logic with no Minecraft or Fabric dependencies.
       src/main/java/io/github/trethore/myqolpackages/
@@ -26,7 +27,7 @@ myqolpackages/                                  # You are here!
           mixin/                                # Minecraft/Fabric-version-specific mixins.
           FabricBootstrap.java                  # Fabric ModInitializer that boots common code.
         resources/
-          assets/myqolpackages/                 # Fabric mod assets.
+          assets/myqolpackages/
           myqolpackages.mixins.json
           fabric.mod.json
       build.gradle.kts
@@ -36,9 +37,9 @@ myqolpackages/                                  # You are here!
     com.mojang-minecraft-1.21.11/
     <group>-<lib-name>-<version>/
   .gitignore
-  build.gradle.kts                              # Root Gradle config shared by all projects
+  build.gradle.kts                              # Root Gradle configuration.
   CHANGELOG.md
-  gradle.properties                             # Shared version and dependency properties.
+  gradle.properties
   README.md
   settings.gradle.kts
 ```
@@ -47,7 +48,7 @@ myqolpackages/                                  # You are here!
 
 - `packages/common` should contain only the version-independent logic that is shared across all Minecraft implementations.
 - `packages/<loader>-<version>` should contain version-dependent code, like the mod entry point, integration logic, mixins, and Minecraft/loader dependencies.
-- Avoid comments unless documentation is explicitly requested.
+- Write comments and documentation only when it is explicitly requested by the user.
 - Assume contributors use IntelliJ IDEA, and keep code free of IDE warnings.
 
 ## Java Expectations
@@ -70,7 +71,7 @@ myqolpackages/                                  # You are here!
 - The `references` directory is generated via the `./gradlew unpackSources` command.
 - You can clean the generated references by running `./gradlew cleanUnpackedSources`.
 
-## Pull Requests & Commits
+## Commits & Pull Requests 
 
-- Pull request summaries should include the related issue (s), a brief description of the changes, and how the changes were tested.
 - Follow the Conventional Commits specification for commit messages.
+- Pull request summaries should include the related issue(s), a brief description of the changes, and how the changes were tested.
