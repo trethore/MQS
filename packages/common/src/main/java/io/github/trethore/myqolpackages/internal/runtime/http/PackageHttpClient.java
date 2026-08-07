@@ -17,7 +17,6 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.http;
 
-import io.github.trethore.myqolpackages.api.config.InternetPermissions;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -71,14 +70,12 @@ public final class PackageHttpClient implements ProxyExecutable, AutoCloseable {
 
   private final ConcurrentLinkedQueue<Runnable> completions = new ConcurrentLinkedQueue<>();
   private final HttpClient httpClient;
-  private final InternetPermissions permissions;
   private final Set<CompletableFuture<?>> requests = ConcurrentHashMap.newKeySet();
 
   private volatile boolean closed;
 
-  public PackageHttpClient(HttpClient httpClient, InternetPermissions permissions) {
+  public PackageHttpClient(HttpClient httpClient) {
     this.httpClient = httpClient;
-    this.permissions = permissions;
   }
 
   @Override
@@ -142,12 +139,8 @@ public final class PackageHttpClient implements ProxyExecutable, AutoCloseable {
 
   private CompletableFuture<HttpResponseData> send(
       HttpRequestData request, int redirectCount, boolean redirected) {
-    return CompletableFuture.supplyAsync(
-            () -> HttpDestinationValidator.validate(request.uri(), permissions))
-        .thenCompose(
-            uri ->
-                httpClient.sendAsync(
-                    buildRequest(request), HttpResponse.BodyHandlers.ofInputStream()))
+    return httpClient
+        .sendAsync(buildRequest(request), HttpResponse.BodyHandlers.ofInputStream())
         .thenCompose(
             response -> {
               String location = response.headers().firstValue("location").orElse(null);

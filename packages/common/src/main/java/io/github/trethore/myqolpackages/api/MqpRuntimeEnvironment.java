@@ -17,22 +17,15 @@
  */
 package io.github.trethore.myqolpackages.api;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 public record MqpRuntimeEnvironment(
     ClassLoader classLoader,
-    List<String> minecraftNamespaces,
     Optional<String> classCatalogResource,
     Optional<String> mappingsResource) {
   public MqpRuntimeEnvironment {
     Objects.requireNonNull(classLoader, "classLoader");
-    minecraftNamespaces =
-        Objects.requireNonNull(minecraftNamespaces, "minecraftNamespaces").stream()
-            .map(MqpRuntimeEnvironment::normalizeNamespace)
-            .distinct()
-            .toList();
     classCatalogResource =
         Objects.requireNonNull(classCatalogResource, "classCatalogResource")
             .map(MqpRuntimeEnvironment::normalizeResourceName);
@@ -42,26 +35,7 @@ public record MqpRuntimeEnvironment(
   }
 
   public static MqpRuntimeEnvironment identity(ClassLoader classLoader) {
-    return new MqpRuntimeEnvironment(classLoader, List.of(), Optional.empty(), Optional.empty());
-  }
-
-  public boolean isMinecraftClass(String className) {
-    for (String namespace : minecraftNamespaces) {
-      if (className.startsWith(namespace)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public boolean isMinecraftNamespacePath(String path) {
-    String packagePrefix = path.endsWith(".") ? path : path + ".";
-    for (String namespace : minecraftNamespaces) {
-      if (namespace.startsWith(packagePrefix) || path.startsWith(namespace)) {
-        return true;
-      }
-    }
-    return false;
+    return new MqpRuntimeEnvironment(classLoader, Optional.empty(), Optional.empty());
   }
 
   private static String normalizeResourceName(String resourceName) {
@@ -70,13 +44,5 @@ public record MqpRuntimeEnvironment(
       throw new IllegalArgumentException("Resource name must not be blank");
     }
     return normalizedName;
-  }
-
-  private static String normalizeNamespace(String namespace) {
-    String normalizedNamespace = Objects.requireNonNull(namespace, "namespace").trim();
-    if (normalizedNamespace.isEmpty()) {
-      throw new IllegalArgumentException("Minecraft namespace must not be blank");
-    }
-    return normalizedNamespace.endsWith(".") ? normalizedNamespace : normalizedNamespace + ".";
   }
 }

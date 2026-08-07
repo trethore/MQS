@@ -304,23 +304,8 @@ class DefaultPackageManagerRuntimeTest {
   }
 
   @Test
-  void explicitEnableRejectsPermissionsAboveUserGrant() throws IOException {
-    createPermissionPackage();
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.refresh();
-
-      assertFalse(packageManager.enablePackage("example-package").successful());
-      assertEquals(
-          PackageState.DISABLED,
-          packageManager.findPackage("example-package").orElseThrow().state());
-      assertTrue(contextFactory.events.isEmpty());
-    }
-  }
-
-  @Test
-  void reloadChecksConfiguredPermissionGrants() throws IOException {
-    createPermissionPackage();
+  void ignoresLegacyPermissionsWhenReloadingEnabledPackages() throws IOException {
+    createPackage("example-package", true);
     Files.writeString(
         temporaryDirectory.resolve("config.json"),
         """
@@ -329,12 +314,7 @@ class DefaultPackageManagerRuntimeTest {
           "permissions": {
             "packages": {
               "example-package": {
-                "hostAccess": "full",
-                "hostClassLookup": "minecraft",
-                "filesystem": {
-                  "read": "package",
-                  "write": "data"
-                }
+                "hostAccess": "full"
               }
             }
           }
@@ -398,10 +378,6 @@ class DefaultPackageManagerRuntimeTest {
             .formatted(packageId, packageId, runtimeFields));
     Files.writeString(packageDirectory.resolve("src/index.js"), "");
     return packageDirectory;
-  }
-
-  private void createPermissionPackage() throws IOException {
-    createPackage("example-package", true);
   }
 
   private void updatePackageVersion(Path packageDirectory) throws IOException {

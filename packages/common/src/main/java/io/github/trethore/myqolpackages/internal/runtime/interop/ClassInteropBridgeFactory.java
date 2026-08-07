@@ -18,8 +18,6 @@
 package io.github.trethore.myqolpackages.internal.runtime.interop;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
-import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
-import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
 import io.github.trethore.myqolpackages.internal.mappings.ClassInteropMetadata;
 import java.util.Map;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -34,10 +32,8 @@ public final class ClassInteropBridgeFactory {
     this.metadata = ClassInteropMetadata.load(environment);
   }
 
-  public ProxyObject create(
-      HostAccessPermission hostAccessPermission, HostClassLookupPermission classLookupPermission) {
-    HostClassResolver resolver =
-        new HostClassResolver(metadata, environment, hostAccessPermission, classLookupPermission);
+  public ProxyObject create() {
+    HostClassResolver resolver = new HostClassResolver(metadata, environment);
     JavaPackageProxy packages = new JavaPackageProxy("", resolver);
     ProxyExecutable importClass =
         arguments -> {

@@ -22,17 +22,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.sun.net.httpserver.HttpServer;
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
-import io.github.trethore.myqolpackages.api.config.FileSystemPermissions;
-import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
-import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
-import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
-import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
-import io.github.trethore.myqolpackages.api.config.PackagePermissions;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -115,17 +111,14 @@ class GraalPackageContextFactoryTest {
   }
 
   @Test
-  void exposesImmutableMqpMetadata() throws IOException, PackageLifecycleException {
+  void exposesRuntimeApis() throws IOException, PackageLifecycleException {
     Path entrypoint =
         createEntrypoint(
             """
+            import { value } from "./value.js";
+            if (value !== 42) throw new Error("module was not loaded");
             if (mqp.version !== "0.0.1") throw new Error("unexpected MQP version");
             if (mqp.package.id !== "example-package") throw new Error("unexpected package ID");
-            if (mqp.permissions.hostAccess !== "none") throw new Error("unexpected host access");
-            if (mqp.permissions.filesystem.read !== "none") throw new Error("unexpected read access");
-            if (mqp.permissions.internet.access !== "none") throw new Error("unexpected internet access");
-            if (mqp.permissions.internet.domains.length !== 0) throw new Error("unexpected domains");
-            if (mqp.permissions.has("hostAccess.full")) throw new Error("unexpected full access");
             if (typeof fetch !== "function") throw new Error("missing fetch");
             for (const name of ["mqp", "importClass", "wrap", "packages", "net", "fetch"]) {
               const descriptor = Object.getOwnPropertyDescriptor(globalThis, name);
@@ -133,12 +126,7 @@ class GraalPackageContextFactoryTest {
                 throw new Error(`invalid global descriptor: ${name}`);
               }
             }
-            if (!Object.isFrozen(mqp)
-                || !Object.isFrozen(mqp.package)
-                || !Object.isFrozen(mqp.permissions)
-                || !Object.isFrozen(mqp.permissions.filesystem)
-                || !Object.isFrozen(mqp.permissions.internet)
-                || !Object.isFrozen(mqp.permissions.internet.domains)) {
+            if (!Object.isFrozen(mqp) || !Object.isFrozen(mqp.package)) {
               throw new Error("mutable MQP metadata");
             }
             for (const name of Object.getOwnPropertyNames(globalThis)) {
@@ -146,7 +134,6 @@ class GraalPackageContextFactoryTest {
             }
             for (const name of [
               "createMqpBootstrap",
-              "createMqpPermissions",
               "installMqp",
               "installJavaInterop",
               "installFetch"
@@ -155,10 +142,16 @@ class GraalPackageContextFactoryTest {
             }
             try { mqp.version = "changed"; } catch (error) {}
             if (mqp.version !== "0.0.1") throw new Error("mutable MQP API");
+            const HostString = Java.type("java.lang.String");
+            if (HostString.valueOf(42) !== "42") throw new Error("host lookup failed");
+            const imported = importClass("java.lang.Double");
+            const packaged = packages.java.lang.Double;
+            if (!imported || imported !== packaged) throw new Error("class proxies differ");
 
             export function onEnable() {}
             export function onDisable() {}
             """);
+    Files.writeString(entrypoint.resolveSibling("value.js"), "export const value = 42;");
 
     try (GraalPackageContextFactory contextFactory = createContextFactory();
         PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
@@ -167,127 +160,17 @@ class GraalPackageContextFactoryTest {
   }
 
   @Test
-  void loadsModulesWithPackageReadPermission() throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            import { value } from "./value.js";
-            if (value !== 42) throw new Error("module was not loaded");
-
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    Files.writeString(entrypoint.resolveSibling("value.js"), "export const value = 42;");
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.NONE,
-            HostClassLookupPermission.NONE,
-            new FileSystemPermissions(
-                FileSystemReadPermission.PACKAGE, FileSystemWritePermission.NONE));
-
-    try (GraalPackageContextFactory contextFactory = createContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
-      assertDoesNotThrow(context::invokeEnable);
-    }
-  }
-
-  @Test
-  void rejectsModuleLoadingWithoutReadPermission() throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            import "./value.js";
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    Files.writeString(entrypoint.resolveSibling("value.js"), "export const value = 42;");
-
-    try (GraalPackageContextFactory contextFactory = createContextFactory()) {
-      assertThrows(
-          PackageLifecycleException.class, () -> contextFactory.create(createSpec(entrypoint)));
-    }
-  }
-
-  @Test
-  void permitsAllHostClassLookupWhenGranted() throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            const HostString = Java.type("java.lang.String");
-            if (HostString.valueOf(42) !== "42") throw new Error("host lookup failed");
-
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.FULL, HostClassLookupPermission.ALL, FileSystemPermissions.none());
-
-    try (GraalPackageContextFactory contextFactory = createContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
-      assertDoesNotThrow(context::invokeEnable);
-    }
-  }
-
-  @Test
-  void importsArbitraryClassesByFullyQualifiedName() throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            const imported = importClass("java.lang.Double");
-            const packaged = packages.java.lang.Double;
-            if (!imported || imported !== packaged) throw new Error("class proxies differ");
-
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.NONE, HostClassLookupPermission.ALL, FileSystemPermissions.none());
-
-    try (GraalPackageContextFactory contextFactory = createContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
-      assertDoesNotThrow(context::invokeEnable);
-    }
-  }
-
-  @Test
-  void resolvesMappedMinecraftClassesThroughAllMqpApis()
-      throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            const fullyQualified = importClass("net.minecraft.test.FakeMappedClass");
-            const partial = importClass("FakeMappedClass");
-            const packaged = packages.net.minecraft.test.FakeMappedClass;
-            const aliased = net.minecraft.test.FakeMappedClass;
-            if (fullyQualified !== partial || partial !== packaged || packaged !== aliased) {
-              throw new Error("class proxies differ");
-            }
-
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.NONE,
-            HostClassLookupPermission.MINECRAFT,
-            FileSystemPermissions.none());
-
-    try (GraalPackageContextFactory contextFactory = createMappedContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
-      assertDoesNotThrow(context::invokeEnable);
-    }
-  }
-
-  @Test
-  void exposesMappedConstructorsMethodsAndFieldsWithFullHostAccess()
-      throws IOException, PackageLifecycleException {
+  void exposesMappedConstructorsMethodsAndFields() throws IOException, PackageLifecycleException {
     Path entrypoint =
         createEntrypoint(
             """
             const Fixture = importClass("net.minecraft.test.FakeMappedClass");
-            if (Fixture !== packages.net.minecraft.test.FakeMappedClass) {
+            const partialFixture = importClass("FakeMappedClass");
+            const packagedFixture = packages.net.minecraft.test.FakeMappedClass;
+            const aliasedFixture = net.minecraft.test.FakeMappedClass;
+            if (Fixture !== partialFixture
+                || partialFixture !== packagedFixture
+                || packagedFixture !== aliasedFixture) {
               throw new Error("class proxy identity differs");
             }
             const AlphaComponent = importClass("net.minecraft.alpha.Component");
@@ -413,45 +296,8 @@ class GraalPackageContextFactoryTest {
             export function onEnable() {}
             export function onDisable() {}
             """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.FULL,
-            HostClassLookupPermission.MINECRAFT,
-            FileSystemPermissions.none());
-
     try (GraalPackageContextFactory contextFactory = createMappedContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
-      assertDoesNotThrow(context::invokeEnable);
-    }
-  }
-
-  @Test
-  void keepsMappedClassOpaqueWithoutHostAccess() throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            const Fixture = importClass("net.minecraft.test.FakeMappedClass");
-            if ("_class" in Fixture || "greeting" in Fixture || Fixture.greeting !== undefined) {
-              throw new Error("opaque class exposed members");
-            }
-            let constructionRejected = false;
-            try { new Fixture("fixture", 1); } catch (error) { constructionRejected = true; }
-            if (!constructionRejected) throw new Error("opaque class was instantiable");
-            let wrapRejected = false;
-            try { wrap(Fixture); } catch (error) { wrapRejected = true; }
-            if (!wrapRejected) throw new Error("wrap was available without host access");
-
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.NONE,
-            HostClassLookupPermission.MINECRAFT,
-            FileSystemPermissions.none());
-
-    try (GraalPackageContextFactory contextFactory = createMappedContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
       assertDoesNotThrow(context::invokeEnable);
     }
   }
@@ -470,12 +316,8 @@ class GraalPackageContextFactoryTest {
             export function onEnable() {}
             export function onDisable() {}
             """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.NONE, HostClassLookupPermission.ALL, FileSystemPermissions.none());
-
     try (GraalPackageContextFactory contextFactory = createCatalogContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
       assertDoesNotThrow(context::invokeEnable);
     }
   }
@@ -489,102 +331,65 @@ class GraalPackageContextFactoryTest {
             export function onEnable() {}
             export function onDisable() {}
             """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.NONE,
-            HostClassLookupPermission.MINECRAFT,
-            FileSystemPermissions.none());
-
     PackageLifecycleException exception;
     try (GraalPackageContextFactory contextFactory = createMappedContextFactory()) {
       exception =
           assertThrows(
-              PackageLifecycleException.class,
-              () -> contextFactory.create(createSpec(entrypoint, permissions)));
+              PackageLifecycleException.class, () -> contextFactory.create(createSpec(entrypoint)));
     }
 
     assertTrue(exception.getMessage().contains("Ambiguous class name"));
   }
 
   @Test
-  void minecraftHostClassLookupRejectsJavaClasses() throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            Java.type("java.lang.String");
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.FULL,
-            HostClassLookupPermission.MINECRAFT,
-            FileSystemPermissions.none());
+  void fetchesLocalDestinations() throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/test",
+        exchange -> {
+          byte[] response = "local response".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, response.length);
+          exchange.getResponseBody().write(response);
+          exchange.close();
+        });
+    server.start();
+    try {
+      Path entrypoint =
+          createEntrypoint(
+              """
+              let result;
 
-    try (GraalPackageContextFactory contextFactory = createContextFactory()) {
-      assertThrows(
-          PackageLifecycleException.class,
-          () -> contextFactory.create(createSpec(entrypoint, permissions)));
-    }
-  }
+              export function onEnable() {
+                fetch("http://127.0.0.1:%d/test")
+                  .then((response) => response.text())
+                  .then((text) => { result = text; });
+              }
 
-  @Test
-  void createsContextWithDataOnlyWritePermission() throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            if (!mqp.permissions.has("filesystem.read.data")) throw new Error("data is not readable");
-            if (!mqp.permissions.has("filesystem.write.data")) throw new Error("data is not writable");
+              export function onDisable() {
+                if (result !== "local response") throw new Error("fetch did not complete");
+              }
+              """
+                  .formatted(server.getAddress().getPort()));
 
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    PackagePermissions permissions =
-        new PackagePermissions(
-            HostAccessPermission.NONE,
-            HostClassLookupPermission.NONE,
-            new FileSystemPermissions(
-                FileSystemReadPermission.NONE, FileSystemWritePermission.DATA));
-
-    try (GraalPackageContextFactory contextFactory = createContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint, permissions))) {
-      assertDoesNotThrow(context::invokeEnable);
-      assertTrue(Files.isDirectory(temporaryDirectory.resolve(".data/example-package")));
-    }
-  }
-
-  @Test
-  void rejectsFetchWithoutInternetPermission() throws Exception {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            let rejected = false;
-
-            export function onEnable() {
-              fetch("https://example.com").catch(() => { rejected = true; });
-            }
-
-            export function onDisable() {
-              if (!rejected) throw new Error("fetch rejection was not dispatched");
-            }
-            """);
-
-    try (GraalPackageContextFactory contextFactory = createContextFactory();
-        PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
-      context.invokeEnable();
-      PackageLifecycleException failure = null;
-      for (int attempt = 0; attempt < 1000; attempt++) {
-        context.tick();
-        try {
-          context.invokeDisable();
-          failure = null;
-          break;
-        } catch (PackageLifecycleException exception) {
-          failure = exception;
-          Thread.yield();
+      try (GraalPackageContextFactory contextFactory = createContextFactory();
+          PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
+        context.invokeEnable();
+        PackageLifecycleException failure = null;
+        for (int attempt = 0; attempt < 1000; attempt++) {
+          context.tick();
+          try {
+            context.invokeDisable();
+            failure = null;
+            break;
+          } catch (PackageLifecycleException exception) {
+            failure = exception;
+            Thread.sleep(1);
+          }
         }
+        assertNull(failure);
       }
-      assertNull(failure);
+    } finally {
+      server.stop(0);
     }
   }
 
@@ -603,33 +408,19 @@ class GraalPackageContextFactoryTest {
   private GraalPackageContextFactory createMappedContextFactory() {
     MqpRuntimeEnvironment environment =
         new MqpRuntimeEnvironment(
-            getClass().getClassLoader(),
-            List.of("net.minecraft.", "com.mojang."),
-            Optional.empty(),
-            Optional.of("mappings/test-client.txt"));
+            getClass().getClassLoader(), Optional.empty(), Optional.of("mappings/test-client.txt"));
     return new GraalPackageContextFactory(temporaryDirectory, "0.0.1", environment);
   }
 
   private GraalPackageContextFactory createCatalogContextFactory() {
     MqpRuntimeEnvironment environment =
         new MqpRuntimeEnvironment(
-            getClass().getClassLoader(),
-            List.of(),
-            Optional.of("catalog/test-client.txt"),
-            Optional.empty());
+            getClass().getClassLoader(), Optional.of("catalog/test-client.txt"), Optional.empty());
     return new GraalPackageContextFactory(temporaryDirectory, "0.0.1", environment);
   }
 
   private PackageContextSpec createSpec(Path entrypoint) {
-    return createSpec(entrypoint, PackagePermissions.none());
-  }
-
-  private PackageContextSpec createSpec(Path entrypoint, PackagePermissions permissions) {
     return new PackageContextSpec(
-        "example-package",
-        entrypoint.getParent().getParent(),
-        entrypoint,
-        permissions,
-        List.of(temporaryDirectory));
+        "example-package", entrypoint.getParent().getParent(), entrypoint);
   }
 }

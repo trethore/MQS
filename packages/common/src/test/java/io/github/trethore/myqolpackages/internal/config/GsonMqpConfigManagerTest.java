@@ -18,16 +18,9 @@
 package io.github.trethore.myqolpackages.internal.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.trethore.myqolpackages.api.config.FileSystemPermissionOverrides;
-import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
-import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
-import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
-import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
-import io.github.trethore.myqolpackages.api.config.InternetAccessPermission;
-import io.github.trethore.myqolpackages.api.config.MqpConfig;
-import io.github.trethore.myqolpackages.api.config.PackagePermissionOverrides;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,12 +41,10 @@ class GsonMqpConfigManagerTest {
     assertTrue(result.config().enabledPackages().isEmpty());
     assertTrue(result.diagnostics().isEmpty());
     assertTrue(Files.isRegularFile(temporaryDirectory.resolve("config.json")));
-    assertTrue(
-        Files.readString(temporaryDirectory.resolve("config.json"))
-            .contains("\"additionalPackageRoots\""));
-    assertTrue(
-        Files.readString(temporaryDirectory.resolve("config.json"))
-            .contains("\"enabledPackages\""));
+    String config = Files.readString(temporaryDirectory.resolve("config.json"));
+    assertTrue(config.contains("\"additionalPackageRoots\""));
+    assertTrue(config.contains("\"enabledPackages\""));
+    assertFalse(config.contains("permissions"));
   }
 
   @Test
@@ -71,7 +62,7 @@ class GsonMqpConfigManagerTest {
   }
 
   @Test
-  void treatsMissingAdditionalPackageRootsAsEmpty() throws IOException {
+  void treatsMissingFieldsAsEmpty() throws IOException {
     Files.writeString(temporaryDirectory.resolve("config.json"), "{}");
     GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
 
@@ -91,129 +82,33 @@ class GsonMqpConfigManagerTest {
     configManager.addEnabledPackage("second-package");
     configManager.removeEnabledPackage("first-package");
 
-    GsonMqpConfigManager reloadedManager = new GsonMqpConfigManager(temporaryDirectory);
-    MqpConfigLoadResult result = reloadedManager.load();
+    MqpConfigLoadResult result = new GsonMqpConfigManager(temporaryDirectory).load();
     assertEquals(List.of("second-package"), result.config().enabledPackages());
   }
 
   @Test
-  void loadsAndPreservesPermissionConfiguration() throws IOException {
+  void ignoresAndRemovesLegacyPermissionConfiguration() throws IOException {
+    Path configPath = temporaryDirectory.resolve("config.json");
     Files.writeString(
-        temporaryDirectory.resolve("config.json"),
-        """
-        {
-          "permissions": {
-            "defaults": {
-              "filesystem": {
-                "read": "package"
-              },
-              "internet": {
-                "access": "domains",
-                "domains": ["api.example.com"]
-              }
-            },
-            "packages": {
-              "example-package": {
-                "hostAccess": "full",
-                "hostClassLookup": "minecraft",
-                "filesystem": {
-                  "write": "data"
-                }
-              }
-            }
-          }
-        }
-        """);
-    GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
-
-    MqpConfigLoadResult result = configManager.load();
-    configManager.addEnabledPackage("example-package");
-
-    assertEquals(
-        FileSystemReadPermission.PACKAGE,
-        result.config().permissions().defaults().filesystem().read());
-    assertEquals(
-        InternetAccessPermission.DOMAINS,
-        result.config().permissions().defaults().internet().access());
-    assertEquals(
-        List.of("api.example.com"), result.config().permissions().defaults().internet().domains());
-    assertEquals(
-        HostAccessPermission.FULL,
-        result.config().permissions().packages().get("example-package").hostAccess());
-    assertEquals(
-        HostClassLookupPermission.MINECRAFT,
-        result.config().permissions().packages().get("example-package").hostClassLookup());
-    assertEquals(
-        FileSystemWritePermission.DATA,
-        result.config().permissions().packages().get("example-package").filesystem().write());
-    assertTrue(Files.readString(temporaryDirectory.resolve("config.json")).contains("permissions"));
-  }
-
-  @Test
-  void savesGlobalPermissionsAndPreservesPackageOverrides() throws IOException {
-    Files.writeString(
-        temporaryDirectory.resolve("config.json"),
+        configPath,
         """
         {
           "additionalPackageRoots": ["/example/root"],
           "enabledPackages": ["example-package"],
           "permissions": {
-            "packages": {
-              "example-package": {
-                "hostAccess": "full"
-              }
-            }
-          }
-        }
-        """);
-    MqpConfigLoadResult result =
-        saveGlobalPermissionsAndReload(
-            new PackagePermissionOverrides(
-                HostAccessPermission.FULL,
-                HostClassLookupPermission.MINECRAFT,
-                new FileSystemPermissionOverrides(
-                    FileSystemReadPermission.PACKAGE, FileSystemWritePermission.DATA)));
-
-    MqpConfig config = result.config();
-    PackagePermissionOverrides defaultPermissions = config.permissions().defaults();
-    FileSystemPermissionOverrides defaultFilesystem = defaultPermissions.filesystem();
-    assertEquals(List.of("/example/root"), config.additionalPackageRoots());
-    assertEquals(List.of("example-package"), config.enabledPackages());
-    assertEquals(HostAccessPermission.FULL, defaultPermissions.hostAccess());
-    assertEquals(HostClassLookupPermission.MINECRAFT, defaultPermissions.hostClassLookup());
-    assertEquals(FileSystemReadPermission.PACKAGE, defaultFilesystem.read());
-    assertEquals(FileSystemWritePermission.DATA, defaultFilesystem.write());
-    assertEquals(
-        HostAccessPermission.FULL,
-        config.permissions().packages().get("example-package").hostAccess());
-  }
-
-  @Test
-  void rejectsUnknownPermissionValue() throws IOException {
-    Files.writeString(
-        temporaryDirectory.resolve("config.json"),
-        """
-        {
-          "permissions": {
-            "defaults": {
-              "hostAccess": "trusted"
-            }
+            "defaults": { "hostAccess": "full" },
+            "packages": { "example-package": { "internet": { "access": "full" } } }
           }
         }
         """);
     GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
 
     MqpConfigLoadResult result = configManager.load();
+    configManager.addEnabledPackage("second-package");
 
-    assertEquals(1, result.diagnostics().size());
-    assertTrue(result.diagnostics().getFirst().message().contains("trusted"));
-  }
-
-  private MqpConfigLoadResult saveGlobalPermissionsAndReload(PackagePermissionOverrides permissions)
-      throws IOException {
-    GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
-    configManager.load();
-    configManager.setGlobalPermissions(permissions);
-    return new GsonMqpConfigManager(temporaryDirectory).load();
+    assertEquals(List.of("/example/root"), result.config().additionalPackageRoots());
+    assertEquals(List.of("example-package"), result.config().enabledPackages());
+    assertTrue(result.diagnostics().isEmpty());
+    assertFalse(Files.readString(configPath).contains("permissions"));
   }
 }

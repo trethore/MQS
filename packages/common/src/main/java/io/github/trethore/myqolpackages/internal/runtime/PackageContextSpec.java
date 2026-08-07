@@ -17,22 +17,13 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime;
 
-import io.github.trethore.myqolpackages.api.config.PackagePermissions;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 
-public record PackageContextSpec(
-    String packageId,
-    Path packageDirectory,
-    Path entrypoint,
-    PackagePermissions permissions,
-    List<Path> packageRoots) {
+public record PackageContextSpec(String packageId, Path packageDirectory, Path entrypoint) {
   public PackageContextSpec {
     Objects.requireNonNull(packageId, "packageId");
     Objects.requireNonNull(packageDirectory, "packageDirectory");
     Objects.requireNonNull(entrypoint, "entrypoint");
-    Objects.requireNonNull(permissions, "permissions");
-    packageRoots = List.copyOf(Objects.requireNonNull(packageRoots, "packageRoots"));
   }
 }

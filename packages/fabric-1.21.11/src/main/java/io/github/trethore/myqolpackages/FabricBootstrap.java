@@ -21,7 +21,6 @@ import io.github.trethore.myqolpackages.api.MqpRuntime;
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.command.MqpClientCommand;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
@@ -48,7 +47,6 @@ public final class FabricBootstrap implements ClientModInitializer {
     MqpRuntimeEnvironment environment =
         new MqpRuntimeEnvironment(
             FabricBootstrap.class.getClassLoader(),
-            List.of("net.minecraft.", "com.mojang."),
             Optional.empty(),
             Optional.of("assets/myqolpackages/mappings/client.txt"));
     MqpRuntime runtime = MqpRuntime.create(mqpDirectory, mqpVersion, environment);

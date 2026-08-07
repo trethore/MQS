@@ -19,10 +19,7 @@ package io.github.trethore.myqolpackages.api.config;
 
 import java.util.List;
 
-public record MqpConfig(
-    List<String> additionalPackageRoots,
-    List<String> enabledPackages,
-    MqpPermissionsConfig permissions) {
+public record MqpConfig(List<String> additionalPackageRoots, List<String> enabledPackages) {
   public MqpConfig {
     additionalPackageRoots =
         additionalPackageRoots == null ? List.of() : additionalPackageRoots.stream().toList();
@@ -33,11 +30,6 @@ public record MqpConfig(
                 .filter(packageId -> packageId != null && !packageId.isBlank())
                 .distinct()
                 .toList();
-    permissions = permissions == null ? MqpPermissionsConfig.restricted() : permissions;
-  }
-
-  public MqpConfig(List<String> additionalPackageRoots, List<String> enabledPackages) {
-    this(additionalPackageRoots, enabledPackages, MqpPermissionsConfig.restricted());
   }
 
   public static MqpConfig defaults() {

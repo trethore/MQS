@@ -17,16 +17,5 @@
  */
 package io.github.trethore.myqolpackages.internal.packages;
 
-import io.github.trethore.myqolpackages.api.config.PackagePermissions;
-
 record PackageManifest(
-    String id,
-    String name,
-    String description,
-    String version,
-    String entrypoint,
-    PackagePermissions permissions) {
-  PackageManifest {
-    permissions = permissions == null ? PackagePermissions.none() : permissions;
-  }
-}
+    String id, String name, String description, String version, String entrypoint) {}

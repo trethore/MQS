@@ -30,11 +30,7 @@ final class MqpApiSourceLoader {
 
   static MqpApiSources load() {
     return new MqpApiSources(
-        load("bootstrap.js"),
-        load("permissions.js"),
-        load("mqp.js"),
-        load("java-interop.js"),
-        load("fetch.js"));
+        load("bootstrap.js"), load("mqp.js"), load("java-interop.js"), load("fetch.js"));
   }
 
   private static Source load(String resourceName) {
@@ -53,6 +49,5 @@ final class MqpApiSourceLoader {
     }
   }
 
-  record MqpApiSources(
-      Source bootstrap, Source permissions, Source mqp, Source javaInterop, Source fetch) {}
+  record MqpApiSources(Source bootstrap, Source mqp, Source javaInterop, Source fetch) {}
 }

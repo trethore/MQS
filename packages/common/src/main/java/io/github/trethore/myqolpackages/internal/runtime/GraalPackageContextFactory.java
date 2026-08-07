@@ -18,25 +18,13 @@
 package io.github.trethore.myqolpackages.internal.runtime;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
-import io.github.trethore.myqolpackages.api.config.FileSystemPermissions;
-import io.github.trethore.myqolpackages.api.config.FileSystemReadPermission;
-import io.github.trethore.myqolpackages.api.config.FileSystemWritePermission;
-import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
-import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
 import io.github.trethore.myqolpackages.internal.runtime.api.MqpApiInstaller;
 import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.Proxy;
-import java.net.ProxySelector;
-import java.net.SocketAddress;
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -45,7 +33,6 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +40,6 @@ import org.slf4j.LoggerFactory;
 public final class GraalPackageContextFactory implements PackageContextFactory {
   private static final String JAVASCRIPT_LANGUAGE_ID = "js";
   private static final String JAVASCRIPT_MODULE_MIME_TYPE = "application/javascript+module";
-  private static final String PACKAGE_DATA_DIRECTORY_NAME = ".data";
   private static final Logger LOGGER = LoggerFactory.getLogger(GraalPackageContextFactory.class);
   private static final Source WARM_UP_SOURCE =
       Source.newBuilder(
@@ -63,12 +49,9 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
           .mimeType(JAVASCRIPT_MODULE_MIME_TYPE)
           .cached(false)
           .buildLiteral();
-  private final EnumMap<HostAccessPermission, Engine> engines =
-      new EnumMap<>(HostAccessPermission.class);
-  private final MqpRuntimeEnvironment environment;
+  private final Engine engine;
   private final HttpClient httpClient;
   private final MqpApiInstaller mqpApiInstaller;
-  private final Path mqpDirectory;
 
   private boolean closed;
 
@@ -81,18 +64,25 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
 
   public GraalPackageContextFactory(
       Path mqpDirectory, String mqpVersion, MqpRuntimeEnvironment environment) {
-    this.mqpDirectory =
-        Objects.requireNonNull(mqpDirectory, "mqpDirectory").toAbsolutePath().normalize();
-    this.environment = Objects.requireNonNull(environment, "environment");
+    Objects.requireNonNull(mqpDirectory, "mqpDirectory");
+    Objects.requireNonNull(environment, "environment");
     this.mqpApiInstaller =
         new MqpApiInstaller(Objects.requireNonNull(mqpVersion, "mqpVersion"), environment);
     this.httpClient =
         HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NEVER)
-            .proxy(new DirectProxySelector())
             .build();
-    getOrCreateEngine(HostAccessPermission.NONE);
+    this.engine =
+        Engine.newBuilder(JAVASCRIPT_LANGUAGE_ID)
+            .option("engine.WarnInterpreterOnly", "false")
+            .build();
+    try {
+      warmUpEngine();
+    } catch (RuntimeException exception) {
+      engine.close();
+      throw exception;
+    }
   }
 
   @Override
@@ -104,7 +94,7 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     GraalPackageContextResources resources;
     try {
       resources = createResources(spec);
-    } catch (IOException | RuntimeException exception) {
+    } catch (RuntimeException exception) {
       throw createLoadFailure(exception);
     }
     try {
@@ -133,20 +123,10 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
       return;
     }
     closed = true;
-    PackageLifecycleException failure = null;
-    for (Engine engine : engines.values()) {
-      try {
-        engine.close();
-      } catch (RuntimeException exception) {
-        if (failure == null) {
-          failure = new PackageLifecycleException("Could not close JavaScript engine", exception);
-        } else {
-          failure.addSuppressed(exception);
-        }
-      }
-    }
-    if (failure != null) {
-      throw failure;
+    try {
+      engine.close();
+    } catch (RuntimeException exception) {
+      throw new PackageLifecycleException("Could not close JavaScript engine", exception);
     }
   }
 
@@ -162,17 +142,16 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     return hook;
   }
 
-  private GraalPackageContextResources createResources(PackageContextSpec spec) throws IOException {
+  private GraalPackageContextResources createResources(PackageContextSpec spec) {
     PackageLogOutputStream output = new PackageLogOutputStream(LOGGER, spec.packageId(), false);
     PackageLogOutputStream errorOutput = new PackageLogOutputStream(LOGGER, spec.packageId(), true);
-    PackageHttpClient packageHttpClient =
-        new PackageHttpClient(httpClient, spec.permissions().internet());
+    PackageHttpClient packageHttpClient = new PackageHttpClient(httpClient);
     Context context = null;
     try {
       context = createContext(spec, output, errorOutput);
       mqpApiInstaller.install(context, spec, packageHttpClient);
       return new GraalPackageContextResources(context, output, errorOutput, packageHttpClient);
-    } catch (IOException | RuntimeException exception) {
+    } catch (RuntimeException exception) {
       if (context != null) {
         try {
           context.close();
@@ -195,173 +174,38 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
         "Could not load entrypoint: " + exception.getMessage(), exception);
   }
 
-  private void warmUpEngine(HostAccessPermission hostAccess) {
+  private void warmUpEngine() {
     try (Context context =
-        createContext(
-            null, hostAccess, OutputStream.nullOutputStream(), OutputStream.nullOutputStream())) {
+        createContext(null, OutputStream.nullOutputStream(), OutputStream.nullOutputStream())) {
       Value exports = context.eval(WARM_UP_SOURCE);
       exports.getMember("onEnable").execute();
       exports.getMember("onDisable").execute();
-    } catch (IOException | RuntimeException exception) {
-      try {
-        engines.get(hostAccess).close();
-      } catch (RuntimeException closeException) {
-        exception.addSuppressed(closeException);
-      }
+    } catch (RuntimeException exception) {
       throw new IllegalStateException("Could not warm up JavaScript engine", exception);
     }
   }
 
   private Context createContext(
-      PackageContextSpec spec, OutputStream output, OutputStream errorOutput) throws IOException {
-    HostAccessPermission hostAccess =
-        spec == null ? HostAccessPermission.NONE : spec.permissions().hostAccess();
-    return createContext(spec, hostAccess, output, errorOutput);
-  }
-
-  private Context createContext(
-      PackageContextSpec spec,
-      HostAccessPermission hostAccess,
-      OutputStream output,
-      OutputStream errorOutput)
-      throws IOException {
+      PackageContextSpec spec, OutputStream output, OutputStream errorOutput) {
     Context.Builder builder =
         Context.newBuilder(JAVASCRIPT_LANGUAGE_ID)
-            .engine(getOrCreateEngine(hostAccess))
-            .allowHostAccess(createHostAccess(hostAccess))
-            .allowHostClassLookup(className -> isHostClassAllowed(spec, className))
+            .engine(engine)
+            .allowHostAccess(HostAccess.ALL)
+            .allowHostClassLookup(className -> true)
             .allowHostClassLoading(false)
             .allowCreateThread(false)
             .allowCreateProcess(false)
             .allowNativeAccess(false)
             .allowEnvironmentAccess(EnvironmentAccess.NONE)
             .allowPolyglotAccess(PolyglotAccess.NONE)
-            .allowIO(createIoAccess(spec))
+            .allowIO(IOAccess.ALL)
             .option("js.esm-eval-returns-exports", "true")
             .option("js.ecmascript-version", "2026")
             .out(output)
             .err(errorOutput);
     if (spec != null) {
-      Path currentWorkingDirectory = getCurrentWorkingDirectory(spec);
-      if (currentWorkingDirectory != null) {
-        builder.currentWorkingDirectory(currentWorkingDirectory);
-      }
+      builder.currentWorkingDirectory(spec.packageDirectory());
     }
     return builder.build();
-  }
-
-  private static HostAccess createHostAccess(HostAccessPermission permission) {
-    return permission == HostAccessPermission.FULL ? HostAccess.ALL : HostAccess.NONE;
-  }
-
-  private boolean isHostClassAllowed(PackageContextSpec spec, String className) {
-    if (spec == null) {
-      return false;
-    }
-    HostClassLookupPermission permission = spec.permissions().hostClassLookup();
-    return permission == HostClassLookupPermission.ALL
-        || (permission == HostClassLookupPermission.MINECRAFT
-            && environment.isMinecraftClass(className));
-  }
-
-  private IOAccess createIoAccess(PackageContextSpec spec) throws IOException {
-    if (spec == null) {
-      return IOAccess.NONE;
-    }
-
-    FileSystemPermissions filesystemPermissions = spec.permissions().filesystem();
-    FileSystemReadPermission readPermission = filesystemPermissions.read();
-    FileSystemWritePermission writePermission = filesystemPermissions.write();
-    if (readPermission == FileSystemReadPermission.NONE
-        && writePermission == FileSystemWritePermission.NONE) {
-      return IOAccess.NONE;
-    }
-    List<Path> mqpRoots =
-        readPermission == FileSystemReadPermission.MQP
-                || writePermission == FileSystemWritePermission.MQP
-            ? createMqpRoots(spec)
-            : List.of();
-    List<Path> readRoots = new ArrayList<>();
-    if (readPermission == FileSystemReadPermission.PACKAGE) {
-      readRoots.add(spec.packageDirectory());
-    } else if (readPermission == FileSystemReadPermission.MQP) {
-      readRoots.addAll(mqpRoots);
-    }
-    List<Path> writeRoots = new ArrayList<>();
-    if (writePermission == FileSystemWritePermission.DATA) {
-      Path dataDirectory = getPackageDataDirectory(spec);
-      java.nio.file.Files.createDirectories(dataDirectory);
-      writeRoots.add(dataDirectory);
-    } else if (writePermission == FileSystemWritePermission.MQP) {
-      writeRoots.addAll(mqpRoots);
-    } else if (writePermission == FileSystemWritePermission.ALL) {
-      return IOAccess.newBuilder().allowHostFileAccess(true).allowHostSocketAccess(false).build();
-    }
-
-    FileSystem fileSystem =
-        new ScopedPackageFileSystem(
-            readRoots, writeRoots, readPermission == FileSystemReadPermission.ALL);
-    return IOAccess.newBuilder()
-        .fileSystem(FileSystem.allowInternalResources(fileSystem))
-        .allowHostSocketAccess(false)
-        .build();
-  }
-
-  private List<Path> createMqpRoots(PackageContextSpec spec) {
-    List<Path> roots = new ArrayList<>(spec.packageRoots());
-    if (!roots.contains(mqpDirectory)) {
-      roots.add(mqpDirectory);
-    }
-    return roots;
-  }
-
-  private Path getCurrentWorkingDirectory(PackageContextSpec spec) {
-    FileSystemPermissions filesystemPermissions = spec.permissions().filesystem();
-    if (filesystemPermissions.read() != FileSystemReadPermission.NONE
-        || filesystemPermissions.write() == FileSystemWritePermission.MQP
-        || filesystemPermissions.write() == FileSystemWritePermission.ALL) {
-      return spec.packageDirectory();
-    }
-    if (filesystemPermissions.write() == FileSystemWritePermission.DATA) {
-      return getPackageDataDirectory(spec);
-    }
-    return null;
-  }
-
-  private Path getPackageDataDirectory(PackageContextSpec spec) {
-    return mqpDirectory.resolve(PACKAGE_DATA_DIRECTORY_NAME).resolve(spec.packageId());
-  }
-
-  @SuppressWarnings("resource")
-  private Engine getOrCreateEngine(HostAccessPermission hostAccess) {
-    Engine existingEngine = engines.get(hostAccess);
-    if (existingEngine != null) {
-      return existingEngine;
-    }
-    Engine engine =
-        Engine.newBuilder(JAVASCRIPT_LANGUAGE_ID)
-            .option("engine.WarnInterpreterOnly", "false")
-            .build();
-    engines.put(hostAccess, engine);
-    try {
-      warmUpEngine(hostAccess);
-      return engine;
-    } catch (RuntimeException exception) {
-      engines.remove(hostAccess);
-      throw exception;
-    }
-  }
-
-  private static final class DirectProxySelector extends ProxySelector {
-    @Override
-    public List<Proxy> select(URI uri) {
-      Objects.requireNonNull(uri, "uri");
-      return List.of(Proxy.NO_PROXY);
-    }
-
-    @Override
-    public void connectFailed(URI uri, SocketAddress address, IOException exception) {
-      LOGGER.warn("Direct HTTP connection to {} via {} failed", uri, address, exception);
-    }
   }
 }

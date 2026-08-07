@@ -21,13 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.trethore.myqolpackages.api.config.PackagePermissions;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
 import java.nio.file.Path;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -40,9 +38,7 @@ class PackageInstanceTest {
       scriptContext.failEnable = true;
       PackageInstance packageInstance = createInstance(spec -> scriptContext);
 
-      assertThrows(
-          PackageLifecycleException.class,
-          () -> packageInstance.enable(PackagePermissions.none(), List.of(temporaryDirectory)));
+      assertThrows(PackageLifecycleException.class, packageInstance::enable);
 
       assertEquals(PackageState.ERROR, packageInstance.getState());
       assertTrue(scriptContext.closed);
@@ -54,7 +50,7 @@ class PackageInstanceTest {
     try (RecordingScriptContext scriptContext = new RecordingScriptContext()) {
       scriptContext.failDisable = true;
       PackageInstance packageInstance = createInstance(spec -> scriptContext);
-      packageInstance.enable(PackagePermissions.none(), List.of(temporaryDirectory));
+      packageInstance.enable();
 
       assertThrows(PackageLifecycleException.class, packageInstance::disable);
 
@@ -67,12 +63,7 @@ class PackageInstanceTest {
     Path packageDirectory = temporaryDirectory.resolve("example-package");
     PackageManifest manifest =
         new PackageManifest(
-            "example-package",
-            "Example Package",
-            "A test package.",
-            "1.0.0",
-            "src/index.js",
-            PackagePermissions.none());
+            "example-package", "Example Package", "A test package.", "1.0.0", "src/index.js");
     PackageDescriptor descriptor =
         new PackageDescriptor(
             "example-package",

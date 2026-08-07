@@ -17,15 +17,12 @@
  */
 package io.github.trethore.myqolpackages.internal.packages;
 
-import io.github.trethore.myqolpackages.api.config.PackagePermissions;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
-import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 
 final class PackageInstance {
@@ -41,8 +38,7 @@ final class PackageInstance {
     this.contextFactory = Objects.requireNonNull(contextFactory, "contextFactory");
   }
 
-  void enable(PackagePermissions permissions, List<Path> packageRoots)
-      throws PackageLifecycleException {
+  void enable() throws PackageLifecycleException {
     if (state == PackageState.ENABLED) {
       return;
     }
@@ -55,11 +51,7 @@ final class PackageInstance {
       createdContext =
           contextFactory.create(
               new PackageContextSpec(
-                  descriptor.id(),
-                  descriptor.packageDirectory(),
-                  descriptor.entrypoint(),
-                  permissions,
-                  packageRoots));
+                  descriptor.id(), descriptor.packageDirectory(), descriptor.entrypoint()));
     } catch (PackageLifecycleException exception) {
       state = PackageState.ERROR;
       throw exception;

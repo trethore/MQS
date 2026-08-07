@@ -18,8 +18,6 @@
 package io.github.trethore.myqolpackages.internal.runtime.interop;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
-import io.github.trethore.myqolpackages.api.config.HostAccessPermission;
-import io.github.trethore.myqolpackages.api.config.HostClassLookupPermission;
 import io.github.trethore.myqolpackages.internal.mappings.ClassInteropMetadata;
 import java.util.HashMap;
 import java.util.List;
@@ -29,70 +27,43 @@ import org.graalvm.polyglot.Value;
 final class HostClassResolver {
   private final Map<ClassProxyKey, JavaClassProxy> classProxies = new HashMap<>();
   private final MqpRuntimeEnvironment environment;
-  private final HostAccessPermission hostAccessPermission;
   private final JavaInteropService interopService;
   private final ClassInteropMetadata metadata;
-  private final HostClassLookupPermission classLookupPermission;
 
-  HostClassResolver(
-      ClassInteropMetadata metadata,
-      MqpRuntimeEnvironment environment,
-      HostAccessPermission hostAccessPermission,
-      HostClassLookupPermission classLookupPermission) {
+  HostClassResolver(ClassInteropMetadata metadata, MqpRuntimeEnvironment environment) {
     this.metadata = metadata;
     this.environment = environment;
-    this.hostAccessPermission = hostAccessPermission;
-    this.classLookupPermission = classLookupPermission;
     this.interopService = new JavaInteropService(metadata.mappings());
   }
 
   JavaClassProxy resolveImport(String requestedName) {
     String normalizedName = normalizeRequestedName(requestedName);
-    if (classLookupPermission == HostClassLookupPermission.NONE) {
-      throw new SecurityException("Host class lookup is not permitted");
-    }
-
-    if (isClassAllowed(normalizedName)) {
-      Class<?> exactClass = resolveExactClass(normalizedName);
-      if (exactClass != null) {
-        return getOrCreateProxy(normalizedName, exactClass);
-      }
+    Class<?> exactClass = resolveExactClass(normalizedName);
+    if (exactClass != null) {
+      return getOrCreateProxy(normalizedName, exactClass);
     }
 
     List<String> catalogMatches = metadata.catalog().findBySuffix(normalizedName);
     if (!catalogMatches.isEmpty()) {
-      List<String> allowedMatches = catalogMatches.stream().filter(this::isClassAllowed).toList();
-      if (allowedMatches.isEmpty()) {
-        throw new SecurityException("Class not allowed: " + normalizedName);
-      }
-      if (allowedMatches.size() > 1) {
+      if (catalogMatches.size() > 1) {
         throw new IllegalArgumentException(
             "Ambiguous class name '"
                 + normalizedName
                 + "'. Possible matches: "
-                + String.join(", ", allowedMatches));
+                + String.join(", ", catalogMatches));
       }
-      String matchedClassName = allowedMatches.getFirst();
+      String matchedClassName = catalogMatches.getFirst();
       Class<?> resolvedClass = resolveExactClass(matchedClassName);
       if (resolvedClass != null) {
         return getOrCreateProxy(matchedClassName, resolvedClass);
       }
     }
 
-    if (!isClassAllowed(normalizedName)) {
-      throw new SecurityException("Class not allowed: " + normalizedName);
-    }
     throw new IllegalArgumentException("Unknown class: " + normalizedName);
   }
 
   JavaClassProxy resolvePackageMember(String className) {
-    if (!canTraverse(className)) {
-      throw new SecurityException("Class namespace not allowed: " + className);
-    }
     if (metadata.catalog().containsPackage(className)) {
-      return null;
-    }
-    if (!isClassAllowed(className)) {
       return null;
     }
     Class<?> resolvedClass = resolveExactClass(className);
@@ -100,20 +71,7 @@ final class HostClassResolver {
   }
 
   Object wrap(Value value) {
-    if (hostAccessPermission != HostAccessPermission.FULL) {
-      throw new SecurityException("Host access is not permitted");
-    }
     return interopService.wrap(value);
-  }
-
-  boolean canTraverse(String path) {
-    if (classLookupPermission == HostClassLookupPermission.ALL) {
-      return true;
-    }
-    if (classLookupPermission == HostClassLookupPermission.NONE) {
-      return false;
-    }
-    return environment.isMinecraftNamespacePath(path);
   }
 
   private Class<?> resolveExactClass(String namedClassName) {
@@ -139,21 +97,7 @@ final class HostClassResolver {
   private JavaClassProxy getOrCreateProxy(String namedClassName, Class<?> targetClass) {
     ClassProxyKey key = new ClassProxyKey(namedClassName, targetClass);
     return classProxies.computeIfAbsent(
-        key,
-        ignored ->
-            hostAccessPermission == HostAccessPermission.FULL
-                ? new AccessibleJavaClassProxy(namedClassName, targetClass, interopService)
-                : new JavaClassProxy(namedClassName, targetClass));
-  }
-
-  private boolean isClassAllowed(String className) {
-    if (classLookupPermission == HostClassLookupPermission.ALL) {
-      return true;
-    }
-    if (classLookupPermission == HostClassLookupPermission.NONE) {
-      return false;
-    }
-    return environment.isMinecraftClass(className);
+        key, ignored -> new JavaClassProxy(namedClassName, targetClass, interopService));
   }
 
   private static String normalizeRequestedName(String requestedName) {

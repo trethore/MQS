@@ -18,18 +18,15 @@
 package io.github.trethore.myqolpackages.internal.runtime.api;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
-import io.github.trethore.myqolpackages.api.config.FileSystemPermissions;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.api.MqpApiSourceLoader.MqpApiSources;
 import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
 import io.github.trethore.myqolpackages.internal.runtime.interop.ClassInteropBridgeFactory;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 public final class MqpApiInstaller {
@@ -48,40 +45,21 @@ public final class MqpApiInstaller {
       Context context, PackageContextSpec spec, PackageHttpClient packageHttpClient) {
     ProxyObject hostBridge = createHostBridge(spec, packageHttpClient);
     Value bootstrap = getInstaller(context, SOURCES.bootstrap()).execute();
-    Value permissions = getInstaller(context, SOURCES.permissions()).execute(hostBridge);
-    getInstaller(context, SOURCES.mqp()).execute(hostBridge, bootstrap, permissions);
+    getInstaller(context, SOURCES.mqp()).execute(hostBridge, bootstrap);
     getInstaller(context, SOURCES.javaInterop()).execute(hostBridge, bootstrap);
     getInstaller(context, SOURCES.fetch()).execute(hostBridge, bootstrap);
   }
 
   private ProxyObject createHostBridge(
       PackageContextSpec spec, PackageHttpClient packageHttpClient) {
-    FileSystemPermissions filesystemPermissions = spec.permissions().filesystem();
     ProxyObject metadata =
         ProxyObject.fromMap(Map.of("version", mqpVersion, "packageId", spec.packageId()));
-    ProxyObject permissions =
-        ProxyObject.fromMap(
-            Map.of(
-                "hostAccess", permissionName(spec.permissions().hostAccess()),
-                "hostClassLookup", permissionName(spec.permissions().hostClassLookup()),
-                "filesystemRead", permissionName(filesystemPermissions.read()),
-                "filesystemWrite", permissionName(filesystemPermissions.write()),
-                "internetAccess", permissionName(spec.permissions().internet().access()),
-                "internetDomains",
-                    ProxyArray.fromArray(spec.permissions().internet().domains().toArray())));
-    ProxyObject interop =
-        classInteropBridgeFactory.create(
-            spec.permissions().hostAccess(), spec.permissions().hostClassLookup());
+    ProxyObject interop = classInteropBridgeFactory.create();
     return ProxyObject.fromMap(
         Map.of(
             "metadata", metadata,
-            "permissions", permissions,
             "interop", interop,
             "fetch", packageHttpClient));
-  }
-
-  private static String permissionName(Enum<?> permission) {
-    return permission.name().toLowerCase(Locale.ROOT);
   }
 
   private static Value getInstaller(Context context, Source source) {
