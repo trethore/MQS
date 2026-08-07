@@ -7,7 +7,7 @@ plugins {
 
 val minecraftVersion = "1.21.11"
 val loaderVersion = libs.versions.fabric.loader.get()
-val fabricApiVersion = "0.141.4+1.21.11"
+val fabricApiVersion = "0.141.6+1.21.11"
 
 base {
   archivesName = rootProject.name
