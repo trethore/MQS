@@ -18,9 +18,17 @@
 package io.github.trethore.myqolpackages.internal.config;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
+import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
+import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
+import io.github.trethore.myqolpackages.api.config.TrustConfig;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.internal.trust.PackageFingerprintService;
+import io.github.trethore.myqolpackages.internal.trust.TrustedVersionRange;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -30,12 +38,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class GsonMqpConfigManager {
   private static final String CONFIG_DIAGNOSTIC_ID = "config";
   private static final String CONFIG_FILE_NAME = "config.json";
+  private static final String MISMATCH_BEHAVIOR_FIELD = "mismatchBehavior";
 
   private final Path configPath;
   private final Gson gson;
@@ -96,13 +107,119 @@ public final class GsonMqpConfigManager {
     saveEnabledPackages(enabledPackages);
   }
 
+  public synchronized void putTrustedPackage(
+      String packageId, PackageTrustConfig packageTrustConfig) throws IOException {
+    MqpConfig currentConfig = config.get();
+    Map<String, PackageTrustConfig> trustedPackages =
+        new LinkedHashMap<>(currentConfig.trust().packages());
+    trustedPackages.put(packageId, packageTrustConfig);
+    TrustConfig trustConfig =
+        new TrustConfig(currentConfig.trust().fingerprintDefaults(), trustedPackages);
+    saveConfig(
+        new MqpConfig(
+            currentConfig.configVersion(),
+            currentConfig.additionalPackageRoots(),
+            currentConfig.enabledPackages(),
+            trustConfig));
+  }
+
+  public synchronized void updatePackageFingerprint(String packageId, String fingerprint)
+      throws IOException {
+    MqpConfig currentConfig = config.get();
+    PackageTrustConfig currentPackageTrust = currentConfig.trust().packages().get(packageId);
+    if (currentPackageTrust == null) {
+      throw new IOException("Package is not trusted");
+    }
+    PackageFingerprintConfig currentFingerprint = currentPackageTrust.fingerprint();
+    PackageFingerprintConfig updatedFingerprint =
+        new PackageFingerprintConfig(
+            currentFingerprint == null ? null : currentFingerprint.enabled(),
+            currentFingerprint == null ? null : currentFingerprint.mismatchBehavior(),
+            fingerprint);
+    putTrustedPackage(
+        packageId, new PackageTrustConfig(currentPackageTrust.versions(), updatedFingerprint));
+  }
+
+  public synchronized void removeTrustedAndEnabledPackage(String packageId) throws IOException {
+    MqpConfig currentConfig = config.get();
+    List<String> enabledPackages = new ArrayList<>(currentConfig.enabledPackages());
+    enabledPackages.remove(packageId);
+    Map<String, PackageTrustConfig> trustedPackages =
+        new LinkedHashMap<>(currentConfig.trust().packages());
+    trustedPackages.remove(packageId);
+    TrustConfig trustConfig =
+        new TrustConfig(currentConfig.trust().fingerprintDefaults(), trustedPackages);
+    saveConfig(
+        new MqpConfig(
+            currentConfig.configVersion(),
+            currentConfig.additionalPackageRoots(),
+            enabledPackages,
+            trustConfig));
+  }
+
   private MqpConfig readConfig() throws IOException {
     try (Reader reader = Files.newBufferedReader(configPath, StandardCharsets.UTF_8)) {
-      MqpConfig loadedConfig = gson.fromJson(reader, MqpConfig.class);
+      JsonElement configurationJson = JsonParser.parseReader(reader);
+      validateSerializedBehaviors(configurationJson);
+      MqpConfig loadedConfig = gson.fromJson(configurationJson, MqpConfig.class);
       if (loadedConfig == null) {
         throw new JsonSyntaxException("Configuration must contain a JSON object");
       }
+      validateConfig(loadedConfig);
       return loadedConfig;
+    }
+  }
+
+  private void validateSerializedBehaviors(JsonElement configurationJson) {
+    if (!configurationJson.isJsonObject()) {
+      return;
+    }
+    JsonObject root = configurationJson.getAsJsonObject();
+    JsonObject trust = getObject(root, "trust");
+    if (trust == null) {
+      return;
+    }
+    JsonObject defaults = getObject(trust, "fingerprintDefaults");
+    if (defaults != null) {
+      validateBehavior(defaults, "fingerprint defaults");
+    }
+    JsonObject packages = getObject(trust, "packages");
+    if (packages == null) {
+      return;
+    }
+    for (Map.Entry<String, JsonElement> entry : packages.entrySet()) {
+      if (!entry.getValue().isJsonObject()) {
+        continue;
+      }
+      JsonObject fingerprint = getObject(entry.getValue().getAsJsonObject(), "fingerprint");
+      if (fingerprint != null) {
+        validateBehavior(fingerprint, entry.getKey());
+      }
+    }
+  }
+
+  private JsonObject getObject(JsonObject parent, String fieldName) {
+    JsonElement value = parent.get(fieldName);
+    return value == null || value.isJsonNull() || !value.isJsonObject()
+        ? null
+        : value.getAsJsonObject();
+  }
+
+  private void validateBehavior(JsonObject parent, String owner) {
+    JsonElement value = parent.get(MISMATCH_BEHAVIOR_FIELD);
+    if (value == null || value.isJsonNull()) {
+      return;
+    }
+    if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+      throw new JsonSyntaxException(
+          "Fingerprint mismatch behavior for " + owner + " must be a string");
+    }
+    String behavior = value.getAsString();
+    if (!behavior.equals("log_only")
+        && !behavior.equals("chat_warning")
+        && !behavior.equals("block")) {
+      throw new JsonSyntaxException(
+          "Unknown fingerprint mismatch behavior for " + owner + ": " + behavior);
     }
   }
 
@@ -112,7 +229,37 @@ public final class GsonMqpConfigManager {
 
   private void saveEnabledPackages(List<String> enabledPackages) throws IOException {
     MqpConfig currentConfig = config.get();
-    saveConfig(new MqpConfig(currentConfig.additionalPackageRoots(), enabledPackages));
+    saveConfig(
+        new MqpConfig(
+            currentConfig.configVersion(),
+            currentConfig.additionalPackageRoots(),
+            enabledPackages,
+            currentConfig.trust()));
+  }
+
+  private void validateConfig(MqpConfig loadedConfig) {
+    for (Map.Entry<String, PackageTrustConfig> entry : loadedConfig.trust().packages().entrySet()) {
+      String packageId = entry.getKey();
+      if (packageId == null || packageId.isBlank()) {
+        throw new JsonSyntaxException("Trusted package ID must not be empty");
+      }
+      PackageTrustConfig packageTrustConfig = entry.getValue();
+      if (packageTrustConfig == null) {
+        throw new JsonSyntaxException("Trusted package configuration must contain an object");
+      }
+      try {
+        TrustedVersionRange.parse(packageTrustConfig.versions());
+      } catch (IllegalArgumentException exception) {
+        throw new JsonSyntaxException(
+            "Invalid trusted version range for " + packageId + ": " + exception.getMessage());
+      }
+      PackageFingerprintConfig fingerprint = packageTrustConfig.fingerprint();
+      if (fingerprint != null
+          && fingerprint.digest() != null
+          && !PackageFingerprintService.isValidDigest(fingerprint.digest())) {
+        throw new JsonSyntaxException("Invalid fingerprint digest for " + packageId);
+      }
+    }
   }
 
   private void saveConfig(MqpConfig updatedConfig) throws IOException {

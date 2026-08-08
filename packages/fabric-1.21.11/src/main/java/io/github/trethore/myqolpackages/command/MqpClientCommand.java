@@ -21,6 +21,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.MqpRuntime;
 import io.github.trethore.myqolpackages.command.commands.packages.PackagesClientCommand;
+import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -29,7 +30,10 @@ public final class MqpClientCommand {
   private final PackagesClientCommand packagesClientCommand;
 
   public MqpClientCommand(MqpRuntime runtime) {
-    packagesClientCommand = new PackagesClientCommand(runtime.getPackageManager());
+    PackageTrustInteractionManager interactionManager =
+        new PackageTrustInteractionManager(runtime.getPackageManager());
+    packagesClientCommand =
+        new PackagesClientCommand(runtime.getPackageManager(), interactionManager);
   }
 
   public void register() {

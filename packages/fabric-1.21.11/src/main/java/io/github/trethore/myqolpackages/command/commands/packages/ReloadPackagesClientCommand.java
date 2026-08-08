@@ -22,18 +22,24 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
+import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager;
+import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager.OriginalOperation;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class ReloadPackagesClientCommand {
   private final PackageManager packageManager;
+  private final PackageTrustInteractionManager interactionManager;
 
-  public ReloadPackagesClientCommand(PackageManager packageManager) {
+  public ReloadPackagesClientCommand(
+      PackageManager packageManager, PackageTrustInteractionManager interactionManager) {
     this.packageManager = packageManager;
+    this.interactionManager = interactionManager;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
@@ -67,10 +73,18 @@ public final class ReloadPackagesClientCommand {
     FabricClientCommandSource source = context.getSource();
     String packageId = StringArgumentType.getString(context, "id");
     PackageOperationResult result = packageManager.reloadPackage(packageId);
+    if (result.code() == PackageOperationCode.TRUST_REQUIRED) {
+      return interactionManager.start(source, packageId, OriginalOperation.RELOAD);
+    }
+    if (result.code() == PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED) {
+      interactionManager.sendFingerprintReview(source, packageId, OriginalOperation.RELOAD);
+      return ClientCommandResult.FAILURE;
+    }
+    PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
     if (result.successful()) {
       MqpCommandFeedback.sendInfo(source, "Reloaded " + packageId + ".");
       return ClientCommandResult.SUCCESS;
     }
-    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+    return ClientCommandResult.FAILURE;
   }
 }

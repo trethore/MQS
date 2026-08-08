@@ -19,6 +19,7 @@ package io.github.trethore.myqolpackages.internal.packages;
 
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
+import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;
@@ -31,6 +32,7 @@ final class PackageInstance {
   private PackageDescriptor descriptor;
   private PackageScriptContext scriptContext;
   private PackageState state = PackageState.DISABLED;
+  private PackageTrustInfo trustInfo = PackageTrustInfo.untrusted();
   private boolean available = true;
 
   PackageInstance(PackageDescriptor descriptor, PackageContextFactory contextFactory) {
@@ -127,7 +129,11 @@ final class PackageInstance {
   }
 
   PackageInfo getInfo() {
-    return descriptor.toInfo(state);
+    return descriptor.toInfo(state, trustInfo);
+  }
+
+  void setTrustInfo(PackageTrustInfo trustInfo) {
+    this.trustInfo = Objects.requireNonNull(trustInfo, "trustInfo");
   }
 
   PackageState getState() {

@@ -21,6 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
+import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
+import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
@@ -334,6 +337,20 @@ class DefaultPackageManagerRuntimeTest {
 
   private DefaultPackageManager createPackageManager(PackageContextFactory contextFactory) {
     GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
+    configManager.load();
+    try (Stream<Path> children = Files.list(temporaryDirectory)) {
+      for (Path child : children.filter(Files::isDirectory).toList()) {
+        if (Files.isRegularFile(child.resolve("manifest.json"))) {
+          configManager.putTrustedPackage(
+              child.getFileName().toString(),
+              new PackageTrustConfig(
+                  "*",
+                  new PackageFingerprintConfig(false, FingerprintMismatchBehavior.BLOCK, null)));
+        }
+      }
+    } catch (IOException exception) {
+      throw new IllegalStateException(exception);
+    }
     return new DefaultPackageManager(
         new ConfiguredPackageRootProvider(temporaryDirectory, configManager),
         new FileSystemPackageDiscovery(),

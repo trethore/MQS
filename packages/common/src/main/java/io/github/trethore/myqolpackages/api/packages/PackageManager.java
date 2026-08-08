@@ -31,11 +31,21 @@ public interface PackageManager extends AutoCloseable {
 
   PackageOperationResult disablePackage(String id);
 
+  PackageOperationResult trustPackage(PackageTrustRequest request);
+
+  PackageOperationResult untrustPackage(String id);
+
+  PackageOperationResult acceptPackageFingerprint(String id, String expectedFingerprint);
+
   List<PackageInfo> getPackages();
 
   Optional<PackageInfo> findPackage(String id);
 
   List<String> getConfiguredEnabledPackageIds();
+
+  List<String> getTrustedPackageIds();
+
+  Optional<PackageTrustSnapshot> captureTrustSnapshot(String id);
 
   default void tick() {}
 

@@ -17,15 +17,27 @@
  */
 package io.github.trethore.myqolpackages.internal.packages;
 
+import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
+import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.api.packages.PackageDiagnosticCode;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
+import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
+import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
+import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
+import io.github.trethore.myqolpackages.api.packages.PackageTrustState;
 import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;
+import io.github.trethore.myqolpackages.internal.trust.PackageFingerprintException;
+import io.github.trethore.myqolpackages.internal.trust.PackageFingerprintService;
+import io.github.trethore.myqolpackages.internal.trust.PackageTrustEvaluation;
+import io.github.trethore.myqolpackages.internal.trust.PackageTrustEvaluator;
+import io.github.trethore.myqolpackages.internal.trust.TrustedVersionRange;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -40,12 +52,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class DefaultPackageManager implements PackageManager {
+  private static final String UNKNOWN_PACKAGE_MESSAGE = "Unknown package";
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultPackageManager.class);
 
   private final GsonMqpConfigManager configManager;
   private final PackageContextFactory contextFactory;
+  private final PackageFingerprintService fingerprintService;
   private final FileSystemPackageDiscovery packageDiscovery;
   private final PackageRootProvider packageRootProvider;
+  private final PackageTrustEvaluator trustEvaluator;
 
   private final LinkedHashSet<String> enabledPackageOrder = new LinkedHashSet<>();
   private final Map<String, PackageInstance> packages = new LinkedHashMap<>();
@@ -55,10 +70,26 @@ public final class DefaultPackageManager implements PackageManager {
       FileSystemPackageDiscovery packageDiscovery,
       GsonMqpConfigManager configManager,
       PackageContextFactory contextFactory) {
+    this(
+        packageRootProvider,
+        packageDiscovery,
+        configManager,
+        contextFactory,
+        new PackageFingerprintService());
+  }
+
+  public DefaultPackageManager(
+      PackageRootProvider packageRootProvider,
+      FileSystemPackageDiscovery packageDiscovery,
+      GsonMqpConfigManager configManager,
+      PackageContextFactory contextFactory,
+      PackageFingerprintService fingerprintService) {
     this.packageRootProvider = Objects.requireNonNull(packageRootProvider, "packageRootProvider");
     this.packageDiscovery = Objects.requireNonNull(packageDiscovery, "packageDiscovery");
     this.configManager = Objects.requireNonNull(configManager, "configManager");
     this.contextFactory = Objects.requireNonNull(contextFactory, "contextFactory");
+    this.fingerprintService = Objects.requireNonNull(fingerprintService, "fingerprintService");
+    trustEvaluator = new PackageTrustEvaluator(fingerprintService);
   }
 
   @Override
@@ -66,6 +97,8 @@ public final class DefaultPackageManager implements PackageManager {
     DiscoveredPackages discovery = discoverPackages();
     List<PackageDiagnostic> diagnostics = new ArrayList<>(discovery.diagnostics());
     reconcilePackages(discovery.packages(), diagnostics);
+    enforceTrustForActivePackages(diagnostics);
+    updateTrustInfoForInactivePackages();
     List<PackageInfo> discoveredPackageInfo =
         discovery.packages().keySet().stream()
             .map(packages::get)
@@ -111,40 +144,51 @@ public final class DefaultPackageManager implements PackageManager {
     PackageDescriptor descriptor = discovery.packages().get(id);
     if (descriptor == null) {
       packages.remove(id);
-    } else if (packageInstance == null) {
+      diagnostics.add(
+          new PackageDiagnostic(
+              id, configManager.getConfigPath(), "Configured enabled package could not be found"));
+      return new PackageOperationResult(false, PackageOperationCode.FAILED, diagnostics);
+    }
+    if (packageInstance == null) {
       packageInstance = new PackageInstance(descriptor, contextFactory);
       packages.put(id, packageInstance);
     } else {
       packageInstance.updateDescriptor(descriptor);
     }
 
-    enableConfiguredPackage(id, diagnostics);
+    PackageOperationResult enableResult = enablePackageInstance(packageInstance);
+    diagnostics.addAll(enableResult.diagnostics());
+    if (enableResult.successful()) {
+      enabledPackageOrder.add(id);
+    }
     rebuildEnabledPackageOrder();
-    return new PackageOperationResult(diagnostics.isEmpty(), diagnostics);
+    boolean successful =
+        enableResult.successful() && diagnostics.stream().noneMatch(PackageDiagnostic::error);
+    return new PackageOperationResult(
+        successful, successful ? enableResult.code() : PackageOperationCode.FAILED, diagnostics);
   }
 
   @Override
   public synchronized PackageOperationResult enablePackage(String id) {
     PackageInstance packageInstance = packages.get(id);
     if (packageInstance == null || !packageInstance.isAvailable()) {
-      return failedOperation(id, configManager.getConfigPath(), "Unknown package");
+      return failedOperation(id, configManager.getConfigPath(), UNKNOWN_PACKAGE_MESSAGE);
     }
     if (packageInstance.getState() == PackageState.ENABLED) {
       return failedOperation(packageInstance, "Already enabled");
     }
 
-    try {
-      enablePackageInstance(packageInstance);
-    } catch (PackageLifecycleException exception) {
-      return failedOperation(packageInstance, exception.getMessage());
+    PackageOperationResult enableResult = enablePackageInstance(packageInstance);
+    if (!enableResult.successful()) {
+      return enableResult;
     }
 
     try {
       configManager.addEnabledPackage(id);
       enabledPackageOrder.add(id);
-      return new PackageOperationResult(true, List.of());
+      return enableResult;
     } catch (IOException exception) {
-      List<PackageDiagnostic> diagnostics = new ArrayList<>();
+      List<PackageDiagnostic> diagnostics = new ArrayList<>(enableResult.diagnostics());
       diagnostics.add(
           new PackageDiagnostic(
               id,
@@ -156,7 +200,7 @@ public final class DefaultPackageManager implements PackageManager {
         diagnostics.add(createLifecycleDiagnostic(packageInstance, disableException));
       }
       enabledPackageOrder.remove(id);
-      return new PackageOperationResult(false, diagnostics);
+      return new PackageOperationResult(false, PackageOperationCode.FAILED, diagnostics);
     }
   }
 
@@ -166,7 +210,7 @@ public final class DefaultPackageManager implements PackageManager {
     PackageInstance packageInstance = packages.get(id);
     boolean configuredEnabled = configManager.getConfig().enabledPackages().contains(id);
     if (packageInstance == null && !configuredEnabled) {
-      return failedOperation(id, configManager.getConfigPath(), "Unknown package");
+      return failedOperation(id, configManager.getConfigPath(), UNKNOWN_PACKAGE_MESSAGE);
     }
     if (packageInstance != null
         && packageInstance.getState() == PackageState.DISABLED
@@ -194,7 +238,132 @@ public final class DefaultPackageManager implements PackageManager {
         packages.remove(id);
       }
     }
-    return new PackageOperationResult(diagnostics.isEmpty(), diagnostics);
+    return new PackageOperationResult(
+        diagnostics.isEmpty(),
+        diagnostics.isEmpty() ? PackageOperationCode.SUCCESS : PackageOperationCode.FAILED,
+        diagnostics);
+  }
+
+  @Override
+  public synchronized PackageOperationResult trustPackage(PackageTrustRequest request) {
+    Objects.requireNonNull(request, "request");
+    PackageTrustSnapshot expectedPackage =
+        Objects.requireNonNull(request.expectedPackage(), "expectedPackage");
+    PackageInstance packageInstance = packages.get(expectedPackage.id());
+    if (packageInstance == null || !packageInstance.isAvailable()) {
+      return failedOperation(
+          expectedPackage.id(), configManager.getConfigPath(), UNKNOWN_PACKAGE_MESSAGE);
+    }
+
+    PackageDescriptor descriptor = packageInstance.getDescriptor();
+    if (!descriptor.packageDirectory().equals(expectedPackage.packageDirectory())
+        || !descriptor.manifest().version().equals(expectedPackage.version())) {
+      return failedOperation(packageInstance, "Package changed while trust was being reviewed");
+    }
+
+    String currentFingerprint = captureFingerprint(descriptor.packageDirectory());
+    if (expectedPackage.fingerprint() != null
+        && !expectedPackage.fingerprint().equals(currentFingerprint)) {
+      return failedOperation(packageInstance, "Package changed while trust was being reviewed");
+    }
+    if (request.fingerprintEnabled() && currentFingerprint == null) {
+      return failedOperation(packageInstance, "Could not fingerprint package");
+    }
+
+    String versions =
+        TrustedVersionRange.create(request.versionScope(), descriptor.semanticVersion());
+    PackageFingerprintConfig fingerprintConfig =
+        new PackageFingerprintConfig(
+            request.fingerprintEnabled(),
+            request.mismatchBehavior(),
+            request.fingerprintEnabled() ? currentFingerprint : null);
+    try {
+      configManager.putTrustedPackage(
+          descriptor.id(), new PackageTrustConfig(versions, fingerprintConfig));
+    } catch (IOException exception) {
+      return failedOperation(
+          descriptor.id(),
+          configManager.getConfigPath(),
+          "Could not save package trust: " + exception.getMessage());
+    }
+    updateTrustInfo(packageInstance);
+    return new PackageOperationResult(true, PackageOperationCode.SUCCESS, List.of());
+  }
+
+  @Override
+  public synchronized PackageOperationResult untrustPackage(String id) {
+    PackageInstance packageInstance = packages.get(id);
+    if (packageInstance == null && !configManager.getConfig().trust().packages().containsKey(id)) {
+      return failedOperation(id, configManager.getConfigPath(), UNKNOWN_PACKAGE_MESSAGE);
+    }
+    try {
+      configManager.removeTrustedAndEnabledPackage(id);
+    } catch (IOException exception) {
+      return failedOperation(
+          id,
+          configManager.getConfigPath(),
+          "Could not save package trust: " + exception.getMessage());
+    }
+
+    List<PackageDiagnostic> diagnostics = new ArrayList<>();
+    enabledPackageOrder.remove(id);
+    if (packageInstance != null) {
+      try {
+        packageInstance.disable();
+      } catch (PackageLifecycleException exception) {
+        diagnostics.add(createLifecycleDiagnostic(packageInstance, exception));
+      }
+      updateTrustInfo(packageInstance);
+    }
+    return new PackageOperationResult(
+        diagnostics.isEmpty(),
+        diagnostics.isEmpty() ? PackageOperationCode.SUCCESS : PackageOperationCode.FAILED,
+        diagnostics);
+  }
+
+  @Override
+  public synchronized PackageOperationResult acceptPackageFingerprint(
+      String id, String expectedFingerprint) {
+    PackageInstance packageInstance = packages.get(id);
+    if (packageInstance == null || !packageInstance.isAvailable()) {
+      return failedOperation(id, configManager.getConfigPath(), UNKNOWN_PACKAGE_MESSAGE);
+    }
+    PackageTrustConfig packageTrustConfig = configManager.getConfig().trust().packages().get(id);
+    if (packageTrustConfig == null) {
+      return new PackageOperationResult(
+          false,
+          PackageOperationCode.TRUST_REQUIRED,
+          List.of(createTrustRequiredDiagnostic(packageInstance, "Package is not trusted")));
+    }
+    if (!TrustedVersionRange.parse(packageTrustConfig.versions())
+        .matches(packageInstance.getDescriptor().semanticVersion())) {
+      return new PackageOperationResult(
+          false,
+          PackageOperationCode.TRUST_REQUIRED,
+          List.of(
+              createTrustRequiredDiagnostic(
+                  packageInstance, "Package version is outside its trusted range")));
+    }
+
+    String currentFingerprint =
+        captureFingerprint(packageInstance.getDescriptor().packageDirectory());
+    if (currentFingerprint == null) {
+      return failedOperation(packageInstance, "Could not fingerprint package");
+    }
+    if (expectedFingerprint != null && !expectedFingerprint.equals(currentFingerprint)) {
+      return failedOperation(
+          packageInstance, "Package changed before its fingerprint was accepted");
+    }
+    try {
+      configManager.updatePackageFingerprint(id, currentFingerprint);
+    } catch (IOException exception) {
+      return failedOperation(
+          id,
+          configManager.getConfigPath(),
+          "Could not save package fingerprint: " + exception.getMessage());
+    }
+    updateTrustInfo(packageInstance);
+    return new PackageOperationResult(true, PackageOperationCode.SUCCESS, List.of());
   }
 
   @Override
@@ -211,6 +380,27 @@ public final class DefaultPackageManager implements PackageManager {
   @Override
   public List<String> getConfiguredEnabledPackageIds() {
     return configManager.getConfig().enabledPackages();
+  }
+
+  @Override
+  public List<String> getTrustedPackageIds() {
+    return List.copyOf(configManager.getConfig().trust().packages().keySet());
+  }
+
+  @Override
+  public synchronized Optional<PackageTrustSnapshot> captureTrustSnapshot(String id) {
+    PackageInstance packageInstance = packages.get(id);
+    if (packageInstance == null || !packageInstance.isAvailable()) {
+      return Optional.empty();
+    }
+    PackageDescriptor descriptor = packageInstance.getDescriptor();
+    return Optional.of(
+        new PackageTrustSnapshot(
+            descriptor.id(),
+            descriptor.manifest().name(),
+            descriptor.manifest().version(),
+            descriptor.packageDirectory(),
+            captureFingerprint(descriptor.packageDirectory())));
   }
 
   @Override
@@ -306,6 +496,50 @@ public final class DefaultPackageManager implements PackageManager {
     packages.putAll(reconciledPackages);
   }
 
+  private void enforceTrustForActivePackages(List<PackageDiagnostic> diagnostics) {
+    for (String packageId : List.copyOf(enabledPackageOrder)) {
+      PackageInstance packageInstance = packages.get(packageId);
+      if (packageInstance != null && packageInstance.getState() == PackageState.ENABLED) {
+        PackageTrustEvaluation evaluation = evaluate(packageInstance);
+        if (evaluation.allowed()) {
+          addTrustWarning(packageInstance, evaluation, diagnostics);
+        } else {
+          diagnostics.add(createBlockedTrustDiagnostic(packageInstance, evaluation));
+          try {
+            packageInstance.disable();
+          } catch (PackageLifecycleException exception) {
+            diagnostics.add(createLifecycleDiagnostic(packageInstance, exception));
+          }
+          enabledPackageOrder.remove(packageId);
+        }
+      }
+    }
+  }
+
+  private void updateTrustInfoForInactivePackages() {
+    for (PackageInstance packageInstance : packages.values()) {
+      if (packageInstance.getState() != PackageState.ENABLED) {
+        updateTrustInfo(packageInstance);
+      }
+    }
+  }
+
+  private void updateTrustInfo(PackageInstance packageInstance) {
+    packageInstance.setTrustInfo(evaluate(packageInstance).info());
+  }
+
+  private PackageTrustEvaluation evaluate(PackageInstance packageInstance) {
+    PackageDescriptor descriptor = packageInstance.getDescriptor();
+    PackageTrustEvaluation evaluation =
+        trustEvaluator.evaluate(
+            descriptor.id(),
+            descriptor.semanticVersion(),
+            descriptor.packageDirectory(),
+            configManager.getConfig());
+    packageInstance.setTrustInfo(evaluation.info());
+    return evaluation;
+  }
+
   private List<PackageDiagnostic> disableAllPackages() {
     List<PackageDiagnostic> diagnostics = new ArrayList<>();
     for (String packageId : enabledPackageOrder.reversed()) {
@@ -333,11 +567,94 @@ public final class DefaultPackageManager implements PackageManager {
               "Configured enabled package could not be found"));
       return;
     }
-    try {
-      enablePackageInstance(packageInstance);
+    PackageOperationResult result = enablePackageInstance(packageInstance);
+    diagnostics.addAll(result.diagnostics());
+    if (result.successful()) {
       enabledPackageOrder.add(packageId);
+    }
+  }
+
+  private PackageOperationResult enablePackageInstance(PackageInstance packageInstance) {
+    PackageTrustEvaluation evaluation = evaluate(packageInstance);
+    if (!evaluation.allowed()) {
+      PackageOperationCode code =
+          evaluation.info().state() == PackageTrustState.UNTRUSTED
+                  || evaluation.info().state() == PackageTrustState.VERSION_NOT_TRUSTED
+              ? PackageOperationCode.TRUST_REQUIRED
+              : PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED;
+      return new PackageOperationResult(
+          false, code, List.of(createBlockedTrustDiagnostic(packageInstance, evaluation)));
+    }
+
+    List<PackageDiagnostic> diagnostics = new ArrayList<>();
+    addTrustWarning(packageInstance, evaluation, diagnostics);
+    try {
+      packageInstance.enable();
+      return new PackageOperationResult(true, PackageOperationCode.SUCCESS, diagnostics);
     } catch (PackageLifecycleException exception) {
       diagnostics.add(createLifecycleDiagnostic(packageInstance, exception));
+      return new PackageOperationResult(false, PackageOperationCode.FAILED, diagnostics);
+    }
+  }
+
+  private void addTrustWarning(
+      PackageInstance packageInstance,
+      PackageTrustEvaluation evaluation,
+      List<PackageDiagnostic> diagnostics) {
+    if (!evaluation.warning()) {
+      return;
+    }
+    LOGGER.warn(
+        "Package {} fingerprint changed: expected {}, found {}",
+        packageInstance.getId(),
+        evaluation.info().expectedFingerprint(),
+        evaluation.info().currentFingerprint());
+    if (evaluation.chatVisible()) {
+      diagnostics.add(
+          new PackageDiagnostic(
+              PackageDiagnosticCode.FINGERPRINT_WARNING,
+              packageInstance.getId(),
+              packageInstance.getDescriptor().packageDirectory(),
+              evaluation.info().message(),
+              true,
+              false));
+    }
+  }
+
+  private PackageDiagnostic createBlockedTrustDiagnostic(
+      PackageInstance packageInstance, PackageTrustEvaluation evaluation) {
+    LOGGER.warn("Blocked package {}: {}", packageInstance.getId(), evaluation.info().message());
+    PackageDiagnosticCode code =
+        evaluation.info().state() == PackageTrustState.UNTRUSTED
+                || evaluation.info().state() == PackageTrustState.VERSION_NOT_TRUSTED
+            ? PackageDiagnosticCode.TRUST_REQUIRED
+            : PackageDiagnosticCode.FINGERPRINT_BLOCKED;
+    return new PackageDiagnostic(
+        code,
+        packageInstance.getId(),
+        packageInstance.getDescriptor().packageDirectory(),
+        evaluation.info().message(),
+        true,
+        true);
+  }
+
+  private PackageDiagnostic createTrustRequiredDiagnostic(
+      PackageInstance packageInstance, String message) {
+    return new PackageDiagnostic(
+        PackageDiagnosticCode.TRUST_REQUIRED,
+        packageInstance.getId(),
+        packageInstance.getDescriptor().packageDirectory(),
+        message,
+        true,
+        true);
+  }
+
+  private String captureFingerprint(Path packageDirectory) {
+    try {
+      return fingerprintService.fingerprint(packageDirectory);
+    } catch (PackageFingerprintException exception) {
+      LOGGER.warn("Could not fingerprint package at {}", packageDirectory, exception);
+      return null;
     }
   }
 
@@ -361,18 +678,14 @@ public final class DefaultPackageManager implements PackageManager {
         .toList();
   }
 
-  private void enablePackageInstance(PackageInstance packageInstance)
-      throws PackageLifecycleException {
-    packageInstance.enable();
-  }
-
   private PackageOperationResult failedOperation(PackageInstance packageInstance, String message) {
     return failedOperation(
         packageInstance.getId(), packageInstance.getDescriptor().packageDirectory(), message);
   }
 
   private PackageOperationResult failedOperation(String id, Path path, String message) {
-    return new PackageOperationResult(false, List.of(new PackageDiagnostic(id, path, message)));
+    return new PackageOperationResult(
+        false, PackageOperationCode.FAILED, List.of(new PackageDiagnostic(id, path, message)));
   }
 
   private PackageDiagnostic createLifecycleDiagnostic(

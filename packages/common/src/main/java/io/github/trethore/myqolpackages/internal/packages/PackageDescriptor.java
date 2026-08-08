@@ -19,15 +19,25 @@ package io.github.trethore.myqolpackages.internal.packages;
 
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
+import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
+import io.github.trethore.myqolpackages.internal.trust.SemanticVersion;
 import java.nio.file.Path;
 
 record PackageDescriptor(
-    String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
+    String id,
+    Path packageDirectory,
+    Path entrypoint,
+    PackageManifest manifest,
+    SemanticVersion semanticVersion) {
+  PackageDescriptor(String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
+    this(id, packageDirectory, entrypoint, manifest, SemanticVersion.parse(manifest.version()));
+  }
+
   Path dataDirectory() {
     return PackageDirectories.resolveDataDirectory(packageDirectory, id);
   }
 
-  PackageInfo toInfo(PackageState state) {
+  PackageInfo toInfo(PackageState state, PackageTrustInfo trustInfo) {
     return new PackageInfo(
         id,
         manifest.name(),
@@ -35,6 +45,7 @@ record PackageDescriptor(
         manifest.version(),
         manifest.entrypoint(),
         packageDirectory,
-        state);
+        state,
+        trustInfo);
   }
 }

@@ -17,16 +17,22 @@
  */
 package io.github.trethore.myqolpackages.api.packages;
 
-import java.nio.file.Path;
-
-public record PackageDiagnostic(
-    PackageDiagnosticCode code,
-    String packageId,
-    Path packageDirectory,
-    String message,
-    boolean chatVisible,
-    boolean error) {
-  public PackageDiagnostic(String packageId, Path packageDirectory, String message) {
-    this(PackageDiagnosticCode.GENERAL, packageId, packageDirectory, message, true, true);
+public record PackageTrustInfo(
+    PackageTrustState state,
+    String trustedVersions,
+    boolean fingerprintEnabled,
+    FingerprintMismatchBehavior mismatchBehavior,
+    String expectedFingerprint,
+    String currentFingerprint,
+    String message) {
+  public static PackageTrustInfo untrusted() {
+    return new PackageTrustInfo(
+        PackageTrustState.UNTRUSTED,
+        null,
+        true,
+        FingerprintMismatchBehavior.BLOCK,
+        null,
+        null,
+        null);
   }
 }

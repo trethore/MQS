@@ -69,6 +69,17 @@ public final class InfoPackageClientCommand {
             .append(Component.literal("State: "))
             .append(PackageCommandSupport.formatState(packageInfo.state())));
     MqpCommandFeedback.sendLine(
+        source,
+        Component.empty()
+            .append(Component.literal("Trust: "))
+            .append(PackageCommandSupport.formatTrustState(packageInfo.trust().state())));
+    if (packageInfo.trust().trustedVersions() != null) {
+      MqpCommandFeedback.sendLine(
+          source, "Trusted versions: " + packageInfo.trust().trustedVersions());
+    }
+    MqpCommandFeedback.sendLine(
+        source, "Fingerprint: " + PackageCommandSupport.formatFingerprint(packageInfo.trust()));
+    MqpCommandFeedback.sendLine(
         source, "Directory: " + anonymizeDirectory(packageInfo.packageDirectory()));
     return ClientCommandResult.SUCCESS;
   }

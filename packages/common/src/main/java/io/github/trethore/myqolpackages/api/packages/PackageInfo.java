@@ -26,4 +26,5 @@ public record PackageInfo(
     String version,
     String entrypoint,
     Path packageDirectory,
-    PackageState state) {}
+    PackageState state,
+    PackageTrustInfo trust) {}

@@ -20,62 +20,56 @@ package io.github.trethore.myqolpackages.command.commands.packages;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
-import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager;
-import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager.OriginalOperation;
-import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
-public final class EnablePackageClientCommand {
+public final class PackageFingerprintClientCommand {
   private final PackageManager packageManager;
   private final PackageTrustInteractionManager interactionManager;
 
-  public EnablePackageClientCommand(
+  public PackageFingerprintClientCommand(
       PackageManager packageManager, PackageTrustInteractionManager interactionManager) {
     this.packageManager = packageManager;
     this.interactionManager = interactionManager;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("enable")
+    return ClientCommandManager.literal("fingerprint")
         .then(
-            ClientCommandManager.argument("id", StringArgumentType.word())
-                .suggests((context, builder) -> suggestPackageIds(builder))
-                .executes(this::execute));
+            ClientCommandManager.literal("accept")
+                .then(
+                    ClientCommandManager.argument("id", StringArgumentType.word())
+                        .suggests(
+                            (context, builder) ->
+                                PackageCommandSupport.suggestPackageIds(
+                                    builder, packageManager.getPackages(), PackageInfo::id))
+                        .executes(this::executeAccept)));
   }
 
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
+  public LiteralArgumentBuilder<FabricClientCommandSource> buildAcceptCallbackCommand() {
+    return ClientCommandManager.literal("_accept-fingerprint")
+        .then(
+            ClientCommandManager.argument("token", StringArgumentType.word())
+                .executes(
+                    context ->
+                        interactionManager.acceptFingerprint(
+                            context.getSource(), StringArgumentType.getString(context, "token"))));
+  }
+
+  private int executeAccept(CommandContext<FabricClientCommandSource> context) {
     String packageId = StringArgumentType.getString(context, "id");
-    PackageOperationResult result = packageManager.enablePackage(packageId);
-    if (result.code() == PackageOperationCode.TRUST_REQUIRED) {
-      return interactionManager.start(source, packageId, OriginalOperation.ENABLE);
-    }
-    if (result.code() == PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED) {
-      interactionManager.sendFingerprintReview(source, packageId, OriginalOperation.ENABLE);
+    PackageOperationResult result = packageManager.acceptPackageFingerprint(packageId, null);
+    PackageCommandSupport.sendDiagnostics(context.getSource(), result.diagnostics());
+    if (!result.successful()) {
       return ClientCommandResult.FAILURE;
     }
-    PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
-    if (result.successful()) {
-      PackageCommandSupport.sendEnabled(source, packageId);
-      return ClientCommandResult.SUCCESS;
-    }
-    return ClientCommandResult.FAILURE;
-  }
-
-  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
-    return PackageCommandSupport.suggestPackageIds(
-        builder,
-        packageManager.getPackages(),
-        PackageInfo::id,
-        packageInfo -> packageInfo.state() == PackageState.DISABLED);
+    MqpCommandFeedback.sendInfo(context.getSource(), "Accepted fingerprint for " + packageId);
+    return ClientCommandResult.SUCCESS;
   }
 }

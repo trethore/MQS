@@ -17,55 +17,44 @@
  */
 package io.github.trethore.myqolpackages.command.commands.packages;
 
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
+import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
-import java.util.List;
+import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.network.chat.Component;
 
-public final class ListPackagesClientCommand {
+public final class UntrustPackageClientCommand {
   private final PackageManager packageManager;
 
-  public ListPackagesClientCommand(PackageManager packageManager) {
+  public UntrustPackageClientCommand(PackageManager packageManager) {
     this.packageManager = packageManager;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("list").executes(this::execute);
+    return ClientCommandManager.literal("untrust")
+        .then(
+            ClientCommandManager.argument("id", StringArgumentType.word())
+                .suggests(
+                    (context, builder) ->
+                        PackageCommandSupport.suggestPackageIds(
+                            builder, packageManager.getTrustedPackageIds(), Function.identity()))
+                .executes(this::execute));
   }
 
   private int execute(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
-    List<PackageInfo> packages = packageManager.getPackages();
-    if (packages.isEmpty()) {
-      MqpCommandFeedback.sendInfo(source, "No packages discovered.");
-      return ClientCommandResult.SUCCESS;
+    String packageId = StringArgumentType.getString(context, "id");
+    PackageOperationResult result = packageManager.untrustPackage(packageId);
+    PackageCommandSupport.sendDiagnostics(context.getSource(), result.diagnostics());
+    if (!result.successful()) {
+      return ClientCommandResult.FAILURE;
     }
-
-    MqpCommandFeedback.sendHeader(source);
-    MqpCommandFeedback.sendLine(source, "Packages discovered: " + packages.size());
-    for (PackageInfo packageInfo : packages) {
-      MqpCommandFeedback.sendLine(
-          source,
-          Component.empty()
-              .append(
-                  Component.literal(
-                      packageInfo.name()
-                          + " ("
-                          + packageInfo.id()
-                          + ") - "
-                          + packageInfo.version()
-                          + " ["))
-              .append(PackageCommandSupport.formatState(packageInfo.state()))
-              .append(Component.literal("] ["))
-              .append(PackageCommandSupport.formatTrustState(packageInfo.trust().state()))
-              .append(Component.literal("]")));
-    }
-    return packages.size();
+    MqpCommandFeedback.sendInfo(
+        context.getSource(), packageId + " is now untrusted, disabled, and stopped");
+    return ClientCommandResult.SUCCESS;
   }
 }

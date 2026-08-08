@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.internal.packages;
 
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.internal.trust.SemanticVersion;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -87,9 +88,12 @@ public final class FileSystemPackageDiscovery {
 
       PackageManifest manifest = manifestReader.read(manifestPath);
       validateManifest(manifest);
+      SemanticVersion semanticVersion = parseVersion(manifest.version());
       String packageId = resolvePackageId(manifest);
       Path entrypoint = resolveEntrypoint(packageDirectory, manifest.entrypoint());
-      packages.add(new PackageDescriptor(packageId, packageDirectory, entrypoint, manifest));
+      packages.add(
+          new PackageDescriptor(
+              packageId, packageDirectory, entrypoint, manifest, semanticVersion));
     } catch (IOException | PackageValidationException exception) {
       diagnostics.add(
           new PackageDiagnostic(diagnosticId, packageDirectory, exception.getMessage()));
@@ -162,6 +166,14 @@ public final class FileSystemPackageDiscovery {
   private void requireValue(String value, String fieldName) throws PackageValidationException {
     if (value == null || value.isBlank()) {
       throw new PackageValidationException("Missing or empty manifest field: " + fieldName);
+    }
+  }
+
+  private SemanticVersion parseVersion(String version) throws PackageValidationException {
+    try {
+      return SemanticVersion.parse(version);
+    } catch (IllegalArgumentException exception) {
+      throw new PackageValidationException(exception.getMessage());
     }
   }
 

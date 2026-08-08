@@ -15,18 +15,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.packages;
+package io.github.trethore.myqolpackages.internal.trust;
 
-import java.nio.file.Path;
+public final class PackageFingerprintException extends Exception {
+  public PackageFingerprintException(String message) {
+    super(message);
+  }
 
-public record PackageDiagnostic(
-    PackageDiagnosticCode code,
-    String packageId,
-    Path packageDirectory,
-    String message,
-    boolean chatVisible,
-    boolean error) {
-  public PackageDiagnostic(String packageId, Path packageDirectory, String message) {
-    this(PackageDiagnosticCode.GENERAL, packageId, packageDirectory, message, true, true);
+  public PackageFingerprintException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

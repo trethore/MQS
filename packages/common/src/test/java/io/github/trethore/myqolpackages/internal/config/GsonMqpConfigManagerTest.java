@@ -21,6 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.trethore.myqolpackages.api.config.MqpConfig;
+import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
+import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
+import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,6 +43,12 @@ class GsonMqpConfigManagerTest {
 
     assertTrue(result.config().additionalPackageRoots().isEmpty());
     assertTrue(result.config().enabledPackages().isEmpty());
+    assertEquals(MqpConfig.CURRENT_CONFIG_VERSION, result.config().configVersion());
+    assertTrue(result.config().trust().fingerprintDefaults().enabled());
+    assertEquals(
+        FingerprintMismatchBehavior.BLOCK,
+        result.config().trust().fingerprintDefaults().mismatchBehavior());
+    assertTrue(result.config().trust().packages().isEmpty());
     assertTrue(result.diagnostics().isEmpty());
     assertTrue(Files.isRegularFile(temporaryDirectory.resolve("config.json")));
     String config = Files.readString(temporaryDirectory.resolve("config.json"));
@@ -110,5 +120,44 @@ class GsonMqpConfigManagerTest {
     assertEquals(List.of("example-package"), result.config().enabledPackages());
     assertTrue(result.diagnostics().isEmpty());
     assertFalse(Files.readString(configPath).contains("permissions"));
+  }
+
+  @Test
+  void preservesTrustWhenEnabledPackagesChange() throws IOException {
+    GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
+    configManager.load();
+    configManager.putTrustedPackage(
+        "example-package",
+        new PackageTrustConfig(
+            "^1.2.3",
+            new PackageFingerprintConfig(
+                true, FingerprintMismatchBehavior.CHAT_WARNING, "sha256:" + "a".repeat(64))));
+
+    configManager.addEnabledPackage("example-package");
+
+    MqpConfig loaded = new GsonMqpConfigManager(temporaryDirectory).load().config();
+    assertEquals("^1.2.3", loaded.trust().packages().get("example-package").versions());
+    assertTrue(
+        Files.readString(temporaryDirectory.resolve("config.json")).contains("chat_warning"));
+  }
+
+  @Test
+  void rejectsUnknownFingerprintBehavior() throws IOException {
+    Files.writeString(
+        temporaryDirectory.resolve("config.json"),
+        """
+        {
+          "trust": {
+            "fingerprintDefaults": {
+              "mismatchBehavior": "unknown"
+            }
+          }
+        }
+        """);
+
+    MqpConfigLoadResult result = new GsonMqpConfigManager(temporaryDirectory).load();
+
+    assertEquals(1, result.diagnostics().size());
+    assertTrue(result.config().trust().packages().isEmpty());
   }
 }
