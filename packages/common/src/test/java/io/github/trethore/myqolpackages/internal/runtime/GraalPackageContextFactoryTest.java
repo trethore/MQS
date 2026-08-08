@@ -62,6 +62,61 @@ class GraalPackageContextFactoryTest {
   }
 
   @Test
+  void reportsRuntimeErrorSourceLocation() throws IOException, PackageLifecycleException {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            import { fail } from "./failure.js";
+
+            export function onEnable() {
+              fail();
+            }
+
+            export function onDisable() {}
+            """);
+    Files.writeString(
+        entrypoint.resolveSibling("failure.js"),
+        """
+        export function fail() {
+          BlocPos;
+        }
+        """);
+
+    try (GraalPackageContextFactory contextFactory = createContextFactory();
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
+      PackageLifecycleException exception =
+          assertThrows(PackageLifecycleException.class, context::invokeEnable);
+
+      assertTrue(
+          exception
+              .getMessage()
+              .endsWith("ReferenceError: BlocPos is not defined (src/failure.js:2:3)"),
+          exception.getMessage());
+    }
+  }
+
+  @Test
+  void reportsEntrypointLoadErrorSourceLocation() throws IOException {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            const invalid = ;
+            export function onEnable() {}
+            export function onDisable() {}
+            """);
+
+    try (GraalPackageContextFactory contextFactory = createContextFactory()) {
+      PackageLifecycleException exception =
+          assertThrows(
+              PackageLifecycleException.class, () -> contextFactory.create(createSpec(entrypoint)));
+
+      assertTrue(exception.getMessage().contains("(src/index.js:1:"), exception.getMessage());
+    } catch (PackageLifecycleException exception) {
+      throw new AssertionError(exception);
+    }
+  }
+
+  @Test
   void rejectsMissingLifecycleExport() throws IOException, PackageLifecycleException {
     Path entrypoint =
         createEntrypoint(

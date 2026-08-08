@@ -17,21 +17,27 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime;
 
+import java.nio.file.Path;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 final class GraalPackageScriptContext implements PackageScriptContext {
   private final Value onDisable;
   private final Value onEnable;
+  private final Path packageDirectory;
   private final GraalPackageContextResources resources;
 
   private boolean closed;
 
   GraalPackageScriptContext(
-      GraalPackageContextResources resources, Value onEnable, Value onDisable) {
+      GraalPackageContextResources resources,
+      Value onEnable,
+      Value onDisable,
+      Path packageDirectory) {
     this.resources = resources;
     this.onEnable = onEnable;
     this.onDisable = onDisable;
+    this.packageDirectory = packageDirectory;
   }
 
   @Override
@@ -72,8 +78,8 @@ final class GraalPackageScriptContext implements PackageScriptContext {
             hookName + " returned a Promise; asynchronous lifecycle hooks are not supported");
       }
     } catch (PolyglotException exception) {
-      throw new PackageLifecycleException(
-          hookName + " failed: " + exception.getMessage(), exception);
+      throw GraalPackageExceptionSupport.createFailure(
+          hookName + " failed", exception, packageDirectory);
     }
   }
 }

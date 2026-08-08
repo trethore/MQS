@@ -413,20 +413,17 @@ public final class DefaultPackageManager implements PackageManager {
       try {
         packageInstance.tick();
       } catch (PackageLifecycleException exception) {
-        LOGGER.warn("Could not process asynchronous work for package {}", packageId, exception);
+        LOGGER
+            .atError()
+            .setCause(exception)
+            .log("Could not process asynchronous work for package {}", packageId);
       }
     }
   }
 
   @Override
   public synchronized void close() {
-    for (PackageDiagnostic diagnostic : disableAllPackages()) {
-      LOGGER.warn(
-          "Could not stop package {} at {}: {}",
-          diagnostic.packageId(),
-          diagnostic.packageDirectory(),
-          diagnostic.message());
-    }
+    disableAllPackages();
     try {
       contextFactory.close();
     } catch (PackageLifecycleException exception) {
@@ -690,6 +687,10 @@ public final class DefaultPackageManager implements PackageManager {
 
   private PackageDiagnostic createLifecycleDiagnostic(
       PackageInstance packageInstance, PackageLifecycleException exception) {
+    LOGGER
+        .atError()
+        .setCause(exception)
+        .log("Package {} lifecycle operation failed", packageInstance.getId());
     return new PackageDiagnostic(
         packageInstance.getId(),
         packageInstance.getDescriptor().packageDirectory(),

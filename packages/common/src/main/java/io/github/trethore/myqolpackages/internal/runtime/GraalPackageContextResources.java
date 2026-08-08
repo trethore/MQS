@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.internal.runtime;
 
 import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
+import java.nio.file.Path;
 import org.graalvm.polyglot.Context;
 
 final class GraalPackageContextResources implements AutoCloseable {
@@ -25,6 +26,7 @@ final class GraalPackageContextResources implements AutoCloseable {
   private final PackageLogOutputStream errorOutput;
   private final PackageHttpClient httpClient;
   private final PackageLogOutputStream output;
+  private final Path packageDirectory;
 
   private boolean closed;
 
@@ -32,11 +34,13 @@ final class GraalPackageContextResources implements AutoCloseable {
       Context context,
       PackageLogOutputStream output,
       PackageLogOutputStream errorOutput,
-      PackageHttpClient httpClient) {
+      PackageHttpClient httpClient,
+      Path packageDirectory) {
     this.context = context;
     this.output = output;
     this.errorOutput = errorOutput;
     this.httpClient = httpClient;
+    this.packageDirectory = packageDirectory;
   }
 
   @Override
@@ -49,7 +53,8 @@ final class GraalPackageContextResources implements AutoCloseable {
       httpClient.close();
       context.close();
     } catch (RuntimeException exception) {
-      throw new PackageLifecycleException("Could not close JavaScript context", exception);
+      throw GraalPackageExceptionSupport.createFailure(
+          "Could not close JavaScript context", exception, packageDirectory);
     } finally {
       output.close();
       errorOutput.close();
@@ -64,7 +69,8 @@ final class GraalPackageContextResources implements AutoCloseable {
     try {
       httpClient.tick();
     } catch (RuntimeException exception) {
-      throw new PackageLifecycleException("Could not process an HTTP completion", exception);
+      throw GraalPackageExceptionSupport.createFailure(
+          "Could not process an HTTP completion", exception, packageDirectory);
     }
   }
 }

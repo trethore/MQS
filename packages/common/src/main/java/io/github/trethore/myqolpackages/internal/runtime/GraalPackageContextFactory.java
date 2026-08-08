@@ -96,7 +96,7 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     try {
       resources = createResources(spec);
     } catch (IOException | RuntimeException exception) {
-      throw createLoadFailure(exception);
+      throw createLoadFailure(exception, spec.packageDirectory());
     }
     try {
       Source entrypointSource =
@@ -106,9 +106,9 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
       Value exports = resources.getContext().eval(entrypointSource);
       Value onEnable = requireLifecycleHook(exports, "onEnable");
       Value onDisable = requireLifecycleHook(exports, "onDisable");
-      return new GraalPackageScriptContext(resources, onEnable, onDisable);
+      return new GraalPackageScriptContext(resources, onEnable, onDisable, spec.packageDirectory());
     } catch (IOException | RuntimeException | PackageLifecycleException exception) {
-      PackageLifecycleException failure = createLoadFailure(exception);
+      PackageLifecycleException failure = createLoadFailure(exception, spec.packageDirectory());
       try {
         resources.close();
       } catch (PackageLifecycleException closeException) {
@@ -152,7 +152,8 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     try {
       context = createContext(spec, output, errorOutput);
       mqpApiInstaller.install(context, spec, packageHttpClient);
-      return new GraalPackageContextResources(context, output, errorOutput, packageHttpClient);
+      return new GraalPackageContextResources(
+          context, output, errorOutput, packageHttpClient, spec.packageDirectory());
     } catch (RuntimeException exception) {
       if (context != null) {
         try {
@@ -168,12 +169,13 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     }
   }
 
-  private static PackageLifecycleException createLoadFailure(Exception exception) {
+  private static PackageLifecycleException createLoadFailure(
+      Exception exception, Path packageDirectory) {
     if (exception instanceof PackageLifecycleException lifecycleException) {
       return lifecycleException;
     }
-    return new PackageLifecycleException(
-        "Could not load entrypoint: " + exception.getMessage(), exception);
+    return GraalPackageExceptionSupport.createFailure(
+        "Could not load entrypoint", exception, packageDirectory);
   }
 
   private void warmUpEngine() {
