@@ -26,6 +26,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -78,7 +79,10 @@ public final class InfoPackageClientCommand {
           source, "Trusted versions: " + packageInfo.trust().trustedVersions());
     }
     MqpCommandFeedback.sendLine(
-        source, "Fingerprint: " + PackageCommandSupport.formatFingerprint(packageInfo.trust()));
+        source,
+        Component.empty()
+            .append(Component.literal("Fingerprint: "))
+            .append(PackageCommandSupport.formatFingerprint(packageInfo.trust())));
     MqpCommandFeedback.sendLine(
         source, "Directory: " + anonymizeDirectory(packageInfo.packageDirectory()));
     return ClientCommandResult.SUCCESS;

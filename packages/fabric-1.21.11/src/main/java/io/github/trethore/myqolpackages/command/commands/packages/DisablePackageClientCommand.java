@@ -25,6 +25,7 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -49,11 +50,12 @@ public final class DisablePackageClientCommand {
     FabricClientCommandSource source = context.getSource();
     String packageId = StringArgumentType.getString(context, "id");
     PackageOperationResult result = packageManager.disablePackage(packageId);
+    PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
     if (result.successful()) {
       PackageCommandSupport.sendDisabled(source, packageId);
       return ClientCommandResult.SUCCESS;
     }
-    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+    return ClientCommandResult.FAILURE;
   }
 
   private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {

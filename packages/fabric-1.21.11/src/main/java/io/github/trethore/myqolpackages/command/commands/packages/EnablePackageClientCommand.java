@@ -28,6 +28,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
 import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
 import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand.OriginalOperation;
 import java.util.concurrent.CompletableFuture;

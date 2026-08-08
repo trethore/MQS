@@ -20,10 +20,7 @@ package io.github.trethore.myqolpackages.command.commands.trust;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
@@ -33,17 +30,13 @@ import io.github.trethore.myqolpackages.api.packages.TrustVersionScope;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.HiddenClientCommand;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
 import io.github.trethore.myqolpackages.command.commands.trust.PackageTrustInteractionManager.FingerprintSession;
 import io.github.trethore.myqolpackages.command.commands.trust.PackageTrustInteractionManager.TrustSession;
-import java.util.Locale;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 
 public final class TrustPackageClientCommand {
@@ -62,7 +55,10 @@ public final class TrustPackageClientCommand {
     return ClientCommandManager.literal("trust")
         .then(
             ClientCommandManager.argument("id", StringArgumentType.word())
-                .suggests((context, builder) -> suggestPackageIds(builder))
+                .suggests(
+                    (context, builder) ->
+                        PackageCommandSupport.suggestPackageIds(
+                            builder, packageManager.getPackages(), PackageInfo::id))
                 .executes(this::execute));
   }
 
@@ -130,7 +126,7 @@ public final class TrustPackageClientCommand {
     PackageOperationResult result =
         packageManager.acceptPackageFingerprint(
             session.snapshot().id(), session.snapshot().fingerprint());
-    sendDiagnostics(source, result);
+    PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
     if (!result.successful()) {
       return ClientCommandResult.FAILURE;
     }
@@ -174,7 +170,7 @@ public final class TrustPackageClientCommand {
         packageManager.trustPackage(
             new PackageTrustRequest(
                 session.snapshot(), session.versionScope(), fingerprintEnabled, mismatchBehavior));
-    sendDiagnostics(source, trustResult);
+    PackageCommandSupport.sendDiagnostics(source, trustResult.diagnostics());
     if (!trustResult.successful()) {
       return ClientCommandResult.FAILURE;
     }
@@ -216,17 +212,6 @@ public final class TrustPackageClientCommand {
                     StringArgumentType.getString(context, TOKEN_ARGUMENT),
                     fingerprintEnabled,
                     mismatchBehavior));
-  }
-
-  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
-    String remaining = builder.getRemainingLowerCase();
-    for (PackageInfo packageInfo : packageManager.getPackages()) {
-      String packageId = packageInfo.id();
-      if (packageId.toLowerCase(Locale.ROOT).contains(remaining)) {
-        builder.suggest(packageId);
-      }
-    }
-    return builder.buildFuture();
   }
 
   private void sendStepOne(
@@ -290,7 +275,7 @@ public final class TrustPackageClientCommand {
         originalOperation == OriginalOperation.RELOAD
             ? packageManager.reloadPackage(packageId)
             : packageManager.enablePackage(packageId);
-    sendDiagnostics(source, result);
+    PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
     if (result.successful()) {
       MqpCommandFeedback.sendInfo(
           source,
@@ -304,31 +289,8 @@ public final class TrustPackageClientCommand {
     return ClientCommandResult.FAILURE;
   }
 
-  private static void sendDiagnostics(
-      FabricClientCommandSource source, PackageOperationResult result) {
-    result.diagnostics().stream()
-        .filter(PackageDiagnostic::chatVisible)
-        .forEach(diagnostic -> sendDiagnostic(source, diagnostic));
-  }
-
-  private static void sendDiagnostic(
-      FabricClientCommandSource source, PackageDiagnostic diagnostic) {
-    String message = diagnostic.packageId() + ": " + diagnostic.message();
-    if (diagnostic.error()) {
-      MqpCommandFeedback.sendError(source, message);
-    } else {
-      MqpCommandFeedback.sendWarning(source, message);
-    }
-  }
-
   private static Component button(String label, String command, String hoverText) {
-    return Component.literal("[" + label + "]")
-        .withStyle(
-            style ->
-                style
-                    .withColor(ChatFormatting.GREEN)
-                    .withClickEvent(new ClickEvent.RunCommand(command))
-                    .withHoverEvent(new HoverEvent.ShowText(Component.literal(hoverText))));
+    return MqpCommandFeedback.action(label, command, hoverText);
   }
 
   private static String versionCommand(String token, String scope) {

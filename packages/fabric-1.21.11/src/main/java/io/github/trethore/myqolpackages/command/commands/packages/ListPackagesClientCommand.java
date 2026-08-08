@@ -23,6 +23,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
 import java.util.List;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -53,14 +54,7 @@ public final class ListPackagesClientCommand {
       MqpCommandFeedback.sendLine(
           source,
           Component.empty()
-              .append(
-                  Component.literal(
-                      packageInfo.name()
-                          + " ("
-                          + packageInfo.id()
-                          + ") - "
-                          + packageInfo.version()
-                          + " ["))
+              .append(Component.literal(packageInfo.name() + " - " + packageInfo.version() + " ["))
               .append(PackageCommandSupport.formatState(packageInfo.state()))
               .append(Component.literal("] ["))
               .append(PackageCommandSupport.formatTrustState(packageInfo.trust().state()))

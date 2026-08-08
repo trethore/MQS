@@ -20,12 +20,10 @@ package io.github.trethore.myqolpackages.command;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnosticCode;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
+import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
 import java.util.List;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 
 public final class StartupPackageNotificationService {
   private final List<PackageDiagnostic> diagnostics;
@@ -52,27 +50,11 @@ public final class StartupPackageNotificationService {
           delivered = true;
           client.gui.getChat().addMessage(Component.literal("[MQP] Package trust review:"));
           for (PackageDiagnostic diagnostic : diagnostics) {
-            client.gui.getChat().addMessage(createDiagnosticMessage(diagnostic));
+            client
+                .gui
+                .getChat()
+                .addMessage(PackageCommandSupport.createDiagnosticMessage(diagnostic));
           }
         });
-  }
-
-  private static Component createDiagnosticMessage(PackageDiagnostic diagnostic) {
-    MutableComponent message =
-        Component.literal(diagnostic.packageId() + ": " + diagnostic.message());
-    if (diagnostic.code() == PackageDiagnosticCode.TRUST_REQUIRED
-        || diagnostic.code() == PackageDiagnosticCode.FINGERPRINT_BLOCKED) {
-      message.append(" ");
-      message.append(
-          Component.literal("[REVIEW]")
-              .withStyle(
-                  style ->
-                      style
-                          .withColor(ChatFormatting.GREEN)
-                          .withClickEvent(
-                              new ClickEvent.RunCommand(
-                                  "mqp packages enable " + diagnostic.packageId()))));
-    }
-    return message;
   }
 }

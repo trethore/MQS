@@ -26,6 +26,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
 import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
 import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand.OriginalOperation;
 import java.util.function.Function;
@@ -59,14 +60,7 @@ public final class ReloadPackagesClientCommand {
   private int executeAll(CommandContext<FabricClientCommandSource> context) {
     FabricClientCommandSource source = context.getSource();
     PackageDiscoveryResult result = packageManager.reload();
-    MqpCommandFeedback.sendInfo(
-        source,
-        "Reloaded: "
-            + result.packages().size()
-            + " package(s), "
-            + result.diagnostics().size()
-            + " diagnostic(s).");
-    return PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+    return PackageCommandSupport.sendDiscoveryResult(source, "Reloaded", result);
   }
 
   private int executePackage(CommandContext<FabricClientCommandSource> context) {

@@ -19,7 +19,9 @@ package io.github.trethore.myqolpackages.command;
 
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 
 public final class MqpCommandFeedback {
@@ -63,6 +65,16 @@ public final class MqpCommandFeedback {
 
   public static void sendLine(FabricClientCommandSource source, Component message) {
     source.sendFeedback(message);
+  }
+
+  public static Component action(String label, String command, String hoverText) {
+    return Component.literal("[" + label + "]")
+        .withStyle(
+            style ->
+                style
+                    .withColor(ChatFormatting.GREEN)
+                    .withClickEvent(new ClickEvent.RunCommand(command))
+                    .withHoverEvent(new HoverEvent.ShowText(Component.literal(hoverText))));
   }
 
   private static Component ensureTerminalPeriod(Component message) {
