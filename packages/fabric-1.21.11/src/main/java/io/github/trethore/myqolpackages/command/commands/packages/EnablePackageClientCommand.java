@@ -28,20 +28,20 @@ import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
-import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager;
-import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager.OriginalOperation;
+import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
+import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand.OriginalOperation;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class EnablePackageClientCommand {
   private final PackageManager packageManager;
-  private final PackageTrustInteractionManager interactionManager;
+  private final TrustPackageClientCommand trustPackageClientCommand;
 
   public EnablePackageClientCommand(
-      PackageManager packageManager, PackageTrustInteractionManager interactionManager) {
+      PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
     this.packageManager = packageManager;
-    this.interactionManager = interactionManager;
+    this.trustPackageClientCommand = trustPackageClientCommand;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
@@ -57,10 +57,10 @@ public final class EnablePackageClientCommand {
     String packageId = StringArgumentType.getString(context, "id");
     PackageOperationResult result = packageManager.enablePackage(packageId);
     if (result.code() == PackageOperationCode.TRUST_REQUIRED) {
-      return interactionManager.start(source, packageId, OriginalOperation.ENABLE);
+      return trustPackageClientCommand.start(source, packageId, OriginalOperation.ENABLE);
     }
     if (result.code() == PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED) {
-      interactionManager.sendFingerprintReview(source, packageId, OriginalOperation.ENABLE);
+      trustPackageClientCommand.sendFingerprintReview(source, packageId, OriginalOperation.ENABLE);
       return ClientCommandResult.FAILURE;
     }
     PackageCommandSupport.sendDiagnostics(source, result.diagnostics());

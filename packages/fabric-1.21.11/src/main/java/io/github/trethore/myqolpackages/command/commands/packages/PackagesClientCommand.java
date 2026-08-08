@@ -22,7 +22,7 @@ import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
-import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager;
+import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
@@ -37,19 +37,19 @@ public final class PackagesClientCommand {
   private final UntrustPackageClientCommand untrustPackageClientCommand;
   private final PackageFingerprintClientCommand packageFingerprintClientCommand;
 
-  public PackagesClientCommand(
-      PackageManager packageManager, PackageTrustInteractionManager interactionManager) {
+  public PackagesClientCommand(PackageManager packageManager) {
+    trustPackageClientCommand = new TrustPackageClientCommand(packageManager);
     disablePackageClientCommand = new DisablePackageClientCommand(packageManager);
-    enablePackageClientCommand = new EnablePackageClientCommand(packageManager, interactionManager);
+    enablePackageClientCommand =
+        new EnablePackageClientCommand(packageManager, trustPackageClientCommand);
     infoPackageClientCommand = new InfoPackageClientCommand(packageManager);
     listPackagesClientCommand = new ListPackagesClientCommand(packageManager);
     refreshPackagesClientCommand = new RefreshPackagesClientCommand(packageManager);
     reloadPackagesClientCommand =
-        new ReloadPackagesClientCommand(packageManager, interactionManager);
-    trustPackageClientCommand = new TrustPackageClientCommand(packageManager, interactionManager);
+        new ReloadPackagesClientCommand(packageManager, trustPackageClientCommand);
     untrustPackageClientCommand = new UntrustPackageClientCommand(packageManager);
     packageFingerprintClientCommand =
-        new PackageFingerprintClientCommand(packageManager, interactionManager);
+        new PackageFingerprintClientCommand(packageManager, trustPackageClientCommand);
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {

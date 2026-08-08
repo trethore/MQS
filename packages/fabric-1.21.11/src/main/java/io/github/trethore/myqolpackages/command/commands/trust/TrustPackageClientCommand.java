@@ -15,10 +15,16 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.trust;
+package io.github.trethore.myqolpackages.command.commands.trust;
 
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
@@ -26,12 +32,12 @@ import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
 import io.github.trethore.myqolpackages.api.packages.TrustVersionScope;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
+import io.github.trethore.myqolpackages.command.commands.trust.PackageTrustInteractionManager.FingerprintSession;
+import io.github.trethore.myqolpackages.command.commands.trust.PackageTrustInteractionManager.TrustSession;
+import java.util.Locale;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
@@ -39,15 +45,44 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 
-public final class PackageTrustInteractionManager {
-  private static final Duration SESSION_DURATION = Duration.ofMinutes(5);
+public final class TrustPackageClientCommand {
+  private static final String DISABLED = "disabled";
+  private static final String TOKEN_ARGUMENT = "token";
 
   private final PackageManager packageManager;
-  private final Map<String, FingerprintSession> fingerprintSessions = new HashMap<>();
-  private final Map<String, TrustSession> trustSessions = new HashMap<>();
+  private final PackageTrustInteractionManager interactionManager;
 
-  public PackageTrustInteractionManager(PackageManager packageManager) {
+  public TrustPackageClientCommand(PackageManager packageManager) {
     this.packageManager = packageManager;
+    interactionManager = new PackageTrustInteractionManager();
+  }
+
+  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+    return ClientCommandManager.literal("trust")
+        .then(
+            ClientCommandManager.argument("id", StringArgumentType.word())
+                .suggests((context, builder) -> suggestPackageIds(builder))
+                .executes(this::execute));
+  }
+
+  public LiteralArgumentBuilder<FabricClientCommandSource> buildVersionCallbackCommand() {
+    return ClientCommandManager.literal("_trust-version")
+        .then(
+            ClientCommandManager.argument(TOKEN_ARGUMENT, StringArgumentType.word())
+                .then(scope("exact", TrustVersionScope.EXACT))
+                .then(scope("patch", TrustVersionScope.PATCH_UPDATES))
+                .then(scope("compatible", TrustVersionScope.COMPATIBLE_UPDATES))
+                .then(scope("all", TrustVersionScope.ALL_VERSIONS)));
+  }
+
+  public LiteralArgumentBuilder<FabricClientCommandSource> buildFingerprintCallbackCommand() {
+    return ClientCommandManager.literal("_trust-fingerprint")
+        .then(
+            ClientCommandManager.argument(TOKEN_ARGUMENT, StringArgumentType.word())
+                .then(fingerprint(DISABLED, false, FingerprintMismatchBehavior.BLOCK))
+                .then(fingerprint("log_only", true, FingerprintMismatchBehavior.LOG_ONLY))
+                .then(fingerprint("chat_warning", true, FingerprintMismatchBehavior.CHAT_WARNING))
+                .then(fingerprint("block", true, FingerprintMismatchBehavior.BLOCK)));
   }
 
   public int start(
@@ -59,62 +94,9 @@ public final class PackageTrustInteractionManager {
       return ClientCommandResult.FAILURE;
     }
     PackageTrustSnapshot snapshot = optionalSnapshot.get();
-    String token = createToken();
-    trustSessions.put(
-        token,
-        new TrustSession(snapshot, originalOperation, null, Instant.now().plus(SESSION_DURATION)));
+    String token = interactionManager.startTrustSession(snapshot, originalOperation);
     sendStepOne(source, token, snapshot);
     return ClientCommandResult.SUCCESS;
-  }
-
-  public int selectVersion(
-      FabricClientCommandSource source, String token, TrustVersionScope versionScope) {
-    TrustSession session = getTrustSession(source, token);
-    if (session == null) {
-      return ClientCommandResult.FAILURE;
-    }
-    trustSessions.put(
-        token,
-        new TrustSession(
-            session.snapshot(), session.originalOperation(), versionScope, session.expiresAt()));
-    sendStepTwo(source, token, session.snapshot());
-    return ClientCommandResult.SUCCESS;
-  }
-
-  public int selectFingerprint(
-      FabricClientCommandSource source,
-      String token,
-      boolean fingerprintEnabled,
-      FingerprintMismatchBehavior mismatchBehavior) {
-    TrustSession session = getTrustSession(source, token);
-    if (session == null || session.versionScope() == null) {
-      MqpCommandFeedback.sendError(source, "Trust package Step 1/2 has not been completed");
-      return ClientCommandResult.FAILURE;
-    }
-    trustSessions.remove(token);
-    PackageOperationResult trustResult =
-        packageManager.trustPackage(
-            new PackageTrustRequest(
-                session.snapshot(), session.versionScope(), fingerprintEnabled, mismatchBehavior));
-    sendDiagnostics(source, trustResult);
-    if (!trustResult.successful()) {
-      return ClientCommandResult.FAILURE;
-    }
-
-    String range = formatRange(session.versionScope(), session.snapshot().version());
-    MqpCommandFeedback.sendHeader(source);
-    MqpCommandFeedback.sendLine(source, "Trusted " + formatPackage(session.snapshot()) + ".");
-    MqpCommandFeedback.sendLine(
-        source, "Versions: " + formatScope(session.versionScope()) + " (" + range + ")");
-    MqpCommandFeedback.sendLine(
-        source, "Fingerprint: " + (fingerprintEnabled ? "enabled" : "disabled"));
-    if (fingerprintEnabled) {
-      MqpCommandFeedback.sendLine(
-          source, "Fingerprint changes: " + formatBehavior(mismatchBehavior));
-      MqpCommandFeedback.sendLine(
-          source, "Fingerprint: " + abbreviate(session.snapshot().fingerprint()));
-    }
-    return rerun(source, session.snapshot().id(), session.originalOperation());
   }
 
   public void sendFingerprintReview(
@@ -126,10 +108,7 @@ public final class PackageTrustInteractionManager {
       return;
     }
     PackageTrustSnapshot snapshot = optionalSnapshot.get();
-    String token = createToken();
-    fingerprintSessions.put(
-        token,
-        new FingerprintSession(snapshot, originalOperation, Instant.now().plus(SESSION_DURATION)));
+    String token = interactionManager.startFingerprintSession(snapshot, originalOperation);
     MutableComponent message =
         Component.empty()
             .append("Fingerprint changed for " + formatPackage(snapshot) + ". ")
@@ -142,8 +121,8 @@ public final class PackageTrustInteractionManager {
   }
 
   public int acceptFingerprint(FabricClientCommandSource source, String token) {
-    FingerprintSession session = fingerprintSessions.remove(token);
-    if (session == null || session.expiresAt().isBefore(Instant.now())) {
+    FingerprintSession session = interactionManager.takeFingerprintSession(token);
+    if (session == null) {
       MqpCommandFeedback.sendError(source, "Fingerprint review expired; run the operation again");
       return ClientCommandResult.FAILURE;
     }
@@ -159,14 +138,94 @@ public final class PackageTrustInteractionManager {
     return rerun(source, session.snapshot().id(), session.originalOperation());
   }
 
-  private TrustSession getTrustSession(FabricClientCommandSource source, String token) {
-    TrustSession session = trustSessions.get(token);
-    if (session == null || session.expiresAt().isBefore(Instant.now())) {
-      trustSessions.remove(token);
+  private int execute(CommandContext<FabricClientCommandSource> context) {
+    return start(
+        context.getSource(), StringArgumentType.getString(context, "id"), OriginalOperation.NONE);
+  }
+
+  private int selectVersion(
+      FabricClientCommandSource source, String token, TrustVersionScope versionScope) {
+    TrustSession session = interactionManager.selectVersion(token, versionScope);
+    if (session == null) {
       MqpCommandFeedback.sendError(source, "Trust review expired; start it again");
-      return null;
+      return ClientCommandResult.FAILURE;
     }
-    return session;
+    sendStepTwo(source, token, session.snapshot());
+    return ClientCommandResult.SUCCESS;
+  }
+
+  private int selectFingerprint(
+      FabricClientCommandSource source,
+      String token,
+      boolean fingerprintEnabled,
+      FingerprintMismatchBehavior mismatchBehavior) {
+    TrustSession session = interactionManager.getTrustSession(token);
+    if (session == null) {
+      MqpCommandFeedback.sendError(source, "Trust review expired; start it again");
+      return ClientCommandResult.FAILURE;
+    }
+    if (session.versionScope() == null) {
+      MqpCommandFeedback.sendError(source, "Trust package Step 1/2 has not been completed");
+      return ClientCommandResult.FAILURE;
+    }
+    interactionManager.removeTrustSession(token);
+    PackageOperationResult trustResult =
+        packageManager.trustPackage(
+            new PackageTrustRequest(
+                session.snapshot(), session.versionScope(), fingerprintEnabled, mismatchBehavior));
+    sendDiagnostics(source, trustResult);
+    if (!trustResult.successful()) {
+      return ClientCommandResult.FAILURE;
+    }
+
+    String range = formatRange(session.versionScope(), session.snapshot().version());
+    MqpCommandFeedback.sendHeader(source);
+    MqpCommandFeedback.sendLine(source, "Trusted " + formatPackage(session.snapshot()) + ".");
+    MqpCommandFeedback.sendLine(
+        source, "Versions: " + formatScope(session.versionScope()) + " (" + range + ")");
+    MqpCommandFeedback.sendLine(
+        source, "Fingerprint: " + (fingerprintEnabled ? "enabled" : DISABLED));
+    if (fingerprintEnabled) {
+      MqpCommandFeedback.sendLine(
+          source, "Fingerprint changes: " + formatBehavior(mismatchBehavior));
+      MqpCommandFeedback.sendLine(
+          source, "Fingerprint: " + abbreviate(session.snapshot().fingerprint()));
+    }
+    return rerun(source, session.snapshot().id(), session.originalOperation());
+  }
+
+  private LiteralArgumentBuilder<FabricClientCommandSource> scope(
+      String literal, TrustVersionScope scope) {
+    return ClientCommandManager.literal(literal)
+        .executes(
+            context ->
+                selectVersion(
+                    context.getSource(),
+                    StringArgumentType.getString(context, TOKEN_ARGUMENT),
+                    scope));
+  }
+
+  private LiteralArgumentBuilder<FabricClientCommandSource> fingerprint(
+      String literal, boolean fingerprintEnabled, FingerprintMismatchBehavior mismatchBehavior) {
+    return ClientCommandManager.literal(literal)
+        .executes(
+            context ->
+                selectFingerprint(
+                    context.getSource(),
+                    StringArgumentType.getString(context, TOKEN_ARGUMENT),
+                    fingerprintEnabled,
+                    mismatchBehavior));
+  }
+
+  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
+    String remaining = builder.getRemainingLowerCase();
+    for (PackageInfo packageInfo : packageManager.getPackages()) {
+      String packageId = packageInfo.id();
+      if (packageId.toLowerCase(Locale.ROOT).contains(remaining)) {
+        builder.suggest(packageId);
+      }
+    }
+    return builder.buildFuture();
   }
 
   private void sendStepOne(
@@ -208,7 +267,7 @@ public final class PackageTrustInteractionManager {
     MqpCommandFeedback.sendLine(source, Component.empty());
     MqpCommandFeedback.sendLine(
         source,
-        button("DISABLED", fingerprintCommand(token, "disabled"), "Do not check fingerprints"));
+        button("DISABLED", fingerprintCommand(token, DISABLED), "Do not check fingerprints"));
     MqpCommandFeedback.sendLine(
         source, button("LOG ONLY", fingerprintCommand(token, "log_only"), "Log and continue"));
     MqpCommandFeedback.sendLine(
@@ -271,10 +330,6 @@ public final class PackageTrustInteractionManager {
                     .withHoverEvent(new HoverEvent.ShowText(Component.literal(hoverText))));
   }
 
-  private static String createToken() {
-    return UUID.randomUUID().toString();
-  }
-
   private static String versionCommand(String token, String scope) {
     return "mqp packages _trust-version " + token + " " + scope;
   }
@@ -325,13 +380,4 @@ public final class PackageTrustInteractionManager {
     ENABLE,
     RELOAD
   }
-
-  private record TrustSession(
-      PackageTrustSnapshot snapshot,
-      OriginalOperation originalOperation,
-      TrustVersionScope versionScope,
-      Instant expiresAt) {}
-
-  private record FingerprintSession(
-      PackageTrustSnapshot snapshot, OriginalOperation originalOperation, Instant expiresAt) {}
 }

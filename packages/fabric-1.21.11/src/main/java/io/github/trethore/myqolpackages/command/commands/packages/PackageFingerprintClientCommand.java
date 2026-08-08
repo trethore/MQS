@@ -25,18 +25,18 @@ import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
-import io.github.trethore.myqolpackages.command.trust.PackageTrustInteractionManager;
+import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class PackageFingerprintClientCommand {
   private final PackageManager packageManager;
-  private final PackageTrustInteractionManager interactionManager;
+  private final TrustPackageClientCommand trustPackageClientCommand;
 
   public PackageFingerprintClientCommand(
-      PackageManager packageManager, PackageTrustInteractionManager interactionManager) {
+      PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
     this.packageManager = packageManager;
-    this.interactionManager = interactionManager;
+    this.trustPackageClientCommand = trustPackageClientCommand;
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
@@ -58,7 +58,7 @@ public final class PackageFingerprintClientCommand {
             ClientCommandManager.argument("token", StringArgumentType.word())
                 .executes(
                     context ->
-                        interactionManager.acceptFingerprint(
+                        trustPackageClientCommand.acceptFingerprint(
                             context.getSource(), StringArgumentType.getString(context, "token"))));
   }
 
