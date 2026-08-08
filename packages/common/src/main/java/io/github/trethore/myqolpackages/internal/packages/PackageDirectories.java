@@ -20,7 +20,7 @@ package io.github.trethore.myqolpackages.internal.packages;
 import java.nio.file.Path;
 
 final class PackageDirectories {
-  static final String DATA_DIRECTORY_NAME = "package-data";
+  static final String DATA_DIRECTORY_NAME = ".package-data";
 
   private PackageDirectories() {}
 

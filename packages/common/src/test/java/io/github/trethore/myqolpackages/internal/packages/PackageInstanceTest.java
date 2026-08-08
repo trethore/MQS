@@ -70,7 +70,7 @@ class PackageInstanceTest {
     packageInstance.disable();
 
     assertEquals(
-        additionalRoot.resolve("package-data/example-package").toAbsolutePath().normalize(),
+        additionalRoot.resolve(".package-data/example-package").toAbsolutePath().normalize(),
         contextFactory.dataDirectory);
   }
 
