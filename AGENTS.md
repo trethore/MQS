@@ -78,7 +78,7 @@ myqolpackages/
 - The `references` directory is generated via the `./gradlew unpackSources` command.
 - You can clean the generated references by running `./gradlew cleanUnpackedSources`.
 
-## Commits & Pull Requests 
+## Commits & Pull Requests
 
 - Follow the Conventional Commits specification for commit messages.
 - Pull request summaries should include the related issue(s), a brief description of the changes, and how the changes were tested.

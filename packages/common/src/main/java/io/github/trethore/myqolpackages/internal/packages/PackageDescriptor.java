@@ -23,6 +23,10 @@ import java.nio.file.Path;
 
 record PackageDescriptor(
     String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
+  Path dataDirectory() {
+    return PackageDirectories.resolveDataDirectory(packageDirectory, id);
+  }
+
   PackageInfo toInfo(PackageState state) {
     return new PackageInfo(
         id,

@@ -53,7 +53,11 @@ public final class MqpApiInstaller {
   private ProxyObject createHostBridge(
       PackageContextSpec spec, PackageHttpClient packageHttpClient) {
     ProxyObject metadata =
-        ProxyObject.fromMap(Map.of("version", mqpVersion, "packageId", spec.packageId()));
+        ProxyObject.fromMap(
+            Map.of(
+                "version", mqpVersion,
+                "packageId", spec.packageId(),
+                "dataDirectory", spec.dataDirectory().toString()));
     ProxyObject interop = classInteropBridgeFactory.create();
     return ProxyObject.fromMap(
         Map.of(

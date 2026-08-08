@@ -112,13 +112,24 @@ class GraalPackageContextFactoryTest {
 
   @Test
   void exposesRuntimeApis() throws IOException, PackageLifecycleException {
+    Path dataDirectory = getDataDirectory();
     Path entrypoint =
         createEntrypoint(
             """
             import { value } from "./value.js";
             if (value !== 42) throw new Error("module was not loaded");
             if (mqp.version !== "0.0.1") throw new Error("unexpected MQP version");
+            if (typeof mqp.dataDirectory !== "string") throw new Error("invalid data directory");
             if (mqp.package.id !== "example-package") throw new Error("unexpected package ID");
+            const Files = Java.type("java.nio.file.Files");
+            const Path = Java.type("java.nio.file.Path");
+            if (!Files.isDirectory(Path.of(mqp.dataDirectory))) {
+              throw new Error("missing data directory");
+            }
+            Files.writeString(
+              Path.of(mqp.dataDirectory).resolve("created-during-load.txt"),
+              "data"
+            );
             if (typeof fetch !== "function") throw new Error("missing fetch");
             for (const name of ["mqp", "importClass", "wrap", "packages", "net", "fetch"]) {
               const descriptor = Object.getOwnPropertyDescriptor(globalThis, name);
@@ -142,6 +153,9 @@ class GraalPackageContextFactoryTest {
             }
             try { mqp.version = "changed"; } catch (error) {}
             if (mqp.version !== "0.0.1") throw new Error("mutable MQP API");
+            const originalDataDirectory = mqp.dataDirectory;
+            try { mqp.dataDirectory = "changed"; } catch (error) {}
+            if (mqp.dataDirectory !== originalDataDirectory) throw new Error("mutable data directory");
             const HostString = Java.type("java.lang.String");
             if (HostString.valueOf(42) !== "42") throw new Error("host lookup failed");
             const imported = importClass("java.lang.Double");
@@ -157,6 +171,7 @@ class GraalPackageContextFactoryTest {
         PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
       assertDoesNotThrow(context::invokeEnable);
     }
+    assertTrue(Files.isRegularFile(dataDirectory.resolve("created-during-load.txt")));
   }
 
   @Test
@@ -421,6 +436,10 @@ class GraalPackageContextFactoryTest {
 
   private PackageContextSpec createSpec(Path entrypoint) {
     return new PackageContextSpec(
-        "example-package", entrypoint.getParent().getParent(), entrypoint);
+        "example-package", entrypoint.getParent().getParent(), entrypoint, getDataDirectory());
+  }
+
+  private Path getDataDirectory() {
+    return temporaryDirectory.resolve("package-data/example-package").toAbsolutePath().normalize();
   }
 }

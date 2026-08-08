@@ -274,7 +274,7 @@ class FileSystemPackageDiscoveryTest {
 
   @Test
   void ignoresPackageDataDirectory() throws IOException {
-    Files.createDirectories(temporaryDirectory.resolve(".data/example-package"));
+    Files.createDirectories(temporaryDirectory.resolve("package-data/example-package"));
 
     PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
 

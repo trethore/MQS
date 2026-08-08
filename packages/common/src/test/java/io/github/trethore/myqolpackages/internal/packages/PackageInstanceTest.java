@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
+import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
 import java.nio.file.Path;
@@ -59,8 +60,26 @@ class PackageInstanceTest {
     }
   }
 
+  @Test
+  void resolvesDataDirectoryUnderOwningPackageRoot() throws PackageLifecycleException {
+    Path additionalRoot = temporaryDirectory.resolve("additional-root");
+    RecordingContextFactory contextFactory = new RecordingContextFactory();
+    PackageInstance packageInstance = createInstance(contextFactory, additionalRoot);
+
+    packageInstance.enable();
+    packageInstance.disable();
+
+    assertEquals(
+        additionalRoot.resolve("package-data/example-package").toAbsolutePath().normalize(),
+        contextFactory.dataDirectory);
+  }
+
   private PackageInstance createInstance(PackageContextFactory contextFactory) {
-    Path packageDirectory = temporaryDirectory.resolve("example-package");
+    return createInstance(contextFactory, temporaryDirectory);
+  }
+
+  private PackageInstance createInstance(PackageContextFactory contextFactory, Path packageRoot) {
+    Path packageDirectory = packageRoot.resolve("example-package");
     PackageManifest manifest =
         new PackageManifest(
             "example-package", "Example Package", "A test package.", "1.0.0", "src/index.js");
@@ -102,6 +121,16 @@ class PackageInstanceTest {
     @Override
     public void close() {
       closed = true;
+    }
+  }
+
+  private static final class RecordingContextFactory implements PackageContextFactory {
+    private Path dataDirectory;
+
+    @Override
+    public PackageScriptContext create(PackageContextSpec spec) {
+      dataDirectory = spec.dataDirectory();
+      return new RecordingScriptContext();
     }
   }
 }

@@ -51,7 +51,10 @@ final class PackageInstance {
       createdContext =
           contextFactory.create(
               new PackageContextSpec(
-                  descriptor.id(), descriptor.packageDirectory(), descriptor.entrypoint()));
+                  descriptor.id(),
+                  descriptor.packageDirectory(),
+                  descriptor.entrypoint(),
+                  descriptor.dataDirectory()));
     } catch (PackageLifecycleException exception) {
       state = PackageState.ERROR;
       throw exception;

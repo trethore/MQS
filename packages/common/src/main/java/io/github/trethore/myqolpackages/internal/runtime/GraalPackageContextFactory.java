@@ -23,6 +23,7 @@ import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.http.HttpClient;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
@@ -94,7 +95,7 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     GraalPackageContextResources resources;
     try {
       resources = createResources(spec);
-    } catch (RuntimeException exception) {
+    } catch (IOException | RuntimeException exception) {
       throw createLoadFailure(exception);
     }
     try {
@@ -142,7 +143,8 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     return hook;
   }
 
-  private GraalPackageContextResources createResources(PackageContextSpec spec) {
+  private GraalPackageContextResources createResources(PackageContextSpec spec) throws IOException {
+    Files.createDirectories(spec.dataDirectory());
     PackageLogOutputStream output = new PackageLogOutputStream(LOGGER, spec.packageId(), false);
     PackageLogOutputStream errorOutput = new PackageLogOutputStream(LOGGER, spec.packageId(), true);
     PackageHttpClient packageHttpClient = new PackageHttpClient(httpClient);
