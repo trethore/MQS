@@ -45,6 +45,8 @@ myqolpackages/
   build.gradle.kts                              # Root Gradle configuration.
   CHANGELOG.md
   gradle.properties
+  HEADER
+  LICENSE
   README.md
   settings.gradle.kts
 ```
