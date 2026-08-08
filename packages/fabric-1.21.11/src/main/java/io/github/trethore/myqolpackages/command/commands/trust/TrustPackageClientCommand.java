@@ -31,6 +31,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
 import io.github.trethore.myqolpackages.api.packages.TrustVersionScope;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
+import io.github.trethore.myqolpackages.command.HiddenClientCommand;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import io.github.trethore.myqolpackages.command.commands.trust.PackageTrustInteractionManager.FingerprintSession;
 import io.github.trethore.myqolpackages.command.commands.trust.PackageTrustInteractionManager.TrustSession;
@@ -66,7 +67,7 @@ public final class TrustPackageClientCommand {
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildVersionCallbackCommand() {
-    return ClientCommandManager.literal("_trust-version")
+    return HiddenClientCommand.literal("_trust-version")
         .then(
             ClientCommandManager.argument(TOKEN_ARGUMENT, StringArgumentType.word())
                 .then(scope("exact", TrustVersionScope.EXACT))
@@ -76,7 +77,7 @@ public final class TrustPackageClientCommand {
   }
 
   public LiteralArgumentBuilder<FabricClientCommandSource> buildFingerprintCallbackCommand() {
-    return ClientCommandManager.literal("_trust-fingerprint")
+    return HiddenClientCommand.literal("_trust-fingerprint")
         .then(
             ClientCommandManager.argument(TOKEN_ARGUMENT, StringArgumentType.word())
                 .then(fingerprint(DISABLED, false, FingerprintMismatchBehavior.BLOCK))
