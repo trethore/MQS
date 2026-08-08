@@ -189,15 +189,16 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
 
   private Context createContext(
       PackageContextSpec spec, OutputStream output, OutputStream errorOutput) {
+    // Giving full power to packages.
     Context.Builder builder =
         Context.newBuilder(JAVASCRIPT_LANGUAGE_ID)
             .engine(engine)
             .allowHostAccess(HostAccess.ALL)
             .allowHostClassLookup(className -> true)
-            .allowHostClassLoading(false)
-            .allowCreateThread(false)
-            .allowCreateProcess(false)
-            .allowNativeAccess(false)
+            .allowHostClassLoading(true)
+            .allowCreateThread(true)
+            .allowCreateProcess(true)
+            .allowNativeAccess(true)
             .allowEnvironmentAccess(EnvironmentAccess.NONE)
             .allowPolyglotAccess(PolyglotAccess.NONE)
             .allowIO(IOAccess.ALL)
