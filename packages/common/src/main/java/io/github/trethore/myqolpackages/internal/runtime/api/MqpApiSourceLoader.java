@@ -28,9 +28,8 @@ final class MqpApiSourceLoader {
 
   private MqpApiSourceLoader() {}
 
-  static MqpApiSources load() {
-    return new MqpApiSources(
-        load("bootstrap.js"), load("mqp.js"), load("java-interop.js"), load("fetch.js"));
+  static Source load() {
+    return load("runtime-adapter.js");
   }
 
   private static Source load(String resourceName) {
@@ -48,6 +47,4 @@ final class MqpApiSourceLoader {
           "Could not read JavaScript API resource: " + resourceName, exception);
     }
   }
-
-  record MqpApiSources(Source bootstrap, Source mqp, Source javaInterop, Source fetch) {}
 }

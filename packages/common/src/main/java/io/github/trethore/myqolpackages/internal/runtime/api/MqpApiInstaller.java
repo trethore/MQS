@@ -19,19 +19,15 @@ package io.github.trethore.myqolpackages.internal.runtime.api;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
-import io.github.trethore.myqolpackages.internal.runtime.api.MqpApiSourceLoader.MqpApiSources;
+import io.github.trethore.myqolpackages.internal.runtime.api.fetch.FetchApi;
 import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
+import io.github.trethore.myqolpackages.internal.runtime.interop.ClassInteropBridge;
 import io.github.trethore.myqolpackages.internal.runtime.interop.ClassInteropBridgeFactory;
-import java.util.Map;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyObject;
 
 public final class MqpApiInstaller {
-  private static final MqpApiSources SOURCES = MqpApiSourceLoader.load();
-
   private final ClassInteropBridgeFactory classInteropBridgeFactory;
   private final String mqpVersion;
 
@@ -41,37 +37,31 @@ public final class MqpApiInstaller {
         new ClassInteropBridgeFactory(Objects.requireNonNull(environment, "environment"));
   }
 
-  public void install(
+  public MqpApiContext install(
       Context context, PackageContextSpec spec, PackageHttpClient packageHttpClient) {
-    ProxyObject hostBridge = createHostBridge(spec, packageHttpClient);
-    Value bootstrap = getInstaller(context, SOURCES.bootstrap()).execute();
-    getInstaller(context, SOURCES.mqp()).execute(hostBridge, bootstrap);
-    getInstaller(context, SOURCES.javaInterop()).execute(hostBridge, bootstrap);
-    getInstaller(context, SOURCES.fetch()).execute(hostBridge, bootstrap);
+    JsRuntimeAdapter adapter = new JsRuntimeAdapter(context);
+    FetchApi fetchApi = new FetchApi(adapter, packageHttpClient);
+    installMetadata(adapter, spec);
+    installJavaInterop(adapter);
+    installFetch(adapter, fetchApi);
+    return new MqpApiContext(fetchApi, packageHttpClient);
   }
 
-  private ProxyObject createHostBridge(
-      PackageContextSpec spec, PackageHttpClient packageHttpClient) {
-    ProxyObject metadata =
-        ProxyObject.fromMap(
-            Map.of(
-                "version", mqpVersion,
-                "packageId", spec.packageId(),
-                "dataDirectory", spec.dataDirectory().toString()));
-    ProxyObject interop = classInteropBridgeFactory.create();
-    return ProxyObject.fromMap(
-        Map.of(
-            "metadata", metadata,
-            "interop", interop,
-            "fetch", packageHttpClient));
+  private void installMetadata(JsRuntimeAdapter adapter, PackageContextSpec spec) {
+    Value metadata =
+        adapter.createMetadata(mqpVersion, spec.dataDirectory().toString(), spec.packageId());
+    adapter.defineGlobal("mqp", metadata);
   }
 
-  private static Value getInstaller(Context context, Source source) {
-    Value installer = context.eval(source).getMember("default");
-    if (installer == null || !installer.canExecute()) {
-      throw new IllegalStateException(
-          "JavaScript API resource must have a default function export: " + source.getName());
-    }
-    return installer;
+  private void installJavaInterop(JsRuntimeAdapter adapter) {
+    ClassInteropBridge bridge = classInteropBridgeFactory.create();
+    adapter.defineGlobal("importClass", bridge.importClass());
+    adapter.defineGlobal("wrap", bridge.wrap());
+    adapter.defineGlobal("packages", bridge.packages());
+    adapter.defineGlobal("net", bridge.net());
+  }
+
+  private static void installFetch(JsRuntimeAdapter adapter, FetchApi fetchApi) {
+    adapter.defineGlobal("fetch", adapter.createFetch(fetchApi));
   }
 }

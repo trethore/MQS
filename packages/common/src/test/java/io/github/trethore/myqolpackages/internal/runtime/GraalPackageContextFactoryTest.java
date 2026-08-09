@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.internal.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -200,6 +202,7 @@ class GraalPackageContextFactoryTest {
             }
             for (const name of [
               "createMqpBootstrap",
+              "createRuntimeAdapter",
               "installMqp",
               "installJavaInterop",
               "installFetch"
@@ -444,22 +447,148 @@ class GraalPackageContextFactoryTest {
       try (GraalPackageContextFactory contextFactory = createContextFactory();
           PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
         context.invokeEnable();
-        PackageLifecycleException failure = null;
-        for (int attempt = 0; attempt < 1000; attempt++) {
-          context.tick();
-          try {
-            context.invokeDisable();
-            failure = null;
-            break;
-          } catch (PackageLifecycleException exception) {
-            failure = exception;
-            Thread.sleep(1);
-          }
-        }
-        assertNull(failure);
+        awaitSuccessfulDisable(context);
       }
     } finally {
       server.stop(0);
+    }
+  }
+
+  @Test
+  void exposesFetchRequestAndResponseBehavior() throws Exception {
+    AtomicReference<String> method = new AtomicReference<>();
+    AtomicReference<String> requestHeader = new AtomicReference<>();
+    AtomicReference<String> requestBody = new AtomicReference<>();
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/json",
+        exchange -> {
+          method.set(exchange.getRequestMethod());
+          requestHeader.set(exchange.getRequestHeaders().getFirst("X-Request"));
+          requestBody.set(
+              new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+          exchange.getResponseHeaders().add("X-Result", "first");
+          exchange.getResponseHeaders().add("X-Result", "second");
+          byte[] response = "{\"value\":42}".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(201, response.length);
+          exchange.getResponseBody().write(response);
+          exchange.close();
+        });
+    server.createContext(
+        "/binary",
+        exchange -> {
+          byte[] response = {0, 1, 127, (byte) 128, (byte) 255};
+          exchange.sendResponseHeaders(200, response.length);
+          exchange.getResponseBody().write(response);
+          exchange.close();
+        });
+    server.start();
+    try {
+      Path entrypoint =
+          createEntrypoint(
+              """
+              let complete = false;
+              let failure;
+
+              const assert = (condition, message) => {
+                if (!condition) throw new Error(message);
+              };
+
+              export function onEnable() {
+                fetch("http://127.0.0.1:%1$d/json", {
+                  method: "post",
+                  headers: { "X-Request": 42 },
+                  body: 123
+                })
+                  .then((response) => {
+                    assert(response.status === 201, "invalid status");
+                    assert(response.statusText === "Created", "invalid status text");
+                    assert(response.ok, "invalid ok value");
+                    assert(!response.redirected, "invalid redirected value");
+                    assert(response.url.endsWith("/json"), "invalid URL");
+                    assert(Object.isFrozen(response.headers), "mutable headers");
+                    const header = response.headers.get("X-Result");
+                    assert(header.includes("first") && header.includes("second"), "invalid header");
+                    assert(response.headers.has("x-result"), "missing header");
+                    assert([...response.headers].some(([name]) => name === "x-result"), "invalid entries");
+                    assert([...response.headers.keys()].includes("x-result"), "invalid keys");
+                    assert([...response.headers.values()].includes("first"), "invalid values");
+                    const result = response.json();
+                    assert(result instanceof Promise, "json did not return a Promise");
+                    assert(response.bodyUsed, "body was not consumed synchronously");
+                    return result.then((value) => {
+                      assert(value.value === 42, "invalid JSON body");
+                      return response.text().then(
+                        () => { throw new Error("body was consumed twice"); },
+                        (error) => assert(error instanceof TypeError, "invalid body error")
+                      );
+                    });
+                  })
+                  .then(() => fetch("http://127.0.0.1:%1$d/binary"))
+                  .then((response) => response.arrayBuffer())
+                  .then((buffer) => {
+                    assert(buffer instanceof ArrayBuffer, "invalid array buffer");
+                    assert(
+                      Array.from(new Uint8Array(buffer)).join(",") === "0,1,127,128,255",
+                      "invalid binary body"
+                    );
+                    complete = true;
+                  })
+                  .catch((error) => {
+                    failure = String(error?.stack ?? error);
+                    complete = true;
+                  });
+              }
+
+              export function onDisable() {
+                if (!complete) throw new Error("fetch did not complete");
+                if (failure !== undefined) throw new Error(failure);
+              }
+              """
+                  .formatted(server.getAddress().getPort()));
+
+      try (GraalPackageContextFactory contextFactory = createContextFactory();
+          PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
+        context.invokeEnable();
+        awaitSuccessfulDisable(context);
+      }
+
+      assertEquals("POST", method.get());
+      assertEquals("42", requestHeader.get());
+      assertEquals("123", requestBody.get());
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void rejectsInvalidFetchOptionsWithTypeError() throws Exception {
+    Path entrypoint =
+        createEntrypoint(
+            """
+            let complete = false;
+            let validError = false;
+
+            export function onEnable() {
+              const result = fetch("http://127.0.0.1/", { unsupported: true });
+              if (!(result instanceof Promise)) throw new Error("fetch did not return a Promise");
+              result.catch((error) => {
+                validError = error instanceof TypeError
+                  && error.message.includes("Unsupported fetch option");
+                complete = true;
+              });
+            }
+
+            export function onDisable() {
+              if (!complete) throw new Error("fetch rejection did not complete");
+              if (!validError) throw new Error("invalid fetch rejection");
+            }
+            """);
+
+    try (GraalPackageContextFactory contextFactory = createContextFactory();
+        PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
+      context.invokeEnable();
+      assertDoesNotThrow(context::invokeDisable);
     }
   }
 
@@ -496,5 +625,22 @@ class GraalPackageContextFactoryTest {
 
   private Path getDataDirectory() {
     return temporaryDirectory.resolve("package-data/example-package").toAbsolutePath().normalize();
+  }
+
+  private static void awaitSuccessfulDisable(PackageScriptContext context)
+      throws PackageLifecycleException, InterruptedException {
+    PackageLifecycleException failure = null;
+    for (int attempt = 0; attempt < 1000; attempt++) {
+      context.tick();
+      try {
+        context.invokeDisable();
+        failure = null;
+        break;
+      } catch (PackageLifecycleException exception) {
+        failure = exception;
+        Thread.sleep(1);
+      }
+    }
+    assertNull(failure);
   }
 }

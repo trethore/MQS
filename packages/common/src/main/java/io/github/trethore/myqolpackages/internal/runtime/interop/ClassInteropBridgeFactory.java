@@ -19,9 +19,7 @@ package io.github.trethore.myqolpackages.internal.runtime.interop;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.internal.mappings.ClassInteropMetadata;
-import java.util.Map;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyObject;
 
 public final class ClassInteropBridgeFactory {
   private final MqpRuntimeEnvironment environment;
@@ -32,7 +30,7 @@ public final class ClassInteropBridgeFactory {
     this.metadata = ClassInteropMetadata.load(environment);
   }
 
-  public ProxyObject create() {
+  public ClassInteropBridge create() {
     HostClassResolver resolver = new HostClassResolver(metadata, environment);
     JavaPackageProxy packages = new JavaPackageProxy("", resolver);
     ProxyExecutable importClass =
@@ -50,11 +48,6 @@ public final class ClassInteropBridgeFactory {
           }
           return resolver.wrap(arguments[0]);
         };
-    return ProxyObject.fromMap(
-        Map.of(
-            "importClass", importClass,
-            "wrap", wrap,
-            "packages", packages,
-            "net", packages.getNetPackage()));
+    return new ClassInteropBridge(importClass, wrap, packages, packages.getNetPackage());
   }
 }

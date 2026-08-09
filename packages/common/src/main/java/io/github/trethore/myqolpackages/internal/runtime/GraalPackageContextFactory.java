@@ -18,6 +18,7 @@
 package io.github.trethore.myqolpackages.internal.runtime;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
+import io.github.trethore.myqolpackages.internal.runtime.api.MqpApiContext;
 import io.github.trethore.myqolpackages.internal.runtime.api.MqpApiInstaller;
 import io.github.trethore.myqolpackages.internal.runtime.http.PackageHttpClient;
 import java.io.IOException;
@@ -149,12 +150,22 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
     PackageLogOutputStream errorOutput = new PackageLogOutputStream(LOGGER, spec.packageId(), true);
     PackageHttpClient packageHttpClient = new PackageHttpClient(httpClient);
     Context context = null;
+    MqpApiContext mqpApiContext = null;
     try {
       context = createContext(spec, output, errorOutput);
-      mqpApiInstaller.install(context, spec, packageHttpClient);
+      mqpApiContext = mqpApiInstaller.install(context, spec, packageHttpClient);
       return new GraalPackageContextResources(
-          context, output, errorOutput, packageHttpClient, spec.packageDirectory());
+          context, output, errorOutput, mqpApiContext, spec.packageDirectory());
     } catch (RuntimeException exception) {
+      if (mqpApiContext != null) {
+        try {
+          mqpApiContext.close();
+        } catch (RuntimeException closeException) {
+          exception.addSuppressed(closeException);
+        }
+      } else {
+        packageHttpClient.close();
+      }
       if (context != null) {
         try {
           context.close();
@@ -164,7 +175,6 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
       }
       output.close();
       errorOutput.close();
-      packageHttpClient.close();
       throw exception;
     }
   }
