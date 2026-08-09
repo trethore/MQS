@@ -627,6 +627,7 @@ class GraalPackageContextFactoryTest {
     return temporaryDirectory.resolve("package-data/example-package").toAbsolutePath().normalize();
   }
 
+  @SuppressWarnings("java:S2925")
   private static void awaitSuccessfulDisable(PackageScriptContext context)
       throws PackageLifecycleException, InterruptedException {
     PackageLifecycleException failure = null;

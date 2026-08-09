@@ -32,6 +32,7 @@ final class MqpApiSourceLoader {
     return load("runtime-adapter.js");
   }
 
+  @SuppressWarnings("SameParameterValue")
   private static Source load(String resourceName) {
     try (InputStream input = MqpApiSourceLoader.class.getResourceAsStream(resourceName)) {
       if (input == null) {
