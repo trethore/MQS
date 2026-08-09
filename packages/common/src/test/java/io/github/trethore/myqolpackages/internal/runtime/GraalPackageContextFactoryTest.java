@@ -38,7 +38,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 class GraalPackageContextFactoryTest {
   private static final String TEST_RESOURCE_DIRECTORY =
-      "io/github/trethore/myqolpackages/internal/runtime/graal-package-context/";
+      "io/github/trethore/myqolpackages/internal/runtime/";
 
   @TempDir Path temporaryDirectory;
 
