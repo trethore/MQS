@@ -43,10 +43,6 @@ public final class MqpCommandFeedback {
     source.sendError(format(message, ChatFormatting.RED));
   }
 
-  public static void sendWarning(FabricClientCommandSource source, String message) {
-    sendWarning(source, Component.literal(message));
-  }
-
   public static void sendWarning(FabricClientCommandSource source, Component message) {
     source.sendFeedback(format(message, ChatFormatting.GOLD));
   }

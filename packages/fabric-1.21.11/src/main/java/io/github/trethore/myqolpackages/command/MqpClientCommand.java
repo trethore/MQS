@@ -20,7 +20,7 @@ package io.github.trethore.myqolpackages.command;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.MqpRuntime;
-import io.github.trethore.myqolpackages.command.commands.packages.PackagesClientCommand;
+import io.github.trethore.myqolpackages.command.commands.PackagesClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;

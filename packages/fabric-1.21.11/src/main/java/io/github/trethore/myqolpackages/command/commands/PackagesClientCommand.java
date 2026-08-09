@@ -15,14 +15,16 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.commands.packages;
+package io.github.trethore.myqolpackages.command.commands;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
+import io.github.trethore.myqolpackages.command.commands.packages.*;
 import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
+import io.github.trethore.myqolpackages.command.commands.trust.UntrustPackageClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
