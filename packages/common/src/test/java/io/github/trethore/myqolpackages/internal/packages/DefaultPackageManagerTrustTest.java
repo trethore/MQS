@@ -28,8 +28,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
 import io.github.trethore.myqolpackages.api.packages.TrustVersionScope;
-import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootProvider;
-import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
+import io.github.trethore.myqolpackages.internal.config.FileMqpConfigStore;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
@@ -165,10 +164,11 @@ class DefaultPackageManagerTrustTest {
   }
 
   private DefaultPackageManager createManager(PackageContextFactory contextFactory) {
-    GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
+    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
     return new DefaultPackageManager(
-        new ConfiguredPackageRootProvider(temporaryDirectory, configManager),
-        new FileSystemPackageDiscovery(),
+        new PackageDiscoveryService(
+            new ConfiguredPackageRootResolver(temporaryDirectory, configManager.getConfigPath()),
+            new FileSystemPackageDiscovery()),
         configManager,
         contextFactory);
   }

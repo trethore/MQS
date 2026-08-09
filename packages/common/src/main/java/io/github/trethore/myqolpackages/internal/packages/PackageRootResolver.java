@@ -17,29 +17,8 @@
  */
 package io.github.trethore.myqolpackages.internal.packages;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import io.github.trethore.myqolpackages.api.config.MqpConfig;
 
-final class PackageManifestReader {
-  private final Gson gson;
-
-  PackageManifestReader() {
-    gson = new GsonBuilder().create();
-  }
-
-  PackageManifest read(Path manifestPath) throws IOException, PackageValidationException {
-    try (Reader reader = Files.newBufferedReader(manifestPath)) {
-      PackageManifest manifest = gson.fromJson(reader, PackageManifest.class);
-      if (manifest == null) {
-        throw new PackageValidationException("Manifest must contain a JSON object");
-      }
-      return manifest;
-    } catch (RuntimeException exception) {
-      throw new PackageValidationException("Invalid manifest.json: " + exception.getMessage());
-    }
-  }
+public interface PackageRootResolver {
+  PackageRootResolution resolvePackageRoots(MqpConfig config);
 }

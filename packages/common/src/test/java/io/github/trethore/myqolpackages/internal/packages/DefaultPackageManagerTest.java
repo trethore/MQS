@@ -23,8 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
-import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootProvider;
-import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
+import io.github.trethore.myqolpackages.internal.config.FileMqpConfigStore;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
 import java.io.IOException;
@@ -89,11 +88,12 @@ class DefaultPackageManagerTest {
     Path additionalRoot = temporaryDirectory.resolve("additional");
     createPackage(mqpDirectory, "default-package", "Default Package");
     createPackage(additionalRoot, "additional-package", "Additional Package");
-    GsonMqpConfigManager configManager = new GsonMqpConfigManager(mqpDirectory);
+    FileMqpConfigStore configManager = new FileMqpConfigStore(mqpDirectory);
     try (DefaultPackageManager packageManager =
         new DefaultPackageManager(
-            new ConfiguredPackageRootProvider(mqpDirectory, configManager),
-            new FileSystemPackageDiscovery(),
+            new PackageDiscoveryService(
+                new ConfiguredPackageRootResolver(mqpDirectory, configManager.getConfigPath()),
+                new FileSystemPackageDiscovery()),
             configManager,
             TEST_CONTEXT_FACTORY)) {
       PackageDiscoveryResult initialResult = packageManager.refresh();
@@ -114,13 +114,14 @@ class DefaultPackageManagerTest {
   }
 
   private DefaultPackageManager createPackageManager(Path... packageRoots) {
-    PackageRootProvider rootProvider =
-        () -> new PackageRootResolution(List.of(packageRoots), List.of());
-    GsonMqpConfigManager configManager =
-        new GsonMqpConfigManager(temporaryDirectory.resolve("config"));
+    PackageRootResolver rootProvider =
+        config -> new PackageRootResolution(List.of(packageRoots), List.of());
+    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory.resolve("config"));
     configManager.load();
     return new DefaultPackageManager(
-        rootProvider, new FileSystemPackageDiscovery(), configManager, TEST_CONTEXT_FACTORY);
+        new PackageDiscoveryService(rootProvider, new FileSystemPackageDiscovery()),
+        configManager,
+        TEST_CONTEXT_FACTORY);
   }
 
   private static List<String> packageIds(List<PackageInfo> packages) {

@@ -27,8 +27,7 @@ import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
-import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootProvider;
-import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
+import io.github.trethore.myqolpackages.internal.config.FileMqpConfigStore;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
@@ -336,7 +335,7 @@ class DefaultPackageManagerRuntimeTest {
   }
 
   private DefaultPackageManager createPackageManager(PackageContextFactory contextFactory) {
-    GsonMqpConfigManager configManager = new GsonMqpConfigManager(temporaryDirectory);
+    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
     configManager.load();
     try (Stream<Path> children = Files.list(temporaryDirectory)) {
       for (Path child : children.filter(Files::isDirectory).toList()) {
@@ -352,8 +351,9 @@ class DefaultPackageManagerRuntimeTest {
       throw new IllegalStateException(exception);
     }
     return new DefaultPackageManager(
-        new ConfiguredPackageRootProvider(temporaryDirectory, configManager),
-        new FileSystemPackageDiscovery(),
+        new PackageDiscoveryService(
+            new ConfiguredPackageRootResolver(temporaryDirectory, configManager.getConfigPath()),
+            new FileSystemPackageDiscovery()),
         configManager,
         contextFactory);
   }

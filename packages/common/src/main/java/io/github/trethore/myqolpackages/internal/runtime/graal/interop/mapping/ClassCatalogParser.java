@@ -15,31 +15,25 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.runtime.graal.interop.mapping;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
-final class PackageManifestReader {
-  private final Gson gson;
+public final class ClassCatalogParser {
+  private static final String COMMENT_PREFIX = "#";
 
-  PackageManifestReader() {
-    gson = new GsonBuilder().create();
-  }
-
-  PackageManifest read(Path manifestPath) throws IOException, PackageValidationException {
-    try (Reader reader = Files.newBufferedReader(manifestPath)) {
-      PackageManifest manifest = gson.fromJson(reader, PackageManifest.class);
-      if (manifest == null) {
-        throw new PackageValidationException("Manifest must contain a JSON object");
+  public ClassCatalog parse(Reader source) throws IOException {
+    ClassCatalog.Builder catalog = ClassCatalog.builder();
+    BufferedReader reader = new BufferedReader(source);
+    String line;
+    while ((line = reader.readLine()) != null) {
+      String className = line.trim();
+      if (!className.isEmpty() && !className.startsWith(COMMENT_PREFIX)) {
+        catalog.add(className);
       }
-      return manifest;
-    } catch (RuntimeException exception) {
-      throw new PackageValidationException("Invalid manifest.json: " + exception.getMessage());
     }
+    return catalog.build();
   }
 }

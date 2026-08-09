@@ -21,11 +21,13 @@ import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.internal.config.ConfiguredPackageRootProvider;
-import io.github.trethore.myqolpackages.internal.config.GsonMqpConfigManager;
+import io.github.trethore.myqolpackages.internal.config.FileMqpConfigStore;
+import io.github.trethore.myqolpackages.internal.config.MqpConfigStore;
+import io.github.trethore.myqolpackages.internal.packages.ConfiguredPackageRootResolver;
 import io.github.trethore.myqolpackages.internal.packages.DefaultPackageManager;
 import io.github.trethore.myqolpackages.internal.packages.FileSystemPackageDiscovery;
-import io.github.trethore.myqolpackages.internal.runtime.GraalPackageContextFactory;
+import io.github.trethore.myqolpackages.internal.packages.PackageDiscoveryService;
+import io.github.trethore.myqolpackages.internal.runtime.graal.GraalPackageContextFactory;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -34,11 +36,11 @@ import org.slf4j.LoggerFactory;
 public final class MqpRuntime {
   private static final Logger LOGGER = LoggerFactory.getLogger(MqpRuntime.class);
 
-  private final GsonMqpConfigManager configManager;
+  private final MqpConfigStore configStore;
   private final PackageManager packageManager;
 
-  private MqpRuntime(GsonMqpConfigManager configManager, PackageManager packageManager) {
-    this.configManager = configManager;
+  private MqpRuntime(MqpConfigStore configStore, PackageManager packageManager) {
+    this.configStore = configStore;
     this.packageManager = packageManager;
   }
 
@@ -54,14 +56,17 @@ public final class MqpRuntime {
     Objects.requireNonNull(mqpDirectory, "mqpDirectory");
     Objects.requireNonNull(mqpVersion, "mqpVersion");
     Objects.requireNonNull(environment, "environment");
-    GsonMqpConfigManager configManager = new GsonMqpConfigManager(mqpDirectory);
+    MqpConfigStore configStore = new FileMqpConfigStore(mqpDirectory);
+    PackageDiscoveryService discoveryService =
+        new PackageDiscoveryService(
+            new ConfiguredPackageRootResolver(mqpDirectory, configStore.getConfigPath()),
+            new FileSystemPackageDiscovery());
     PackageManager packageManager =
         new DefaultPackageManager(
-            new ConfiguredPackageRootProvider(mqpDirectory, configManager),
-            new FileSystemPackageDiscovery(),
-            configManager,
+            discoveryService,
+            configStore,
             new GraalPackageContextFactory(mqpDirectory, mqpVersion, environment));
-    return new MqpRuntime(configManager, packageManager);
+    return new MqpRuntime(configStore, packageManager);
   }
 
   @SuppressWarnings("UnusedReturnValue")
@@ -94,6 +99,6 @@ public final class MqpRuntime {
   }
 
   public MqpConfig getConfig() {
-    return configManager.getConfig();
+    return configStore.getConfig();
   }
 }

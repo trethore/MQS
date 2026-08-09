@@ -1,0 +1,2 @@
+# Test identity catalog
+io.github.trethore.myqolpackages.internal.runtime.graal.MappedClassFixture
