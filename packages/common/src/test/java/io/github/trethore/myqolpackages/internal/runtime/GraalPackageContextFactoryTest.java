@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.sun.net.httpserver.HttpServer;
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -36,6 +37,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class GraalPackageContextFactoryTest {
+  private static final String TEST_RESOURCE_DIRECTORY =
+      "io/github/trethore/myqolpackages/internal/runtime/graal-package-context/";
+
   @TempDir Path temporaryDirectory;
 
   @Test
@@ -170,60 +174,8 @@ class GraalPackageContextFactoryTest {
   @Test
   void exposesRuntimeApis() throws IOException, PackageLifecycleException {
     Path dataDirectory = getDataDirectory();
-    Path entrypoint =
-        createEntrypoint(
-            """
-            import { value } from "./value.js";
-            if (value !== 42) throw new Error("module was not loaded");
-            if (mqp.version !== "0.0.1") throw new Error("unexpected MQP version");
-            if (typeof mqp.dataDirectory !== "string") throw new Error("invalid data directory");
-            if (mqp.package.id !== "example-package") throw new Error("unexpected package ID");
-            const Files = Java.type("java.nio.file.Files");
-            const Path = Java.type("java.nio.file.Path");
-            if (!Files.isDirectory(Path.of(mqp.dataDirectory))) {
-              throw new Error("missing data directory");
-            }
-            Files.writeString(
-              Path.of(mqp.dataDirectory).resolve("created-during-load.txt"),
-              "data"
-            );
-            if (typeof fetch !== "function") throw new Error("missing fetch");
-            for (const name of ["mqp", "importClass", "wrap", "packages", "net", "fetch"]) {
-              const descriptor = Object.getOwnPropertyDescriptor(globalThis, name);
-              if (!descriptor || descriptor.configurable || !descriptor.enumerable || descriptor.writable) {
-                throw new Error(`invalid global descriptor: ${name}`);
-              }
-            }
-            if (!Object.isFrozen(mqp) || !Object.isFrozen(mqp.package)) {
-              throw new Error("mutable MQP metadata");
-            }
-            for (const name of Object.getOwnPropertyNames(globalThis)) {
-              if (name.startsWith("__mqp")) throw new Error(`leaked host bridge: ${name}`);
-            }
-            for (const name of [
-              "createMqpBootstrap",
-              "createRuntimeAdapter",
-              "installMqp",
-              "installJavaInterop",
-              "installFetch"
-            ]) {
-              if (Object.hasOwn(globalThis, name)) throw new Error(`leaked API installer: ${name}`);
-            }
-            try { mqp.version = "changed"; } catch (error) {}
-            if (mqp.version !== "0.0.1") throw new Error("mutable MQP API");
-            const originalDataDirectory = mqp.dataDirectory;
-            try { mqp.dataDirectory = "changed"; } catch (error) {}
-            if (mqp.dataDirectory !== originalDataDirectory) throw new Error("mutable data directory");
-            const HostString = Java.type("java.lang.String");
-            if (HostString.valueOf(42) !== "42") throw new Error("host lookup failed");
-            const imported = importClass("java.lang.Double");
-            const packaged = packages.java.lang.Double;
-            if (!imported || imported !== packaged) throw new Error("class proxies differ");
-
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
-    Files.writeString(entrypoint.resolveSibling("value.js"), "export const value = 42;");
+    Path entrypoint = createEntrypointFromResource("exposes-runtime-apis.js");
+    Files.writeString(entrypoint.resolveSibling("value.js"), readScriptResource("value.js"));
 
     try (GraalPackageContextFactory contextFactory = createContextFactory();
         PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
@@ -234,141 +186,7 @@ class GraalPackageContextFactoryTest {
 
   @Test
   void exposesMappedConstructorsMethodsAndFields() throws IOException, PackageLifecycleException {
-    Path entrypoint =
-        createEntrypoint(
-            """
-            const Fixture = importClass("net.minecraft.test.FakeMappedClass");
-            const partialFixture = importClass("FakeMappedClass");
-            const packagedFixture = packages.net.minecraft.test.FakeMappedClass;
-            const aliasedFixture = net.minecraft.test.FakeMappedClass;
-            if (Fixture !== partialFixture
-                || partialFixture !== packagedFixture
-                || packagedFixture !== aliasedFixture) {
-              throw new Error("class proxy identity differs");
-            }
-            const AlphaComponent = importClass("net.minecraft.alpha.Component");
-            const BetaComponent = importClass("net.minecraft.beta.Component");
-            if (AlphaComponent.alphaValue !== "initial-static"
-                || BetaComponent.betaValue !== "initial-static") {
-              throw new Error("class alias mappings interfered");
-            }
-            if (Fixture.greeting("MQP") !== "hello MQP") throw new Error("static method failed");
-            if (Fixture.choose(4) !== "number:4") throw new Error("numeric overload failed");
-            if (Fixture.choose("four") !== "string:four") throw new Error("string overload failed");
-            if (Fixture.specific("value") !== "string:value") {
-              throw new Error("specific overload failed");
-            }
-            if (Fixture.specific(null) !== "string:null") {
-              throw new Error("null overload specificity failed");
-            }
-            if (Fixture.numberOnly(4) !== "shared-number:4") {
-              throw new Error("mapped numeric signature failed");
-            }
-            if (Fixture.stringOnly("four") !== "shared-string:four") {
-              throw new Error("mapped string signature failed");
-            }
-            let mismatchedSignatureRejected = false;
-            try { Fixture.numberOnly("four"); } catch (error) { mismatchedSignatureRejected = true; }
-            if (!mismatchedSignatureRejected) throw new Error("mapped signature leaked overload");
-            if (Fixture.staticValue !== "initial-static") throw new Error("static field failed");
-            if (Fixture.staticValue$ !== "initial-static") throw new Error("static $ field failed");
-            Fixture.staticValue$ = "changed-static";
-            if (Fixture.staticValue !== "changed-static") throw new Error("static write failed");
-            if (typeof Fixture.staticCollision !== "function") {
-              throw new Error("static method did not win collision");
-            }
-            if (Fixture.staticCollision() !== "static-method") {
-              throw new Error("static collision method failed");
-            }
-            if (Fixture.staticCollision$ !== "static-field") {
-              throw new Error("static collision field failed");
-            }
-            let ambiguousWriteRejected = false;
-            try { Fixture.staticCollision = "changed"; } catch (error) { ambiguousWriteRejected = true; }
-            if (!ambiguousWriteRejected) throw new Error("ambiguous static write was accepted");
-
-            const instance = new Fixture("fixture", 2);
-            if (instance.name !== "fixture" || instance.count !== 2) {
-              throw new Error("private constructor or fields failed");
-            }
-            if (instance.increment(3) !== 5 || instance.count$ !== 5) {
-              throw new Error("instance method failed");
-            }
-            instance.name$ = "renamed";
-            if (instance.name !== "renamed") throw new Error("instance write failed");
-            instance.name = "renamed-again";
-            if (instance.name$ !== "renamed-again") throw new Error("plain field write failed");
-            if (typeof instance.value !== "function") {
-              throw new Error("instance method did not win collision");
-            }
-            if (instance.value() !== "instance-method" || instance.value$ !== "instance-field") {
-              throw new Error("instance collision failed");
-            }
-            ambiguousWriteRejected = false;
-            try { instance.value = "changed"; } catch (error) { ambiguousWriteRejected = true; }
-            if (!ambiguousWriteRejected) throw new Error("ambiguous instance write was accepted");
-            instance.value$ = "changed-field";
-            if (instance.value$ !== "changed-field") throw new Error("collision write failed");
-            if (instance.join("joined", "a", "b") !== "joined:a,b") {
-              throw new Error("varargs method failed");
-            }
-            if (instance.baseValue !== "base-field" || instance.baseMethod() !== "base-method") {
-              throw new Error("inherited private members failed");
-            }
-
-            const copy = instance.copy();
-            if (copy.name !== "renamed-again" || copy.count !== 5) {
-              throw new Error("return wrapping failed");
-            }
-            if (!instance.same(instance) || instance.same(copy)) {
-              throw new Error("wrapped object argument failed");
-            }
-            if (!instance._self || !instance._class || Fixture._class !== instance._class) {
-              throw new Error("raw escape members failed");
-            }
-            if (!instance._equals(instance) || !instance._equals(instance._self)) {
-              throw new Error("Java equality failed for the same object");
-            }
-            if (instance._equals(copy) || instance._equals(copy._self)) {
-              throw new Error("Java equality failed for different objects");
-            }
-            const BaseFixture = importClass("net.minecraft.test.FakeMappedBase");
-            if (!instance._instanceof(Fixture)
-                || !instance._instanceof(Fixture._class)
-                || !instance._instanceof(BaseFixture)) {
-              throw new Error("Java instanceof failed");
-            }
-            let objectTypeRejected = false;
-            try { instance._instanceof(copy); } catch (error) { objectTypeRejected = true; }
-            if (!objectTypeRejected) throw new Error("instanceof accepted an object as a type");
-            let nullTypeRejected = false;
-            try { instance._instanceof(null); } catch (error) { nullTypeRejected = true; }
-            if (!nullTypeRejected) throw new Error("instanceof accepted null as a type");
-            const wrappedAgain = wrap(instance._self);
-            if (wrappedAgain.hiddenName !== "renamed-again") {
-              throw new Error("wrapped field read failed");
-            }
-            if (!wrappedAgain.hiddenSame(instance)) {
-              throw new Error("wrapped object identity failed");
-            }
-            if (!wrap(instance).same(instance)) {
-              throw new Error("wrapper wrapping failed");
-            }
-
-            let finalWriteRejected = false;
-            try { instance.finalValue$ = "changed"; } catch (error) { finalWriteRejected = true; }
-            if (!finalWriteRejected || instance.finalValue !== "instance-final") {
-              throw new Error("final instance field was writable");
-            }
-            finalWriteRejected = false;
-            try { Fixture.staticFinalValue$ = "changed"; } catch (error) { finalWriteRejected = true; }
-            if (!finalWriteRejected || Fixture.staticFinalValue !== "static-final") {
-              throw new Error("final static field was writable");
-            }
-
-            export function onEnable() {}
-            export function onDisable() {}
-            """);
+    Path entrypoint = createEntrypointFromResource("mapped-interop.js");
     try (GraalPackageContextFactory contextFactory = createMappedContextFactory();
         PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
       assertDoesNotThrow(context::invokeEnable);
@@ -484,68 +302,10 @@ class GraalPackageContextFactoryTest {
         });
     server.start();
     try {
-      Path entrypoint =
-          createEntrypoint(
-              """
-              let complete = false;
-              let failure;
-
-              const assert = (condition, message) => {
-                if (!condition) throw new Error(message);
-              };
-
-              export function onEnable() {
-                fetch("http://127.0.0.1:%1$d/json", {
-                  method: "post",
-                  headers: { "X-Request": 42 },
-                  body: 123
-                })
-                  .then((response) => {
-                    assert(response.status === 201, "invalid status");
-                    assert(response.statusText === "Created", "invalid status text");
-                    assert(response.ok, "invalid ok value");
-                    assert(!response.redirected, "invalid redirected value");
-                    assert(response.url.endsWith("/json"), "invalid URL");
-                    assert(Object.isFrozen(response.headers), "mutable headers");
-                    const header = response.headers.get("X-Result");
-                    assert(header.includes("first") && header.includes("second"), "invalid header");
-                    assert(response.headers.has("x-result"), "missing header");
-                    assert([...response.headers].some(([name]) => name === "x-result"), "invalid entries");
-                    assert([...response.headers.keys()].includes("x-result"), "invalid keys");
-                    assert([...response.headers.values()].includes("first"), "invalid values");
-                    const result = response.json();
-                    assert(result instanceof Promise, "json did not return a Promise");
-                    assert(response.bodyUsed, "body was not consumed synchronously");
-                    return result.then((value) => {
-                      assert(value.value === 42, "invalid JSON body");
-                      return response.text().then(
-                        () => { throw new Error("body was consumed twice"); },
-                        (error) => assert(error instanceof TypeError, "invalid body error")
-                      );
-                    });
-                  })
-                  .then(() => fetch("http://127.0.0.1:%1$d/binary"))
-                  .then((response) => response.arrayBuffer())
-                  .then((buffer) => {
-                    assert(buffer instanceof ArrayBuffer, "invalid array buffer");
-                    assert(
-                      Array.from(new Uint8Array(buffer)).join(",") === "0,1,127,128,255",
-                      "invalid binary body"
-                    );
-                    complete = true;
-                  })
-                  .catch((error) => {
-                    failure = String(error?.stack ?? error);
-                    complete = true;
-                  });
-              }
-
-              export function onDisable() {
-                if (!complete) throw new Error("fetch did not complete");
-                if (failure !== undefined) throw new Error(failure);
-              }
-              """
-                  .formatted(server.getAddress().getPort()));
+      String source =
+          readScriptResource("fetch-request-response.js")
+              .replace("__PORT__", Integer.toString(server.getAddress().getPort()));
+      Path entrypoint = createEntrypoint(source);
 
       try (GraalPackageContextFactory contextFactory = createContextFactory();
           PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
@@ -592,6 +352,20 @@ class GraalPackageContextFactoryTest {
     }
   }
 
+  private Path createEntrypointFromResource(String resourceName) throws IOException {
+    return createEntrypoint(readScriptResource(resourceName));
+  }
+
+  private String readScriptResource(String resourceName) throws IOException {
+    String resourcePath = "/" + TEST_RESOURCE_DIRECTORY + resourceName;
+    try (InputStream inputStream = getClass().getResourceAsStream(resourcePath)) {
+      if (inputStream == null) {
+        throw new IOException("Missing test script resource: " + resourcePath);
+      }
+      return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+    }
+  }
+
   private Path createEntrypoint(String source) throws IOException {
     Path packageDirectory = temporaryDirectory.resolve("example-package");
     Path entrypoint = packageDirectory.resolve("src/index.js");
@@ -607,14 +381,18 @@ class GraalPackageContextFactoryTest {
   private GraalPackageContextFactory createMappedContextFactory() {
     MqpRuntimeEnvironment environment =
         new MqpRuntimeEnvironment(
-            getClass().getClassLoader(), Optional.empty(), Optional.of("mappings/test-client.txt"));
+            getClass().getClassLoader(),
+            Optional.empty(),
+            Optional.of(TEST_RESOURCE_DIRECTORY + "mappings/test-client.txt"));
     return new GraalPackageContextFactory(temporaryDirectory, "0.0.1", environment);
   }
 
   private GraalPackageContextFactory createCatalogContextFactory() {
     MqpRuntimeEnvironment environment =
         new MqpRuntimeEnvironment(
-            getClass().getClassLoader(), Optional.of("catalog/test-client.txt"), Optional.empty());
+            getClass().getClassLoader(),
+            Optional.of(TEST_RESOURCE_DIRECTORY + "catalog/test-client.txt"),
+            Optional.empty());
     return new GraalPackageContextFactory(temporaryDirectory, "0.0.1", environment);
   }
 
