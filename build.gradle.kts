@@ -37,6 +37,13 @@ spotless {
     ktfmt()
   }
 
+  format("javascript") {
+    target("**/*.js")
+
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+
   format("misc") {
     target("**/*.md", ".gitignore")
     targetExclude("references/**", "**/build/**", ".gradle/**")
