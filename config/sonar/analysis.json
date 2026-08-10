@@ -1,7 +1,11 @@
 {
   "properties": {
     "sonar.inclusions": ["**/*.java"],
-    "sonar.exclusions": ["references/**", "**/build/**"],
+    "sonar.exclusions": [
+      "references/**",
+      "**/build/**",
+      "**/*Mixin*.java"
+    ],
     "sonar.gradle.scanAll": false
   },
   "issueExclusions": [
