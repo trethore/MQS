@@ -18,7 +18,7 @@
 package io.github.trethore.myqolpackages.internal.packages;
 
 final class PackageValidationException extends Exception {
-  PackageValidationException(String message) {
-    super(message);
-  }
+    PackageValidationException(String message) {
+        super(message);
+    }
 }

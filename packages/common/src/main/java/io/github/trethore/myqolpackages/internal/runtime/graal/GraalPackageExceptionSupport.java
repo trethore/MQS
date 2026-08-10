@@ -25,75 +25,77 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 
 final class GraalPackageExceptionSupport {
-  private GraalPackageExceptionSupport() {}
+    private GraalPackageExceptionSupport() {}
 
-  static PackageLifecycleException createFailure(
-      String message, Throwable cause, Path packageDirectory) {
-    String detail = cause.getMessage();
-    StringBuilder formattedMessage = new StringBuilder(message);
-    if (detail != null && !detail.isBlank()) {
-      formattedMessage.append(": ").append(detail);
+    static PackageLifecycleException createFailure(String message, Throwable cause, Path packageDirectory) {
+        String detail = cause.getMessage();
+        StringBuilder formattedMessage = new StringBuilder(message);
+        if (detail != null && !detail.isBlank()) {
+            formattedMessage.append(": ").append(detail);
+        }
+        String location = findLocation(cause, packageDirectory);
+        if (location != null) {
+            formattedMessage.append(" (").append(location).append(')');
+        }
+        return new PackageLifecycleException(formattedMessage.toString(), cause);
     }
-    String location = findLocation(cause, packageDirectory);
-    if (location != null) {
-      formattedMessage.append(" (").append(location).append(')');
-    }
-    return new PackageLifecycleException(formattedMessage.toString(), cause);
-  }
 
-  private static String findLocation(Throwable throwable, Path packageDirectory) {
-    Throwable current = throwable;
-    while (current != null) {
-      if (current instanceof PolyglotException polyglotException) {
-        SourceSection sourceSection = polyglotException.getSourceLocation();
-        if (isAvailable(sourceSection)) {
-          return formatLocation(sourceSection, packageDirectory);
+    private static String findLocation(Throwable throwable, Path packageDirectory) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof PolyglotException polyglotException) {
+                SourceSection sourceSection = polyglotException.getSourceLocation();
+                if (isAvailable(sourceSection)) {
+                    return formatLocation(sourceSection, packageDirectory);
+                }
+                for (PolyglotException.StackFrame stackFrame : polyglotException.getPolyglotStackTrace()) {
+                    sourceSection = stackFrame.getSourceLocation();
+                    if (isAvailable(sourceSection)) {
+                        return formatLocation(sourceSection, packageDirectory);
+                    }
+                }
+            }
+            current = current.getCause();
         }
-        for (PolyglotException.StackFrame stackFrame : polyglotException.getPolyglotStackTrace()) {
-          sourceSection = stackFrame.getSourceLocation();
-          if (isAvailable(sourceSection)) {
-            return formatLocation(sourceSection, packageDirectory);
-          }
-        }
-      }
-      current = current.getCause();
+        return null;
     }
-    return null;
-  }
 
-  private static String formatLocation(SourceSection sourceSection, Path packageDirectory) {
-    StringBuilder location =
-        new StringBuilder(formatSource(sourceSection.getSource(), packageDirectory));
-    if (sourceSection.hasLines()) {
-      location.append(':').append(sourceSection.getStartLine());
-      if (sourceSection.hasColumns()) {
-        location.append(':').append(sourceSection.getStartColumn());
-      }
+    private static String formatLocation(SourceSection sourceSection, Path packageDirectory) {
+        StringBuilder location = new StringBuilder(formatSource(sourceSection.getSource(), packageDirectory));
+        if (sourceSection.hasLines()) {
+            location.append(':').append(sourceSection.getStartLine());
+            if (sourceSection.hasColumns()) {
+                location.append(':').append(sourceSection.getStartColumn());
+            }
+        }
+        return location.toString();
     }
-    return location.toString();
-  }
 
-  private static String formatSource(Source source, Path packageDirectory) {
-    String sourcePath = source.getPath();
-    if (sourcePath != null) {
-      try {
-        Path path = Path.of(sourcePath);
-        if (!path.isAbsolute()) {
-          path = packageDirectory.resolve(path);
+    private static String formatSource(Source source, Path packageDirectory) {
+        String sourcePath = source.getPath();
+        if (sourcePath != null) {
+            try {
+                Path path = Path.of(sourcePath);
+                if (!path.isAbsolute()) {
+                    path = packageDirectory.resolve(path);
+                }
+                path = path.toAbsolutePath().normalize();
+                Path normalizedPackageDirectory =
+                        packageDirectory.toAbsolutePath().normalize();
+                if (path.startsWith(normalizedPackageDirectory)) {
+                    return normalizedPackageDirectory
+                            .relativize(path)
+                            .toString()
+                            .replace('\\', '/');
+                }
+            } catch (InvalidPathException ignored) {
+                return source.getName();
+            }
         }
-        path = path.toAbsolutePath().normalize();
-        Path normalizedPackageDirectory = packageDirectory.toAbsolutePath().normalize();
-        if (path.startsWith(normalizedPackageDirectory)) {
-          return normalizedPackageDirectory.relativize(path).toString().replace('\\', '/');
-        }
-      } catch (InvalidPathException ignored) {
         return source.getName();
-      }
     }
-    return source.getName();
-  }
 
-  private static boolean isAvailable(SourceSection sourceSection) {
-    return sourceSection != null && sourceSection.isAvailable();
-  }
+    private static boolean isAvailable(SourceSection sourceSection) {
+        return sourceSection != null && sourceSection.isAvailable();
+    }
 }

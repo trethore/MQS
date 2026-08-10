@@ -22,17 +22,16 @@ import java.util.Objects;
 import org.graalvm.polyglot.Value;
 
 final class MetadataApiModule implements PackageApiModule {
-  private final String mqpVersion;
+    private final String mqpVersion;
 
-  MetadataApiModule(String mqpVersion) {
-    this.mqpVersion = Objects.requireNonNull(mqpVersion, "mqpVersion");
-  }
+    MetadataApiModule(String mqpVersion) {
+        this.mqpVersion = Objects.requireNonNull(mqpVersion, "mqpVersion");
+    }
 
-  @Override
-  public PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec) {
-    Value metadata =
-        bridge.createMetadata(mqpVersion, spec.dataDirectory().toString(), spec.packageId());
-    bridge.defineGlobal("mqp", metadata);
-    return PackageApiSession.empty();
-  }
+    @Override
+    public PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec) {
+        Value metadata = bridge.createMetadata(mqpVersion, spec.dataDirectory().toString(), spec.packageId());
+        bridge.defineGlobal("mqp", metadata);
+        return PackageApiSession.empty();
+    }
 }

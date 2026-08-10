@@ -30,32 +30,28 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class UntrustPackageClientCommand {
-  private final PackageManager packageManager;
+    private final PackageManager packageManager;
 
-  public UntrustPackageClientCommand(PackageManager packageManager) {
-    this.packageManager = packageManager;
-  }
-
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("untrust")
-        .then(
-            ClientCommandManager.argument("id", StringArgumentType.word())
-                .suggests(
-                    (context, builder) ->
-                        PackageCommandSupport.suggestPackageIds(
-                            builder, packageManager.getTrustedPackageIds(), Function.identity()))
-                .executes(this::execute));
-  }
-
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    String packageId = StringArgumentType.getString(context, "id");
-    PackageOperationResult result = packageManager.untrustPackage(packageId);
-    PackageCommandSupport.sendDiagnostics(context.getSource(), result.diagnostics());
-    if (!result.successful()) {
-      return ClientCommandResult.FAILURE;
+    public UntrustPackageClientCommand(PackageManager packageManager) {
+        this.packageManager = packageManager;
     }
-    MqpCommandFeedback.sendInfo(
-        context.getSource(), packageId + " is now untrusted, disabled, and stopped");
-    return ClientCommandResult.SUCCESS;
-  }
+
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("untrust")
+                .then(ClientCommandManager.argument("id", StringArgumentType.word())
+                        .suggests((context, builder) -> PackageCommandSupport.suggestPackageIds(
+                                builder, packageManager.getTrustedPackageIds(), Function.identity()))
+                        .executes(this::execute));
+    }
+
+    private int execute(CommandContext<FabricClientCommandSource> context) {
+        String packageId = StringArgumentType.getString(context, "id");
+        PackageOperationResult result = packageManager.untrustPackage(packageId);
+        PackageCommandSupport.sendDiagnostics(context.getSource(), result.diagnostics());
+        if (!result.successful()) {
+            return ClientCommandResult.FAILURE;
+        }
+        MqpCommandFeedback.sendInfo(context.getSource(), packageId + " is now untrusted, disabled, and stopped");
+        return ClientCommandResult.SUCCESS;
+    }
 }

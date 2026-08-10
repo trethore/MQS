@@ -21,28 +21,24 @@ import java.util.Objects;
 import java.util.Optional;
 
 public record MqpRuntimeEnvironment(
-    ClassLoader classLoader,
-    Optional<String> classCatalogResource,
-    Optional<String> mappingsResource) {
-  public MqpRuntimeEnvironment {
-    Objects.requireNonNull(classLoader, "classLoader");
-    classCatalogResource =
-        Objects.requireNonNull(classCatalogResource, "classCatalogResource")
-            .map(MqpRuntimeEnvironment::normalizeResourceName);
-    mappingsResource =
-        Objects.requireNonNull(mappingsResource, "mappingsResource")
-            .map(MqpRuntimeEnvironment::normalizeResourceName);
-  }
-
-  public static MqpRuntimeEnvironment identity(ClassLoader classLoader) {
-    return new MqpRuntimeEnvironment(classLoader, Optional.empty(), Optional.empty());
-  }
-
-  private static String normalizeResourceName(String resourceName) {
-    String normalizedName = resourceName.startsWith("/") ? resourceName.substring(1) : resourceName;
-    if (normalizedName.isBlank()) {
-      throw new IllegalArgumentException("Resource name must not be blank");
+        ClassLoader classLoader, Optional<String> classCatalogResource, Optional<String> mappingsResource) {
+    public MqpRuntimeEnvironment {
+        Objects.requireNonNull(classLoader, "classLoader");
+        classCatalogResource = Objects.requireNonNull(classCatalogResource, "classCatalogResource")
+                .map(MqpRuntimeEnvironment::normalizeResourceName);
+        mappingsResource = Objects.requireNonNull(mappingsResource, "mappingsResource")
+                .map(MqpRuntimeEnvironment::normalizeResourceName);
     }
-    return normalizedName;
-  }
+
+    public static MqpRuntimeEnvironment identity(ClassLoader classLoader) {
+        return new MqpRuntimeEnvironment(classLoader, Optional.empty(), Optional.empty());
+    }
+
+    private static String normalizeResourceName(String resourceName) {
+        String normalizedName = resourceName.startsWith("/") ? resourceName.substring(1) : resourceName;
+        if (normalizedName.isBlank()) {
+            throw new IllegalArgumentException("Resource name must not be blank");
+        }
+        return normalizedName;
+    }
 }

@@ -25,74 +25,71 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 
 public final class MqpCommandFeedback {
-  private MqpCommandFeedback() {}
+    private MqpCommandFeedback() {}
 
-  public static void sendInfo(FabricClientCommandSource source, String message) {
-    sendInfo(source, Component.literal(message));
-  }
-
-  public static void sendInfo(FabricClientCommandSource source, Component message) {
-    source.sendFeedback(format(message, ChatFormatting.YELLOW));
-  }
-
-  public static void sendError(FabricClientCommandSource source, String message) {
-    sendError(source, Component.literal(message));
-  }
-
-  public static void sendError(FabricClientCommandSource source, Component message) {
-    source.sendError(format(message, ChatFormatting.RED));
-  }
-
-  public static void sendWarning(FabricClientCommandSource source, Component message) {
-    source.sendFeedback(format(message, ChatFormatting.GOLD));
-  }
-
-  public static void sendHeader(FabricClientCommandSource source) {
-    MutableComponent header = Component.empty();
-    header.append(Component.literal("----- ").withStyle(ChatFormatting.GRAY));
-    header.append(createTag(ChatFormatting.YELLOW));
-    header.append(Component.literal(" -----").withStyle(ChatFormatting.GRAY));
-    source.sendFeedback(header);
-  }
-
-  public static void sendLine(FabricClientCommandSource source, String message) {
-    sendLine(source, Component.literal(message));
-  }
-
-  public static void sendLine(FabricClientCommandSource source, Component message) {
-    source.sendFeedback(message);
-  }
-
-  public static Component action(String label, String command, String hoverText) {
-    return Component.literal("[" + label + "]")
-        .withStyle(
-            style ->
-                style
-                    .withColor(ChatFormatting.GREEN)
-                    .withClickEvent(new ClickEvent.RunCommand(command))
-                    .withHoverEvent(new HoverEvent.ShowText(Component.literal(hoverText))));
-  }
-
-  private static Component ensureTerminalPeriod(Component message) {
-    if (message.getString().endsWith(".")) {
-      return message;
+    public static void sendInfo(FabricClientCommandSource source, String message) {
+        sendInfo(source, Component.literal(message));
     }
-    return Component.empty().append(message).append(Component.literal("."));
-  }
 
-  private static Component format(Component message, ChatFormatting labelColor) {
-    MutableComponent formattedMessage = Component.empty();
-    formattedMessage.append(createTag(labelColor));
-    formattedMessage.append(Component.literal(" "));
-    formattedMessage.append(ensureTerminalPeriod(message));
-    return formattedMessage;
-  }
+    public static void sendInfo(FabricClientCommandSource source, Component message) {
+        source.sendFeedback(format(message, ChatFormatting.YELLOW));
+    }
 
-  private static Component createTag(ChatFormatting labelColor) {
-    MutableComponent tag = Component.empty();
-    tag.append(Component.literal("[").withStyle(ChatFormatting.GRAY));
-    tag.append(Component.literal("MQP").withStyle(labelColor, ChatFormatting.BOLD));
-    tag.append(Component.literal("]").withStyle(ChatFormatting.GRAY));
-    return tag;
-  }
+    public static void sendError(FabricClientCommandSource source, String message) {
+        sendError(source, Component.literal(message));
+    }
+
+    public static void sendError(FabricClientCommandSource source, Component message) {
+        source.sendError(format(message, ChatFormatting.RED));
+    }
+
+    public static void sendWarning(FabricClientCommandSource source, Component message) {
+        source.sendFeedback(format(message, ChatFormatting.GOLD));
+    }
+
+    public static void sendHeader(FabricClientCommandSource source) {
+        MutableComponent header = Component.empty();
+        header.append(Component.literal("----- ").withStyle(ChatFormatting.GRAY));
+        header.append(createTag(ChatFormatting.YELLOW));
+        header.append(Component.literal(" -----").withStyle(ChatFormatting.GRAY));
+        source.sendFeedback(header);
+    }
+
+    public static void sendLine(FabricClientCommandSource source, String message) {
+        sendLine(source, Component.literal(message));
+    }
+
+    public static void sendLine(FabricClientCommandSource source, Component message) {
+        source.sendFeedback(message);
+    }
+
+    public static Component action(String label, String command, String hoverText) {
+        return Component.literal("[" + label + "]")
+                .withStyle(style -> style.withColor(ChatFormatting.GREEN)
+                        .withClickEvent(new ClickEvent.RunCommand(command))
+                        .withHoverEvent(new HoverEvent.ShowText(Component.literal(hoverText))));
+    }
+
+    private static Component ensureTerminalPeriod(Component message) {
+        if (message.getString().endsWith(".")) {
+            return message;
+        }
+        return Component.empty().append(message).append(Component.literal("."));
+    }
+
+    private static Component format(Component message, ChatFormatting labelColor) {
+        MutableComponent formattedMessage = Component.empty();
+        formattedMessage.append(createTag(labelColor));
+        formattedMessage.append(Component.literal(" "));
+        formattedMessage.append(ensureTerminalPeriod(message));
+        return formattedMessage;
+    }
+
+    private static Component createTag(ChatFormatting labelColor) {
+        MutableComponent tag = Component.empty();
+        tag.append(Component.literal("[").withStyle(ChatFormatting.GRAY));
+        tag.append(Component.literal("MQP").withStyle(labelColor, ChatFormatting.BOLD));
+        tag.append(Component.literal("]").withStyle(ChatFormatting.GRAY));
+        return tag;
+    }
 }

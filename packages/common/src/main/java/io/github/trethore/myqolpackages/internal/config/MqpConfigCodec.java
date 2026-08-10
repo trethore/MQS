@@ -29,75 +29,69 @@ import java.io.Writer;
 import java.util.Map;
 
 final class MqpConfigCodec {
-  private static final String MISMATCH_BEHAVIOR_FIELD = "mismatchBehavior";
+    private static final String MISMATCH_BEHAVIOR_FIELD = "mismatchBehavior";
 
-  private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-  private final MqpConfigValidator validator = new MqpConfigValidator();
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final MqpConfigValidator validator = new MqpConfigValidator();
 
-  MqpConfig read(Reader reader) {
-    JsonElement configurationJson = JsonParser.parseReader(reader);
-    validateSerializedBehaviors(configurationJson);
-    MqpConfig config = gson.fromJson(configurationJson, MqpConfig.class);
-    if (config == null) {
-      throw new JsonSyntaxException("Configuration must contain a JSON object");
+    MqpConfig read(Reader reader) {
+        JsonElement configurationJson = JsonParser.parseReader(reader);
+        validateSerializedBehaviors(configurationJson);
+        MqpConfig config = gson.fromJson(configurationJson, MqpConfig.class);
+        if (config == null) {
+            throw new JsonSyntaxException("Configuration must contain a JSON object");
+        }
+        validator.validate(config);
+        return config;
     }
-    validator.validate(config);
-    return config;
-  }
 
-  void write(MqpConfig config, Writer writer) {
-    gson.toJson(config, writer);
-  }
+    void write(MqpConfig config, Writer writer) {
+        gson.toJson(config, writer);
+    }
 
-  private static void validateSerializedBehaviors(JsonElement configurationJson) {
-    if (!configurationJson.isJsonObject()) {
-      return;
+    private static void validateSerializedBehaviors(JsonElement configurationJson) {
+        if (!configurationJson.isJsonObject()) {
+            return;
+        }
+        JsonObject trust = getObject(configurationJson.getAsJsonObject(), "trust");
+        if (trust == null) {
+            return;
+        }
+        JsonObject defaults = getObject(trust, "fingerprintDefaults");
+        if (defaults != null) {
+            validateBehavior(defaults, "fingerprint defaults");
+        }
+        JsonObject packages = getObject(trust, "packages");
+        if (packages == null) {
+            return;
+        }
+        for (Map.Entry<String, JsonElement> entry : packages.entrySet()) {
+            if (!entry.getValue().isJsonObject()) {
+                continue;
+            }
+            JsonObject fingerprint = getObject(entry.getValue().getAsJsonObject(), "fingerprint");
+            if (fingerprint != null) {
+                validateBehavior(fingerprint, entry.getKey());
+            }
+        }
     }
-    JsonObject trust = getObject(configurationJson.getAsJsonObject(), "trust");
-    if (trust == null) {
-      return;
-    }
-    JsonObject defaults = getObject(trust, "fingerprintDefaults");
-    if (defaults != null) {
-      validateBehavior(defaults, "fingerprint defaults");
-    }
-    JsonObject packages = getObject(trust, "packages");
-    if (packages == null) {
-      return;
-    }
-    for (Map.Entry<String, JsonElement> entry : packages.entrySet()) {
-      if (!entry.getValue().isJsonObject()) {
-        continue;
-      }
-      JsonObject fingerprint = getObject(entry.getValue().getAsJsonObject(), "fingerprint");
-      if (fingerprint != null) {
-        validateBehavior(fingerprint, entry.getKey());
-      }
-    }
-  }
 
-  private static JsonObject getObject(JsonObject parent, String fieldName) {
-    JsonElement value = parent.get(fieldName);
-    return value == null || value.isJsonNull() || !value.isJsonObject()
-        ? null
-        : value.getAsJsonObject();
-  }
+    private static JsonObject getObject(JsonObject parent, String fieldName) {
+        JsonElement value = parent.get(fieldName);
+        return value == null || value.isJsonNull() || !value.isJsonObject() ? null : value.getAsJsonObject();
+    }
 
-  private static void validateBehavior(JsonObject parent, String owner) {
-    JsonElement value = parent.get(MISMATCH_BEHAVIOR_FIELD);
-    if (value == null || value.isJsonNull()) {
-      return;
+    private static void validateBehavior(JsonObject parent, String owner) {
+        JsonElement value = parent.get(MISMATCH_BEHAVIOR_FIELD);
+        if (value == null || value.isJsonNull()) {
+            return;
+        }
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+            throw new JsonSyntaxException("Fingerprint mismatch behavior for " + owner + " must be a string");
+        }
+        String behavior = value.getAsString();
+        if (!behavior.equals("log_only") && !behavior.equals("chat_warning") && !behavior.equals("block")) {
+            throw new JsonSyntaxException("Unknown fingerprint mismatch behavior for " + owner + ": " + behavior);
+        }
     }
-    if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
-      throw new JsonSyntaxException(
-          "Fingerprint mismatch behavior for " + owner + " must be a string");
-    }
-    String behavior = value.getAsString();
-    if (!behavior.equals("log_only")
-        && !behavior.equals("chat_warning")
-        && !behavior.equals("block")) {
-      throw new JsonSyntaxException(
-          "Unknown fingerprint mismatch behavior for " + owner + ": " + behavior);
-    }
-  }
 }

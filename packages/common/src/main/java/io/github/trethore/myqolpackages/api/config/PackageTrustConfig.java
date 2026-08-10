@@ -18,9 +18,9 @@
 package io.github.trethore.myqolpackages.api.config;
 
 public record PackageTrustConfig(String versions, PackageFingerprintConfig fingerprint) {
-  public PackageTrustConfig {
-    if (versions == null || versions.isBlank()) {
-      throw new IllegalArgumentException("Trusted package versions must not be empty");
+    public PackageTrustConfig {
+        if (versions == null || versions.isBlank()) {
+            throw new IllegalArgumentException("Trusted package versions must not be empty");
+        }
     }
-  }
 }

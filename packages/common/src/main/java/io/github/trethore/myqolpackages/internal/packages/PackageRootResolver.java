@@ -20,5 +20,5 @@ package io.github.trethore.myqolpackages.internal.packages;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
 
 public interface PackageRootResolver {
-  PackageRootResolution resolvePackageRoots(MqpConfig config);
+    PackageRootResolution resolvePackageRoots(MqpConfig config);
 }

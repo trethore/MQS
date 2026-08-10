@@ -23,20 +23,19 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 public interface MqpConfigStore {
-  MqpConfigLoadResult load();
+    MqpConfigLoadResult load();
 
-  MqpConfig getConfig();
+    MqpConfig getConfig();
 
-  Path getConfigPath();
+    Path getConfigPath();
 
-  void addEnabledPackage(String packageId) throws IOException;
+    void addEnabledPackage(String packageId) throws IOException;
 
-  void removeEnabledPackage(String packageId) throws IOException;
+    void removeEnabledPackage(String packageId) throws IOException;
 
-  void putTrustedPackage(String packageId, PackageTrustConfig packageTrustConfig)
-      throws IOException;
+    void putTrustedPackage(String packageId, PackageTrustConfig packageTrustConfig) throws IOException;
 
-  void updatePackageFingerprint(String packageId, String fingerprint) throws IOException;
+    void updatePackageFingerprint(String packageId, String fingerprint) throws IOException;
 
-  void removeTrustedAndEnabledPackage(String packageId) throws IOException;
+    void removeTrustedAndEnabledPackage(String packageId) throws IOException;
 }

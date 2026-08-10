@@ -28,82 +28,79 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 public final class FetchApi implements ProxyExecutable, AutoCloseable {
-  private static final int MAX_COMPLETIONS_PER_TICK = 64;
+    private static final int MAX_COMPLETIONS_PER_TICK = 64;
 
-  private final ConcurrentLinkedQueue<Runnable> completions = new ConcurrentLinkedQueue<>();
-  private final PackageHttpClient httpClient;
-  private final FetchRequestParser requestParser;
+    private final ConcurrentLinkedQueue<Runnable> completions = new ConcurrentLinkedQueue<>();
+    private final PackageHttpClient httpClient;
+    private final FetchRequestParser requestParser;
 
-  private volatile boolean closed;
+    private volatile boolean closed;
 
-  public FetchApi(JavaScriptApiBridge adapter, PackageHttpClient httpClient) {
-    this.requestParser = new FetchRequestParser(Objects.requireNonNull(adapter, "adapter"));
-    this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
-  }
-
-  @Override
-  public Object execute(Value... arguments) {
-    if (arguments.length != 4 || !arguments[2].canExecute() || !arguments[3].canExecute()) {
-      throw new IllegalArgumentException("Invalid fetch bridge invocation");
+    public FetchApi(JavaScriptApiBridge adapter, PackageHttpClient httpClient) {
+        this.requestParser = new FetchRequestParser(Objects.requireNonNull(adapter, "adapter"));
+        this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
     }
-    if (closed) {
-      throw new IllegalStateException("Fetch API is closed");
-    }
-    PackageHttpRequest request = requestParser.parse(arguments[0], arguments[1]);
-    Value resolve = arguments[2];
-    Value reject = arguments[3];
-    httpClient
-        .send(request)
-        .whenComplete(
-            (response, throwable) -> enqueueCompletion(resolve, reject, response, throwable));
-    return true;
-  }
 
-  public void tick() {
-    for (int count = 0; count < MAX_COMPLETIONS_PER_TICK; count++) {
-      Runnable completion = completions.poll();
-      if (completion == null) {
-        return;
-      }
-      completion.run();
+    @Override
+    public Object execute(Value... arguments) {
+        if (arguments.length != 4 || !arguments[2].canExecute() || !arguments[3].canExecute()) {
+            throw new IllegalArgumentException("Invalid fetch bridge invocation");
+        }
+        if (closed) {
+            throw new IllegalStateException("Fetch API is closed");
+        }
+        PackageHttpRequest request = requestParser.parse(arguments[0], arguments[1]);
+        Value resolve = arguments[2];
+        Value reject = arguments[3];
+        httpClient
+                .send(request)
+                .whenComplete((response, throwable) -> enqueueCompletion(resolve, reject, response, throwable));
+        return true;
     }
-  }
 
-  @Override
-  public void close() {
-    closed = true;
-    completions.clear();
-  }
-
-  private void enqueueCompletion(
-      Value resolve, Value reject, PackageHttpResponse response, Throwable throwable) {
-    if (closed) {
-      return;
+    public void tick() {
+        for (int count = 0; count < MAX_COMPLETIONS_PER_TICK; count++) {
+            Runnable completion = completions.poll();
+            if (completion == null) {
+                return;
+            }
+            completion.run();
+        }
     }
-    Runnable completion =
-        () -> {
-          if (closed) {
+
+    @Override
+    public void close() {
+        closed = true;
+        completions.clear();
+    }
+
+    private void enqueueCompletion(Value resolve, Value reject, PackageHttpResponse response, Throwable throwable) {
+        if (closed) {
             return;
-          }
-          if (throwable == null) {
-            resolve.execute(new FetchResponse(response));
-          } else {
-            reject.execute(errorMessage(throwable));
-          }
+        }
+        Runnable completion = () -> {
+            if (closed) {
+                return;
+            }
+            if (throwable == null) {
+                resolve.execute(new FetchResponse(response));
+            } else {
+                reject.execute(errorMessage(throwable));
+            }
         };
-    completions.add(completion);
-    if (closed) {
-      completions.remove(completion);
+        completions.add(completion);
+        if (closed) {
+            completions.remove(completion);
+        }
     }
-  }
 
-  private static String errorMessage(Throwable throwable) {
-    Throwable cause = throwable;
-    while ((cause instanceof CompletionException || cause.getClass() == RuntimeException.class)
-        && cause.getCause() != null) {
-      cause = cause.getCause();
+    private static String errorMessage(Throwable throwable) {
+        Throwable cause = throwable;
+        while ((cause instanceof CompletionException || cause.getClass() == RuntimeException.class)
+                && cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String message = cause.getMessage();
+        return message == null || message.isBlank() ? cause.getClass().getSimpleName() : message;
     }
-    String message = cause.getMessage();
-    return message == null || message.isBlank() ? cause.getClass().getSimpleName() : message;
-  }
 }

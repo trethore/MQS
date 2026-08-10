@@ -32,46 +32,39 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class PackageFingerprintClientCommand {
-  private final PackageManager packageManager;
-  private final TrustPackageClientCommand trustPackageClientCommand;
+    private final PackageManager packageManager;
+    private final TrustPackageClientCommand trustPackageClientCommand;
 
-  public PackageFingerprintClientCommand(
-      PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
-    this.packageManager = packageManager;
-    this.trustPackageClientCommand = trustPackageClientCommand;
-  }
-
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("fingerprint")
-        .then(
-            ClientCommandManager.literal("accept")
-                .then(
-                    ClientCommandManager.argument("id", StringArgumentType.word())
-                        .suggests(
-                            (context, builder) ->
-                                PackageCommandSupport.suggestPackageIds(
-                                    builder, packageManager.getPackages(), PackageInfo::id))
-                        .executes(this::executeAccept)));
-  }
-
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildAcceptCallbackCommand() {
-    return HiddenClientCommand.literal("_accept-fingerprint")
-        .then(
-            ClientCommandManager.argument("token", StringArgumentType.word())
-                .executes(
-                    context ->
-                        trustPackageClientCommand.acceptFingerprint(
-                            context.getSource(), StringArgumentType.getString(context, "token"))));
-  }
-
-  private int executeAccept(CommandContext<FabricClientCommandSource> context) {
-    String packageId = StringArgumentType.getString(context, "id");
-    PackageOperationResult result = packageManager.acceptPackageFingerprint(packageId, null);
-    PackageCommandSupport.sendDiagnostics(context.getSource(), result.diagnostics());
-    if (!result.successful()) {
-      return ClientCommandResult.FAILURE;
+    public PackageFingerprintClientCommand(
+            PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
+        this.packageManager = packageManager;
+        this.trustPackageClientCommand = trustPackageClientCommand;
     }
-    MqpCommandFeedback.sendInfo(context.getSource(), "Accepted fingerprint for " + packageId);
-    return ClientCommandResult.SUCCESS;
-  }
+
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("fingerprint")
+                .then(ClientCommandManager.literal("accept")
+                        .then(ClientCommandManager.argument("id", StringArgumentType.word())
+                                .suggests((context, builder) -> PackageCommandSupport.suggestPackageIds(
+                                        builder, packageManager.getPackages(), PackageInfo::id))
+                                .executes(this::executeAccept)));
+    }
+
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildAcceptCallbackCommand() {
+        return HiddenClientCommand.literal("_accept-fingerprint")
+                .then(ClientCommandManager.argument("token", StringArgumentType.word())
+                        .executes(context -> trustPackageClientCommand.acceptFingerprint(
+                                context.getSource(), StringArgumentType.getString(context, "token"))));
+    }
+
+    private int executeAccept(CommandContext<FabricClientCommandSource> context) {
+        String packageId = StringArgumentType.getString(context, "id");
+        PackageOperationResult result = packageManager.acceptPackageFingerprint(packageId, null);
+        PackageCommandSupport.sendDiagnostics(context.getSource(), result.diagnostics());
+        if (!result.successful()) {
+            return ClientCommandResult.FAILURE;
+        }
+        MqpCommandFeedback.sendInfo(context.getSource(), "Accepted fingerprint for " + packageId);
+        return ClientCommandResult.SUCCESS;
+    }
 }

@@ -23,29 +23,28 @@ import java.nio.charset.StandardCharsets;
 import org.graalvm.polyglot.Source;
 
 final class PackageApiSourceLoader {
-  private static final String JAVASCRIPT_LANGUAGE_ID = "js";
-  private static final String JAVASCRIPT_MODULE_MIME_TYPE = "application/javascript+module";
+    private static final String JAVASCRIPT_LANGUAGE_ID = "js";
+    private static final String JAVASCRIPT_MODULE_MIME_TYPE = "application/javascript+module";
 
-  private PackageApiSourceLoader() {}
+    private PackageApiSourceLoader() {}
 
-  static Source load() {
-    return load("runtime-adapter.js");
-  }
-
-  @SuppressWarnings("SameParameterValue")
-  private static Source load(String resourceName) {
-    try (InputStream input = PackageApiSourceLoader.class.getResourceAsStream(resourceName)) {
-      if (input == null) {
-        throw new IllegalStateException("Missing JavaScript API resource: " + resourceName);
-      }
-      String source = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-      return Source.newBuilder(JAVASCRIPT_LANGUAGE_ID, source, resourceName)
-          .mimeType(JAVASCRIPT_MODULE_MIME_TYPE)
-          .cached(true)
-          .buildLiteral();
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Could not read JavaScript API resource: " + resourceName, exception);
+    static Source load() {
+        return load("runtime-adapter.js");
     }
-  }
+
+    @SuppressWarnings("SameParameterValue")
+    private static Source load(String resourceName) {
+        try (InputStream input = PackageApiSourceLoader.class.getResourceAsStream(resourceName)) {
+            if (input == null) {
+                throw new IllegalStateException("Missing JavaScript API resource: " + resourceName);
+            }
+            String source = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            return Source.newBuilder(JAVASCRIPT_LANGUAGE_ID, source, resourceName)
+                    .mimeType(JAVASCRIPT_MODULE_MIME_TYPE)
+                    .cached(true)
+                    .buildLiteral();
+        } catch (IOException exception) {
+            throw new IllegalStateException("Could not read JavaScript API resource: " + resourceName, exception);
+        }
+    }
 }

@@ -30,60 +30,53 @@ import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class HiddenClientCommand {
-  private HiddenClientCommand() {}
+    private HiddenClientCommand() {}
 
-  public static LiteralArgumentBuilder<FabricClientCommandSource> literal(String name) {
-    return new HiddenLiteralArgumentBuilder<>(name);
-  }
-
-  private static final class HiddenLiteralArgumentBuilder<S> extends LiteralArgumentBuilder<S> {
-    private HiddenLiteralArgumentBuilder(String literal) {
-      super(literal);
+    public static LiteralArgumentBuilder<FabricClientCommandSource> literal(String name) {
+        return new HiddenLiteralArgumentBuilder<>(name);
     }
 
-    @Override
-    public LiteralCommandNode<S> build() {
-      HiddenLiteralCommandNode<S> result =
-          new HiddenLiteralCommandNode<>(
-              getLiteral(),
-              getCommand(),
-              getRequirement(),
-              getRedirect(),
-              getRedirectModifier(),
-              isFork());
-      for (CommandNode<S> argument : getArguments()) {
-        result.addChild(argument);
-      }
-      return result;
-    }
-  }
+    private static final class HiddenLiteralArgumentBuilder<S> extends LiteralArgumentBuilder<S> {
+        private HiddenLiteralArgumentBuilder(String literal) {
+            super(literal);
+        }
 
-  private static final class HiddenLiteralCommandNode<S> extends LiteralCommandNode<S> {
-    private HiddenLiteralCommandNode(
-        String literal,
-        Command<S> command,
-        Predicate<S> requirement,
-        CommandNode<S> redirect,
-        RedirectModifier<S> modifier,
-        boolean forks) {
-      super(literal, command, requirement, redirect, modifier, forks);
+        @Override
+        public LiteralCommandNode<S> build() {
+            HiddenLiteralCommandNode<S> result = new HiddenLiteralCommandNode<>(
+                    getLiteral(), getCommand(), getRequirement(), getRedirect(), getRedirectModifier(), isFork());
+            for (CommandNode<S> argument : getArguments()) {
+                result.addChild(argument);
+            }
+            return result;
+        }
     }
 
-    @Override
-    public CompletableFuture<Suggestions> listSuggestions(
-        CommandContext<S> context, SuggestionsBuilder builder) {
-      return Suggestions.empty();
-    }
+    private static final class HiddenLiteralCommandNode<S> extends LiteralCommandNode<S> {
+        private HiddenLiteralCommandNode(
+                String literal,
+                Command<S> command,
+                Predicate<S> requirement,
+                CommandNode<S> redirect,
+                RedirectModifier<S> modifier,
+                boolean forks) {
+            super(literal, command, requirement, redirect, modifier, forks);
+        }
 
-    @Override
-    public LiteralArgumentBuilder<S> createBuilder() {
-      HiddenLiteralArgumentBuilder<S> builder = new HiddenLiteralArgumentBuilder<>(getLiteral());
-      builder.requires(getRequirement());
-      builder.forward(getRedirect(), getRedirectModifier(), isFork());
-      if (getCommand() != null) {
-        builder.executes(getCommand());
-      }
-      return builder;
+        @Override
+        public CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
+            return Suggestions.empty();
+        }
+
+        @Override
+        public LiteralArgumentBuilder<S> createBuilder() {
+            HiddenLiteralArgumentBuilder<S> builder = new HiddenLiteralArgumentBuilder<>(getLiteral());
+            builder.requires(getRequirement());
+            builder.forward(getRedirect(), getRedirectModifier(), isFork());
+            if (getCommand() != null) {
+                builder.executes(getCommand());
+            }
+            return builder;
+        }
     }
-  }
 }

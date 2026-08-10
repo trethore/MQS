@@ -20,43 +20,43 @@ package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 import java.util.List;
 
 final class CompositePackageApiSession implements PackageApiSession {
-  private final List<PackageApiSession> sessions;
-  private boolean closed;
+    private final List<PackageApiSession> sessions;
+    private boolean closed;
 
-  CompositePackageApiSession(List<PackageApiSession> sessions) {
-    this.sessions = List.copyOf(sessions);
-  }
+    CompositePackageApiSession(List<PackageApiSession> sessions) {
+        this.sessions = List.copyOf(sessions);
+    }
 
-  @Override
-  public void tick() {
-    if (closed) {
-      return;
-    }
-    for (PackageApiSession session : sessions) {
-      session.tick();
-    }
-  }
-
-  @Override
-  public void close() {
-    if (closed) {
-      return;
-    }
-    closed = true;
-    RuntimeException failure = null;
-    for (PackageApiSession session : sessions.reversed()) {
-      try {
-        session.close();
-      } catch (RuntimeException exception) {
-        if (failure == null) {
-          failure = exception;
-        } else {
-          failure.addSuppressed(exception);
+    @Override
+    public void tick() {
+        if (closed) {
+            return;
         }
-      }
+        for (PackageApiSession session : sessions) {
+            session.tick();
+        }
     }
-    if (failure != null) {
-      throw failure;
+
+    @Override
+    public void close() {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        RuntimeException failure = null;
+        for (PackageApiSession session : sessions.reversed()) {
+            try {
+                session.close();
+            } catch (RuntimeException exception) {
+                if (failure == null) {
+                    failure = exception;
+                } else {
+                    failure.addSuppressed(exception);
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
     }
-  }
 }

@@ -25,50 +25,47 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public record ClassInteropMetadata(ClassCatalog catalog, MappingIndex mappings) {
-  public static ClassInteropMetadata load(MqpRuntimeEnvironment environment) {
-    Optional<ClassCatalog> standaloneCatalog =
-        environment.classCatalogResource().map(name -> loadCatalog(environment, name));
-    Optional<ProguardMappingParser.ParsedMappings> parsedMappings =
-        environment.mappingsResource().map(name -> loadMappings(environment, name));
-    if (parsedMappings.isEmpty()) {
-      return new ClassInteropMetadata(
-          standaloneCatalog.orElseGet(ClassCatalog::empty), MappingIndex.empty());
+    public static ClassInteropMetadata load(MqpRuntimeEnvironment environment) {
+        Optional<ClassCatalog> standaloneCatalog =
+                environment.classCatalogResource().map(name -> loadCatalog(environment, name));
+        Optional<ProguardMappingParser.ParsedMappings> parsedMappings =
+                environment.mappingsResource().map(name -> loadMappings(environment, name));
+        if (parsedMappings.isEmpty()) {
+            return new ClassInteropMetadata(standaloneCatalog.orElseGet(ClassCatalog::empty), MappingIndex.empty());
+        }
+        ProguardMappingParser.ParsedMappings mappings = parsedMappings.orElseThrow();
+        if (standaloneCatalog.isEmpty()) {
+            return new ClassInteropMetadata(mappings.catalog(), mappings.mappings());
+        }
+        ClassCatalog combinedCatalog = ClassCatalog.builder()
+                .addAll(standaloneCatalog.orElseThrow())
+                .addAll(mappings.catalog())
+                .build();
+        return new ClassInteropMetadata(combinedCatalog, mappings.mappings());
     }
-    ProguardMappingParser.ParsedMappings mappings = parsedMappings.orElseThrow();
-    if (standaloneCatalog.isEmpty()) {
-      return new ClassInteropMetadata(mappings.catalog(), mappings.mappings());
-    }
-    ClassCatalog combinedCatalog =
-        ClassCatalog.builder()
-            .addAll(standaloneCatalog.orElseThrow())
-            .addAll(mappings.catalog())
-            .build();
-    return new ClassInteropMetadata(combinedCatalog, mappings.mappings());
-  }
 
-  private static ClassCatalog loadCatalog(MqpRuntimeEnvironment environment, String resourceName) {
-    try (InputStream input = openResource(environment, resourceName)) {
-      return new ClassCatalogParser().parse(new InputStreamReader(input, StandardCharsets.UTF_8));
-    } catch (IOException | RuntimeException exception) {
-      throw new IllegalStateException("Could not load class catalog " + resourceName, exception);
+    private static ClassCatalog loadCatalog(MqpRuntimeEnvironment environment, String resourceName) {
+        try (InputStream input = openResource(environment, resourceName)) {
+            return new ClassCatalogParser().parse(new InputStreamReader(input, StandardCharsets.UTF_8));
+        } catch (IOException | RuntimeException exception) {
+            throw new IllegalStateException("Could not load class catalog " + resourceName, exception);
+        }
     }
-  }
 
-  private static ProguardMappingParser.ParsedMappings loadMappings(
-      MqpRuntimeEnvironment environment, String resourceName) {
-    try (InputStream input = openResource(environment, resourceName)) {
-      return new ProguardMappingParser()
-          .parse(new InputStreamReader(input, StandardCharsets.UTF_8));
-    } catch (IOException | RuntimeException exception) {
-      throw new IllegalStateException("Could not load class mappings " + resourceName, exception);
+    private static ProguardMappingParser.ParsedMappings loadMappings(
+            MqpRuntimeEnvironment environment, String resourceName) {
+        try (InputStream input = openResource(environment, resourceName)) {
+            return new ProguardMappingParser().parse(new InputStreamReader(input, StandardCharsets.UTF_8));
+        } catch (IOException | RuntimeException exception) {
+            throw new IllegalStateException("Could not load class mappings " + resourceName, exception);
+        }
     }
-  }
 
-  private static InputStream openResource(MqpRuntimeEnvironment environment, String resourceName) {
-    InputStream input = environment.classLoader().getResourceAsStream(resourceName);
-    if (input == null) {
-      throw new IllegalStateException("Missing resource " + resourceName);
+    private static InputStream openResource(MqpRuntimeEnvironment environment, String resourceName) {
+        InputStream input = environment.classLoader().getResourceAsStream(resourceName);
+        if (input == null) {
+            throw new IllegalStateException("Missing resource " + resourceName);
+        }
+        return input;
     }
-    return input;
-  }
 }

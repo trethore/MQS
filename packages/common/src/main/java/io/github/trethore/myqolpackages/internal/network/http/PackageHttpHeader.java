@@ -20,8 +20,8 @@ package io.github.trethore.myqolpackages.internal.network.http;
 import java.util.Objects;
 
 public record PackageHttpHeader(String name, String value) {
-  public PackageHttpHeader {
-    name = Objects.requireNonNull(name, "name").trim();
-    value = Objects.requireNonNull(value, "value").trim();
-  }
+    public PackageHttpHeader {
+        name = Objects.requireNonNull(name, "name").trim();
+        value = Objects.requireNonNull(value, "value").trim();
+    }
 }

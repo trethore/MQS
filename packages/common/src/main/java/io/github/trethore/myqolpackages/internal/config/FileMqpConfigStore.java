@@ -32,137 +32,124 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class FileMqpConfigStore implements MqpConfigStore {
-  private static final String CONFIG_DIAGNOSTIC_ID = "config";
+    private static final String CONFIG_DIAGNOSTIC_ID = "config";
 
-  private final AtomicReference<MqpConfig> config = new AtomicReference<>(MqpConfig.defaults());
-  private final MqpConfigFile configFile;
-  private boolean configLoadedSuccessfully;
+    private final AtomicReference<MqpConfig> config = new AtomicReference<>(MqpConfig.defaults());
+    private final MqpConfigFile configFile;
+    private boolean configLoadedSuccessfully;
 
-  public FileMqpConfigStore(Path mqpDirectory) {
-    configFile = new MqpConfigFile(mqpDirectory, new MqpConfigCodec());
-  }
-
-  @Override
-  public synchronized MqpConfigLoadResult load() {
-    try {
-      Files.createDirectories(configFile.path().getParent());
-      if (!configFile.exists()) {
-        configFile.write(MqpConfig.defaults());
-      }
-      MqpConfig loadedConfig = configFile.read();
-      config.set(loadedConfig);
-      configLoadedSuccessfully = true;
-      return new MqpConfigLoadResult(loadedConfig, List.of());
-    } catch (IOException | RuntimeException exception) {
-      MqpConfig defaultConfig = MqpConfig.defaults();
-      config.set(defaultConfig);
-      configLoadedSuccessfully = false;
-      PackageDiagnostic diagnostic =
-          new PackageDiagnostic(
-              CONFIG_DIAGNOSTIC_ID,
-              configFile.path(),
-              "Could not load config.json: " + exception.getMessage());
-      return new MqpConfigLoadResult(defaultConfig, List.of(diagnostic));
+    public FileMqpConfigStore(Path mqpDirectory) {
+        configFile = new MqpConfigFile(mqpDirectory, new MqpConfigCodec());
     }
-  }
 
-  @Override
-  public MqpConfig getConfig() {
-    return config.get();
-  }
-
-  @Override
-  public Path getConfigPath() {
-    return configFile.path();
-  }
-
-  @Override
-  public synchronized void addEnabledPackage(String packageId) throws IOException {
-    List<String> enabledPackages = new ArrayList<>(config.get().enabledPackages());
-    if (enabledPackages.contains(packageId)) {
-      return;
+    @Override
+    public synchronized MqpConfigLoadResult load() {
+        try {
+            Files.createDirectories(configFile.path().getParent());
+            if (!configFile.exists()) {
+                configFile.write(MqpConfig.defaults());
+            }
+            MqpConfig loadedConfig = configFile.read();
+            config.set(loadedConfig);
+            configLoadedSuccessfully = true;
+            return new MqpConfigLoadResult(loadedConfig, List.of());
+        } catch (IOException | RuntimeException exception) {
+            MqpConfig defaultConfig = MqpConfig.defaults();
+            config.set(defaultConfig);
+            configLoadedSuccessfully = false;
+            PackageDiagnostic diagnostic = new PackageDiagnostic(
+                    CONFIG_DIAGNOSTIC_ID, configFile.path(), "Could not load config.json: " + exception.getMessage());
+            return new MqpConfigLoadResult(defaultConfig, List.of(diagnostic));
+        }
     }
-    enabledPackages.add(packageId);
-    saveEnabledPackages(enabledPackages);
-  }
 
-  @Override
-  public synchronized void removeEnabledPackage(String packageId) throws IOException {
-    List<String> enabledPackages = new ArrayList<>(config.get().enabledPackages());
-    if (!enabledPackages.remove(packageId)) {
-      return;
+    @Override
+    public MqpConfig getConfig() {
+        return config.get();
     }
-    saveEnabledPackages(enabledPackages);
-  }
 
-  @Override
-  public synchronized void putTrustedPackage(
-      String packageId, PackageTrustConfig packageTrustConfig) throws IOException {
-    MqpConfig currentConfig = config.get();
-    Map<String, PackageTrustConfig> trustedPackages =
-        new LinkedHashMap<>(currentConfig.trust().packages());
-    trustedPackages.put(packageId, packageTrustConfig);
-    TrustConfig trustConfig =
-        new TrustConfig(currentConfig.trust().fingerprintDefaults(), trustedPackages);
-    saveConfig(
-        new MqpConfig(
-            currentConfig.configVersion(),
-            currentConfig.additionalPackageRoots(),
-            currentConfig.enabledPackages(),
-            trustConfig));
-  }
-
-  @Override
-  public synchronized void updatePackageFingerprint(String packageId, String fingerprint)
-      throws IOException {
-    MqpConfig currentConfig = config.get();
-    PackageTrustConfig currentPackageTrust = currentConfig.trust().packages().get(packageId);
-    if (currentPackageTrust == null) {
-      throw new IOException("Package is not trusted");
+    @Override
+    public Path getConfigPath() {
+        return configFile.path();
     }
-    PackageFingerprintConfig currentFingerprint = currentPackageTrust.fingerprint();
-    PackageFingerprintConfig updatedFingerprint =
-        new PackageFingerprintConfig(
-            currentFingerprint == null ? null : currentFingerprint.enabled(),
-            currentFingerprint == null ? null : currentFingerprint.mismatchBehavior(),
-            fingerprint);
-    putTrustedPackage(
-        packageId, new PackageTrustConfig(currentPackageTrust.versions(), updatedFingerprint));
-  }
 
-  @Override
-  public synchronized void removeTrustedAndEnabledPackage(String packageId) throws IOException {
-    MqpConfig currentConfig = config.get();
-    List<String> enabledPackages = new ArrayList<>(currentConfig.enabledPackages());
-    enabledPackages.remove(packageId);
-    Map<String, PackageTrustConfig> trustedPackages =
-        new LinkedHashMap<>(currentConfig.trust().packages());
-    trustedPackages.remove(packageId);
-    TrustConfig trustConfig =
-        new TrustConfig(currentConfig.trust().fingerprintDefaults(), trustedPackages);
-    saveConfig(
-        new MqpConfig(
-            currentConfig.configVersion(),
-            currentConfig.additionalPackageRoots(),
-            enabledPackages,
-            trustConfig));
-  }
-
-  private void saveEnabledPackages(List<String> enabledPackages) throws IOException {
-    MqpConfig currentConfig = config.get();
-    saveConfig(
-        new MqpConfig(
-            currentConfig.configVersion(),
-            currentConfig.additionalPackageRoots(),
-            enabledPackages,
-            currentConfig.trust()));
-  }
-
-  private void saveConfig(MqpConfig updatedConfig) throws IOException {
-    if (!configLoadedSuccessfully) {
-      throw new IOException("Configuration cannot be saved because config.json failed to load");
+    @Override
+    public synchronized void addEnabledPackage(String packageId) throws IOException {
+        List<String> enabledPackages = new ArrayList<>(config.get().enabledPackages());
+        if (enabledPackages.contains(packageId)) {
+            return;
+        }
+        enabledPackages.add(packageId);
+        saveEnabledPackages(enabledPackages);
     }
-    configFile.write(updatedConfig);
-    config.set(updatedConfig);
-  }
+
+    @Override
+    public synchronized void removeEnabledPackage(String packageId) throws IOException {
+        List<String> enabledPackages = new ArrayList<>(config.get().enabledPackages());
+        if (!enabledPackages.remove(packageId)) {
+            return;
+        }
+        saveEnabledPackages(enabledPackages);
+    }
+
+    @Override
+    public synchronized void putTrustedPackage(String packageId, PackageTrustConfig packageTrustConfig)
+            throws IOException {
+        MqpConfig currentConfig = config.get();
+        Map<String, PackageTrustConfig> trustedPackages =
+                new LinkedHashMap<>(currentConfig.trust().packages());
+        trustedPackages.put(packageId, packageTrustConfig);
+        TrustConfig trustConfig = new TrustConfig(currentConfig.trust().fingerprintDefaults(), trustedPackages);
+        saveConfig(new MqpConfig(
+                currentConfig.configVersion(),
+                currentConfig.additionalPackageRoots(),
+                currentConfig.enabledPackages(),
+                trustConfig));
+    }
+
+    @Override
+    public synchronized void updatePackageFingerprint(String packageId, String fingerprint) throws IOException {
+        MqpConfig currentConfig = config.get();
+        PackageTrustConfig currentPackageTrust =
+                currentConfig.trust().packages().get(packageId);
+        if (currentPackageTrust == null) {
+            throw new IOException("Package is not trusted");
+        }
+        PackageFingerprintConfig currentFingerprint = currentPackageTrust.fingerprint();
+        PackageFingerprintConfig updatedFingerprint = new PackageFingerprintConfig(
+                currentFingerprint == null ? null : currentFingerprint.enabled(),
+                currentFingerprint == null ? null : currentFingerprint.mismatchBehavior(),
+                fingerprint);
+        putTrustedPackage(packageId, new PackageTrustConfig(currentPackageTrust.versions(), updatedFingerprint));
+    }
+
+    @Override
+    public synchronized void removeTrustedAndEnabledPackage(String packageId) throws IOException {
+        MqpConfig currentConfig = config.get();
+        List<String> enabledPackages = new ArrayList<>(currentConfig.enabledPackages());
+        enabledPackages.remove(packageId);
+        Map<String, PackageTrustConfig> trustedPackages =
+                new LinkedHashMap<>(currentConfig.trust().packages());
+        trustedPackages.remove(packageId);
+        TrustConfig trustConfig = new TrustConfig(currentConfig.trust().fingerprintDefaults(), trustedPackages);
+        saveConfig(new MqpConfig(
+                currentConfig.configVersion(), currentConfig.additionalPackageRoots(), enabledPackages, trustConfig));
+    }
+
+    private void saveEnabledPackages(List<String> enabledPackages) throws IOException {
+        MqpConfig currentConfig = config.get();
+        saveConfig(new MqpConfig(
+                currentConfig.configVersion(),
+                currentConfig.additionalPackageRoots(),
+                enabledPackages,
+                currentConfig.trust()));
+    }
+
+    private void saveConfig(MqpConfig updatedConfig) throws IOException {
+        if (!configLoadedSuccessfully) {
+            throw new IOException("Configuration cannot be saved because config.json failed to load");
+        }
+        configFile.write(updatedConfig);
+        config.set(updatedConfig);
+    }
 }

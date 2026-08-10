@@ -17,9 +17,12 @@ spotless {
     target("**/src/**/*.java")
     targetExclude("references/**", "**/build/**")
     licenseHeaderFile(rootProject.file("HEADER"))
-    googleJavaFormat()
+    importOrder()
     removeUnusedImports()
-    formatAnnotations()
+    palantirJavaFormat(libs.versions.palantir.java.format.get())
+    trimTrailingWhitespace()
+    endWithNewline()
+    toggleOffOn()
   }
 
   format("javaPackageInfo") {
@@ -38,6 +41,7 @@ spotless {
     target("**/*.md", ".gitignore")
     targetExclude("references/**", "**/build/**", ".gradle/**")
     trimTrailingWhitespace()
+    leadingTabsToSpaces()
     endWithNewline()
   }
 }

@@ -21,16 +21,13 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public record TrustConfig(
-    FingerprintDefaultsConfig fingerprintDefaults, Map<String, PackageTrustConfig> packages) {
-  public TrustConfig {
-    fingerprintDefaults =
-        fingerprintDefaults == null ? FingerprintDefaultsConfig.defaults() : fingerprintDefaults;
-    packages =
-        packages == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(packages));
-  }
+public record TrustConfig(FingerprintDefaultsConfig fingerprintDefaults, Map<String, PackageTrustConfig> packages) {
+    public TrustConfig {
+        fingerprintDefaults = fingerprintDefaults == null ? FingerprintDefaultsConfig.defaults() : fingerprintDefaults;
+        packages = packages == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(packages));
+    }
 
-  public static TrustConfig defaults() {
-    return new TrustConfig(FingerprintDefaultsConfig.defaults(), Map.of());
-  }
+    public static TrustConfig defaults() {
+        return new TrustConfig(FingerprintDefaultsConfig.defaults(), Map.of());
+    }
 }

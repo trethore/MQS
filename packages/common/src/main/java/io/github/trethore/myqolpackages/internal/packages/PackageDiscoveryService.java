@@ -28,49 +28,49 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class PackageDiscoveryService {
-  private final FileSystemPackageDiscovery fileSystemDiscovery;
-  private final PackageRootResolver rootResolver;
+    private final FileSystemPackageDiscovery fileSystemDiscovery;
+    private final PackageRootResolver rootResolver;
 
-  public PackageDiscoveryService(
-      PackageRootResolver rootResolver, FileSystemPackageDiscovery fileSystemDiscovery) {
-    this.rootResolver = Objects.requireNonNull(rootResolver, "rootResolver");
-    this.fileSystemDiscovery = Objects.requireNonNull(fileSystemDiscovery, "fileSystemDiscovery");
-  }
-
-  Result discover(MqpConfig config) {
-    PackageRootResolution rootResolution = rootResolver.resolvePackageRoots(config);
-    List<PackageDiagnostic> diagnostics = new ArrayList<>(rootResolution.diagnostics());
-    Map<String, List<PackageDescriptor>> packagesById = new LinkedHashMap<>();
-    for (Path packageRoot : rootResolution.packageRoots()) {
-      PackageDiscoverySnapshot snapshot = fileSystemDiscovery.discover(packageRoot);
-      diagnostics.addAll(snapshot.diagnostics());
-      for (PackageDescriptor descriptor : snapshot.packages()) {
-        packagesById.computeIfAbsent(descriptor.id(), ignored -> new ArrayList<>()).add(descriptor);
-      }
+    public PackageDiscoveryService(PackageRootResolver rootResolver, FileSystemPackageDiscovery fileSystemDiscovery) {
+        this.rootResolver = Objects.requireNonNull(rootResolver, "rootResolver");
+        this.fileSystemDiscovery = Objects.requireNonNull(fileSystemDiscovery, "fileSystemDiscovery");
     }
 
-    Map<String, PackageDescriptor> discoveredPackages = new LinkedHashMap<>();
-    for (Map.Entry<String, List<PackageDescriptor>> entry : packagesById.entrySet()) {
-      List<PackageDescriptor> matchingPackages = entry.getValue();
-      if (matchingPackages.size() == 1) {
-        discoveredPackages.put(entry.getKey(), matchingPackages.getFirst());
-        continue;
-      }
-      for (PackageDescriptor descriptor : matchingPackages) {
-        diagnostics.add(
-            new PackageDiagnostic(
-                descriptor.id(),
-                descriptor.packageDirectory(),
-                "Duplicate package ID; all packages with this ID were ignored"));
-      }
-    }
-    return new Result(discoveredPackages, diagnostics);
-  }
+    Result discover(MqpConfig config) {
+        PackageRootResolution rootResolution = rootResolver.resolvePackageRoots(config);
+        List<PackageDiagnostic> diagnostics = new ArrayList<>(rootResolution.diagnostics());
+        Map<String, List<PackageDescriptor>> packagesById = new LinkedHashMap<>();
+        for (Path packageRoot : rootResolution.packageRoots()) {
+            PackageDiscoverySnapshot snapshot = fileSystemDiscovery.discover(packageRoot);
+            diagnostics.addAll(snapshot.diagnostics());
+            for (PackageDescriptor descriptor : snapshot.packages()) {
+                packagesById
+                        .computeIfAbsent(descriptor.id(), ignored -> new ArrayList<>())
+                        .add(descriptor);
+            }
+        }
 
-  record Result(Map<String, PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
-    Result {
-      packages = Collections.unmodifiableMap(new LinkedHashMap<>(packages));
-      diagnostics = List.copyOf(diagnostics);
+        Map<String, PackageDescriptor> discoveredPackages = new LinkedHashMap<>();
+        for (Map.Entry<String, List<PackageDescriptor>> entry : packagesById.entrySet()) {
+            List<PackageDescriptor> matchingPackages = entry.getValue();
+            if (matchingPackages.size() == 1) {
+                discoveredPackages.put(entry.getKey(), matchingPackages.getFirst());
+                continue;
+            }
+            for (PackageDescriptor descriptor : matchingPackages) {
+                diagnostics.add(new PackageDiagnostic(
+                        descriptor.id(),
+                        descriptor.packageDirectory(),
+                        "Duplicate package ID; all packages with this ID were ignored"));
+            }
+        }
+        return new Result(discoveredPackages, diagnostics);
     }
-  }
+
+    record Result(Map<String, PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
+        Result {
+            packages = Collections.unmodifiableMap(new LinkedHashMap<>(packages));
+            diagnostics = List.copyOf(diagnostics);
+        }
+    }
 }

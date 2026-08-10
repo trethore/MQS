@@ -18,12 +18,12 @@
 package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 
 public interface PackageApiSession extends AutoCloseable {
-  default void tick() {}
+    default void tick() {}
 
-  @Override
-  void close();
+    @Override
+    void close();
 
-  static PackageApiSession empty() {
-    return () -> {};
-  }
+    static PackageApiSession empty() {
+        return () -> {};
+    }
 }

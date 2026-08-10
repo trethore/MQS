@@ -23,69 +23,69 @@ import java.nio.file.Path;
 import org.graalvm.polyglot.Context;
 
 final class GraalPackageContextResources implements AutoCloseable {
-  private final Context context;
-  private final PackageLogOutputStream errorOutput;
-  private final PackageApiSession apiSession;
-  private final PackageLogOutputStream output;
-  private final Path packageDirectory;
+    private final Context context;
+    private final PackageLogOutputStream errorOutput;
+    private final PackageApiSession apiSession;
+    private final PackageLogOutputStream output;
+    private final Path packageDirectory;
 
-  private boolean closed;
+    private boolean closed;
 
-  GraalPackageContextResources(
-      Context context,
-      PackageLogOutputStream output,
-      PackageLogOutputStream errorOutput,
-      PackageApiSession apiSession,
-      Path packageDirectory) {
-    this.context = context;
-    this.output = output;
-    this.errorOutput = errorOutput;
-    this.apiSession = apiSession;
-    this.packageDirectory = packageDirectory;
-  }
-
-  @Override
-  public void close() throws PackageLifecycleException {
-    if (closed) {
-      return;
+    GraalPackageContextResources(
+            Context context,
+            PackageLogOutputStream output,
+            PackageLogOutputStream errorOutput,
+            PackageApiSession apiSession,
+            Path packageDirectory) {
+        this.context = context;
+        this.output = output;
+        this.errorOutput = errorOutput;
+        this.apiSession = apiSession;
+        this.packageDirectory = packageDirectory;
     }
-    closed = true;
-    try {
-      RuntimeException failure = null;
-      try {
-        apiSession.close();
-      } catch (RuntimeException exception) {
-        failure = exception;
-      }
-      try {
-        context.close();
-      } catch (RuntimeException exception) {
-        if (failure == null) {
-          failure = exception;
-        } else {
-          failure.addSuppressed(exception);
+
+    @Override
+    public void close() throws PackageLifecycleException {
+        if (closed) {
+            return;
         }
-      }
-      if (failure != null) {
-        throw GraalPackageExceptionSupport.createFailure(
-            "Could not close JavaScript context", failure, packageDirectory);
-      }
-    } finally {
-      output.close();
-      errorOutput.close();
+        closed = true;
+        try {
+            RuntimeException failure = null;
+            try {
+                apiSession.close();
+            } catch (RuntimeException exception) {
+                failure = exception;
+            }
+            try {
+                context.close();
+            } catch (RuntimeException exception) {
+                if (failure == null) {
+                    failure = exception;
+                } else {
+                    failure.addSuppressed(exception);
+                }
+            }
+            if (failure != null) {
+                throw GraalPackageExceptionSupport.createFailure(
+                        "Could not close JavaScript context", failure, packageDirectory);
+            }
+        } finally {
+            output.close();
+            errorOutput.close();
+        }
     }
-  }
 
-  Context getContext() {
-    return context;
-  }
-
-  void tick() throws PackageLifecycleException {
-    try {
-      apiSession.tick();
-    } catch (RuntimeException exception) {
-      throw GraalPackageExceptionSupport.createFailure(
-          "Could not process an HTTP completion", exception, packageDirectory);
+    Context getContext() {
+        return context;
     }
-  }
+
+    void tick() throws PackageLifecycleException {
+        try {
+            apiSession.tick();
+        } catch (RuntimeException exception) {
+            throw GraalPackageExceptionSupport.createFailure(
+                    "Could not process an HTTP completion", exception, packageDirectory);
+        }
+    }
 }

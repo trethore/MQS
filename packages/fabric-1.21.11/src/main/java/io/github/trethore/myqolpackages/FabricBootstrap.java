@@ -32,31 +32,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class FabricBootstrap implements ClientModInitializer {
-  public static final String MOD_ID = "myqolpackages";
-  public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final String MOD_ID = "myqolpackages";
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-  @Override
-  public void onInitializeClient() {
-    FabricLoader fabricLoader = FabricLoader.getInstance();
-    Path mqpDirectory = fabricLoader.getGameDir().resolve(MOD_ID);
-    String mqpVersion =
-        fabricLoader
-            .getModContainer(MOD_ID)
-            .orElseThrow()
-            .getMetadata()
-            .getVersion()
-            .getFriendlyString();
-    MqpRuntimeEnvironment environment =
-        new MqpRuntimeEnvironment(
-            FabricBootstrap.class.getClassLoader(),
-            Optional.empty(),
-            Optional.of("assets/myqolpackages/mappings/client.txt"));
-    MqpRuntime runtime = MqpRuntime.create(mqpDirectory, mqpVersion, environment);
-    new MqpClientCommand(runtime).register();
-    PackageDiscoveryResult startupResult = runtime.start();
-    new StartupPackageNotificationService(startupResult).register();
-    ClientTickEvents.END_CLIENT_TICK.register(client -> runtime.tick());
-    ClientLifecycleEvents.CLIENT_STOPPING.register(client -> runtime.stop());
-    LOGGER.info("Initialized {} with data directory {}", MOD_ID, mqpDirectory);
-  }
+    @Override
+    public void onInitializeClient() {
+        FabricLoader fabricLoader = FabricLoader.getInstance();
+        Path mqpDirectory = fabricLoader.getGameDir().resolve(MOD_ID);
+        String mqpVersion = fabricLoader
+                .getModContainer(MOD_ID)
+                .orElseThrow()
+                .getMetadata()
+                .getVersion()
+                .getFriendlyString();
+        MqpRuntimeEnvironment environment = new MqpRuntimeEnvironment(
+                FabricBootstrap.class.getClassLoader(),
+                Optional.empty(),
+                Optional.of("assets/myqolpackages/mappings/client.txt"));
+        MqpRuntime runtime = MqpRuntime.create(mqpDirectory, mqpVersion, environment);
+        new MqpClientCommand(runtime).register();
+        PackageDiscoveryResult startupResult = runtime.start();
+        new StartupPackageNotificationService(startupResult).register();
+        ClientTickEvents.END_CLIENT_TICK.register(client -> runtime.tick());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> runtime.stop());
+        LOGGER.info("Initialized {} with data directory {}", MOD_ID, mqpDirectory);
+    }
 }

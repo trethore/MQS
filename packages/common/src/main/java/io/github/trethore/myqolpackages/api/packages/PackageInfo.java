@@ -20,11 +20,11 @@ package io.github.trethore.myqolpackages.api.packages;
 import java.nio.file.Path;
 
 public record PackageInfo(
-    String id,
-    String name,
-    String description,
-    String version,
-    String entrypoint,
-    Path packageDirectory,
-    PackageState state,
-    PackageTrustInfo trust) {}
+        String id,
+        String name,
+        String description,
+        String version,
+        String entrypoint,
+        Path packageDirectory,
+        PackageState state,
+        PackageTrustInfo trust) {}

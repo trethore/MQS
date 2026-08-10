@@ -34,71 +34,63 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class MqpRuntime {
-  private static final Logger LOGGER = LoggerFactory.getLogger(MqpRuntime.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MqpRuntime.class);
 
-  private final MqpConfigStore configStore;
-  private final PackageManager packageManager;
+    private final MqpConfigStore configStore;
+    private final PackageManager packageManager;
 
-  private MqpRuntime(MqpConfigStore configStore, PackageManager packageManager) {
-    this.configStore = configStore;
-    this.packageManager = packageManager;
-  }
-
-  public static MqpRuntime create(Path mqpDirectory, String mqpVersion) {
-    return create(
-        mqpDirectory,
-        mqpVersion,
-        MqpRuntimeEnvironment.identity(MqpRuntime.class.getClassLoader()));
-  }
-
-  public static MqpRuntime create(
-      Path mqpDirectory, String mqpVersion, MqpRuntimeEnvironment environment) {
-    Objects.requireNonNull(mqpDirectory, "mqpDirectory");
-    Objects.requireNonNull(mqpVersion, "mqpVersion");
-    Objects.requireNonNull(environment, "environment");
-    MqpConfigStore configStore = new FileMqpConfigStore(mqpDirectory);
-    PackageDiscoveryService discoveryService =
-        new PackageDiscoveryService(
-            new ConfiguredPackageRootResolver(mqpDirectory, configStore.getConfigPath()),
-            new FileSystemPackageDiscovery());
-    PackageManager packageManager =
-        new DefaultPackageManager(
-            discoveryService,
-            configStore,
-            new GraalPackageContextFactory(mqpDirectory, mqpVersion, environment));
-    return new MqpRuntime(configStore, packageManager);
-  }
-
-  @SuppressWarnings("UnusedReturnValue")
-  public PackageDiscoveryResult start() {
-    PackageDiscoveryResult result = packageManager.reload();
-    LOGGER.info(
-        "Discovered {} package(s) with {} diagnostic(s)",
-        result.packages().size(),
-        result.diagnostics().size());
-    for (PackageDiagnostic diagnostic : result.diagnostics()) {
-      LOGGER.warn(
-          "MQP diagnostic for {} at {}: {}",
-          diagnostic.packageId(),
-          diagnostic.packageDirectory(),
-          diagnostic.message());
+    private MqpRuntime(MqpConfigStore configStore, PackageManager packageManager) {
+        this.configStore = configStore;
+        this.packageManager = packageManager;
     }
-    return result;
-  }
 
-  public void stop() {
-    packageManager.close();
-  }
+    public static MqpRuntime create(Path mqpDirectory, String mqpVersion) {
+        return create(mqpDirectory, mqpVersion, MqpRuntimeEnvironment.identity(MqpRuntime.class.getClassLoader()));
+    }
 
-  public void tick() {
-    packageManager.tick();
-  }
+    public static MqpRuntime create(Path mqpDirectory, String mqpVersion, MqpRuntimeEnvironment environment) {
+        Objects.requireNonNull(mqpDirectory, "mqpDirectory");
+        Objects.requireNonNull(mqpVersion, "mqpVersion");
+        Objects.requireNonNull(environment, "environment");
+        MqpConfigStore configStore = new FileMqpConfigStore(mqpDirectory);
+        PackageDiscoveryService discoveryService = new PackageDiscoveryService(
+                new ConfiguredPackageRootResolver(mqpDirectory, configStore.getConfigPath()),
+                new FileSystemPackageDiscovery());
+        PackageManager packageManager = new DefaultPackageManager(
+                discoveryService, configStore, new GraalPackageContextFactory(mqpDirectory, mqpVersion, environment));
+        return new MqpRuntime(configStore, packageManager);
+    }
 
-  public PackageManager getPackageManager() {
-    return packageManager;
-  }
+    @SuppressWarnings("UnusedReturnValue")
+    public PackageDiscoveryResult start() {
+        PackageDiscoveryResult result = packageManager.reload();
+        LOGGER.info(
+                "Discovered {} package(s) with {} diagnostic(s)",
+                result.packages().size(),
+                result.diagnostics().size());
+        for (PackageDiagnostic diagnostic : result.diagnostics()) {
+            LOGGER.warn(
+                    "MQP diagnostic for {} at {}: {}",
+                    diagnostic.packageId(),
+                    diagnostic.packageDirectory(),
+                    diagnostic.message());
+        }
+        return result;
+    }
 
-  public MqpConfig getConfig() {
-    return configStore.getConfig();
-  }
+    public void stop() {
+        packageManager.close();
+    }
+
+    public void tick() {
+        packageManager.tick();
+    }
+
+    public PackageManager getPackageManager() {
+        return packageManager;
+    }
+
+    public MqpConfig getConfig() {
+        return configStore.getConfig();
+    }
 }

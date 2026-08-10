@@ -26,25 +26,23 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class MqpClientCommand {
-  private final PackagesClientCommand packagesClientCommand;
+    private final PackagesClientCommand packagesClientCommand;
 
-  public MqpClientCommand(MqpRuntime runtime) {
-    packagesClientCommand = new PackagesClientCommand(runtime.getPackageManager());
-  }
+    public MqpClientCommand(MqpRuntime runtime) {
+        packagesClientCommand = new PackagesClientCommand(runtime.getPackageManager());
+    }
 
-  public void register() {
-    ClientCommandRegistrationCallback.EVENT.register(
-        (dispatcher, registryAccess) -> dispatcher.register(buildCommand()));
-  }
+    public void register() {
+        ClientCommandRegistrationCallback.EVENT.register(
+                (dispatcher, registryAccess) -> dispatcher.register(buildCommand()));
+    }
 
-  private LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("mqp")
-        .executes(this::execute)
-        .then(packagesClientCommand.buildCommand());
-  }
+    private LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("mqp").executes(this::execute).then(packagesClientCommand.buildCommand());
+    }
 
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    MqpCommandFeedback.sendInfo(context.getSource(), "Available actions: packages.");
-    return ClientCommandResult.SUCCESS;
-  }
+    private int execute(CommandContext<FabricClientCommandSource> context) {
+        MqpCommandFeedback.sendInfo(context.getSource(), "Available actions: packages.");
+        return ClientCommandResult.SUCCESS;
+    }
 }

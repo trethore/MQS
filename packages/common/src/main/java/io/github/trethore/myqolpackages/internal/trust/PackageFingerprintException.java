@@ -18,11 +18,11 @@
 package io.github.trethore.myqolpackages.internal.trust;
 
 public final class PackageFingerprintException extends Exception {
-  public PackageFingerprintException(String message) {
-    super(message);
-  }
+    public PackageFingerprintException(String message) {
+        super(message);
+    }
 
-  public PackageFingerprintException(String message, Throwable cause) {
-    super(message, cause);
-  }
+    public PackageFingerprintException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

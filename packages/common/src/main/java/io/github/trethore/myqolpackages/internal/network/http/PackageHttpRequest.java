@@ -22,48 +22,46 @@ import java.util.List;
 import java.util.Objects;
 
 public final class PackageHttpRequest {
-  private final byte[] body;
-  private final List<PackageHttpHeader> headers;
-  private final String method;
-  private final URI uri;
+    private final byte[] body;
+    private final List<PackageHttpHeader> headers;
+    private final String method;
+    private final URI uri;
 
-  private PackageHttpRequest(URI uri, String method, List<PackageHttpHeader> headers, byte[] body) {
-    this.uri = Objects.requireNonNull(uri, "uri");
-    this.method = Objects.requireNonNull(method, "method");
-    this.headers = List.copyOf(headers);
-    this.body = body == null ? null : body.clone();
-  }
-
-  public static PackageHttpRequest withBody(
-      URI uri, String method, List<PackageHttpHeader> headers, byte[] body) {
-    return new PackageHttpRequest(uri, method, headers, Objects.requireNonNull(body, "body"));
-  }
-
-  public static PackageHttpRequest withoutBody(
-      URI uri, String method, List<PackageHttpHeader> headers) {
-    return new PackageHttpRequest(uri, method, headers, null);
-  }
-
-  boolean hasBody() {
-    return body != null;
-  }
-
-  byte[] bodyData() {
-    if (body == null) {
-      throw new IllegalStateException("HTTP request does not have a body");
+    private PackageHttpRequest(URI uri, String method, List<PackageHttpHeader> headers, byte[] body) {
+        this.uri = Objects.requireNonNull(uri, "uri");
+        this.method = Objects.requireNonNull(method, "method");
+        this.headers = List.copyOf(headers);
+        this.body = body == null ? null : body.clone();
     }
-    return body;
-  }
 
-  public URI uri() {
-    return uri;
-  }
+    public static PackageHttpRequest withBody(URI uri, String method, List<PackageHttpHeader> headers, byte[] body) {
+        return new PackageHttpRequest(uri, method, headers, Objects.requireNonNull(body, "body"));
+    }
 
-  public String method() {
-    return method;
-  }
+    public static PackageHttpRequest withoutBody(URI uri, String method, List<PackageHttpHeader> headers) {
+        return new PackageHttpRequest(uri, method, headers, null);
+    }
 
-  public List<PackageHttpHeader> headers() {
-    return headers;
-  }
+    boolean hasBody() {
+        return body != null;
+    }
+
+    byte[] bodyData() {
+        if (body == null) {
+            throw new IllegalStateException("HTTP request does not have a body");
+        }
+        return body;
+    }
+
+    public URI uri() {
+        return uri;
+    }
+
+    public String method() {
+        return method;
+    }
+
+    public List<PackageHttpHeader> headers() {
+        return headers;
+    }
 }

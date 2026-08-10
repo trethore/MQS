@@ -20,10 +20,10 @@ package io.github.trethore.myqolpackages.api.packages;
 import com.google.gson.annotations.SerializedName;
 
 public enum FingerprintMismatchBehavior {
-  @SerializedName("log_only")
-  LOG_ONLY,
-  @SerializedName("chat_warning")
-  CHAT_WARNING,
-  @SerializedName("block")
-  BLOCK
+    @SerializedName("log_only")
+    LOG_ONLY,
+    @SerializedName("chat_warning")
+    CHAT_WARNING,
+    @SerializedName("block")
+    BLOCK
 }

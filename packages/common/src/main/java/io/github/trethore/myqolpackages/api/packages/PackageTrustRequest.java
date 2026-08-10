@@ -18,7 +18,7 @@
 package io.github.trethore.myqolpackages.api.packages;
 
 public record PackageTrustRequest(
-    PackageTrustSnapshot expectedPackage,
-    TrustVersionScope versionScope,
-    boolean fingerprintEnabled,
-    FingerprintMismatchBehavior mismatchBehavior) {}
+        PackageTrustSnapshot expectedPackage,
+        TrustVersionScope versionScope,
+        boolean fingerprintEnabled,
+        FingerprintMismatchBehavior mismatchBehavior) {}

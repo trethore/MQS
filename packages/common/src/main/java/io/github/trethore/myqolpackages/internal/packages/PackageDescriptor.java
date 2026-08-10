@@ -24,28 +24,24 @@ import io.github.trethore.myqolpackages.internal.trust.SemanticVersion;
 import java.nio.file.Path;
 
 record PackageDescriptor(
-    String id,
-    Path packageDirectory,
-    Path entrypoint,
-    PackageManifest manifest,
-    SemanticVersion semanticVersion) {
-  PackageDescriptor(String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
-    this(id, packageDirectory, entrypoint, manifest, SemanticVersion.parse(manifest.version()));
-  }
+        String id, Path packageDirectory, Path entrypoint, PackageManifest manifest, SemanticVersion semanticVersion) {
+    PackageDescriptor(String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
+        this(id, packageDirectory, entrypoint, manifest, SemanticVersion.parse(manifest.version()));
+    }
 
-  Path dataDirectory() {
-    return PackageDirectories.resolveDataDirectory(packageDirectory, id);
-  }
+    Path dataDirectory() {
+        return PackageDirectories.resolveDataDirectory(packageDirectory, id);
+    }
 
-  PackageInfo toInfo(PackageState state, PackageTrustInfo trustInfo) {
-    return new PackageInfo(
-        id,
-        manifest.name(),
-        manifest.description(),
-        manifest.version(),
-        manifest.entrypoint(),
-        packageDirectory,
-        state,
-        trustInfo);
-  }
+    PackageInfo toInfo(PackageState state, PackageTrustInfo trustInfo) {
+        return new PackageInfo(
+                id,
+                manifest.name(),
+                manifest.description(),
+                manifest.version(),
+                manifest.entrypoint(),
+                packageDirectory,
+                state,
+                trustInfo);
+    }
 }

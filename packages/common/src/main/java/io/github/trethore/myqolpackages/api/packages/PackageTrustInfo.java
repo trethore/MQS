@@ -18,21 +18,15 @@
 package io.github.trethore.myqolpackages.api.packages;
 
 public record PackageTrustInfo(
-    PackageTrustState state,
-    String trustedVersions,
-    boolean fingerprintEnabled,
-    FingerprintMismatchBehavior mismatchBehavior,
-    String expectedFingerprint,
-    String currentFingerprint,
-    String message) {
-  public static PackageTrustInfo untrusted() {
-    return new PackageTrustInfo(
-        PackageTrustState.UNTRUSTED,
-        null,
-        true,
-        FingerprintMismatchBehavior.BLOCK,
-        null,
-        null,
-        null);
-  }
+        PackageTrustState state,
+        String trustedVersions,
+        boolean fingerprintEnabled,
+        FingerprintMismatchBehavior mismatchBehavior,
+        String expectedFingerprint,
+        String currentFingerprint,
+        String message) {
+    public static PackageTrustInfo untrusted() {
+        return new PackageTrustInfo(
+                PackageTrustState.UNTRUSTED, null, true, FingerprintMismatchBehavior.BLOCK, null, null, null);
+    }
 }

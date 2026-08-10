@@ -27,71 +27,70 @@ import java.util.Map;
 import java.util.UUID;
 
 final class PackageTrustInteractionManager {
-  private static final Duration SESSION_DURATION = Duration.ofMinutes(5);
+    private static final Duration SESSION_DURATION = Duration.ofMinutes(5);
 
-  private final Map<String, FingerprintSession> fingerprintSessions = new HashMap<>();
-  private final Map<String, TrustSession> trustSessions = new HashMap<>();
+    private final Map<String, FingerprintSession> fingerprintSessions = new HashMap<>();
+    private final Map<String, TrustSession> trustSessions = new HashMap<>();
 
-  String startTrustSession(PackageTrustSnapshot snapshot, OriginalOperation originalOperation) {
-    String token = createToken();
-    trustSessions.put(
-        token,
-        new TrustSession(snapshot, originalOperation, null, Instant.now().plus(SESSION_DURATION)));
-    return token;
-  }
-
-  TrustSession selectVersion(String token, TrustVersionScope versionScope) {
-    TrustSession session = getTrustSession(token);
-    if (session == null) {
-      return null;
+    String startTrustSession(PackageTrustSnapshot snapshot, OriginalOperation originalOperation) {
+        String token = createToken();
+        trustSessions.put(
+                token,
+                new TrustSession(
+                        snapshot, originalOperation, null, Instant.now().plus(SESSION_DURATION)));
+        return token;
     }
-    TrustSession updatedSession =
-        new TrustSession(
-            session.snapshot(), session.originalOperation(), versionScope, session.expiresAt());
-    trustSessions.put(token, updatedSession);
-    return updatedSession;
-  }
 
-  TrustSession getTrustSession(String token) {
-    TrustSession session = trustSessions.get(token);
-    if (session == null || session.expiresAt().isBefore(Instant.now())) {
-      trustSessions.remove(token);
-      return null;
+    TrustSession selectVersion(String token, TrustVersionScope versionScope) {
+        TrustSession session = getTrustSession(token);
+        if (session == null) {
+            return null;
+        }
+        TrustSession updatedSession =
+                new TrustSession(session.snapshot(), session.originalOperation(), versionScope, session.expiresAt());
+        trustSessions.put(token, updatedSession);
+        return updatedSession;
     }
-    return session;
-  }
 
-  void removeTrustSession(String token) {
-    trustSessions.remove(token);
-  }
-
-  String startFingerprintSession(
-      PackageTrustSnapshot snapshot, OriginalOperation originalOperation) {
-    String token = createToken();
-    fingerprintSessions.put(
-        token,
-        new FingerprintSession(snapshot, originalOperation, Instant.now().plus(SESSION_DURATION)));
-    return token;
-  }
-
-  FingerprintSession takeFingerprintSession(String token) {
-    FingerprintSession session = fingerprintSessions.remove(token);
-    if (session == null || session.expiresAt().isBefore(Instant.now())) {
-      return null;
+    TrustSession getTrustSession(String token) {
+        TrustSession session = trustSessions.get(token);
+        if (session == null || session.expiresAt().isBefore(Instant.now())) {
+            trustSessions.remove(token);
+            return null;
+        }
+        return session;
     }
-    return session;
-  }
 
-  private static String createToken() {
-    return UUID.randomUUID().toString();
-  }
+    void removeTrustSession(String token) {
+        trustSessions.remove(token);
+    }
 
-  record TrustSession(
-      PackageTrustSnapshot snapshot,
-      OriginalOperation originalOperation,
-      TrustVersionScope versionScope,
-      Instant expiresAt) {}
+    String startFingerprintSession(PackageTrustSnapshot snapshot, OriginalOperation originalOperation) {
+        String token = createToken();
+        fingerprintSessions.put(
+                token,
+                new FingerprintSession(
+                        snapshot, originalOperation, Instant.now().plus(SESSION_DURATION)));
+        return token;
+    }
 
-  record FingerprintSession(
-      PackageTrustSnapshot snapshot, OriginalOperation originalOperation, Instant expiresAt) {}
+    FingerprintSession takeFingerprintSession(String token) {
+        FingerprintSession session = fingerprintSessions.remove(token);
+        if (session == null || session.expiresAt().isBefore(Instant.now())) {
+            return null;
+        }
+        return session;
+    }
+
+    private static String createToken() {
+        return UUID.randomUUID().toString();
+    }
+
+    record TrustSession(
+            PackageTrustSnapshot snapshot,
+            OriginalOperation originalOperation,
+            TrustVersionScope versionScope,
+            Instant expiresAt) {}
+
+    record FingerprintSession(PackageTrustSnapshot snapshot, OriginalOperation originalOperation, Instant expiresAt) {}
 }

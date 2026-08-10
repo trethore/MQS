@@ -20,35 +20,32 @@ package io.github.trethore.myqolpackages.api.config;
 import java.util.List;
 
 public record MqpConfig(
-    int configVersion,
-    List<String> additionalPackageRoots,
-    List<String> enabledPackages,
-    TrustConfig trust) {
-  public static final int CURRENT_CONFIG_VERSION = 2;
+        int configVersion, List<String> additionalPackageRoots, List<String> enabledPackages, TrustConfig trust) {
+    public static final int CURRENT_CONFIG_VERSION = 2;
 
-  public MqpConfig {
-    if (configVersion == 0) {
-      configVersion = CURRENT_CONFIG_VERSION;
-    } else if (configVersion != CURRENT_CONFIG_VERSION) {
-      throw new IllegalArgumentException("Unsupported config version: " + configVersion);
+    public MqpConfig {
+        if (configVersion == 0) {
+            configVersion = CURRENT_CONFIG_VERSION;
+        } else if (configVersion != CURRENT_CONFIG_VERSION) {
+            throw new IllegalArgumentException("Unsupported config version: " + configVersion);
+        }
+        additionalPackageRoots = additionalPackageRoots == null
+                ? List.of()
+                : additionalPackageRoots.stream().toList();
+        enabledPackages = enabledPackages == null
+                ? List.of()
+                : enabledPackages.stream()
+                        .filter(packageId -> packageId != null && !packageId.isBlank())
+                        .distinct()
+                        .toList();
+        trust = trust == null ? TrustConfig.defaults() : trust;
     }
-    additionalPackageRoots =
-        additionalPackageRoots == null ? List.of() : additionalPackageRoots.stream().toList();
-    enabledPackages =
-        enabledPackages == null
-            ? List.of()
-            : enabledPackages.stream()
-                .filter(packageId -> packageId != null && !packageId.isBlank())
-                .distinct()
-                .toList();
-    trust = trust == null ? TrustConfig.defaults() : trust;
-  }
 
-  public MqpConfig(List<String> additionalPackageRoots, List<String> enabledPackages) {
-    this(CURRENT_CONFIG_VERSION, additionalPackageRoots, enabledPackages, TrustConfig.defaults());
-  }
+    public MqpConfig(List<String> additionalPackageRoots, List<String> enabledPackages) {
+        this(CURRENT_CONFIG_VERSION, additionalPackageRoots, enabledPackages, TrustConfig.defaults());
+    }
 
-  public static MqpConfig defaults() {
-    return new MqpConfig(CURRENT_CONFIG_VERSION, List.of(), List.of(), TrustConfig.defaults());
-  }
+    public static MqpConfig defaults() {
+        return new MqpConfig(CURRENT_CONFIG_VERSION, List.of(), List.of(), TrustConfig.defaults());
+    }
 }

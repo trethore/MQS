@@ -26,52 +26,52 @@ import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 
 public record PackageHttpResponse(
-    int status, String url, boolean redirected, Map<String, List<String>> headers, byte[] body) {
-  public PackageHttpResponse {
-    Objects.requireNonNull(url, "url");
-    Objects.requireNonNull(headers, "headers");
-    Objects.requireNonNull(body, "body");
-    Map<String, List<String>> copiedHeaders = new LinkedHashMap<>();
-    headers.forEach((name, values) -> copiedHeaders.put(name, List.copyOf(values)));
-    headers = Collections.unmodifiableMap(copiedHeaders);
-    body = body.clone();
-  }
-
-  @Override
-  public byte[] body() {
-    return body.clone();
-  }
-
-  @Override
-  public boolean equals(Object object) {
-    if (this == object) {
-      return true;
+        int status, String url, boolean redirected, Map<String, List<String>> headers, byte[] body) {
+    public PackageHttpResponse {
+        Objects.requireNonNull(url, "url");
+        Objects.requireNonNull(headers, "headers");
+        Objects.requireNonNull(body, "body");
+        Map<String, List<String>> copiedHeaders = new LinkedHashMap<>();
+        headers.forEach((name, values) -> copiedHeaders.put(name, List.copyOf(values)));
+        headers = Collections.unmodifiableMap(copiedHeaders);
+        body = body.clone();
     }
-    if (!(object
-        instanceof
-        PackageHttpResponse(
-            int otherStatus,
-            String otherUrl,
-            boolean otherRedirected,
-            Map<String, List<String>> otherHeaders,
-            byte[] otherBody))) {
-      return false;
+
+    @Override
+    public byte[] body() {
+        return body.clone();
     }
-    return status == otherStatus
-        && redirected == otherRedirected
-        && url.equals(otherUrl)
-        && headers.equals(otherHeaders)
-        && Arrays.equals(body, otherBody);
-  }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(status, url, redirected, headers, Arrays.hashCode(body));
-  }
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object
+                instanceof
+                PackageHttpResponse(
+                        int otherStatus,
+                        String otherUrl,
+                        boolean otherRedirected,
+                        Map<String, List<String>> otherHeaders,
+                        byte[] otherBody))) {
+            return false;
+        }
+        return status == otherStatus
+                && redirected == otherRedirected
+                && url.equals(otherUrl)
+                && headers.equals(otherHeaders)
+                && Arrays.equals(body, otherBody);
+    }
 
-  @Override
-  public @NotNull String toString() {
-    return "PackageHttpResponse[status=%s, url=%s, redirected=%s, headers=%s, bodyLength=%s]"
-        .formatted(status, url, redirected, headers, body.length);
-  }
+    @Override
+    public int hashCode() {
+        return Objects.hash(status, url, redirected, headers, Arrays.hashCode(body));
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "PackageHttpResponse[status=%s, url=%s, redirected=%s, headers=%s, bodyLength=%s]"
+                .formatted(status, url, redirected, headers, body.length);
+    }
 }

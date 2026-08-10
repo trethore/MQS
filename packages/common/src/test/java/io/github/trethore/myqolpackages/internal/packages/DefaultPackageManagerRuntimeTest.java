@@ -43,274 +43,274 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class DefaultPackageManagerRuntimeTest {
-  private static final String UPDATED_PACKAGE_VERSION = "2.0.0";
+    private static final String UPDATED_PACKAGE_VERSION = "2.0.0";
 
-  @TempDir Path temporaryDirectory;
+    @TempDir
+    Path temporaryDirectory;
 
-  @Test
-  void reloadEnablesConfiguredPackages() throws IOException {
-    createPackage("example-package");
-    writeEnabledPackages("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      PackageDiscoveryResult result = packageManager.reload();
+    @Test
+    void reloadEnablesConfiguredPackages() throws IOException {
+        createPackage("example-package");
+        writeEnabledPackages("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            PackageDiscoveryResult result = packageManager.reload();
 
-      assertTrue(result.diagnostics().isEmpty());
-      assertEquals(
-          PackageState.ENABLED,
-          packageManager.findPackage("example-package").orElseThrow().state());
-      assertEquals(List.of("enable:example-package"), contextFactory.events);
+            assertTrue(result.diagnostics().isEmpty());
+            assertEquals(
+                    PackageState.ENABLED,
+                    packageManager.findPackage("example-package").orElseThrow().state());
+            assertEquals(List.of("enable:example-package"), contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void refreshDoesNotRestartEnabledPackages() throws IOException {
-    createPackage("example-package");
-    writeEnabledPackages("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.reload();
-      contextFactory.events.clear();
+    @Test
+    void refreshDoesNotRestartEnabledPackages() throws IOException {
+        createPackage("example-package");
+        writeEnabledPackages("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.reload();
+            contextFactory.events.clear();
 
-      packageManager.refresh();
+            packageManager.refresh();
 
-      assertTrue(contextFactory.events.isEmpty());
-      assertEquals(
-          PackageState.ENABLED,
-          packageManager.findPackage("example-package").orElseThrow().state());
+            assertTrue(contextFactory.events.isEmpty());
+            assertEquals(
+                    PackageState.ENABLED,
+                    packageManager.findPackage("example-package").orElseThrow().state());
+        }
     }
-  }
 
-  @Test
-  void reloadDisablesAndReenablesConfiguredPackages() throws IOException {
-    createPackage("first-package");
-    createPackage("second-package");
-    writeEnabledPackages("first-package", "second-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.reload();
-      contextFactory.events.clear();
+    @Test
+    void reloadDisablesAndReenablesConfiguredPackages() throws IOException {
+        createPackage("first-package");
+        createPackage("second-package");
+        writeEnabledPackages("first-package", "second-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.reload();
+            contextFactory.events.clear();
 
-      packageManager.reload();
+            packageManager.reload();
 
-      assertEquals(
-          List.of(
-              "disable:second-package",
-              "close:second-package",
-              "disable:first-package",
-              "close:first-package",
-              "enable:first-package",
-              "enable:second-package"),
-          contextFactory.events);
+            assertEquals(
+                    List.of(
+                            "disable:second-package",
+                            "close:second-package",
+                            "disable:first-package",
+                            "close:first-package",
+                            "enable:first-package",
+                            "enable:second-package"),
+                    contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void reloadPackageRestartsOnlySelectedPackageAndPreservesOrder() throws IOException {
-    createPackage("first-package");
-    Path secondPackageDirectory = createPackage("second-package");
-    writeEnabledPackages("first-package", "second-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.reload();
-      updatePackageVersion(secondPackageDirectory);
-      contextFactory.events.clear();
+    @Test
+    void reloadPackageRestartsOnlySelectedPackageAndPreservesOrder() throws IOException {
+        createPackage("first-package");
+        Path secondPackageDirectory = createPackage("second-package");
+        writeEnabledPackages("first-package", "second-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.reload();
+            updatePackageVersion(secondPackageDirectory);
+            contextFactory.events.clear();
 
-      PackageOperationResult result = packageManager.reloadPackage("first-package");
-      packageManager.tick();
+            PackageOperationResult result = packageManager.reloadPackage("first-package");
+            packageManager.tick();
 
-      assertTrue(result.successful());
-      assertEquals(
-          List.of(
-              "disable:first-package",
-              "close:first-package",
-              "enable:first-package",
-              "tick:first-package",
-              "tick:second-package"),
-          contextFactory.events);
-      assertEquals(
-          List.of("first-package", "second-package"),
-          packageManager.getConfiguredEnabledPackageIds());
-      assertEquals("1.0.0", packageManager.findPackage("second-package").orElseThrow().version());
+            assertTrue(result.successful());
+            assertEquals(
+                    List.of(
+                            "disable:first-package",
+                            "close:first-package",
+                            "enable:first-package",
+                            "tick:first-package",
+                            "tick:second-package"),
+                    contextFactory.events);
+            assertEquals(List.of("first-package", "second-package"), packageManager.getConfiguredEnabledPackageIds());
+            assertEquals(
+                    "1.0.0",
+                    packageManager.findPackage("second-package").orElseThrow().version());
+        }
     }
-  }
 
-  @Test
-  void reloadPackageRefreshesPackageDescriptor() throws IOException {
-    Path packageDirectory = createPackage("example-package");
-    writeEnabledPackages("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.reload();
-      updatePackageVersion(packageDirectory);
+    @Test
+    void reloadPackageRefreshesPackageDescriptor() throws IOException {
+        Path packageDirectory = createPackage("example-package");
+        writeEnabledPackages("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.reload();
+            updatePackageVersion(packageDirectory);
 
-      PackageOperationResult result = packageManager.reloadPackage("example-package");
+            PackageOperationResult result = packageManager.reloadPackage("example-package");
 
-      assertTrue(result.successful());
-      assertEquals(
-          UPDATED_PACKAGE_VERSION,
-          packageManager.findPackage("example-package").orElseThrow().version());
+            assertTrue(result.successful());
+            assertEquals(
+                    UPDATED_PACKAGE_VERSION,
+                    packageManager.findPackage("example-package").orElseThrow().version());
+        }
     }
-  }
 
-  @Test
-  void reloadPackageIgnoresDiagnosticsForOtherPackages() throws IOException {
-    createPackage("example-package");
-    Files.createDirectories(temporaryDirectory.resolve("broken-package"));
-    writeEnabledPackages("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.reload();
-      contextFactory.events.clear();
+    @Test
+    void reloadPackageIgnoresDiagnosticsForOtherPackages() throws IOException {
+        createPackage("example-package");
+        Files.createDirectories(temporaryDirectory.resolve("broken-package"));
+        writeEnabledPackages("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.reload();
+            contextFactory.events.clear();
 
-      PackageOperationResult result = packageManager.reloadPackage("example-package");
+            PackageOperationResult result = packageManager.reloadPackage("example-package");
 
-      assertTrue(result.successful());
-      assertTrue(result.diagnostics().isEmpty());
-      assertEquals(
-          List.of("disable:example-package", "close:example-package", "enable:example-package"),
-          contextFactory.events);
+            assertTrue(result.successful());
+            assertTrue(result.diagnostics().isEmpty());
+            assertEquals(
+                    List.of("disable:example-package", "close:example-package", "enable:example-package"),
+                    contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void reloadPackageStopsConfiguredPackageThatWasRemoved() throws IOException {
-    Path packageDirectory = createPackage("example-package");
-    writeEnabledPackages("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.reload();
-      deleteDirectory(packageDirectory);
-      contextFactory.events.clear();
+    @Test
+    void reloadPackageStopsConfiguredPackageThatWasRemoved() throws IOException {
+        Path packageDirectory = createPackage("example-package");
+        writeEnabledPackages("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.reload();
+            deleteDirectory(packageDirectory);
+            contextFactory.events.clear();
 
-      PackageOperationResult result = packageManager.reloadPackage("example-package");
+            PackageOperationResult result = packageManager.reloadPackage("example-package");
 
-      assertFalse(result.successful());
-      assertTrue(packageManager.findPackage("example-package").isEmpty());
-      assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
-      assertEquals(
-          List.of("disable:example-package", "close:example-package"), contextFactory.events);
+            assertFalse(result.successful());
+            assertTrue(packageManager.findPackage("example-package").isEmpty());
+            assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
+            assertEquals(List.of("disable:example-package", "close:example-package"), contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void reloadPackageRejectsPackageThatIsNotConfiguredAsEnabled() throws IOException {
-    createPackage("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.refresh();
+    @Test
+    void reloadPackageRejectsPackageThatIsNotConfiguredAsEnabled() throws IOException {
+        createPackage("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.refresh();
 
-      PackageOperationResult result = packageManager.reloadPackage("example-package");
+            PackageOperationResult result = packageManager.reloadPackage("example-package");
 
-      assertFalse(result.successful());
-      assertEquals(
-          "Package is not configured as enabled", result.diagnostics().getFirst().message());
-      assertTrue(contextFactory.events.isEmpty());
+            assertFalse(result.successful());
+            assertEquals(
+                    "Package is not configured as enabled",
+                    result.diagnostics().getFirst().message());
+            assertTrue(contextFactory.events.isEmpty());
+        }
     }
-  }
 
-  @Test
-  void retainsMissingConfiguredPackageUntilExplicitlyDisabled() throws IOException {
-    writeEnabledPackages("missing-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      PackageDiscoveryResult result = packageManager.reload();
+    @Test
+    void retainsMissingConfiguredPackageUntilExplicitlyDisabled() throws IOException {
+        writeEnabledPackages("missing-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            PackageDiscoveryResult result = packageManager.reload();
 
-      assertFalse(result.diagnostics().isEmpty());
-      assertEquals(List.of("missing-package"), packageManager.getConfiguredEnabledPackageIds());
+            assertFalse(result.diagnostics().isEmpty());
+            assertEquals(List.of("missing-package"), packageManager.getConfiguredEnabledPackageIds());
 
-      assertTrue(packageManager.disablePackage("missing-package").successful());
-      assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
+            assertTrue(packageManager.disablePackage("missing-package").successful());
+            assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
+        }
     }
-  }
 
-  @Test
-  void rejectsUnknownPackageDisable() {
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.refresh();
+    @Test
+    void rejectsUnknownPackageDisable() {
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.refresh();
 
-      assertFalse(packageManager.disablePackage("unknown-package").successful());
-      assertTrue(contextFactory.events.isEmpty());
+            assertFalse(packageManager.disablePackage("unknown-package").successful());
+            assertTrue(contextFactory.events.isEmpty());
+        }
     }
-  }
 
-  @Test
-  void keepsMissingEnabledPackageRunningAfterRefresh() throws IOException {
-    Path packageDirectory = createPackage("example-package");
-    writeEnabledPackages("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.reload();
-      deleteDirectory(packageDirectory);
-      contextFactory.events.clear();
+    @Test
+    void keepsMissingEnabledPackageRunningAfterRefresh() throws IOException {
+        Path packageDirectory = createPackage("example-package");
+        writeEnabledPackages("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.reload();
+            deleteDirectory(packageDirectory);
+            contextFactory.events.clear();
 
-      PackageDiscoveryResult result = packageManager.refresh();
+            PackageDiscoveryResult result = packageManager.refresh();
 
-      assertFalse(result.diagnostics().isEmpty());
-      assertEquals(
-          PackageState.ENABLED,
-          packageManager.findPackage("example-package").orElseThrow().state());
-      assertTrue(contextFactory.events.isEmpty());
+            assertFalse(result.diagnostics().isEmpty());
+            assertEquals(
+                    PackageState.ENABLED,
+                    packageManager.findPackage("example-package").orElseThrow().state());
+            assertTrue(contextFactory.events.isEmpty());
 
-      packageManager.disablePackage("example-package");
-      assertTrue(packageManager.findPackage("example-package").isEmpty());
-      assertEquals(
-          List.of("disable:example-package", "close:example-package"), contextFactory.events);
+            packageManager.disablePackage("example-package");
+            assertTrue(packageManager.findPackage("example-package").isEmpty());
+            assertEquals(List.of("disable:example-package", "close:example-package"), contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void explicitEnableAndDisableUpdateConfiguration() throws IOException {
-    createPackage("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.refresh();
+    @Test
+    void explicitEnableAndDisableUpdateConfiguration() throws IOException {
+        createPackage("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.refresh();
 
-      assertTrue(packageManager.enablePackage("example-package").successful());
-      assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
+            assertTrue(packageManager.enablePackage("example-package").successful());
+            assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
 
-      assertTrue(packageManager.disablePackage("example-package").successful());
-      assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
-      assertEquals(
-          List.of("enable:example-package", "disable:example-package", "close:example-package"),
-          contextFactory.events);
+            assertTrue(packageManager.disablePackage("example-package").successful());
+            assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
+            assertEquals(
+                    List.of("enable:example-package", "disable:example-package", "close:example-package"),
+                    contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void rejectsRepeatedEnableAndDisableOperations() throws IOException {
-    createPackage("example-package");
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      packageManager.refresh();
+    @Test
+    void rejectsRepeatedEnableAndDisableOperations() throws IOException {
+        createPackage("example-package");
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            packageManager.refresh();
 
-      assertTrue(packageManager.enablePackage("example-package").successful());
-      PackageOperationResult repeatedEnable = packageManager.enablePackage("example-package");
+            assertTrue(packageManager.enablePackage("example-package").successful());
+            PackageOperationResult repeatedEnable = packageManager.enablePackage("example-package");
 
-      assertFalse(repeatedEnable.successful());
-      assertEquals("Already enabled", repeatedEnable.diagnostics().getFirst().message());
-      assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
-      assertEquals(List.of("enable:example-package"), contextFactory.events);
+            assertFalse(repeatedEnable.successful());
+            assertEquals(
+                    "Already enabled", repeatedEnable.diagnostics().getFirst().message());
+            assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
+            assertEquals(List.of("enable:example-package"), contextFactory.events);
 
-      assertTrue(packageManager.disablePackage("example-package").successful());
-      PackageOperationResult repeatedDisable = packageManager.disablePackage("example-package");
+            assertTrue(packageManager.disablePackage("example-package").successful());
+            PackageOperationResult repeatedDisable = packageManager.disablePackage("example-package");
 
-      assertFalse(repeatedDisable.successful());
-      assertEquals("Already disabled", repeatedDisable.diagnostics().getFirst().message());
-      assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
-      assertEquals(
-          List.of("enable:example-package", "disable:example-package", "close:example-package"),
-          contextFactory.events);
+            assertFalse(repeatedDisable.successful());
+            assertEquals(
+                    "Already disabled", repeatedDisable.diagnostics().getFirst().message());
+            assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
+            assertEquals(
+                    List.of("enable:example-package", "disable:example-package", "close:example-package"),
+                    contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void ignoresLegacyPermissionsWhenReloadingEnabledPackages() throws IOException {
-    createPackage("example-package", true);
-    Files.writeString(
-        temporaryDirectory.resolve("config.json"),
-        """
+    @Test
+    void ignoresLegacyPermissionsWhenReloadingEnabledPackages() throws IOException {
+        createPackage("example-package", true);
+        Files.writeString(temporaryDirectory.resolve("config.json"), """
         {
           "enabledPackages": ["example-package"],
           "permissions": {
@@ -322,52 +322,49 @@ class DefaultPackageManagerRuntimeTest {
           }
         }
         """);
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
-      PackageDiscoveryResult result = packageManager.reload();
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createPackageManager(contextFactory)) {
+            PackageDiscoveryResult result = packageManager.reload();
 
-      assertTrue(result.diagnostics().isEmpty());
-      assertEquals(
-          PackageState.ENABLED,
-          packageManager.findPackage("example-package").orElseThrow().state());
-      assertEquals(List.of("enable:example-package"), contextFactory.events);
-    }
-  }
-
-  private DefaultPackageManager createPackageManager(PackageContextFactory contextFactory) {
-    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
-    configManager.load();
-    try (Stream<Path> children = Files.list(temporaryDirectory)) {
-      for (Path child : children.filter(Files::isDirectory).toList()) {
-        if (Files.isRegularFile(child.resolve("manifest.json"))) {
-          configManager.putTrustedPackage(
-              child.getFileName().toString(),
-              new PackageTrustConfig(
-                  "*",
-                  new PackageFingerprintConfig(false, FingerprintMismatchBehavior.BLOCK, null)));
+            assertTrue(result.diagnostics().isEmpty());
+            assertEquals(
+                    PackageState.ENABLED,
+                    packageManager.findPackage("example-package").orElseThrow().state());
+            assertEquals(List.of("enable:example-package"), contextFactory.events);
         }
-      }
-    } catch (IOException exception) {
-      throw new IllegalStateException(exception);
     }
-    return new DefaultPackageManager(
-        new PackageDiscoveryService(
-            new ConfiguredPackageRootResolver(temporaryDirectory, configManager.getConfigPath()),
-            new FileSystemPackageDiscovery()),
-        configManager,
-        contextFactory);
-  }
 
-  private Path createPackage(String packageId) throws IOException {
-    return createPackage(packageId, false);
-  }
+    private DefaultPackageManager createPackageManager(PackageContextFactory contextFactory) {
+        FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
+        configManager.load();
+        try (Stream<Path> children = Files.list(temporaryDirectory)) {
+            for (Path child : children.filter(Files::isDirectory).toList()) {
+                if (Files.isRegularFile(child.resolve("manifest.json"))) {
+                    configManager.putTrustedPackage(
+                            child.getFileName().toString(),
+                            new PackageTrustConfig(
+                                    "*", new PackageFingerprintConfig(false, FingerprintMismatchBehavior.BLOCK, null)));
+                }
+            }
+        } catch (IOException exception) {
+            throw new IllegalStateException(exception);
+        }
+        return new DefaultPackageManager(
+                new PackageDiscoveryService(
+                        new ConfiguredPackageRootResolver(temporaryDirectory, configManager.getConfigPath()),
+                        new FileSystemPackageDiscovery()),
+                configManager,
+                contextFactory);
+    }
 
-  private Path createPackage(String packageId, boolean includePermissions) throws IOException {
-    Path packageDirectory = temporaryDirectory.resolve(packageId);
-    Files.createDirectories(packageDirectory.resolve("src"));
-    String runtimeFields =
-        includePermissions
-            ? """
+    private Path createPackage(String packageId) throws IOException {
+        return createPackage(packageId, false);
+    }
+
+    private Path createPackage(String packageId, boolean includePermissions) throws IOException {
+        Path packageDirectory = temporaryDirectory.resolve(packageId);
+        Files.createDirectories(packageDirectory.resolve("src"));
+        String runtimeFields = includePermissions ? """
               "entrypoint": "src/index.js",
               "permissions": {
                 "hostAccess": "full",
@@ -377,13 +374,11 @@ class DefaultPackageManagerRuntimeTest {
                   "write": "data"
                 }
               }
-              """
-            : """
+              """ : """
               "entrypoint": "src/index.js"
               """;
-    Files.writeString(
-        packageDirectory.resolve("manifest.json"),
-        """
+        Files.writeString(
+                packageDirectory.resolve("manifest.json"), """
         {
           "id": "%s",
           "name": "%s",
@@ -391,67 +386,62 @@ class DefaultPackageManagerRuntimeTest {
           "version": "1.0.0",
           %s
         }
-        """
-            .formatted(packageId, packageId, runtimeFields));
-    Files.writeString(packageDirectory.resolve("src/index.js"), "");
-    return packageDirectory;
-  }
+        """.formatted(packageId, packageId, runtimeFields));
+        Files.writeString(packageDirectory.resolve("src/index.js"), "");
+        return packageDirectory;
+    }
 
-  private void updatePackageVersion(Path packageDirectory) throws IOException {
-    Path manifestPath = packageDirectory.resolve("manifest.json");
-    Files.writeString(
-        manifestPath, Files.readString(manifestPath).replace("1.0.0", UPDATED_PACKAGE_VERSION));
-  }
+    private void updatePackageVersion(Path packageDirectory) throws IOException {
+        Path manifestPath = packageDirectory.resolve("manifest.json");
+        Files.writeString(manifestPath, Files.readString(manifestPath).replace("1.0.0", UPDATED_PACKAGE_VERSION));
+    }
 
-  private void writeEnabledPackages(String... packageIds) throws IOException {
-    Files.createDirectories(temporaryDirectory);
-    String enabledPackages =
-        Stream.of(packageIds).map(id -> "\"" + id + "\"").collect(Collectors.joining(", "));
-    Files.writeString(
-        temporaryDirectory.resolve("config.json"),
-        """
+    private void writeEnabledPackages(String... packageIds) throws IOException {
+        Files.createDirectories(temporaryDirectory);
+        String enabledPackages =
+                Stream.of(packageIds).map(id -> "\"" + id + "\"").collect(Collectors.joining(", "));
+        Files.writeString(temporaryDirectory.resolve("config.json"), """
         {
           "additionalPackageRoots": [],
           "enabledPackages": [%s]
         }
-        """
-            .formatted(enabledPackages));
-  }
-
-  private void deleteDirectory(Path directory) throws IOException {
-    try (Stream<Path> paths = Files.walk(directory)) {
-      for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
-        Files.delete(path);
-      }
+        """.formatted(enabledPackages));
     }
-  }
 
-  private static final class RecordingContextFactory implements PackageContextFactory {
-    private final List<String> events = new ArrayList<>();
-
-    @Override
-    public PackageScriptContext create(PackageContextSpec spec) {
-      return new PackageScriptContext() {
-        @Override
-        public void invokeEnable() {
-          events.add("enable:" + spec.packageId());
+    private void deleteDirectory(Path directory) throws IOException {
+        try (Stream<Path> paths = Files.walk(directory)) {
+            for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
+                Files.delete(path);
+            }
         }
-
-        @Override
-        public void invokeDisable() {
-          events.add("disable:" + spec.packageId());
-        }
-
-        @Override
-        public void tick() {
-          events.add("tick:" + spec.packageId());
-        }
-
-        @Override
-        public void close() {
-          events.add("close:" + spec.packageId());
-        }
-      };
     }
-  }
+
+    private static final class RecordingContextFactory implements PackageContextFactory {
+        private final List<String> events = new ArrayList<>();
+
+        @Override
+        public PackageScriptContext create(PackageContextSpec spec) {
+            return new PackageScriptContext() {
+                @Override
+                public void invokeEnable() {
+                    events.add("enable:" + spec.packageId());
+                }
+
+                @Override
+                public void invokeDisable() {
+                    events.add("disable:" + spec.packageId());
+                }
+
+                @Override
+                public void tick() {
+                    events.add("tick:" + spec.packageId());
+                }
+
+                @Override
+                public void close() {
+                    events.add("close:" + spec.packageId());
+                }
+            };
+        }
+    }
 }

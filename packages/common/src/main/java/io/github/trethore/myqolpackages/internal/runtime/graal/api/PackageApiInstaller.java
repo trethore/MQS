@@ -26,36 +26,34 @@ import java.util.Objects;
 import org.graalvm.polyglot.Context;
 
 public final class PackageApiInstaller {
-  private final List<PackageApiModule> modules;
+    private final List<PackageApiModule> modules;
 
-  public PackageApiInstaller(
-      String mqpVersion, MqpRuntimeEnvironment environment, HttpClient httpClient) {
-    this(
-        List.of(
-            new MetadataApiModule(Objects.requireNonNull(mqpVersion, "mqpVersion")),
-            new JavaInteropApiModule(Objects.requireNonNull(environment, "environment")),
-            new FetchApiModule(Objects.requireNonNull(httpClient, "httpClient"))));
-  }
-
-  public PackageApiInstaller(List<PackageApiModule> modules) {
-    this.modules = List.copyOf(modules);
-  }
-
-  public PackageApiSession install(Context context, PackageContextSpec spec) {
-    JavaScriptApiBridge bridge = new JavaScriptApiBridge(context);
-    List<PackageApiSession> sessions = new ArrayList<>();
-    try {
-      for (PackageApiModule module : modules) {
-        sessions.add(module.install(bridge, spec));
-      }
-      return new CompositePackageApiSession(sessions);
-    } catch (RuntimeException exception) {
-      try {
-        new CompositePackageApiSession(sessions).close();
-      } catch (RuntimeException closeException) {
-        exception.addSuppressed(closeException);
-      }
-      throw exception;
+    public PackageApiInstaller(String mqpVersion, MqpRuntimeEnvironment environment, HttpClient httpClient) {
+        this(List.of(
+                new MetadataApiModule(Objects.requireNonNull(mqpVersion, "mqpVersion")),
+                new JavaInteropApiModule(Objects.requireNonNull(environment, "environment")),
+                new FetchApiModule(Objects.requireNonNull(httpClient, "httpClient"))));
     }
-  }
+
+    public PackageApiInstaller(List<PackageApiModule> modules) {
+        this.modules = List.copyOf(modules);
+    }
+
+    public PackageApiSession install(Context context, PackageContextSpec spec) {
+        JavaScriptApiBridge bridge = new JavaScriptApiBridge(context);
+        List<PackageApiSession> sessions = new ArrayList<>();
+        try {
+            for (PackageApiModule module : modules) {
+                sessions.add(module.install(bridge, spec));
+            }
+            return new CompositePackageApiSession(sessions);
+        } catch (RuntimeException exception) {
+            try {
+                new CompositePackageApiSession(sessions).close();
+            } catch (RuntimeException closeException) {
+                exception.addSuppressed(closeException);
+            }
+            throw exception;
+        }
+    }
 }

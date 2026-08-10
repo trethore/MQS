@@ -23,33 +23,33 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class TrustedVersionRangeTest {
-  @Test
-  void matchesExactVersionsIncludingBuildMetadata() {
-    TrustedVersionRange range = TrustedVersionRange.parse("=1.2.3+one");
+    @Test
+    void matchesExactVersionsIncludingBuildMetadata() {
+        TrustedVersionRange range = TrustedVersionRange.parse("=1.2.3+one");
 
-    assertTrue(range.matches(SemanticVersion.parse("1.2.3+one")));
-    assertFalse(range.matches(SemanticVersion.parse("1.2.3+two")));
-  }
+        assertTrue(range.matches(SemanticVersion.parse("1.2.3+one")));
+        assertFalse(range.matches(SemanticVersion.parse("1.2.3+two")));
+    }
 
-  @Test
-  void matchesPatchUpdates() {
-    TrustedVersionRange range = TrustedVersionRange.parse("~1.2.3");
+    @Test
+    void matchesPatchUpdates() {
+        TrustedVersionRange range = TrustedVersionRange.parse("~1.2.3");
 
-    assertTrue(range.matches(SemanticVersion.parse("1.2.9")));
-    assertFalse(range.matches(SemanticVersion.parse("1.3.0")));
-  }
+        assertTrue(range.matches(SemanticVersion.parse("1.2.9")));
+        assertFalse(range.matches(SemanticVersion.parse("1.3.0")));
+    }
 
-  @Test
-  void matchesCompatibleUpdates() {
-    assertTrue(TrustedVersionRange.parse("^1.2.3").matches(SemanticVersion.parse("1.9.0")));
-    assertFalse(TrustedVersionRange.parse("^1.2.3").matches(SemanticVersion.parse("2.0.0")));
-    assertTrue(TrustedVersionRange.parse("^0.2.3").matches(SemanticVersion.parse("0.2.9")));
-    assertFalse(TrustedVersionRange.parse("^0.2.3").matches(SemanticVersion.parse("0.3.0")));
-    assertFalse(TrustedVersionRange.parse("^0.0.3").matches(SemanticVersion.parse("0.0.4")));
-  }
+    @Test
+    void matchesCompatibleUpdates() {
+        assertTrue(TrustedVersionRange.parse("^1.2.3").matches(SemanticVersion.parse("1.9.0")));
+        assertFalse(TrustedVersionRange.parse("^1.2.3").matches(SemanticVersion.parse("2.0.0")));
+        assertTrue(TrustedVersionRange.parse("^0.2.3").matches(SemanticVersion.parse("0.2.9")));
+        assertFalse(TrustedVersionRange.parse("^0.2.3").matches(SemanticVersion.parse("0.3.0")));
+        assertFalse(TrustedVersionRange.parse("^0.0.3").matches(SemanticVersion.parse("0.0.4")));
+    }
 
-  @Test
-  void wildcardMatchesPrereleases() {
-    assertTrue(TrustedVersionRange.parse("*").matches(SemanticVersion.parse("2.0.0-beta.1")));
-  }
+    @Test
+    void wildcardMatchesPrereleases() {
+        assertTrue(TrustedVersionRange.parse("*").matches(SemanticVersion.parse("2.0.0-beta.1")));
+    }
 }

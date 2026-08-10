@@ -18,8 +18,8 @@
 package io.github.trethore.myqolpackages.api.packages;
 
 public enum TrustVersionScope {
-  EXACT,
-  PATCH_UPDATES,
-  COMPATIBLE_UPDATES,
-  ALL_VERSIONS
+    EXACT,
+    PATCH_UPDATES,
+    COMPATIBLE_UPDATES,
+    ALL_VERSIONS
 }

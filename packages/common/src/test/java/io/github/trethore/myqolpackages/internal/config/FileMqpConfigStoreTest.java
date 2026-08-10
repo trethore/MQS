@@ -33,75 +33,74 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class FileMqpConfigStoreTest {
-  @TempDir Path temporaryDirectory;
+    @TempDir
+    Path temporaryDirectory;
 
-  @Test
-  void createsDefaultConfiguration() throws IOException {
-    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
+    @Test
+    void createsDefaultConfiguration() throws IOException {
+        FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
 
-    MqpConfigLoadResult result = configManager.load();
+        MqpConfigLoadResult result = configManager.load();
 
-    assertTrue(result.config().additionalPackageRoots().isEmpty());
-    assertTrue(result.config().enabledPackages().isEmpty());
-    assertEquals(MqpConfig.CURRENT_CONFIG_VERSION, result.config().configVersion());
-    assertTrue(result.config().trust().fingerprintDefaults().enabled());
-    assertEquals(
-        FingerprintMismatchBehavior.BLOCK,
-        result.config().trust().fingerprintDefaults().mismatchBehavior());
-    assertTrue(result.config().trust().packages().isEmpty());
-    assertTrue(result.diagnostics().isEmpty());
-    assertTrue(Files.isRegularFile(temporaryDirectory.resolve("config.json")));
-    String config = Files.readString(temporaryDirectory.resolve("config.json"));
-    assertTrue(config.contains("\"additionalPackageRoots\""));
-    assertTrue(config.contains("\"enabledPackages\""));
-    assertFalse(config.contains("permissions"));
-  }
+        assertTrue(result.config().additionalPackageRoots().isEmpty());
+        assertTrue(result.config().enabledPackages().isEmpty());
+        assertEquals(MqpConfig.CURRENT_CONFIG_VERSION, result.config().configVersion());
+        assertTrue(result.config().trust().fingerprintDefaults().enabled());
+        assertEquals(
+                FingerprintMismatchBehavior.BLOCK,
+                result.config().trust().fingerprintDefaults().mismatchBehavior());
+        assertTrue(result.config().trust().packages().isEmpty());
+        assertTrue(result.diagnostics().isEmpty());
+        assertTrue(Files.isRegularFile(temporaryDirectory.resolve("config.json")));
+        String config = Files.readString(temporaryDirectory.resolve("config.json"));
+        assertTrue(config.contains("\"additionalPackageRoots\""));
+        assertTrue(config.contains("\"enabledPackages\""));
+        assertFalse(config.contains("permissions"));
+    }
 
-  @Test
-  void keepsInvalidConfigurationAndUsesDefaults() throws IOException {
-    Path configPath = temporaryDirectory.resolve("config.json");
-    Files.writeString(configPath, "{");
-    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
+    @Test
+    void keepsInvalidConfigurationAndUsesDefaults() throws IOException {
+        Path configPath = temporaryDirectory.resolve("config.json");
+        Files.writeString(configPath, "{");
+        FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
 
-    MqpConfigLoadResult result = configManager.load();
+        MqpConfigLoadResult result = configManager.load();
 
-    assertTrue(result.config().additionalPackageRoots().isEmpty());
-    assertTrue(result.config().enabledPackages().isEmpty());
-    assertEquals(1, result.diagnostics().size());
-    assertEquals("{", Files.readString(configPath));
-  }
+        assertTrue(result.config().additionalPackageRoots().isEmpty());
+        assertTrue(result.config().enabledPackages().isEmpty());
+        assertEquals(1, result.diagnostics().size());
+        assertEquals("{", Files.readString(configPath));
+    }
 
-  @Test
-  void treatsMissingFieldsAsEmpty() throws IOException {
-    Files.writeString(temporaryDirectory.resolve("config.json"), "{}");
-    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
+    @Test
+    void treatsMissingFieldsAsEmpty() throws IOException {
+        Files.writeString(temporaryDirectory.resolve("config.json"), "{}");
+        FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
 
-    MqpConfigLoadResult result = configManager.load();
+        MqpConfigLoadResult result = configManager.load();
 
-    assertTrue(result.config().additionalPackageRoots().isEmpty());
-    assertTrue(result.config().enabledPackages().isEmpty());
-    assertTrue(result.diagnostics().isEmpty());
-  }
+        assertTrue(result.config().additionalPackageRoots().isEmpty());
+        assertTrue(result.config().enabledPackages().isEmpty());
+        assertTrue(result.diagnostics().isEmpty());
+    }
 
-  @Test
-  void savesEnabledPackages() throws IOException {
-    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
-    configManager.load();
+    @Test
+    void savesEnabledPackages() throws IOException {
+        FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
+        configManager.load();
 
-    configManager.addEnabledPackage("first-package");
-    configManager.addEnabledPackage("second-package");
-    configManager.removeEnabledPackage("first-package");
+        configManager.addEnabledPackage("first-package");
+        configManager.addEnabledPackage("second-package");
+        configManager.removeEnabledPackage("first-package");
 
-    MqpConfigLoadResult result = new FileMqpConfigStore(temporaryDirectory).load();
-    assertEquals(List.of("second-package"), result.config().enabledPackages());
-  }
+        MqpConfigLoadResult result = new FileMqpConfigStore(temporaryDirectory).load();
+        assertEquals(List.of("second-package"), result.config().enabledPackages());
+    }
 
-  @Test
-  void ignoresAndRemovesLegacyPermissionConfiguration() throws IOException {
-    Path configPath = temporaryDirectory.resolve("config.json");
-    Files.writeString(
-        configPath,
-        """
+    @Test
+    void ignoresAndRemovesLegacyPermissionConfiguration() throws IOException {
+        Path configPath = temporaryDirectory.resolve("config.json");
+        Files.writeString(configPath, """
         {
           "additionalPackageRoots": ["/example/root"],
           "enabledPackages": ["example-package"],
@@ -111,41 +110,38 @@ class FileMqpConfigStoreTest {
           }
         }
         """);
-    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
+        FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
 
-    MqpConfigLoadResult result = configManager.load();
-    configManager.addEnabledPackage("second-package");
+        MqpConfigLoadResult result = configManager.load();
+        configManager.addEnabledPackage("second-package");
 
-    assertEquals(List.of("/example/root"), result.config().additionalPackageRoots());
-    assertEquals(List.of("example-package"), result.config().enabledPackages());
-    assertTrue(result.diagnostics().isEmpty());
-    assertFalse(Files.readString(configPath).contains("permissions"));
-  }
+        assertEquals(List.of("/example/root"), result.config().additionalPackageRoots());
+        assertEquals(List.of("example-package"), result.config().enabledPackages());
+        assertTrue(result.diagnostics().isEmpty());
+        assertFalse(Files.readString(configPath).contains("permissions"));
+    }
 
-  @Test
-  void preservesTrustWhenEnabledPackagesChange() throws IOException {
-    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
-    configManager.load();
-    configManager.putTrustedPackage(
-        "example-package",
-        new PackageTrustConfig(
-            "^1.2.3",
-            new PackageFingerprintConfig(
-                true, FingerprintMismatchBehavior.CHAT_WARNING, "sha256:" + "a".repeat(64))));
+    @Test
+    void preservesTrustWhenEnabledPackagesChange() throws IOException {
+        FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
+        configManager.load();
+        configManager.putTrustedPackage(
+                "example-package",
+                new PackageTrustConfig(
+                        "^1.2.3",
+                        new PackageFingerprintConfig(
+                                true, FingerprintMismatchBehavior.CHAT_WARNING, "sha256:" + "a".repeat(64))));
 
-    configManager.addEnabledPackage("example-package");
+        configManager.addEnabledPackage("example-package");
 
-    MqpConfig loaded = new FileMqpConfigStore(temporaryDirectory).load().config();
-    assertEquals("^1.2.3", loaded.trust().packages().get("example-package").versions());
-    assertTrue(
-        Files.readString(temporaryDirectory.resolve("config.json")).contains("chat_warning"));
-  }
+        MqpConfig loaded = new FileMqpConfigStore(temporaryDirectory).load().config();
+        assertEquals("^1.2.3", loaded.trust().packages().get("example-package").versions());
+        assertTrue(Files.readString(temporaryDirectory.resolve("config.json")).contains("chat_warning"));
+    }
 
-  @Test
-  void rejectsUnknownFingerprintBehavior() throws IOException {
-    Files.writeString(
-        temporaryDirectory.resolve("config.json"),
-        """
+    @Test
+    void rejectsUnknownFingerprintBehavior() throws IOException {
+        Files.writeString(temporaryDirectory.resolve("config.json"), """
         {
           "trust": {
             "fingerprintDefaults": {
@@ -155,9 +151,9 @@ class FileMqpConfigStoreTest {
         }
         """);
 
-    MqpConfigLoadResult result = new FileMqpConfigStore(temporaryDirectory).load();
+        MqpConfigLoadResult result = new FileMqpConfigStore(temporaryDirectory).load();
 
-    assertEquals(1, result.diagnostics().size());
-    assertTrue(result.config().trust().packages().isEmpty());
-  }
+        assertEquals(1, result.diagnostics().size());
+        assertTrue(result.config().trust().packages().isEmpty());
+    }
 }

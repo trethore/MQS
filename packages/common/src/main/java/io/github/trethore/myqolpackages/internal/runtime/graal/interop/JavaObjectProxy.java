@@ -25,96 +25,91 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 final class JavaObjectProxy implements ProxyObject {
-  private final Object instance;
-  private final JavaInteropMembers members;
-  private final String preferredNamedClassName;
-  private final JavaInteropService service;
+    private final Object instance;
+    private final JavaInteropMembers members;
+    private final String preferredNamedClassName;
+    private final JavaInteropService service;
 
-  JavaObjectProxy(Object instance, String preferredNamedClassName, JavaInteropService service) {
-    this.instance = instance;
-    this.preferredNamedClassName = preferredNamedClassName;
-    this.service = service;
-    this.members = service.getMembers(instance.getClass(), preferredNamedClassName);
-  }
+    JavaObjectProxy(Object instance, String preferredNamedClassName, JavaInteropService service) {
+        this.instance = instance;
+        this.preferredNamedClassName = preferredNamedClassName;
+        this.service = service;
+        this.members = service.getMembers(instance.getClass(), preferredNamedClassName);
+    }
 
-  @Override
-  public Object getMember(String key) {
-    if (JavaInteropMembers.SELF_MEMBER.equals(key)) {
-      return instance;
+    @Override
+    public Object getMember(String key) {
+        if (JavaInteropMembers.SELF_MEMBER.equals(key)) {
+            return instance;
+        }
+        if (JavaInteropMembers.CLASS_MEMBER.equals(key)) {
+            return instance.getClass();
+        }
+        if (JavaInteropMembers.EQUALS_MEMBER.equals(key)) {
+            return (ProxyExecutable) arguments -> service.objectsEqual(instance, requireSingleArgument(key, arguments));
+        }
+        if (JavaInteropMembers.INSTANCEOF_MEMBER.equals(key)) {
+            return (ProxyExecutable) arguments -> service.isInstance(instance, requireSingleArgument(key, arguments));
+        }
+        JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
+        if (memberName.explicitField()) {
+            return readField(members.instanceFields().get(memberName.name()));
+        }
+        List<Method> methods = members.instanceMethods().get(memberName.name());
+        if (methods != null) {
+            return (ProxyExecutable) arguments ->
+                    service.invokeMethod(instance, preferredNamedClassName, memberName.name(), methods, arguments);
+        }
+        return readField(members.instanceFields().get(memberName.name()));
     }
-    if (JavaInteropMembers.CLASS_MEMBER.equals(key)) {
-      return instance.getClass();
-    }
-    if (JavaInteropMembers.EQUALS_MEMBER.equals(key)) {
-      return (ProxyExecutable)
-          arguments -> service.objectsEqual(instance, requireSingleArgument(key, arguments));
-    }
-    if (JavaInteropMembers.INSTANCEOF_MEMBER.equals(key)) {
-      return (ProxyExecutable)
-          arguments -> service.isInstance(instance, requireSingleArgument(key, arguments));
-    }
-    JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
-    if (memberName.explicitField()) {
-      return readField(members.instanceFields().get(memberName.name()));
-    }
-    List<Method> methods = members.instanceMethods().get(memberName.name());
-    if (methods != null) {
-      return (ProxyExecutable)
-          arguments ->
-              service.invokeMethod(
-                  instance, preferredNamedClassName, memberName.name(), methods, arguments);
-    }
-    return readField(members.instanceFields().get(memberName.name()));
-  }
 
-  @Override
-  public Object getMemberKeys() {
-    return members.instanceMemberKeys();
-  }
-
-  @Override
-  public boolean hasMember(String key) {
-    if (JavaInteropMembers.isReservedInstanceMember(key)) {
-      return true;
+    @Override
+    public Object getMemberKeys() {
+        return members.instanceMemberKeys();
     }
-    JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
-    if (memberName.explicitField()) {
-      return members.instanceFields().containsKey(memberName.name());
-    }
-    return members.instanceMethods().containsKey(memberName.name())
-        || members.instanceFields().containsKey(memberName.name());
-  }
 
-  @Override
-  public void putMember(String key, Value value) {
-    if (JavaInteropMembers.isReservedInstanceMember(key)) {
-      throw new UnsupportedOperationException("Cannot replace reserved member " + key);
+    @Override
+    public boolean hasMember(String key) {
+        if (JavaInteropMembers.isReservedInstanceMember(key)) {
+            return true;
+        }
+        JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
+        if (memberName.explicitField()) {
+            return members.instanceFields().containsKey(memberName.name());
+        }
+        return members.instanceMethods().containsKey(memberName.name())
+                || members.instanceFields().containsKey(memberName.name());
     }
-    JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
-    if (!memberName.explicitField() && members.instanceMethods().containsKey(memberName.name())) {
-      throw new UnsupportedOperationException(
-          "Ambiguous write to member '"
-              + memberName.name()
-              + "'. Use "
-              + JavaInteropMembers.explicitFieldName(memberName.name())
-              + " to write the field");
+
+    @Override
+    public void putMember(String key, Value value) {
+        if (JavaInteropMembers.isReservedInstanceMember(key)) {
+            throw new UnsupportedOperationException("Cannot replace reserved member " + key);
+        }
+        JavaInteropMembers.MemberName memberName = JavaInteropMembers.parseMemberName(key);
+        if (!memberName.explicitField() && members.instanceMethods().containsKey(memberName.name())) {
+            throw new UnsupportedOperationException("Ambiguous write to member '"
+                    + memberName.name()
+                    + "'. Use "
+                    + JavaInteropMembers.explicitFieldName(memberName.name())
+                    + " to write the field");
+        }
+        Field field = members.instanceFields().get(memberName.name());
+        service.writeField(instance, field, memberName.name(), value);
     }
-    Field field = members.instanceFields().get(memberName.name());
-    service.writeField(instance, field, memberName.name(), value);
-  }
 
-  Object getInstance() {
-    return instance;
-  }
-
-  private Object readField(Field field) {
-    return field == null ? null : service.readField(instance, preferredNamedClassName, field);
-  }
-
-  private static Value requireSingleArgument(String member, Value[] arguments) {
-    if (arguments.length != 1) {
-      throw new IllegalArgumentException(member + " requires exactly one argument");
+    Object getInstance() {
+        return instance;
     }
-    return arguments[0];
-  }
+
+    private Object readField(Field field) {
+        return field == null ? null : service.readField(instance, preferredNamedClassName, field);
+    }
+
+    private static Value requireSingleArgument(String member, Value[] arguments) {
+        if (arguments.length != 1) {
+            throw new IllegalArgumentException(member + " requires exactly one argument");
+        }
+        return arguments[0];
+    }
 }

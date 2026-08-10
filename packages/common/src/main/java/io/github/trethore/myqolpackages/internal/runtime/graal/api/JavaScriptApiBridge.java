@@ -24,71 +24,71 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 public final class JavaScriptApiBridge {
-  private static final Source SOURCE = PackageApiSourceLoader.load();
+    private static final Source SOURCE = PackageApiSourceLoader.load();
 
-  private final Value createFetch;
-  private final Value createMetadata;
-  private final Value defineGlobal;
-  private final Value isArray;
-  private final Value isObject;
-  private final Value isUndefined;
-  private final Value ownKeys;
-  private final Value stringify;
+    private final Value createFetch;
+    private final Value createMetadata;
+    private final Value defineGlobal;
+    private final Value isArray;
+    private final Value isObject;
+    private final Value isUndefined;
+    private final Value ownKeys;
+    private final Value stringify;
 
-  public JavaScriptApiBridge(Context context) {
-    Value factory = Objects.requireNonNull(context, "context").eval(SOURCE).getMember("default");
-    if (factory == null || !factory.canExecute()) {
-      throw new IllegalStateException(
-          "JavaScript API resource must have a default function export: " + SOURCE.getName());
+    public JavaScriptApiBridge(Context context) {
+        Value factory = Objects.requireNonNull(context, "context").eval(SOURCE).getMember("default");
+        if (factory == null || !factory.canExecute()) {
+            throw new IllegalStateException(
+                    "JavaScript API resource must have a default function export: " + SOURCE.getName());
+        }
+        Value adapter = factory.execute();
+        this.createFetch = requireFunction(adapter, "createFetch");
+        this.createMetadata = requireFunction(adapter, "createMetadata");
+        this.defineGlobal = requireFunction(adapter, "defineGlobal");
+        this.isArray = requireFunction(adapter, "isArray");
+        this.isObject = requireFunction(adapter, "isObject");
+        this.isUndefined = requireFunction(adapter, "isUndefined");
+        this.ownKeys = requireFunction(adapter, "ownKeys");
+        this.stringify = requireFunction(adapter, "stringify");
     }
-    Value adapter = factory.execute();
-    this.createFetch = requireFunction(adapter, "createFetch");
-    this.createMetadata = requireFunction(adapter, "createMetadata");
-    this.defineGlobal = requireFunction(adapter, "defineGlobal");
-    this.isArray = requireFunction(adapter, "isArray");
-    this.isObject = requireFunction(adapter, "isObject");
-    this.isUndefined = requireFunction(adapter, "isUndefined");
-    this.ownKeys = requireFunction(adapter, "ownKeys");
-    this.stringify = requireFunction(adapter, "stringify");
-  }
 
-  public void defineGlobal(String name, Object value) {
-    defineGlobal.execute(name, value);
-  }
-
-  public Value createFetch(ProxyExecutable fetchBridge) {
-    return createFetch.execute(fetchBridge);
-  }
-
-  public Value createMetadata(String version, String dataDirectory, String packageId) {
-    return createMetadata.execute(version, dataDirectory, packageId);
-  }
-
-  public boolean isArray(Value value) {
-    return isArray.execute(value).asBoolean();
-  }
-
-  public boolean isObject(Value value) {
-    return isObject.execute(value).asBoolean();
-  }
-
-  public boolean isUndefined(Value value) {
-    return isUndefined.execute(value).asBoolean();
-  }
-
-  public Value ownKeys(Value value) {
-    return ownKeys.execute(value);
-  }
-
-  public String stringify(Value value) {
-    return stringify.execute(value).asString();
-  }
-
-  private static Value requireFunction(Value adapter, String member) {
-    Value function = adapter.getMember(member);
-    if (function == null || !function.canExecute()) {
-      throw new IllegalStateException("Missing JavaScript runtime adapter function: " + member);
+    public void defineGlobal(String name, Object value) {
+        defineGlobal.execute(name, value);
     }
-    return function;
-  }
+
+    public Value createFetch(ProxyExecutable fetchBridge) {
+        return createFetch.execute(fetchBridge);
+    }
+
+    public Value createMetadata(String version, String dataDirectory, String packageId) {
+        return createMetadata.execute(version, dataDirectory, packageId);
+    }
+
+    public boolean isArray(Value value) {
+        return isArray.execute(value).asBoolean();
+    }
+
+    public boolean isObject(Value value) {
+        return isObject.execute(value).asBoolean();
+    }
+
+    public boolean isUndefined(Value value) {
+        return isUndefined.execute(value).asBoolean();
+    }
+
+    public Value ownKeys(Value value) {
+        return ownKeys.execute(value);
+    }
+
+    public String stringify(Value value) {
+        return stringify.execute(value).asString();
+    }
+
+    private static Value requireFunction(Value adapter, String member) {
+        Value function = adapter.getMember(member);
+        if (function == null || !function.canExecute()) {
+            throw new IllegalStateException("Missing JavaScript runtime adapter function: " + member);
+        }
+        return function;
+    }
 }

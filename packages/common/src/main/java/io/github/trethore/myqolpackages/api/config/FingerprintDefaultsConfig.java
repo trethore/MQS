@@ -19,15 +19,13 @@ package io.github.trethore.myqolpackages.api.config;
 
 import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
 
-public record FingerprintDefaultsConfig(
-    Boolean enabled, FingerprintMismatchBehavior mismatchBehavior) {
-  public FingerprintDefaultsConfig {
-    enabled = enabled == null ? Boolean.TRUE : enabled;
-    mismatchBehavior =
-        mismatchBehavior == null ? FingerprintMismatchBehavior.BLOCK : mismatchBehavior;
-  }
+public record FingerprintDefaultsConfig(Boolean enabled, FingerprintMismatchBehavior mismatchBehavior) {
+    public FingerprintDefaultsConfig {
+        enabled = enabled == null ? Boolean.TRUE : enabled;
+        mismatchBehavior = mismatchBehavior == null ? FingerprintMismatchBehavior.BLOCK : mismatchBehavior;
+    }
 
-  public static FingerprintDefaultsConfig defaults() {
-    return new FingerprintDefaultsConfig(true, FingerprintMismatchBehavior.BLOCK);
-  }
+    public static FingerprintDefaultsConfig defaults() {
+        return new FingerprintDefaultsConfig(true, FingerprintMismatchBehavior.BLOCK);
+    }
 }

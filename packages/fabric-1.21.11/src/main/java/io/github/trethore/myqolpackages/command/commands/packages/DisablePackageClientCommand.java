@@ -32,34 +32,33 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class DisablePackageClientCommand {
-  private final PackageManager packageManager;
+    private final PackageManager packageManager;
 
-  public DisablePackageClientCommand(PackageManager packageManager) {
-    this.packageManager = packageManager;
-  }
-
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("disable")
-        .then(
-            ClientCommandManager.argument("id", StringArgumentType.word())
-                .suggests((context, builder) -> suggestPackageIds(builder))
-                .executes(this::execute));
-  }
-
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
-    String packageId = StringArgumentType.getString(context, "id");
-    PackageOperationResult result = packageManager.disablePackage(packageId);
-    PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
-    if (result.successful()) {
-      PackageCommandSupport.sendDisabled(source, packageId);
-      return ClientCommandResult.SUCCESS;
+    public DisablePackageClientCommand(PackageManager packageManager) {
+        this.packageManager = packageManager;
     }
-    return ClientCommandResult.FAILURE;
-  }
 
-  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
-    return PackageCommandSupport.suggestPackageIds(
-        builder, packageManager.getConfiguredEnabledPackageIds(), Function.identity());
-  }
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("disable")
+                .then(ClientCommandManager.argument("id", StringArgumentType.word())
+                        .suggests((context, builder) -> suggestPackageIds(builder))
+                        .executes(this::execute));
+    }
+
+    private int execute(CommandContext<FabricClientCommandSource> context) {
+        FabricClientCommandSource source = context.getSource();
+        String packageId = StringArgumentType.getString(context, "id");
+        PackageOperationResult result = packageManager.disablePackage(packageId);
+        PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+        if (result.successful()) {
+            PackageCommandSupport.sendDisabled(source, packageId);
+            return ClientCommandResult.SUCCESS;
+        }
+        return ClientCommandResult.FAILURE;
+    }
+
+    private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
+        return PackageCommandSupport.suggestPackageIds(
+                builder, packageManager.getConfiguredEnabledPackageIds(), Function.identity());
+    }
 }

@@ -22,8 +22,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 public record PackageRootResolution(List<Path> packageRoots, List<PackageDiagnostic> diagnostics) {
-  public PackageRootResolution {
-    packageRoots = List.copyOf(packageRoots);
-    diagnostics = List.copyOf(diagnostics);
-  }
+    public PackageRootResolution {
+        packageRoots = List.copyOf(packageRoots);
+        diagnostics = List.copyOf(diagnostics);
+    }
 }

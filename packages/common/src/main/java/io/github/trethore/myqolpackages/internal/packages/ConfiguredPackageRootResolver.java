@@ -29,84 +29,73 @@ import java.util.List;
 import java.util.Set;
 
 public final class ConfiguredPackageRootResolver implements PackageRootResolver {
-  private static final String CONFIG_DIAGNOSTIC_ID = "config";
+    private static final String CONFIG_DIAGNOSTIC_ID = "config";
 
-  private final Path configPath;
-  private final Path mqpDirectory;
+    private final Path configPath;
+    private final Path mqpDirectory;
 
-  public ConfiguredPackageRootResolver(Path mqpDirectory, Path configPath) {
-    this.mqpDirectory = mqpDirectory.toAbsolutePath().normalize();
-    this.configPath = configPath;
-  }
-
-  @Override
-  public PackageRootResolution resolvePackageRoots(MqpConfig config) {
-    List<PackageDiagnostic> diagnostics = new ArrayList<>();
-    Set<Path> packageRoots = new LinkedHashSet<>();
-    addDefaultPackageRoot(packageRoots, diagnostics);
-
-    for (String configuredRoot : config.additionalPackageRoots()) {
-      addConfiguredPackageRoot(configuredRoot, packageRoots, diagnostics);
+    public ConfiguredPackageRootResolver(Path mqpDirectory, Path configPath) {
+        this.mqpDirectory = mqpDirectory.toAbsolutePath().normalize();
+        this.configPath = configPath;
     }
 
-    return new PackageRootResolution(List.copyOf(packageRoots), diagnostics);
-  }
+    @Override
+    public PackageRootResolution resolvePackageRoots(MqpConfig config) {
+        List<PackageDiagnostic> diagnostics = new ArrayList<>();
+        Set<Path> packageRoots = new LinkedHashSet<>();
+        addDefaultPackageRoot(packageRoots, diagnostics);
 
-  private void addDefaultPackageRoot(Set<Path> packageRoots, List<PackageDiagnostic> diagnostics) {
-    try {
-      Files.createDirectories(mqpDirectory);
-      packageRoots.add(mqpDirectory.toRealPath());
-    } catch (IOException exception) {
-      diagnostics.add(
-          new PackageDiagnostic(
-              CONFIG_DIAGNOSTIC_ID,
-              mqpDirectory,
-              "Could not prepare the default package root: " + exception.getMessage()));
-    }
-  }
+        for (String configuredRoot : config.additionalPackageRoots()) {
+            addConfiguredPackageRoot(configuredRoot, packageRoots, diagnostics);
+        }
 
-  private void addConfiguredPackageRoot(
-      String configuredRoot, Set<Path> packageRoots, List<PackageDiagnostic> diagnostics) {
-    if (configuredRoot == null || configuredRoot.isBlank()) {
-      diagnostics.add(
-          new PackageDiagnostic(
-              CONFIG_DIAGNOSTIC_ID, configPath, "Additional package root must not be empty"));
-      return;
+        return new PackageRootResolution(List.copyOf(packageRoots), diagnostics);
     }
 
-    try {
-      Path packageRoot = Path.of(configuredRoot);
-      if (!packageRoot.isAbsolute()) {
-        packageRoot = mqpDirectory.resolve(packageRoot);
-      }
-      packageRoot = packageRoot.toAbsolutePath().normalize();
-      if (!Files.isDirectory(packageRoot)) {
-        diagnostics.add(
-            new PackageDiagnostic(
-                CONFIG_DIAGNOSTIC_ID,
-                packageRoot,
-                "Additional package root does not exist or is not a directory"));
-        return;
-      }
-      packageRoots.add(packageRoot.toRealPath());
-    } catch (InvalidPathException exception) {
-      diagnostics.add(
-          new PackageDiagnostic(
-              CONFIG_DIAGNOSTIC_ID,
-              configPath,
-              "Invalid additional package root '"
-                  + configuredRoot
-                  + "': "
-                  + exception.getMessage()));
-    } catch (IOException exception) {
-      diagnostics.add(
-          new PackageDiagnostic(
-              CONFIG_DIAGNOSTIC_ID,
-              configPath,
-              "Could not resolve additional package root '"
-                  + configuredRoot
-                  + "': "
-                  + exception.getMessage()));
+    private void addDefaultPackageRoot(Set<Path> packageRoots, List<PackageDiagnostic> diagnostics) {
+        try {
+            Files.createDirectories(mqpDirectory);
+            packageRoots.add(mqpDirectory.toRealPath());
+        } catch (IOException exception) {
+            diagnostics.add(new PackageDiagnostic(
+                    CONFIG_DIAGNOSTIC_ID,
+                    mqpDirectory,
+                    "Could not prepare the default package root: " + exception.getMessage()));
+        }
     }
-  }
+
+    private void addConfiguredPackageRoot(
+            String configuredRoot, Set<Path> packageRoots, List<PackageDiagnostic> diagnostics) {
+        if (configuredRoot == null || configuredRoot.isBlank()) {
+            diagnostics.add(new PackageDiagnostic(
+                    CONFIG_DIAGNOSTIC_ID, configPath, "Additional package root must not be empty"));
+            return;
+        }
+
+        try {
+            Path packageRoot = Path.of(configuredRoot);
+            if (!packageRoot.isAbsolute()) {
+                packageRoot = mqpDirectory.resolve(packageRoot);
+            }
+            packageRoot = packageRoot.toAbsolutePath().normalize();
+            if (!Files.isDirectory(packageRoot)) {
+                diagnostics.add(new PackageDiagnostic(
+                        CONFIG_DIAGNOSTIC_ID,
+                        packageRoot,
+                        "Additional package root does not exist or is not a directory"));
+                return;
+            }
+            packageRoots.add(packageRoot.toRealPath());
+        } catch (InvalidPathException exception) {
+            diagnostics.add(new PackageDiagnostic(
+                    CONFIG_DIAGNOSTIC_ID,
+                    configPath,
+                    "Invalid additional package root '" + configuredRoot + "': " + exception.getMessage()));
+        } catch (IOException exception) {
+            diagnostics.add(new PackageDiagnostic(
+                    CONFIG_DIAGNOSTIC_ID,
+                    configPath,
+                    "Could not resolve additional package root '" + configuredRoot + "': " + exception.getMessage()));
+        }
+    }
 }

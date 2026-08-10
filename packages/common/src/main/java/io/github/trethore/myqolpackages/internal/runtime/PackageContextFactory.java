@@ -18,8 +18,8 @@
 package io.github.trethore.myqolpackages.internal.runtime;
 
 public interface PackageContextFactory extends AutoCloseable {
-  PackageScriptContext create(PackageContextSpec spec) throws PackageLifecycleException;
+    PackageScriptContext create(PackageContextSpec spec) throws PackageLifecycleException;
 
-  @Override
-  default void close() throws PackageLifecycleException {}
+    @Override
+    default void close() throws PackageLifecycleException {}
 }

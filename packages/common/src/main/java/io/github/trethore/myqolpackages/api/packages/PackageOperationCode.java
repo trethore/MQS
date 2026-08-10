@@ -18,8 +18,8 @@
 package io.github.trethore.myqolpackages.api.packages;
 
 public enum PackageOperationCode {
-  SUCCESS,
-  FAILED,
-  TRUST_REQUIRED,
-  FINGERPRINT_REVIEW_REQUIRED
+    SUCCESS,
+    FAILED,
+    TRUST_REQUIRED,
+    FINGERPRINT_REVIEW_REQUIRED
 }

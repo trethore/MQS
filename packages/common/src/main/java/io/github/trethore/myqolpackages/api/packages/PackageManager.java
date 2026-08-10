@@ -21,34 +21,34 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PackageManager extends AutoCloseable {
-  PackageDiscoveryResult refresh();
+    PackageDiscoveryResult refresh();
 
-  PackageDiscoveryResult reload();
+    PackageDiscoveryResult reload();
 
-  PackageOperationResult reloadPackage(String id);
+    PackageOperationResult reloadPackage(String id);
 
-  PackageOperationResult enablePackage(String id);
+    PackageOperationResult enablePackage(String id);
 
-  PackageOperationResult disablePackage(String id);
+    PackageOperationResult disablePackage(String id);
 
-  PackageOperationResult trustPackage(PackageTrustRequest request);
+    PackageOperationResult trustPackage(PackageTrustRequest request);
 
-  PackageOperationResult untrustPackage(String id);
+    PackageOperationResult untrustPackage(String id);
 
-  PackageOperationResult acceptPackageFingerprint(String id, String expectedFingerprint);
+    PackageOperationResult acceptPackageFingerprint(String id, String expectedFingerprint);
 
-  List<PackageInfo> getPackages();
+    List<PackageInfo> getPackages();
 
-  Optional<PackageInfo> findPackage(String id);
+    Optional<PackageInfo> findPackage(String id);
 
-  List<String> getConfiguredEnabledPackageIds();
+    List<String> getConfiguredEnabledPackageIds();
 
-  List<String> getTrustedPackageIds();
+    List<String> getTrustedPackageIds();
 
-  Optional<PackageTrustSnapshot> captureTrustSnapshot(String id);
+    Optional<PackageTrustSnapshot> captureTrustSnapshot(String id);
 
-  default void tick() {}
+    default void tick() {}
 
-  @Override
-  void close();
+    @Override
+    void close();
 }

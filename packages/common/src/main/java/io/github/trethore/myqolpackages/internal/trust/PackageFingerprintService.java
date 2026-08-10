@@ -35,96 +35,88 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public final class PackageFingerprintService {
-  private static final String ALGORITHM = "SHA-256";
-  private static final String DIGEST_PREFIX = "sha256:";
+    private static final String ALGORITHM = "SHA-256";
+    private static final String DIGEST_PREFIX = "sha256:";
 
-  public String fingerprint(Path packageDirectory) throws PackageFingerprintException {
-    Path normalizedDirectory = packageDirectory.toAbsolutePath().normalize();
-    if (Files.isSymbolicLink(normalizedDirectory)) {
-      throw new PackageFingerprintException("Package directory must not be a symbolic link");
-    }
-    try {
-      MessageDigest messageDigest = MessageDigest.getInstance(ALGORITHM);
-      try (DigestOutputStream digestOutput =
-              new DigestOutputStream(java.io.OutputStream.nullOutputStream(), messageDigest);
-          DataOutputStream framedOutput = new DataOutputStream(digestOutput)) {
-        for (Path path : listPackageFiles(normalizedDirectory)) {
-          hashFile(normalizedDirectory, path, framedOutput);
+    public String fingerprint(Path packageDirectory) throws PackageFingerprintException {
+        Path normalizedDirectory = packageDirectory.toAbsolutePath().normalize();
+        if (Files.isSymbolicLink(normalizedDirectory)) {
+            throw new PackageFingerprintException("Package directory must not be a symbolic link");
         }
-      }
-      return DIGEST_PREFIX + HexFormat.of().formatHex(messageDigest.digest());
-    } catch (IOException exception) {
-      throw new PackageFingerprintException(
-          "Could not fingerprint package: " + exception.getMessage(), exception);
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException("SHA-256 is unavailable", exception);
-    }
-  }
-
-  public static boolean isValidDigest(String digest) {
-    if (digest == null || !digest.startsWith(DIGEST_PREFIX) || digest.length() != 71) {
-      return false;
-    }
-    for (int index = DIGEST_PREFIX.length(); index < digest.length(); index++) {
-      char character = digest.charAt(index);
-      if (!((character >= '0' && character <= '9') || (character >= 'a' && character <= 'f'))) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private static List<Path> listPackageFiles(Path packageDirectory)
-      throws IOException, PackageFingerprintException {
-    try (Stream<Path> paths = Files.walk(packageDirectory)) {
-      List<Path> packagePaths =
-          paths
-              .filter(path -> !path.equals(packageDirectory))
-              .sorted(Comparator.comparing(path -> normalizeRelativePath(packageDirectory, path)))
-              .toList();
-      for (Path path : packagePaths) {
-        if (Files.isSymbolicLink(path)) {
-          throw new PackageFingerprintException(
-              "Package contains a symbolic link: " + normalizeRelativePath(packageDirectory, path));
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance(ALGORITHM);
+            try (DigestOutputStream digestOutput =
+                            new DigestOutputStream(java.io.OutputStream.nullOutputStream(), messageDigest);
+                    DataOutputStream framedOutput = new DataOutputStream(digestOutput)) {
+                for (Path path : listPackageFiles(normalizedDirectory)) {
+                    hashFile(normalizedDirectory, path, framedOutput);
+                }
+            }
+            return DIGEST_PREFIX + HexFormat.of().formatHex(messageDigest.digest());
+        } catch (IOException exception) {
+            throw new PackageFingerprintException(
+                    "Could not fingerprint package: " + exception.getMessage(), exception);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
-        BasicFileAttributes attributes =
-            Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-        if (!attributes.isDirectory() && !attributes.isRegularFile()) {
-          throw new PackageFingerprintException(
-              "Package contains an unsupported file: "
-                  + normalizeRelativePath(packageDirectory, path));
+    }
+
+    public static boolean isValidDigest(String digest) {
+        if (digest == null || !digest.startsWith(DIGEST_PREFIX) || digest.length() != 71) {
+            return false;
         }
-      }
-      return packagePaths.stream().filter(Files::isRegularFile).toList();
+        for (int index = DIGEST_PREFIX.length(); index < digest.length(); index++) {
+            char character = digest.charAt(index);
+            if (!((character >= '0' && character <= '9') || (character >= 'a' && character <= 'f'))) {
+                return false;
+            }
+        }
+        return true;
     }
-  }
 
-  private static void hashFile(Path packageDirectory, Path file, DataOutputStream output)
-      throws IOException, PackageFingerprintException {
-    BasicFileAttributes before =
-        Files.readAttributes(file, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-    String relativePath = normalizeRelativePath(packageDirectory, file);
-    byte[] pathBytes = relativePath.getBytes(StandardCharsets.UTF_8);
-    output.writeByte(1);
-    output.writeInt(pathBytes.length);
-    output.write(pathBytes);
-    output.writeLong(before.size());
-    try (InputStream input = new BufferedInputStream(Files.newInputStream(file))) {
-      input.transferTo(output);
+    private static List<Path> listPackageFiles(Path packageDirectory) throws IOException, PackageFingerprintException {
+        try (Stream<Path> paths = Files.walk(packageDirectory)) {
+            List<Path> packagePaths = paths.filter(path -> !path.equals(packageDirectory))
+                    .sorted(Comparator.comparing(path -> normalizeRelativePath(packageDirectory, path)))
+                    .toList();
+            for (Path path : packagePaths) {
+                if (Files.isSymbolicLink(path)) {
+                    throw new PackageFingerprintException(
+                            "Package contains a symbolic link: " + normalizeRelativePath(packageDirectory, path));
+                }
+                BasicFileAttributes attributes =
+                        Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+                if (!attributes.isDirectory() && !attributes.isRegularFile()) {
+                    throw new PackageFingerprintException(
+                            "Package contains an unsupported file: " + normalizeRelativePath(packageDirectory, path));
+                }
+            }
+            return packagePaths.stream().filter(Files::isRegularFile).toList();
+        }
     }
-    BasicFileAttributes after =
-        Files.readAttributes(file, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-    if (before.size() != after.size()
-        || !before.lastModifiedTime().equals(after.lastModifiedTime())) {
-      throw new PackageFingerprintException(
-          "Package changed while being fingerprinted: " + relativePath);
-    }
-  }
 
-  private static String normalizeRelativePath(Path packageDirectory, Path path) {
-    return packageDirectory
-        .relativize(path)
-        .toString()
-        .replace(path.getFileSystem().getSeparator(), "/");
-  }
+    private static void hashFile(Path packageDirectory, Path file, DataOutputStream output)
+            throws IOException, PackageFingerprintException {
+        BasicFileAttributes before = Files.readAttributes(file, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        String relativePath = normalizeRelativePath(packageDirectory, file);
+        byte[] pathBytes = relativePath.getBytes(StandardCharsets.UTF_8);
+        output.writeByte(1);
+        output.writeInt(pathBytes.length);
+        output.write(pathBytes);
+        output.writeLong(before.size());
+        try (InputStream input = new BufferedInputStream(Files.newInputStream(file))) {
+            input.transferTo(output);
+        }
+        BasicFileAttributes after = Files.readAttributes(file, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        if (before.size() != after.size() || !before.lastModifiedTime().equals(after.lastModifiedTime())) {
+            throw new PackageFingerprintException("Package changed while being fingerprinted: " + relativePath);
+        }
+    }
+
+    private static String normalizeRelativePath(Path packageDirectory, Path path) {
+        return packageDirectory
+                .relativize(path)
+                .toString()
+                .replace(path.getFileSystem().getSeparator(), "/");
+    }
 }

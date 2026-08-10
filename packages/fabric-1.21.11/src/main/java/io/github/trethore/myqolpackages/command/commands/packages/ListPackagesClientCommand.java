@@ -30,36 +30,37 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
 
 public final class ListPackagesClientCommand {
-  private final PackageManager packageManager;
+    private final PackageManager packageManager;
 
-  public ListPackagesClientCommand(PackageManager packageManager) {
-    this.packageManager = packageManager;
-  }
-
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("list").executes(this::execute);
-  }
-
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
-    List<PackageInfo> packages = packageManager.getPackages();
-    if (packages.isEmpty()) {
-      MqpCommandFeedback.sendInfo(source, "No packages discovered.");
-      return ClientCommandResult.SUCCESS;
+    public ListPackagesClientCommand(PackageManager packageManager) {
+        this.packageManager = packageManager;
     }
 
-    MqpCommandFeedback.sendHeader(source);
-    MqpCommandFeedback.sendLine(source, "Packages discovered: " + packages.size());
-    for (PackageInfo packageInfo : packages) {
-      MqpCommandFeedback.sendLine(
-          source,
-          Component.empty()
-              .append(Component.literal(packageInfo.name() + " - " + packageInfo.version() + " ["))
-              .append(PackageCommandSupport.formatState(packageInfo.state()))
-              .append(Component.literal("] ["))
-              .append(PackageCommandSupport.formatTrustState(packageInfo.trust().state()))
-              .append(Component.literal("]")));
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("list").executes(this::execute);
     }
-    return packages.size();
-  }
+
+    private int execute(CommandContext<FabricClientCommandSource> context) {
+        FabricClientCommandSource source = context.getSource();
+        List<PackageInfo> packages = packageManager.getPackages();
+        if (packages.isEmpty()) {
+            MqpCommandFeedback.sendInfo(source, "No packages discovered.");
+            return ClientCommandResult.SUCCESS;
+        }
+
+        MqpCommandFeedback.sendHeader(source);
+        MqpCommandFeedback.sendLine(source, "Packages discovered: " + packages.size());
+        for (PackageInfo packageInfo : packages) {
+            MqpCommandFeedback.sendLine(
+                    source,
+                    Component.empty()
+                            .append(Component.literal(packageInfo.name() + " - " + packageInfo.version() + " ["))
+                            .append(PackageCommandSupport.formatState(packageInfo.state()))
+                            .append(Component.literal("] ["))
+                            .append(PackageCommandSupport.formatTrustState(
+                                    packageInfo.trust().state()))
+                            .append(Component.literal("]")));
+        }
+        return packages.size();
+    }
 }

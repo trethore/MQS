@@ -22,7 +22,7 @@ import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import java.util.List;
 
 public record MqpConfigLoadResult(MqpConfig config, List<PackageDiagnostic> diagnostics) {
-  public MqpConfigLoadResult {
-    diagnostics = List.copyOf(diagnostics);
-  }
+    public MqpConfigLoadResult {
+        diagnostics = List.copyOf(diagnostics);
+    }
 }

@@ -20,16 +20,16 @@ package io.github.trethore.myqolpackages.internal.packages;
 import java.nio.file.Path;
 
 final class PackageDirectories {
-  static final String DATA_DIRECTORY_NAME = ".package-data";
+    static final String DATA_DIRECTORY_NAME = ".package-data";
 
-  private PackageDirectories() {}
+    private PackageDirectories() {}
 
-  static Path resolveDataDirectory(Path packageDirectory, String packageId) {
-    Path normalizedPackageDirectory = packageDirectory.toAbsolutePath().normalize();
-    Path packageRoot = normalizedPackageDirectory.getParent();
-    if (packageRoot == null) {
-      throw new IllegalArgumentException("Package directory must have a parent directory");
+    static Path resolveDataDirectory(Path packageDirectory, String packageId) {
+        Path normalizedPackageDirectory = packageDirectory.toAbsolutePath().normalize();
+        Path packageRoot = normalizedPackageDirectory.getParent();
+        if (packageRoot == null) {
+            throw new IllegalArgumentException("Package directory must have a parent directory");
+        }
+        return packageRoot.resolve(DATA_DIRECTORY_NAME).resolve(packageId).normalize();
     }
-    return packageRoot.resolve(DATA_DIRECTORY_NAME).resolve(packageId).normalize();
-  }
 }

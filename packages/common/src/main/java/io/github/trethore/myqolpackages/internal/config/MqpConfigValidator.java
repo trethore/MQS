@@ -26,36 +26,36 @@ import io.github.trethore.myqolpackages.internal.trust.TrustedVersionRange;
 import java.util.Map;
 
 final class MqpConfigValidator {
-  void validate(MqpConfig config) {
-    for (Map.Entry<String, PackageTrustConfig> entry : config.trust().packages().entrySet()) {
-      String packageId = entry.getKey();
-      if (packageId == null || packageId.isBlank()) {
-        throw new JsonSyntaxException("Trusted package ID must not be empty");
-      }
-      PackageTrustConfig packageTrustConfig = entry.getValue();
-      if (packageTrustConfig == null) {
-        throw new JsonSyntaxException("Trusted package configuration must contain an object");
-      }
-      validateVersionRange(packageId, packageTrustConfig);
-      validateFingerprint(packageId, packageTrustConfig.fingerprint());
+    void validate(MqpConfig config) {
+        for (Map.Entry<String, PackageTrustConfig> entry :
+                config.trust().packages().entrySet()) {
+            String packageId = entry.getKey();
+            if (packageId == null || packageId.isBlank()) {
+                throw new JsonSyntaxException("Trusted package ID must not be empty");
+            }
+            PackageTrustConfig packageTrustConfig = entry.getValue();
+            if (packageTrustConfig == null) {
+                throw new JsonSyntaxException("Trusted package configuration must contain an object");
+            }
+            validateVersionRange(packageId, packageTrustConfig);
+            validateFingerprint(packageId, packageTrustConfig.fingerprint());
+        }
     }
-  }
 
-  private static void validateVersionRange(
-      String packageId, PackageTrustConfig packageTrustConfig) {
-    try {
-      TrustedVersionRange.parse(packageTrustConfig.versions());
-    } catch (IllegalArgumentException exception) {
-      throw new JsonSyntaxException(
-          "Invalid trusted version range for " + packageId + ": " + exception.getMessage());
+    private static void validateVersionRange(String packageId, PackageTrustConfig packageTrustConfig) {
+        try {
+            TrustedVersionRange.parse(packageTrustConfig.versions());
+        } catch (IllegalArgumentException exception) {
+            throw new JsonSyntaxException(
+                    "Invalid trusted version range for " + packageId + ": " + exception.getMessage());
+        }
     }
-  }
 
-  private static void validateFingerprint(String packageId, PackageFingerprintConfig fingerprint) {
-    if (fingerprint != null
-        && fingerprint.digest() != null
-        && !PackageFingerprintService.isValidDigest(fingerprint.digest())) {
-      throw new JsonSyntaxException("Invalid fingerprint digest for " + packageId);
+    private static void validateFingerprint(String packageId, PackageFingerprintConfig fingerprint) {
+        if (fingerprint != null
+                && fingerprint.digest() != null
+                && !PackageFingerprintService.isValidDigest(fingerprint.digest())) {
+            throw new JsonSyntaxException("Invalid fingerprint digest for " + packageId);
+        }
     }
-  }
 }

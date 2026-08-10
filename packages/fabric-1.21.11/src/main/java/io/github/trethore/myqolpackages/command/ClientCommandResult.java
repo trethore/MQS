@@ -20,8 +20,8 @@ package io.github.trethore.myqolpackages.command;
 import com.mojang.brigadier.Command;
 
 public final class ClientCommandResult {
-  public static final int FAILURE = 0;
-  public static final int SUCCESS = Command.SINGLE_SUCCESS;
+    public static final int FAILURE = 0;
+    public static final int SUCCESS = Command.SINGLE_SUCCESS;
 
-  private ClientCommandResult() {}
+    private ClientCommandResult() {}
 }

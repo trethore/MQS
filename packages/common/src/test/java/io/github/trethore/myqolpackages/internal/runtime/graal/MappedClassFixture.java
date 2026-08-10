@@ -19,79 +19,79 @@ package io.github.trethore.myqolpackages.internal.runtime.graal;
 
 @SuppressWarnings({"unused", "FieldMayBeFinal", "java:S1068", "java:S1144"})
 public final class MappedClassFixture extends MappedBaseFixture {
-  private static final String HIDDEN_STATIC_FINAL_VALUE = "static-final";
-  private static String hiddenStaticCollision = "static-field";
-  private static String hiddenStaticValue = "initial-static";
+    private static final String HIDDEN_STATIC_FINAL_VALUE = "static-final";
+    private static String hiddenStaticCollision = "static-field";
+    private static String hiddenStaticValue = "initial-static";
 
-  private final String hiddenFinalValue = "instance-final";
-  private int hiddenCount;
-  private String hiddenName;
-  private String hiddenValue = "instance-field";
+    private final String hiddenFinalValue = "instance-final";
+    private int hiddenCount;
+    private String hiddenName;
+    private String hiddenValue = "instance-field";
 
-  private MappedClassFixture(String name, int count) {
-    this.hiddenName = name;
-    this.hiddenCount = count;
-  }
+    private MappedClassFixture(String name, int count) {
+        this.hiddenName = name;
+        this.hiddenCount = count;
+    }
 
-  private static String hiddenChooseNumber(int value) {
-    return "number:" + value;
-  }
+    private static String hiddenChooseNumber(int value) {
+        return "number:" + value;
+    }
 
-  private static String hiddenChooseString(String value) {
-    return "string:" + value;
-  }
+    private static String hiddenChooseString(String value) {
+        return "string:" + value;
+    }
 
-  private static String hiddenSpecificObject(Object value) {
-    return "object:" + value;
-  }
+    private static String hiddenSpecificObject(Object value) {
+        return "object:" + value;
+    }
 
-  private static String hiddenSpecificString(String value) {
-    return "string:" + value;
-  }
+    private static String hiddenSpecificString(String value) {
+        return "string:" + value;
+    }
 
-  private static String hiddenShared(int value) {
-    return "shared-number:" + value;
-  }
+    private static String hiddenShared(int value) {
+        return "shared-number:" + value;
+    }
 
-  private static String hiddenShared(String value) {
-    return "shared-string:" + value;
-  }
+    private static String hiddenShared(String value) {
+        return "shared-string:" + value;
+    }
 
-  private static String hiddenStaticCollision() {
-    return "static-method";
-  }
+    private static String hiddenStaticCollision() {
+        return "static-method";
+    }
 
-  private static String hiddenStaticGreeting(String name) {
-    return "hello " + name;
-  }
+    private static String hiddenStaticGreeting(String name) {
+        return "hello " + name;
+    }
 
-  private int hiddenIncrement(int amount) {
-    hiddenCount += amount;
-    return hiddenCount;
-  }
+    private int hiddenIncrement(int amount) {
+        hiddenCount += amount;
+        return hiddenCount;
+    }
 
-  private MappedClassFixture hiddenCopy() {
-    return new MappedClassFixture(hiddenName, hiddenCount);
-  }
+    private MappedClassFixture hiddenCopy() {
+        return new MappedClassFixture(hiddenName, hiddenCount);
+    }
 
-  private String hiddenJoin(String prefix, String... values) {
-    return prefix + ":" + String.join(",", values);
-  }
+    private String hiddenJoin(String prefix, String... values) {
+        return prefix + ":" + String.join(",", values);
+    }
 
-  private boolean hiddenSame(MappedClassFixture other) {
-    return other == this;
-  }
+    private boolean hiddenSame(MappedClassFixture other) {
+        return other == this;
+    }
 
-  private String hiddenValue() {
-    return "instance-method";
-  }
+    private String hiddenValue() {
+        return "instance-method";
+    }
 }
 
 @SuppressWarnings({"unused", "FieldMayBeFinal", "java:S1068", "java:S1144"})
 class MappedBaseFixture {
-  private String hiddenBaseValue = "base-field";
+    private String hiddenBaseValue = "base-field";
 
-  private String hiddenBaseMethod() {
-    return "base-method";
-  }
+    private String hiddenBaseMethod() {
+        return "base-method";
+    }
 }

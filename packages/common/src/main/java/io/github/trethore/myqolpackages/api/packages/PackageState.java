@@ -18,7 +18,7 @@
 package io.github.trethore.myqolpackages.api.packages;
 
 public enum PackageState {
-  DISABLED,
-  ENABLED,
-  ERROR
+    DISABLED,
+    ENABLED,
+    ERROR
 }

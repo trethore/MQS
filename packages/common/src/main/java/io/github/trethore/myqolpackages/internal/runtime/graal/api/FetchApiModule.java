@@ -24,53 +24,53 @@ import java.net.http.HttpClient;
 import java.util.Objects;
 
 final class FetchApiModule implements PackageApiModule {
-  private final HttpClient httpClient;
+    private final HttpClient httpClient;
 
-  FetchApiModule(HttpClient httpClient) {
-    this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
-  }
-
-  @Override
-  public PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec) {
-    PackageHttpClient packageHttpClient = new PackageHttpClient(httpClient);
-    try {
-      FetchApi fetchApi = new FetchApi(bridge, packageHttpClient);
-      bridge.defineGlobal("fetch", bridge.createFetch(fetchApi));
-      return new FetchApiSession(fetchApi, packageHttpClient);
-    } catch (RuntimeException exception) {
-      packageHttpClient.close();
-      throw exception;
-    }
-  }
-
-  private static final class FetchApiSession implements PackageApiSession {
-    private final FetchApi fetchApi;
-    private final PackageHttpClient httpClient;
-    private boolean closed;
-
-    private FetchApiSession(FetchApi fetchApi, PackageHttpClient httpClient) {
-      this.fetchApi = fetchApi;
-      this.httpClient = httpClient;
+    FetchApiModule(HttpClient httpClient) {
+        this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
     }
 
     @Override
-    public void tick() {
-      if (!closed) {
-        fetchApi.tick();
-      }
+    public PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec) {
+        PackageHttpClient packageHttpClient = new PackageHttpClient(httpClient);
+        try {
+            FetchApi fetchApi = new FetchApi(bridge, packageHttpClient);
+            bridge.defineGlobal("fetch", bridge.createFetch(fetchApi));
+            return new FetchApiSession(fetchApi, packageHttpClient);
+        } catch (RuntimeException exception) {
+            packageHttpClient.close();
+            throw exception;
+        }
     }
 
-    @Override
-    public void close() {
-      if (closed) {
-        return;
-      }
-      closed = true;
-      try {
-        fetchApi.close();
-      } finally {
-        httpClient.close();
-      }
+    private static final class FetchApiSession implements PackageApiSession {
+        private final FetchApi fetchApi;
+        private final PackageHttpClient httpClient;
+        private boolean closed;
+
+        private FetchApiSession(FetchApi fetchApi, PackageHttpClient httpClient) {
+            this.fetchApi = fetchApi;
+            this.httpClient = httpClient;
+        }
+
+        @Override
+        public void tick() {
+            if (!closed) {
+                fetchApi.tick();
+            }
+        }
+
+        @Override
+        public void close() {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            try {
+                fetchApi.close();
+            } finally {
+                httpClient.close();
+            }
+        }
     }
-  }
 }

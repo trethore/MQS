@@ -19,9 +19,8 @@ package io.github.trethore.myqolpackages.api.config;
 
 import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
 
-public record PackageFingerprintConfig(
-    Boolean enabled, FingerprintMismatchBehavior mismatchBehavior, String digest) {
-  public PackageFingerprintConfig {
-    digest = digest == null || digest.isBlank() ? null : digest;
-  }
+public record PackageFingerprintConfig(Boolean enabled, FingerprintMismatchBehavior mismatchBehavior, String digest) {
+    public PackageFingerprintConfig {
+        digest = digest == null || digest.isBlank() ? null : digest;
+    }
 }

@@ -34,51 +34,46 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class ReloadPackagesClientCommand {
-  private final PackageManager packageManager;
-  private final TrustPackageClientCommand trustPackageClientCommand;
+    private final PackageManager packageManager;
+    private final TrustPackageClientCommand trustPackageClientCommand;
 
-  public ReloadPackagesClientCommand(
-      PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
-    this.packageManager = packageManager;
-    this.trustPackageClientCommand = trustPackageClientCommand;
-  }
-
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("reload")
-        .executes(this::executeAll)
-        .then(
-            ClientCommandManager.argument("id", StringArgumentType.word())
-                .suggests(
-                    (context, builder) ->
-                        PackageCommandSupport.suggestPackageIds(
-                            builder,
-                            packageManager.getConfiguredEnabledPackageIds(),
-                            Function.identity()))
-                .executes(this::executePackage));
-  }
-
-  private int executeAll(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
-    PackageDiscoveryResult result = packageManager.reload();
-    return PackageCommandSupport.sendDiscoveryResult(source, "Reloaded", result);
-  }
-
-  private int executePackage(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
-    String packageId = StringArgumentType.getString(context, "id");
-    PackageOperationResult result = packageManager.reloadPackage(packageId);
-    if (result.code() == PackageOperationCode.TRUST_REQUIRED) {
-      return trustPackageClientCommand.start(source, packageId, OriginalOperation.RELOAD);
+    public ReloadPackagesClientCommand(
+            PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
+        this.packageManager = packageManager;
+        this.trustPackageClientCommand = trustPackageClientCommand;
     }
-    if (result.code() == PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED) {
-      trustPackageClientCommand.sendFingerprintReview(source, packageId, OriginalOperation.RELOAD);
-      return ClientCommandResult.FAILURE;
+
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("reload")
+                .executes(this::executeAll)
+                .then(ClientCommandManager.argument("id", StringArgumentType.word())
+                        .suggests((context, builder) -> PackageCommandSupport.suggestPackageIds(
+                                builder, packageManager.getConfiguredEnabledPackageIds(), Function.identity()))
+                        .executes(this::executePackage));
     }
-    PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
-    if (result.successful()) {
-      MqpCommandFeedback.sendInfo(source, "Reloaded " + packageId + ".");
-      return ClientCommandResult.SUCCESS;
+
+    private int executeAll(CommandContext<FabricClientCommandSource> context) {
+        FabricClientCommandSource source = context.getSource();
+        PackageDiscoveryResult result = packageManager.reload();
+        return PackageCommandSupport.sendDiscoveryResult(source, "Reloaded", result);
     }
-    return ClientCommandResult.FAILURE;
-  }
+
+    private int executePackage(CommandContext<FabricClientCommandSource> context) {
+        FabricClientCommandSource source = context.getSource();
+        String packageId = StringArgumentType.getString(context, "id");
+        PackageOperationResult result = packageManager.reloadPackage(packageId);
+        if (result.code() == PackageOperationCode.TRUST_REQUIRED) {
+            return trustPackageClientCommand.start(source, packageId, OriginalOperation.RELOAD);
+        }
+        if (result.code() == PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED) {
+            trustPackageClientCommand.sendFingerprintReview(source, packageId, OriginalOperation.RELOAD);
+            return ClientCommandResult.FAILURE;
+        }
+        PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+        if (result.successful()) {
+            MqpCommandFeedback.sendInfo(source, "Reloaded " + packageId + ".");
+            return ClientCommandResult.SUCCESS;
+        }
+        return ClientCommandResult.FAILURE;
+    }
 }

@@ -19,10 +19,9 @@ package io.github.trethore.myqolpackages.api.packages;
 
 import java.util.List;
 
-public record PackageDiscoveryResult(
-    List<PackageInfo> packages, List<PackageDiagnostic> diagnostics) {
-  public PackageDiscoveryResult {
-    packages = List.copyOf(packages);
-    diagnostics = List.copyOf(diagnostics);
-  }
+public record PackageDiscoveryResult(List<PackageInfo> packages, List<PackageDiagnostic> diagnostics) {
+    public PackageDiscoveryResult {
+        packages = List.copyOf(packages);
+        diagnostics = List.copyOf(diagnostics);
+    }
 }

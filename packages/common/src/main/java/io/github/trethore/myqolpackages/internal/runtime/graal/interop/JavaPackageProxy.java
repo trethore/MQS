@@ -23,63 +23,63 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 final class JavaPackageProxy implements ProxyObject {
-  private final Map<String, Object> members = new HashMap<>();
-  private final String packageName;
-  private final HostClassResolver resolver;
+    private final Map<String, Object> members = new HashMap<>();
+    private final String packageName;
+    private final HostClassResolver resolver;
 
-  JavaPackageProxy(String packageName, HostClassResolver resolver) {
-    this.packageName = packageName;
-    this.resolver = resolver;
-  }
-
-  @Override
-  public Object getMember(String key) {
-    validateMemberName(key);
-    Object cachedMember = members.get(key);
-    if (cachedMember != null) {
-      return cachedMember;
+    JavaPackageProxy(String packageName, HostClassResolver resolver) {
+        this.packageName = packageName;
+        this.resolver = resolver;
     }
-    String qualifiedName = packageName.isEmpty() ? key : packageName + "." + key;
-    JavaClassProxy resolvedClass = resolver.resolvePackageMember(qualifiedName);
-    if (resolvedClass != null) {
-      members.put(key, resolvedClass);
-      return resolvedClass;
+
+    @Override
+    public Object getMember(String key) {
+        validateMemberName(key);
+        Object cachedMember = members.get(key);
+        if (cachedMember != null) {
+            return cachedMember;
+        }
+        String qualifiedName = packageName.isEmpty() ? key : packageName + "." + key;
+        JavaClassProxy resolvedClass = resolver.resolvePackageMember(qualifiedName);
+        if (resolvedClass != null) {
+            members.put(key, resolvedClass);
+            return resolvedClass;
+        }
+        return getOrCreatePackage(key, qualifiedName);
     }
-    return getOrCreatePackage(key, qualifiedName);
-  }
 
-  @Override
-  public Object getMemberKeys() {
-    return null;
-  }
-
-  @Override
-  public boolean hasMember(String key) {
-    return key != null && !key.isBlank();
-  }
-
-  @Override
-  public void putMember(String key, Value value) {
-    throw new UnsupportedOperationException("Java package proxies are read-only");
-  }
-
-  JavaPackageProxy getNetPackage() {
-    return getOrCreatePackage("net", "net");
-  }
-
-  private JavaPackageProxy getOrCreatePackage(String key, String qualifiedName) {
-    Object cachedMember = members.get(key);
-    if (cachedMember instanceof JavaPackageProxy packageProxy) {
-      return packageProxy;
+    @Override
+    public Object getMemberKeys() {
+        return null;
     }
-    JavaPackageProxy packageProxy = new JavaPackageProxy(qualifiedName, resolver);
-    members.put(key, packageProxy);
-    return packageProxy;
-  }
 
-  private static void validateMemberName(String key) {
-    if (key == null || key.isBlank() || key.indexOf('.') >= 0) {
-      throw new IllegalArgumentException("Invalid package member: " + key);
+    @Override
+    public boolean hasMember(String key) {
+        return key != null && !key.isBlank();
     }
-  }
+
+    @Override
+    public void putMember(String key, Value value) {
+        throw new UnsupportedOperationException("Java package proxies are read-only");
+    }
+
+    JavaPackageProxy getNetPackage() {
+        return getOrCreatePackage("net", "net");
+    }
+
+    private JavaPackageProxy getOrCreatePackage(String key, String qualifiedName) {
+        Object cachedMember = members.get(key);
+        if (cachedMember instanceof JavaPackageProxy packageProxy) {
+            return packageProxy;
+        }
+        JavaPackageProxy packageProxy = new JavaPackageProxy(qualifiedName, resolver);
+        members.put(key, packageProxy);
+        return packageProxy;
+    }
+
+    private static void validateMemberName(String key) {
+        if (key == null || key.isBlank() || key.indexOf('.') >= 0) {
+            throw new IllegalArgumentException("Invalid package member: " + key);
+        }
+    }
 }

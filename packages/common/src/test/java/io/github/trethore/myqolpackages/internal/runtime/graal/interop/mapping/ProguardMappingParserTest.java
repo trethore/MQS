@@ -28,13 +28,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ProguardMappingParserTest {
-  @Test
-  void parsesClassesAndBuildsCatalogIndexes() throws IOException {
-    ProguardMappingParser.ParsedMappings mappings =
-        new ProguardMappingParser()
-            .parse(
-                new StringReader(
-                    """
+    @Test
+    void parsesClassesAndBuildsCatalogIndexes() throws IOException {
+        ProguardMappingParser.ParsedMappings mappings = new ProguardMappingParser().parse(new StringReader("""
                     # metadata
                     net.minecraft.network.chat.Component -> abc:
                         java.lang.String value -> a
@@ -44,31 +40,30 @@ class ProguardMappingParserTest {
                     net.minecraft.client.OptionInstance$UnitDouble -> def:
                     """));
 
-    assertEquals(
-        "abc", mappings.mappings().getRuntimeClassName("net.minecraft.network.chat.Component"));
-    MappingIndex.ClassMapping componentMapping =
-        mappings.mappings().getClassMapping("net.minecraft.network.chat.Component");
-    assertEquals("a", componentMapping.fieldMappings().get("value"));
-    assertEquals(
-        List.of(
-            new MappingIndex.MethodMapping("b", List.of("int")),
-            new MappingIndex.MethodMapping("c", List.of("java.lang.String"))),
-        componentMapping.methodMappings().get("render"));
-    assertFalse(componentMapping.methodMappings().containsKey("<init>"));
-    assertTrue(mappings.catalog().containsPackage("net.minecraft.network.chat"));
-    assertEquals(
-        List.of("net.minecraft.network.chat.Component"),
-        mappings.catalog().findBySuffix("chat.Component"));
-    assertEquals(
-        List.of("net.minecraft.client.OptionInstance$UnitDouble"),
-        mappings.catalog().findBySuffix("UnitDouble"));
-  }
+        assertEquals("abc", mappings.mappings().getRuntimeClassName("net.minecraft.network.chat.Component"));
+        MappingIndex.ClassMapping componentMapping =
+                mappings.mappings().getClassMapping("net.minecraft.network.chat.Component");
+        assertEquals("a", componentMapping.fieldMappings().get("value"));
+        assertEquals(
+                List.of(
+                        new MappingIndex.MethodMapping("b", List.of("int")),
+                        new MappingIndex.MethodMapping("c", List.of("java.lang.String"))),
+                componentMapping.methodMappings().get("render"));
+        assertFalse(componentMapping.methodMappings().containsKey("<init>"));
+        assertTrue(mappings.catalog().containsPackage("net.minecraft.network.chat"));
+        assertEquals(
+                List.of("net.minecraft.network.chat.Component"),
+                mappings.catalog().findBySuffix("chat.Component"));
+        assertEquals(
+                List.of("net.minecraft.client.OptionInstance$UnitDouble"),
+                mappings.catalog().findBySuffix("UnitDouble"));
+    }
 
-  @Test
-  void rejectsMalformedClassMappings() {
-    ProguardMappingParser parser = new ProguardMappingParser();
-    StringReader source = new StringReader("invalid mapping");
+    @Test
+    void rejectsMalformedClassMappings() {
+        ProguardMappingParser parser = new ProguardMappingParser();
+        StringReader source = new StringReader("invalid mapping");
 
-    assertThrows(IllegalArgumentException.class, () -> parser.parse(source));
-  }
+        assertThrows(IllegalArgumentException.class, () -> parser.parse(source));
+    }
 }

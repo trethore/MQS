@@ -29,45 +29,42 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.junit.jupiter.api.Test;
 
 class FetchResponseTest {
-  @Test
-  void consumesTextOnlyOnce() {
-    FetchResponse response = createResponse("text".getBytes(StandardCharsets.UTF_8));
+    @Test
+    void consumesTextOnlyOnce() {
+        FetchResponse response = createResponse("text".getBytes(StandardCharsets.UTF_8));
 
-    assertFalse(response.isBodyUsed());
-    assertEquals("text", response.consumeText());
-    assertTrue(response.isBodyUsed());
-    IllegalStateException exception =
-        assertThrows(IllegalStateException.class, response::consumeBytes);
-    assertEquals("Response body has already been used", exception.getMessage());
-  }
+        assertFalse(response.isBodyUsed());
+        assertEquals("text", response.consumeText());
+        assertTrue(response.isBodyUsed());
+        IllegalStateException exception = assertThrows(IllegalStateException.class, response::consumeBytes);
+        assertEquals("Response body has already been used", exception.getMessage());
+    }
 
-  @Test
-  void exposesUnsignedResponseBytes() {
-    FetchResponse response = createResponse(new byte[] {0, 1, 127, (byte) 128, (byte) 255});
+    @Test
+    void exposesUnsignedResponseBytes() {
+        FetchResponse response = createResponse(new byte[] {0, 1, 127, (byte) 128, (byte) 255});
 
-    ProxyArray bytes = response.consumeBytes();
-    assertEquals(5, bytes.getSize());
-    assertEquals(0, bytes.get(0));
-    assertEquals(1, bytes.get(1));
-    assertEquals(127, bytes.get(2));
-    assertEquals(128, bytes.get(3));
-    assertEquals(255, bytes.get(4));
-  }
+        ProxyArray bytes = response.consumeBytes();
+        assertEquals(5, bytes.getSize());
+        assertEquals(0, bytes.get(0));
+        assertEquals(1, bytes.get(1));
+        assertEquals(127, bytes.get(2));
+        assertEquals(128, bytes.get(3));
+        assertEquals(255, bytes.get(4));
+    }
 
-  @Test
-  void mapsResponseStatusProperties() {
-    FetchResponse response =
-        new FetchResponse(
-            new PackageHttpResponse(201, "https://example.com", true, Map.of(), new byte[0]));
+    @Test
+    void mapsResponseStatusProperties() {
+        FetchResponse response =
+                new FetchResponse(new PackageHttpResponse(201, "https://example.com", true, Map.of(), new byte[0]));
 
-    assertEquals(201, response.getMember("status"));
-    assertEquals("Created", response.getMember("statusText"));
-    assertEquals(Boolean.TRUE, response.getMember("ok"));
-    assertEquals(Boolean.TRUE, response.getMember("redirected"));
-  }
+        assertEquals(201, response.getMember("status"));
+        assertEquals("Created", response.getMember("statusText"));
+        assertEquals(Boolean.TRUE, response.getMember("ok"));
+        assertEquals(Boolean.TRUE, response.getMember("redirected"));
+    }
 
-  private static FetchResponse createResponse(byte[] body) {
-    return new FetchResponse(
-        new PackageHttpResponse(200, "https://example.com", false, Map.of(), body));
-  }
+    private static FetchResponse createResponse(byte[] body) {
+        return new FetchResponse(new PackageHttpResponse(200, "https://example.com", false, Map.of(), body));
+    }
 }

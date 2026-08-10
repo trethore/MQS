@@ -26,102 +26,102 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ClassCatalog {
-  private static final char INNER_CLASS_SEPARATOR = '$';
+    private static final char INNER_CLASS_SEPARATOR = '$';
 
-  private final Set<String> classes;
-  private final Set<String> packages;
-  private final Map<String, List<String>> suffixMatches;
+    private final Set<String> classes;
+    private final Set<String> packages;
+    private final Map<String, List<String>> suffixMatches;
 
-  private ClassCatalog(
-      Set<String> classes, Set<String> packages, Map<String, List<String>> suffixMatches) {
-    this.classes = Set.copyOf(classes);
-    this.packages = Set.copyOf(packages);
-    this.suffixMatches = Map.copyOf(suffixMatches);
-  }
-
-  public static ClassCatalog empty() {
-    return builder().build();
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public boolean containsPackage(String packageName) {
-    return packages.contains(packageName);
-  }
-
-  public List<String> findBySuffix(String requestedName) {
-    return suffixMatches.getOrDefault(requestedName, List.of());
-  }
-
-  public static final class Builder {
-    private final Set<String> classes = new LinkedHashSet<>();
-
-    public Builder add(String className) {
-      classes.add(normalizeClassName(className));
-      return this;
+    private ClassCatalog(Set<String> classes, Set<String> packages, Map<String, List<String>> suffixMatches) {
+        this.classes = Set.copyOf(classes);
+        this.packages = Set.copyOf(packages);
+        this.suffixMatches = Map.copyOf(suffixMatches);
     }
 
-    public Builder addAll(ClassCatalog catalog) {
-      classes.addAll(catalog.classes);
-      return this;
+    public static ClassCatalog empty() {
+        return builder().build();
     }
 
-    public ClassCatalog build() {
-      Set<String> packageNames = new HashSet<>();
-      Map<String, LinkedHashSet<String>> mutableSuffixMatches = new HashMap<>();
-      for (String className : classes) {
-        indexPackages(className, packageNames);
-        indexSuffixes(className, mutableSuffixMatches);
-      }
-      Map<String, List<String>> finalizedSuffixMatches = new HashMap<>();
-      for (Map.Entry<String, LinkedHashSet<String>> entry : mutableSuffixMatches.entrySet()) {
-        List<String> matches = new ArrayList<>(entry.getValue());
-        matches.sort(String::compareTo);
-        finalizedSuffixMatches.put(entry.getKey(), List.copyOf(matches));
-      }
-      return new ClassCatalog(classes, packageNames, finalizedSuffixMatches);
+    public static Builder builder() {
+        return new Builder();
     }
 
-    private static void indexPackages(String className, Set<String> packageNames) {
-      int separatorIndex = className.indexOf('.');
-      while (separatorIndex >= 0) {
-        packageNames.add(className.substring(0, separatorIndex));
-        separatorIndex = className.indexOf('.', separatorIndex + 1);
-      }
+    public boolean containsPackage(String packageName) {
+        return packages.contains(packageName);
     }
 
-    private static void indexSuffixes(
-        String className, Map<String, LinkedHashSet<String>> suffixMatches) {
-      int separatorIndex = className.indexOf('.');
-      if (separatorIndex < 0) {
-        addSuffix(suffixMatches, className, className);
-      }
-      while (separatorIndex >= 0 && separatorIndex < className.length() - 1) {
-        addSuffix(suffixMatches, className.substring(separatorIndex + 1), className);
-        separatorIndex = className.indexOf('.', separatorIndex + 1);
-      }
-      int innerClassIndex = className.lastIndexOf(INNER_CLASS_SEPARATOR);
-      if (innerClassIndex >= 0 && innerClassIndex < className.length() - 1) {
-        addSuffix(suffixMatches, className.substring(innerClassIndex + 1), className);
-      }
+    public List<String> findBySuffix(String requestedName) {
+        return suffixMatches.getOrDefault(requestedName, List.of());
     }
 
-    private static void addSuffix(
-        Map<String, LinkedHashSet<String>> suffixMatches, String suffix, String className) {
-      suffixMatches.computeIfAbsent(suffix, ignored -> new LinkedHashSet<>()).add(className);
-    }
+    public static final class Builder {
+        private final Set<String> classes = new LinkedHashSet<>();
 
-    private static String normalizeClassName(String className) {
-      String normalizedName = className.trim().replace('/', '.');
-      if (normalizedName.isEmpty()
-          || normalizedName.startsWith(".")
-          || normalizedName.endsWith(".")
-          || normalizedName.contains("..")) {
-        throw new IllegalArgumentException("Invalid class name: " + className);
-      }
-      return normalizedName;
+        public Builder add(String className) {
+            classes.add(normalizeClassName(className));
+            return this;
+        }
+
+        public Builder addAll(ClassCatalog catalog) {
+            classes.addAll(catalog.classes);
+            return this;
+        }
+
+        public ClassCatalog build() {
+            Set<String> packageNames = new HashSet<>();
+            Map<String, LinkedHashSet<String>> mutableSuffixMatches = new HashMap<>();
+            for (String className : classes) {
+                indexPackages(className, packageNames);
+                indexSuffixes(className, mutableSuffixMatches);
+            }
+            Map<String, List<String>> finalizedSuffixMatches = new HashMap<>();
+            for (Map.Entry<String, LinkedHashSet<String>> entry : mutableSuffixMatches.entrySet()) {
+                List<String> matches = new ArrayList<>(entry.getValue());
+                matches.sort(String::compareTo);
+                finalizedSuffixMatches.put(entry.getKey(), List.copyOf(matches));
+            }
+            return new ClassCatalog(classes, packageNames, finalizedSuffixMatches);
+        }
+
+        private static void indexPackages(String className, Set<String> packageNames) {
+            int separatorIndex = className.indexOf('.');
+            while (separatorIndex >= 0) {
+                packageNames.add(className.substring(0, separatorIndex));
+                separatorIndex = className.indexOf('.', separatorIndex + 1);
+            }
+        }
+
+        private static void indexSuffixes(String className, Map<String, LinkedHashSet<String>> suffixMatches) {
+            int separatorIndex = className.indexOf('.');
+            if (separatorIndex < 0) {
+                addSuffix(suffixMatches, className, className);
+            }
+            while (separatorIndex >= 0 && separatorIndex < className.length() - 1) {
+                addSuffix(suffixMatches, className.substring(separatorIndex + 1), className);
+                separatorIndex = className.indexOf('.', separatorIndex + 1);
+            }
+            int innerClassIndex = className.lastIndexOf(INNER_CLASS_SEPARATOR);
+            if (innerClassIndex >= 0 && innerClassIndex < className.length() - 1) {
+                addSuffix(suffixMatches, className.substring(innerClassIndex + 1), className);
+            }
+        }
+
+        private static void addSuffix(
+                Map<String, LinkedHashSet<String>> suffixMatches, String suffix, String className) {
+            suffixMatches
+                    .computeIfAbsent(suffix, ignored -> new LinkedHashSet<>())
+                    .add(className);
+        }
+
+        private static String normalizeClassName(String className) {
+            String normalizedName = className.trim().replace('/', '.');
+            if (normalizedName.isEmpty()
+                    || normalizedName.startsWith(".")
+                    || normalizedName.endsWith(".")
+                    || normalizedName.contains("..")) {
+                throw new IllegalArgumentException("Invalid class name: " + className);
+            }
+            return normalizedName;
+        }
     }
-  }
 }

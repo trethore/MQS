@@ -27,120 +27,118 @@ import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
 import java.util.Objects;
 
 final class PackageInstance {
-  private final PackageContextFactory contextFactory;
+    private final PackageContextFactory contextFactory;
 
-  private PackageDescriptor descriptor;
-  private PackageScriptContext scriptContext;
-  private PackageState state = PackageState.DISABLED;
-  private PackageTrustInfo trustInfo = PackageTrustInfo.untrusted();
-  private boolean available = true;
+    private PackageDescriptor descriptor;
+    private PackageScriptContext scriptContext;
+    private PackageState state = PackageState.DISABLED;
+    private PackageTrustInfo trustInfo = PackageTrustInfo.untrusted();
+    private boolean available = true;
 
-  PackageInstance(PackageDescriptor descriptor, PackageContextFactory contextFactory) {
-    this.descriptor = Objects.requireNonNull(descriptor, "descriptor");
-    this.contextFactory = Objects.requireNonNull(contextFactory, "contextFactory");
-  }
-
-  void enable() throws PackageLifecycleException {
-    if (state == PackageState.ENABLED) {
-      return;
-    }
-    if (!available) {
-      throw new PackageLifecycleException("Package is not currently available");
+    PackageInstance(PackageDescriptor descriptor, PackageContextFactory contextFactory) {
+        this.descriptor = Objects.requireNonNull(descriptor, "descriptor");
+        this.contextFactory = Objects.requireNonNull(contextFactory, "contextFactory");
     }
 
-    PackageScriptContext createdContext;
-    try {
-      createdContext =
-          contextFactory.create(
-              new PackageContextSpec(
-                  descriptor.id(),
-                  descriptor.packageDirectory(),
-                  descriptor.entrypoint(),
-                  descriptor.dataDirectory()));
-    } catch (PackageLifecycleException exception) {
-      state = PackageState.ERROR;
-      throw exception;
-    }
-    try {
-      createdContext.invokeEnable();
-      scriptContext = createdContext;
-      state = PackageState.ENABLED;
-    } catch (PackageLifecycleException exception) {
-      state = PackageState.ERROR;
-      try {
-        createdContext.close();
-      } catch (PackageLifecycleException closeException) {
-        exception.addSuppressed(closeException);
-      }
-      throw exception;
-    }
-  }
+    void enable() throws PackageLifecycleException {
+        if (state == PackageState.ENABLED) {
+            return;
+        }
+        if (!available) {
+            throw new PackageLifecycleException("Package is not currently available");
+        }
 
-  void disable() throws PackageLifecycleException {
-    PackageScriptContext activeContext = scriptContext;
-    scriptContext = null;
-    state = PackageState.DISABLED;
-    if (activeContext == null) {
-      return;
+        PackageScriptContext createdContext;
+        try {
+            createdContext = contextFactory.create(new PackageContextSpec(
+                    descriptor.id(),
+                    descriptor.packageDirectory(),
+                    descriptor.entrypoint(),
+                    descriptor.dataDirectory()));
+        } catch (PackageLifecycleException exception) {
+            state = PackageState.ERROR;
+            throw exception;
+        }
+        try {
+            createdContext.invokeEnable();
+            scriptContext = createdContext;
+            state = PackageState.ENABLED;
+        } catch (PackageLifecycleException exception) {
+            state = PackageState.ERROR;
+            try {
+                createdContext.close();
+            } catch (PackageLifecycleException closeException) {
+                exception.addSuppressed(closeException);
+            }
+            throw exception;
+        }
     }
 
-    PackageLifecycleException failure = null;
-    try {
-      activeContext.invokeDisable();
-    } catch (PackageLifecycleException exception) {
-      failure = exception;
+    void disable() throws PackageLifecycleException {
+        PackageScriptContext activeContext = scriptContext;
+        scriptContext = null;
+        state = PackageState.DISABLED;
+        if (activeContext == null) {
+            return;
+        }
+
+        PackageLifecycleException failure = null;
+        try {
+            activeContext.invokeDisable();
+        } catch (PackageLifecycleException exception) {
+            failure = exception;
+        }
+        try {
+            activeContext.close();
+        } catch (PackageLifecycleException exception) {
+            if (failure == null) {
+                failure = exception;
+            } else {
+                failure.addSuppressed(exception);
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
     }
-    try {
-      activeContext.close();
-    } catch (PackageLifecycleException exception) {
-      if (failure == null) {
-        failure = exception;
-      } else {
-        failure.addSuppressed(exception);
-      }
+
+    void tick() throws PackageLifecycleException {
+        PackageScriptContext activeContext = scriptContext;
+        if (activeContext != null) {
+            activeContext.tick();
+        }
     }
-    if (failure != null) {
-      throw failure;
+
+    void updateDescriptor(PackageDescriptor updatedDescriptor) {
+        descriptor = Objects.requireNonNull(updatedDescriptor, "updatedDescriptor");
+        available = true;
     }
-  }
 
-  void tick() throws PackageLifecycleException {
-    PackageScriptContext activeContext = scriptContext;
-    if (activeContext != null) {
-      activeContext.tick();
+    void markUnavailable() {
+        available = false;
     }
-  }
 
-  void updateDescriptor(PackageDescriptor updatedDescriptor) {
-    descriptor = Objects.requireNonNull(updatedDescriptor, "updatedDescriptor");
-    available = true;
-  }
+    String getId() {
+        return descriptor.id();
+    }
 
-  void markUnavailable() {
-    available = false;
-  }
+    PackageDescriptor getDescriptor() {
+        return descriptor;
+    }
 
-  String getId() {
-    return descriptor.id();
-  }
+    PackageInfo getInfo() {
+        return descriptor.toInfo(state, trustInfo);
+    }
 
-  PackageDescriptor getDescriptor() {
-    return descriptor;
-  }
+    void setTrustInfo(PackageTrustInfo trustInfo) {
+        this.trustInfo = Objects.requireNonNull(trustInfo, "trustInfo");
+    }
 
-  PackageInfo getInfo() {
-    return descriptor.toInfo(state, trustInfo);
-  }
+    PackageState getState() {
+        return state;
+    }
 
-  void setTrustInfo(PackageTrustInfo trustInfo) {
-    this.trustInfo = Objects.requireNonNull(trustInfo, "trustInfo");
-  }
-
-  PackageState getState() {
-    return state;
-  }
-
-  boolean isAvailable() {
-    return available;
-  }
+    boolean isAvailable() {
+        return available;
+    }
 }

@@ -35,79 +35,77 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
 
 public final class InfoPackageClientCommand {
-  private final PackageManager packageManager;
+    private final PackageManager packageManager;
 
-  public InfoPackageClientCommand(PackageManager packageManager) {
-    this.packageManager = packageManager;
-  }
-
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("info")
-        .then(
-            ClientCommandManager.argument("id", StringArgumentType.word())
-                .suggests((context, builder) -> suggestPackageIds(builder))
-                .executes(this::execute));
-  }
-
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
-    String packageId = StringArgumentType.getString(context, "id");
-    Optional<PackageInfo> optionalPackage = packageManager.findPackage(packageId);
-    if (optionalPackage.isEmpty()) {
-      MqpCommandFeedback.sendError(source, "Unknown package: " + packageId);
-      return ClientCommandResult.FAILURE;
+    public InfoPackageClientCommand(PackageManager packageManager) {
+        this.packageManager = packageManager;
     }
 
-    PackageInfo packageInfo = optionalPackage.get();
-    MqpCommandFeedback.sendHeader(source);
-    MqpCommandFeedback.sendLine(source, packageInfo.name() + " (" + packageInfo.id() + ")");
-    MqpCommandFeedback.sendLine(source, "Version: " + packageInfo.version());
-    MqpCommandFeedback.sendLine(source, "Description: " + packageInfo.description());
-    MqpCommandFeedback.sendLine(source, "Entrypoint: " + packageInfo.entrypoint());
-    MqpCommandFeedback.sendLine(
-        source,
-        Component.empty()
-            .append(Component.literal("State: "))
-            .append(PackageCommandSupport.formatState(packageInfo.state())));
-    MqpCommandFeedback.sendLine(
-        source,
-        Component.empty()
-            .append(Component.literal("Trust: "))
-            .append(PackageCommandSupport.formatTrustState(packageInfo.trust().state())));
-    if (packageInfo.trust().trustedVersions() != null) {
-      MqpCommandFeedback.sendLine(
-          source, "Trusted versions: " + packageInfo.trust().trustedVersions());
-    }
-    MqpCommandFeedback.sendLine(
-        source,
-        Component.empty()
-            .append(Component.literal("Fingerprint: "))
-            .append(PackageCommandSupport.formatFingerprint(packageInfo.trust())));
-    MqpCommandFeedback.sendLine(
-        source, "Directory: " + anonymizeDirectory(packageInfo.packageDirectory()));
-    return ClientCommandResult.SUCCESS;
-  }
-
-  private static String anonymizeDirectory(Path directory) {
-    String userHome = System.getProperty("user.home");
-    if (userHome == null || userHome.isBlank()) {
-      return directory.toString();
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("info")
+                .then(ClientCommandManager.argument("id", StringArgumentType.word())
+                        .suggests((context, builder) -> suggestPackageIds(builder))
+                        .executes(this::execute));
     }
 
-    Path normalizedDirectory = directory.toAbsolutePath().normalize();
-    Path normalizedUserHome = Path.of(userHome).toAbsolutePath().normalize();
-    if (!normalizedDirectory.startsWith(normalizedUserHome)) {
-      return directory.toString();
+    private int execute(CommandContext<FabricClientCommandSource> context) {
+        FabricClientCommandSource source = context.getSource();
+        String packageId = StringArgumentType.getString(context, "id");
+        Optional<PackageInfo> optionalPackage = packageManager.findPackage(packageId);
+        if (optionalPackage.isEmpty()) {
+            MqpCommandFeedback.sendError(source, "Unknown package: " + packageId);
+            return ClientCommandResult.FAILURE;
+        }
+
+        PackageInfo packageInfo = optionalPackage.get();
+        MqpCommandFeedback.sendHeader(source);
+        MqpCommandFeedback.sendLine(source, packageInfo.name() + " (" + packageInfo.id() + ")");
+        MqpCommandFeedback.sendLine(source, "Version: " + packageInfo.version());
+        MqpCommandFeedback.sendLine(source, "Description: " + packageInfo.description());
+        MqpCommandFeedback.sendLine(source, "Entrypoint: " + packageInfo.entrypoint());
+        MqpCommandFeedback.sendLine(
+                source,
+                Component.empty()
+                        .append(Component.literal("State: "))
+                        .append(PackageCommandSupport.formatState(packageInfo.state())));
+        MqpCommandFeedback.sendLine(
+                source,
+                Component.empty()
+                        .append(Component.literal("Trust: "))
+                        .append(PackageCommandSupport.formatTrustState(
+                                packageInfo.trust().state())));
+        if (packageInfo.trust().trustedVersions() != null) {
+            MqpCommandFeedback.sendLine(
+                    source, "Trusted versions: " + packageInfo.trust().trustedVersions());
+        }
+        MqpCommandFeedback.sendLine(
+                source,
+                Component.empty()
+                        .append(Component.literal("Fingerprint: "))
+                        .append(PackageCommandSupport.formatFingerprint(packageInfo.trust())));
+        MqpCommandFeedback.sendLine(source, "Directory: " + anonymizeDirectory(packageInfo.packageDirectory()));
+        return ClientCommandResult.SUCCESS;
     }
 
-    Path anonymizedUserHome = normalizedUserHome.resolveSibling("user");
-    return anonymizedUserHome
-        .resolve(normalizedUserHome.relativize(normalizedDirectory))
-        .toString();
-  }
+    private static String anonymizeDirectory(Path directory) {
+        String userHome = System.getProperty("user.home");
+        if (userHome == null || userHome.isBlank()) {
+            return directory.toString();
+        }
 
-  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
-    return PackageCommandSupport.suggestPackageIds(
-        builder, packageManager.getPackages(), PackageInfo::id);
-  }
+        Path normalizedDirectory = directory.toAbsolutePath().normalize();
+        Path normalizedUserHome = Path.of(userHome).toAbsolutePath().normalize();
+        if (!normalizedDirectory.startsWith(normalizedUserHome)) {
+            return directory.toString();
+        }
+
+        Path anonymizedUserHome = normalizedUserHome.resolveSibling("user");
+        return anonymizedUserHome
+                .resolve(normalizedUserHome.relativize(normalizedDirectory))
+                .toString();
+    }
+
+    private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
+        return PackageCommandSupport.suggestPackageIds(builder, packageManager.getPackages(), PackageInfo::id);
+    }
 }

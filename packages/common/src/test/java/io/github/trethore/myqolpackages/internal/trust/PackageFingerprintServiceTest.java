@@ -29,48 +29,48 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class PackageFingerprintServiceTest {
-  @TempDir Path temporaryDirectory;
+    @TempDir
+    Path temporaryDirectory;
 
-  @Test
-  void producesDeterministicDigestAndDetectsChanges() throws Exception {
-    Path packageDirectory = temporaryDirectory.resolve("example");
-    Files.createDirectories(packageDirectory.resolve("src"));
-    Files.writeString(packageDirectory.resolve("manifest.json"), "manifest");
-    Files.writeString(packageDirectory.resolve("src/index.js"), "first");
-    PackageFingerprintService service = new PackageFingerprintService();
+    @Test
+    void producesDeterministicDigestAndDetectsChanges() throws Exception {
+        Path packageDirectory = temporaryDirectory.resolve("example");
+        Files.createDirectories(packageDirectory.resolve("src"));
+        Files.writeString(packageDirectory.resolve("manifest.json"), "manifest");
+        Files.writeString(packageDirectory.resolve("src/index.js"), "first");
+        PackageFingerprintService service = new PackageFingerprintService();
 
-    String first = service.fingerprint(packageDirectory);
-    assertEquals(first, service.fingerprint(packageDirectory));
-    assertTrue(PackageFingerprintService.isValidDigest(first));
+        String first = service.fingerprint(packageDirectory);
+        assertEquals(first, service.fingerprint(packageDirectory));
+        assertTrue(PackageFingerprintService.isValidDigest(first));
 
-    Files.writeString(packageDirectory.resolve("src/index.js"), "second");
-    assertNotEquals(first, service.fingerprint(packageDirectory));
-  }
+        Files.writeString(packageDirectory.resolve("src/index.js"), "second");
+        assertNotEquals(first, service.fingerprint(packageDirectory));
+    }
 
-  @Test
-  void packageDataSiblingDoesNotAffectDigest() throws Exception {
-    Path packageDirectory = temporaryDirectory.resolve("example");
-    Files.createDirectories(packageDirectory);
-    Files.writeString(packageDirectory.resolve("index.js"), "source");
-    PackageFingerprintService service = new PackageFingerprintService();
-    String before = service.fingerprint(packageDirectory);
+    @Test
+    void packageDataSiblingDoesNotAffectDigest() throws Exception {
+        Path packageDirectory = temporaryDirectory.resolve("example");
+        Files.createDirectories(packageDirectory);
+        Files.writeString(packageDirectory.resolve("index.js"), "source");
+        PackageFingerprintService service = new PackageFingerprintService();
+        String before = service.fingerprint(packageDirectory);
 
-    Files.createDirectories(temporaryDirectory.resolve("package-data/example"));
-    Files.writeString(temporaryDirectory.resolve("package-data/example/state.json"), "state");
+        Files.createDirectories(temporaryDirectory.resolve("package-data/example"));
+        Files.writeString(temporaryDirectory.resolve("package-data/example/state.json"), "state");
 
-    assertEquals(before, service.fingerprint(packageDirectory));
-  }
+        assertEquals(before, service.fingerprint(packageDirectory));
+    }
 
-  @Test
-  void rejectsSymbolicLinks() throws IOException {
-    Path packageDirectory = temporaryDirectory.resolve("example");
-    Files.createDirectories(packageDirectory);
-    Path target = temporaryDirectory.resolve("target.js");
-    Files.writeString(target, "source");
-    Files.createSymbolicLink(packageDirectory.resolve("index.js"), target);
+    @Test
+    void rejectsSymbolicLinks() throws IOException {
+        Path packageDirectory = temporaryDirectory.resolve("example");
+        Files.createDirectories(packageDirectory);
+        Path target = temporaryDirectory.resolve("target.js");
+        Files.writeString(target, "source");
+        Files.createSymbolicLink(packageDirectory.resolve("index.js"), target);
 
-    assertThrows(
-        PackageFingerprintException.class,
-        () -> new PackageFingerprintService().fingerprint(packageDirectory));
-  }
+        assertThrows(
+                PackageFingerprintException.class, () -> new PackageFingerprintService().fingerprint(packageDirectory));
+    }
 }

@@ -25,91 +25,90 @@ import java.util.Map;
 import org.graalvm.polyglot.Value;
 
 final class HostClassResolver {
-  private final Map<ClassProxyKey, JavaClassProxy> classProxies = new HashMap<>();
-  private final MqpRuntimeEnvironment environment;
-  private final JavaInteropService interopService;
-  private final ClassInteropMetadata metadata;
+    private final Map<ClassProxyKey, JavaClassProxy> classProxies = new HashMap<>();
+    private final MqpRuntimeEnvironment environment;
+    private final JavaInteropService interopService;
+    private final ClassInteropMetadata metadata;
 
-  HostClassResolver(ClassInteropMetadata metadata, MqpRuntimeEnvironment environment) {
-    this.metadata = metadata;
-    this.environment = environment;
-    this.interopService = new JavaInteropService(metadata.mappings());
-  }
-
-  JavaClassProxy resolveImport(String requestedName) {
-    String normalizedName = normalizeRequestedName(requestedName);
-    Class<?> exactClass = resolveExactClass(normalizedName);
-    if (exactClass != null) {
-      return getOrCreateProxy(normalizedName, exactClass);
+    HostClassResolver(ClassInteropMetadata metadata, MqpRuntimeEnvironment environment) {
+        this.metadata = metadata;
+        this.environment = environment;
+        this.interopService = new JavaInteropService(metadata.mappings());
     }
 
-    List<String> catalogMatches = metadata.catalog().findBySuffix(normalizedName);
-    if (!catalogMatches.isEmpty()) {
-      if (catalogMatches.size() > 1) {
-        throw new IllegalArgumentException(
-            "Ambiguous class name '"
-                + normalizedName
-                + "'. Possible matches: "
-                + String.join(", ", catalogMatches));
-      }
-      String matchedClassName = catalogMatches.getFirst();
-      Class<?> resolvedClass = resolveExactClass(matchedClassName);
-      if (resolvedClass != null) {
-        return getOrCreateProxy(matchedClassName, resolvedClass);
-      }
+    JavaClassProxy resolveImport(String requestedName) {
+        String normalizedName = normalizeRequestedName(requestedName);
+        Class<?> exactClass = resolveExactClass(normalizedName);
+        if (exactClass != null) {
+            return getOrCreateProxy(normalizedName, exactClass);
+        }
+
+        List<String> catalogMatches = metadata.catalog().findBySuffix(normalizedName);
+        if (!catalogMatches.isEmpty()) {
+            if (catalogMatches.size() > 1) {
+                throw new IllegalArgumentException("Ambiguous class name '"
+                        + normalizedName
+                        + "'. Possible matches: "
+                        + String.join(", ", catalogMatches));
+            }
+            String matchedClassName = catalogMatches.getFirst();
+            Class<?> resolvedClass = resolveExactClass(matchedClassName);
+            if (resolvedClass != null) {
+                return getOrCreateProxy(matchedClassName, resolvedClass);
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown class: " + normalizedName);
     }
 
-    throw new IllegalArgumentException("Unknown class: " + normalizedName);
-  }
-
-  JavaClassProxy resolvePackageMember(String className) {
-    if (metadata.catalog().containsPackage(className)) {
-      return null;
+    JavaClassProxy resolvePackageMember(String className) {
+        if (metadata.catalog().containsPackage(className)) {
+            return null;
+        }
+        Class<?> resolvedClass = resolveExactClass(className);
+        return resolvedClass == null ? null : getOrCreateProxy(className, resolvedClass);
     }
-    Class<?> resolvedClass = resolveExactClass(className);
-    return resolvedClass == null ? null : getOrCreateProxy(className, resolvedClass);
-  }
 
-  Object wrap(Value value) {
-    return interopService.wrap(value);
-  }
-
-  private Class<?> resolveExactClass(String namedClassName) {
-    Class<?> identityClass = loadClass(namedClassName);
-    if (identityClass != null) {
-      return identityClass;
+    Object wrap(Value value) {
+        return interopService.wrap(value);
     }
-    String runtimeClassName = metadata.mappings().getRuntimeClassName(namedClassName);
-    if (runtimeClassName == null || runtimeClassName.equals(namedClassName)) {
-      return null;
-    }
-    return loadClass(runtimeClassName);
-  }
 
-  private Class<?> loadClass(String className) {
-    try {
-      return Class.forName(className, false, environment.classLoader());
-    } catch (ClassNotFoundException exception) {
-      return null;
+    private Class<?> resolveExactClass(String namedClassName) {
+        Class<?> identityClass = loadClass(namedClassName);
+        if (identityClass != null) {
+            return identityClass;
+        }
+        String runtimeClassName = metadata.mappings().getRuntimeClassName(namedClassName);
+        if (runtimeClassName == null || runtimeClassName.equals(namedClassName)) {
+            return null;
+        }
+        return loadClass(runtimeClassName);
     }
-  }
 
-  private JavaClassProxy getOrCreateProxy(String namedClassName, Class<?> targetClass) {
-    ClassProxyKey key = new ClassProxyKey(namedClassName, targetClass);
-    return classProxies.computeIfAbsent(
-        key, ignored -> new JavaClassProxy(namedClassName, targetClass, interopService));
-  }
-
-  private static String normalizeRequestedName(String requestedName) {
-    if (requestedName == null) {
-      throw new IllegalArgumentException("Class name must not be null");
+    private Class<?> loadClass(String className) {
+        try {
+            return Class.forName(className, false, environment.classLoader());
+        } catch (ClassNotFoundException exception) {
+            return null;
+        }
     }
-    String normalizedName = requestedName.trim().replace('/', '.');
-    if (normalizedName.isEmpty()) {
-      throw new IllegalArgumentException("Class name must not be empty");
-    }
-    return normalizedName;
-  }
 
-  private record ClassProxyKey(String namedClassName, Class<?> targetClass) {}
+    private JavaClassProxy getOrCreateProxy(String namedClassName, Class<?> targetClass) {
+        ClassProxyKey key = new ClassProxyKey(namedClassName, targetClass);
+        return classProxies.computeIfAbsent(
+                key, ignored -> new JavaClassProxy(namedClassName, targetClass, interopService));
+    }
+
+    private static String normalizeRequestedName(String requestedName) {
+        if (requestedName == null) {
+            throw new IllegalArgumentException("Class name must not be null");
+        }
+        String normalizedName = requestedName.trim().replace('/', '.');
+        if (normalizedName.isEmpty()) {
+            throw new IllegalArgumentException("Class name must not be empty");
+        }
+        return normalizedName;
+    }
+
+    private record ClassProxyKey(String namedClassName, Class<?> targetClass) {}
 }

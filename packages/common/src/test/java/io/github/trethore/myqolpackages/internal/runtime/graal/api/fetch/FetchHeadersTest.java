@@ -28,18 +28,18 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class FetchHeadersTest {
-  @Test
-  void readsNormalizedHeaders() {
-    Map<String, List<String>> values = new LinkedHashMap<>();
-    values.put("X-First", List.of("one", "two"));
-    values.put("X-Second", List.of("three"));
-    values.put("X-Empty", List.of(""));
-    FetchHeaders headers = new FetchHeaders(values);
+    @Test
+    void readsNormalizedHeaders() {
+        Map<String, List<String>> values = new LinkedHashMap<>();
+        values.put("X-First", List.of("one", "two"));
+        values.put("X-Second", List.of("three"));
+        values.put("X-Empty", List.of(""));
+        FetchHeaders headers = new FetchHeaders(values);
 
-    assertEquals("one, two", headers.get("x-FIRST"));
-    assertTrue(headers.has("X-Second"));
-    assertFalse(headers.has("missing"));
-    assertNull(headers.get("missing"));
-    assertEquals("", headers.get("X-Empty"));
-  }
+        assertEquals("one, two", headers.get("x-FIRST"));
+        assertTrue(headers.has("X-Second"));
+        assertFalse(headers.has("missing"));
+        assertNull(headers.get("missing"));
+        assertEquals("", headers.get("X-Empty"));
+    }
 }

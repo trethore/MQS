@@ -20,5 +20,5 @@ package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 
 public interface PackageApiModule {
-  PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec);
+    PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec);
 }

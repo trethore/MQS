@@ -26,19 +26,19 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class RefreshPackagesClientCommand {
-  private final PackageManager packageManager;
+    private final PackageManager packageManager;
 
-  public RefreshPackagesClientCommand(PackageManager packageManager) {
-    this.packageManager = packageManager;
-  }
+    public RefreshPackagesClientCommand(PackageManager packageManager) {
+        this.packageManager = packageManager;
+    }
 
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("refresh").executes(this::execute);
-  }
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("refresh").executes(this::execute);
+    }
 
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
-    PackageDiscoveryResult result = packageManager.refresh();
-    return PackageCommandSupport.sendDiscoveryResult(source, "Discovered", result);
-  }
+    private int execute(CommandContext<FabricClientCommandSource> context) {
+        FabricClientCommandSource source = context.getSource();
+        PackageDiscoveryResult result = packageManager.refresh();
+        return PackageCommandSupport.sendDiscoveryResult(source, "Discovered", result);
+    }
 }

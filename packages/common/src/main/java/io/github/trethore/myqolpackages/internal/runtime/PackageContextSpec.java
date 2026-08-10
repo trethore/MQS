@@ -20,12 +20,11 @@ package io.github.trethore.myqolpackages.internal.runtime;
 import java.nio.file.Path;
 import java.util.Objects;
 
-public record PackageContextSpec(
-    String packageId, Path packageDirectory, Path entrypoint, Path dataDirectory) {
-  public PackageContextSpec {
-    Objects.requireNonNull(packageId, "packageId");
-    Objects.requireNonNull(packageDirectory, "packageDirectory");
-    Objects.requireNonNull(entrypoint, "entrypoint");
-    Objects.requireNonNull(dataDirectory, "dataDirectory");
-  }
+public record PackageContextSpec(String packageId, Path packageDirectory, Path entrypoint, Path dataDirectory) {
+    public PackageContextSpec {
+        Objects.requireNonNull(packageId, "packageId");
+        Objects.requireNonNull(packageDirectory, "packageDirectory");
+        Objects.requireNonNull(entrypoint, "entrypoint");
+        Objects.requireNonNull(dataDirectory, "dataDirectory");
+    }
 }

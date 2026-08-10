@@ -30,64 +30,60 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class ConfiguredPackageRootResolverTest {
-  @TempDir Path temporaryDirectory;
+    @TempDir
+    Path temporaryDirectory;
 
-  @Test
-  void resolvesRelativeAndAbsolutePackageRoots() throws IOException {
-    Path mqpDirectory = temporaryDirectory.resolve("minecraft/myqolpackages");
-    Path relativeRoot = temporaryDirectory.resolve("minecraft/shared-packages");
-    Path absoluteRoot = temporaryDirectory.resolve("absolute-packages");
-    Files.createDirectories(mqpDirectory);
-    Files.createDirectories(relativeRoot);
-    Files.createDirectories(absoluteRoot);
-    Files.writeString(
-        mqpDirectory.resolve("config.json"),
-        """
+    @Test
+    void resolvesRelativeAndAbsolutePackageRoots() throws IOException {
+        Path mqpDirectory = temporaryDirectory.resolve("minecraft/myqolpackages");
+        Path relativeRoot = temporaryDirectory.resolve("minecraft/shared-packages");
+        Path absoluteRoot = temporaryDirectory.resolve("absolute-packages");
+        Files.createDirectories(mqpDirectory);
+        Files.createDirectories(relativeRoot);
+        Files.createDirectories(absoluteRoot);
+        Files.writeString(mqpDirectory.resolve("config.json"), """
         {
           "additionalPackageRoots": [
             "../shared-packages",
             "%s"
           ]
         }
-        """
-            .formatted(escapeJson(absoluteRoot.toString())));
-    FileMqpConfigStore configManager = new FileMqpConfigStore(mqpDirectory);
-    ConfiguredPackageRootResolver rootProvider =
-        new ConfiguredPackageRootResolver(mqpDirectory, configManager.getConfigPath());
-    MqpConfig config = configManager.load().config();
+        """.formatted(escapeJson(absoluteRoot.toString())));
+        FileMqpConfigStore configManager = new FileMqpConfigStore(mqpDirectory);
+        ConfiguredPackageRootResolver rootProvider =
+                new ConfiguredPackageRootResolver(mqpDirectory, configManager.getConfigPath());
+        MqpConfig config = configManager.load().config();
 
-    PackageRootResolution result = rootProvider.resolvePackageRoots(config);
+        PackageRootResolution result = rootProvider.resolvePackageRoots(config);
 
-    assertEquals(
-        List.of(mqpDirectory.toRealPath(), relativeRoot.toRealPath(), absoluteRoot.toRealPath()),
-        result.packageRoots());
-    assertTrue(result.diagnostics().isEmpty());
-  }
+        assertEquals(
+                List.of(mqpDirectory.toRealPath(), relativeRoot.toRealPath(), absoluteRoot.toRealPath()),
+                result.packageRoots());
+        assertTrue(result.diagnostics().isEmpty());
+    }
 
-  @Test
-  void reportsMissingAdditionalPackageRoot() throws IOException {
-    Path mqpDirectory = temporaryDirectory.resolve("myqolpackages");
-    Files.createDirectories(mqpDirectory);
-    Files.writeString(
-        mqpDirectory.resolve("config.json"),
-        """
+    @Test
+    void reportsMissingAdditionalPackageRoot() throws IOException {
+        Path mqpDirectory = temporaryDirectory.resolve("myqolpackages");
+        Files.createDirectories(mqpDirectory);
+        Files.writeString(mqpDirectory.resolve("config.json"), """
         {
           "additionalPackageRoots": ["../missing"]
         }
         """);
-    FileMqpConfigStore configManager = new FileMqpConfigStore(mqpDirectory);
-    ConfiguredPackageRootResolver rootProvider =
-        new ConfiguredPackageRootResolver(mqpDirectory, configManager.getConfigPath());
-    MqpConfig config = configManager.load().config();
+        FileMqpConfigStore configManager = new FileMqpConfigStore(mqpDirectory);
+        ConfiguredPackageRootResolver rootProvider =
+                new ConfiguredPackageRootResolver(mqpDirectory, configManager.getConfigPath());
+        MqpConfig config = configManager.load().config();
 
-    PackageRootResolution result = rootProvider.resolvePackageRoots(config);
+        PackageRootResolution result = rootProvider.resolvePackageRoots(config);
 
-    assertEquals(List.of(mqpDirectory.toRealPath()), result.packageRoots());
-    assertEquals(1, result.diagnostics().size());
-    assertEquals("config", result.diagnostics().getFirst().packageId());
-  }
+        assertEquals(List.of(mqpDirectory.toRealPath()), result.packageRoots());
+        assertEquals(1, result.diagnostics().size());
+        assertEquals("config", result.diagnostics().getFirst().packageId());
+    }
 
-  private static String escapeJson(String value) {
-    return value.replace("\\", "\\\\");
-  }
+    private static String escapeJson(String value) {
+        return value.replace("\\", "\\\\");
+    }
 }

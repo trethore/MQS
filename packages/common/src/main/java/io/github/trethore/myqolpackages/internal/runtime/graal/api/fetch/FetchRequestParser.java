@@ -29,91 +29,89 @@ import java.util.Set;
 import org.graalvm.polyglot.Value;
 
 final class FetchRequestParser {
-  private static final String BODY_OPTION = "body";
-  private static final String HEADERS_OPTION = "headers";
-  private static final String METHOD_OPTION = "method";
-  private static final Set<String> SUPPORTED_OPTIONS =
-      Set.of(METHOD_OPTION, HEADERS_OPTION, BODY_OPTION);
+    private static final String BODY_OPTION = "body";
+    private static final String HEADERS_OPTION = "headers";
+    private static final String METHOD_OPTION = "method";
+    private static final Set<String> SUPPORTED_OPTIONS = Set.of(METHOD_OPTION, HEADERS_OPTION, BODY_OPTION);
 
-  private final JavaScriptApiBridge adapter;
+    private final JavaScriptApiBridge adapter;
 
-  FetchRequestParser(JavaScriptApiBridge adapter) {
-    this.adapter = adapter;
-  }
-
-  PackageHttpRequest parse(Value input, Value init) {
-    if (input == null || !input.isString()) {
-      throw new IllegalArgumentException("fetch URL must be a string");
+    FetchRequestParser(JavaScriptApiBridge adapter) {
+        this.adapter = adapter;
     }
-    if (init == null || !adapter.isObject(init)) {
-      throw new IllegalArgumentException("fetch options must be an object");
-    }
-    validateOptions(init);
-    URI uri = URI.create(input.asString());
-    String method = parseMethod(init.getMember(METHOD_OPTION));
-    List<PackageHttpHeader> headers = parseHeaders(init.getMember(HEADERS_OPTION));
-    return createRequest(uri, method, headers, init.getMember(BODY_OPTION));
-  }
 
-  private void validateOptions(Value init) {
-    Value keys = adapter.ownKeys(init);
-    for (long index = 0; index < keys.getArraySize(); index++) {
-      String option = keys.getArrayElement(index).asString();
-      if (!SUPPORTED_OPTIONS.contains(option)) {
-        throw new IllegalArgumentException("Unsupported fetch option: " + option);
-      }
-    }
-  }
-
-  private String parseMethod(Value method) {
-    return isUndefined(method) ? "GET" : adapter.stringify(method).toUpperCase(Locale.ROOT);
-  }
-
-  private List<PackageHttpHeader> parseHeaders(Value headers) {
-    if (isNullish(headers)) {
-      return List.of();
-    }
-    if (adapter.isArray(headers)) {
-      List<PackageHttpHeader> result = new ArrayList<>();
-      for (long index = 0; index < headers.getArraySize(); index++) {
-        Value entry = headers.getArrayElement(index);
-        if (!adapter.isArray(entry) || entry.getArraySize() != 2) {
-          throw new IllegalArgumentException("Invalid header entry");
+    PackageHttpRequest parse(Value input, Value init) {
+        if (input == null || !input.isString()) {
+            throw new IllegalArgumentException("fetch URL must be a string");
         }
-        result.add(createHeader(entry.getArrayElement(0), entry.getArrayElement(1)));
-      }
-      return List.copyOf(result);
+        if (init == null || !adapter.isObject(init)) {
+            throw new IllegalArgumentException("fetch options must be an object");
+        }
+        validateOptions(init);
+        URI uri = URI.create(input.asString());
+        String method = parseMethod(init.getMember(METHOD_OPTION));
+        List<PackageHttpHeader> headers = parseHeaders(init.getMember(HEADERS_OPTION));
+        return createRequest(uri, method, headers, init.getMember(BODY_OPTION));
     }
-    if (adapter.isObject(headers)) {
-      List<PackageHttpHeader> result = new ArrayList<>();
-      Value keys = adapter.ownKeys(headers);
-      for (long index = 0; index < keys.getArraySize(); index++) {
-        String name = keys.getArrayElement(index).asString();
-        result.add(new PackageHttpHeader(name, adapter.stringify(headers.getMember(name))));
-      }
-      return List.copyOf(result);
+
+    private void validateOptions(Value init) {
+        Value keys = adapter.ownKeys(init);
+        for (long index = 0; index < keys.getArraySize(); index++) {
+            String option = keys.getArrayElement(index).asString();
+            if (!SUPPORTED_OPTIONS.contains(option)) {
+                throw new IllegalArgumentException("Unsupported fetch option: " + option);
+            }
+        }
     }
-    throw new IllegalArgumentException("Headers must be an object or an array");
-  }
 
-  private PackageHttpHeader createHeader(Value name, Value value) {
-    return new PackageHttpHeader(adapter.stringify(name), adapter.stringify(value));
-  }
-
-  private PackageHttpRequest createRequest(
-      URI uri, String method, List<PackageHttpHeader> headers, Value body) {
-    if (isNullish(body)) {
-      return PackageHttpRequest.withoutBody(uri, method, headers);
+    private String parseMethod(Value method) {
+        return isUndefined(method) ? "GET" : adapter.stringify(method).toUpperCase(Locale.ROOT);
     }
-    byte[] bodyBytes = adapter.stringify(body).getBytes(StandardCharsets.UTF_8);
-    return PackageHttpRequest.withBody(uri, method, headers, bodyBytes);
-  }
 
-  private boolean isNullish(Value value) {
-    return value == null || value.isNull() || adapter.isUndefined(value);
-  }
+    private List<PackageHttpHeader> parseHeaders(Value headers) {
+        if (isNullish(headers)) {
+            return List.of();
+        }
+        if (adapter.isArray(headers)) {
+            List<PackageHttpHeader> result = new ArrayList<>();
+            for (long index = 0; index < headers.getArraySize(); index++) {
+                Value entry = headers.getArrayElement(index);
+                if (!adapter.isArray(entry) || entry.getArraySize() != 2) {
+                    throw new IllegalArgumentException("Invalid header entry");
+                }
+                result.add(createHeader(entry.getArrayElement(0), entry.getArrayElement(1)));
+            }
+            return List.copyOf(result);
+        }
+        if (adapter.isObject(headers)) {
+            List<PackageHttpHeader> result = new ArrayList<>();
+            Value keys = adapter.ownKeys(headers);
+            for (long index = 0; index < keys.getArraySize(); index++) {
+                String name = keys.getArrayElement(index).asString();
+                result.add(new PackageHttpHeader(name, adapter.stringify(headers.getMember(name))));
+            }
+            return List.copyOf(result);
+        }
+        throw new IllegalArgumentException("Headers must be an object or an array");
+    }
 
-  private boolean isUndefined(Value value) {
-    return value == null || adapter.isUndefined(value);
-  }
+    private PackageHttpHeader createHeader(Value name, Value value) {
+        return new PackageHttpHeader(adapter.stringify(name), adapter.stringify(value));
+    }
+
+    private PackageHttpRequest createRequest(URI uri, String method, List<PackageHttpHeader> headers, Value body) {
+        if (isNullish(body)) {
+            return PackageHttpRequest.withoutBody(uri, method, headers);
+        }
+        byte[] bodyBytes = adapter.stringify(body).getBytes(StandardCharsets.UTF_8);
+        return PackageHttpRequest.withBody(uri, method, headers, bodyBytes);
+    }
+
+    private boolean isNullish(Value value) {
+        return value == null || value.isNull() || adapter.isUndefined(value);
+    }
+
+    private boolean isUndefined(Value value) {
+        return value == null || adapter.isUndefined(value);
+    }
 }

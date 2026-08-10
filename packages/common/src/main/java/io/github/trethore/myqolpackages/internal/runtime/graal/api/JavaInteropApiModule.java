@@ -23,19 +23,19 @@ import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInte
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridgeFactory;
 
 final class JavaInteropApiModule implements PackageApiModule {
-  private final ClassInteropBridgeFactory bridgeFactory;
+    private final ClassInteropBridgeFactory bridgeFactory;
 
-  JavaInteropApiModule(MqpRuntimeEnvironment environment) {
-    bridgeFactory = new ClassInteropBridgeFactory(environment);
-  }
+    JavaInteropApiModule(MqpRuntimeEnvironment environment) {
+        bridgeFactory = new ClassInteropBridgeFactory(environment);
+    }
 
-  @Override
-  public PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec) {
-    ClassInteropBridge interopBridge = bridgeFactory.create();
-    bridge.defineGlobal("importClass", interopBridge.importClass());
-    bridge.defineGlobal("wrap", interopBridge.wrap());
-    bridge.defineGlobal("packages", interopBridge.packages());
-    bridge.defineGlobal("net", interopBridge.net());
-    return PackageApiSession.empty();
-  }
+    @Override
+    public PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec) {
+        ClassInteropBridge interopBridge = bridgeFactory.create();
+        bridge.defineGlobal("importClass", interopBridge.importClass());
+        bridge.defineGlobal("wrap", interopBridge.wrap());
+        bridge.defineGlobal("packages", interopBridge.packages());
+        bridge.defineGlobal("net", interopBridge.net());
+        return PackageApiSession.empty();
+    }
 }

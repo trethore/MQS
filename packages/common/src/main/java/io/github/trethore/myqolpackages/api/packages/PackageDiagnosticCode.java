@@ -18,8 +18,8 @@
 package io.github.trethore.myqolpackages.api.packages;
 
 public enum PackageDiagnosticCode {
-  GENERAL,
-  TRUST_REQUIRED,
-  FINGERPRINT_WARNING,
-  FINGERPRINT_BLOCKED
+    GENERAL,
+    TRUST_REQUIRED,
+    FINGERPRINT_WARNING,
+    FINGERPRINT_BLOCKED
 }

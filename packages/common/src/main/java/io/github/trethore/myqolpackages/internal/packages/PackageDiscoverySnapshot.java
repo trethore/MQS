@@ -20,10 +20,9 @@ package io.github.trethore.myqolpackages.internal.packages;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import java.util.List;
 
-record PackageDiscoverySnapshot(
-    List<PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
-  PackageDiscoverySnapshot {
-    packages = List.copyOf(packages);
-    diagnostics = List.copyOf(diagnostics);
-  }
+record PackageDiscoverySnapshot(List<PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
+    PackageDiscoverySnapshot {
+        packages = List.copyOf(packages);
+        diagnostics = List.copyOf(diagnostics);
+    }
 }

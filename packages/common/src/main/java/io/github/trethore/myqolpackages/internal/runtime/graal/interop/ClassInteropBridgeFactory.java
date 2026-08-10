@@ -22,32 +22,29 @@ import io.github.trethore.myqolpackages.internal.runtime.graal.interop.mapping.C
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 public final class ClassInteropBridgeFactory {
-  private final MqpRuntimeEnvironment environment;
-  private final ClassInteropMetadata metadata;
+    private final MqpRuntimeEnvironment environment;
+    private final ClassInteropMetadata metadata;
 
-  public ClassInteropBridgeFactory(MqpRuntimeEnvironment environment) {
-    this.environment = environment;
-    this.metadata = ClassInteropMetadata.load(environment);
-  }
+    public ClassInteropBridgeFactory(MqpRuntimeEnvironment environment) {
+        this.environment = environment;
+        this.metadata = ClassInteropMetadata.load(environment);
+    }
 
-  public ClassInteropBridge create() {
-    HostClassResolver resolver = new HostClassResolver(metadata, environment);
-    JavaPackageProxy packages = new JavaPackageProxy("", resolver);
-    ProxyExecutable importClass =
-        arguments -> {
-          if (arguments.length != 1 || !arguments[0].isString()) {
-            throw new IllegalArgumentException(
-                "importClass requires exactly one class name string");
-          }
-          return resolver.resolveImport(arguments[0].asString());
+    public ClassInteropBridge create() {
+        HostClassResolver resolver = new HostClassResolver(metadata, environment);
+        JavaPackageProxy packages = new JavaPackageProxy("", resolver);
+        ProxyExecutable importClass = arguments -> {
+            if (arguments.length != 1 || !arguments[0].isString()) {
+                throw new IllegalArgumentException("importClass requires exactly one class name string");
+            }
+            return resolver.resolveImport(arguments[0].asString());
         };
-    ProxyExecutable wrap =
-        arguments -> {
-          if (arguments.length != 1) {
-            throw new IllegalArgumentException("wrap requires exactly one object");
-          }
-          return resolver.wrap(arguments[0]);
+        ProxyExecutable wrap = arguments -> {
+            if (arguments.length != 1) {
+                throw new IllegalArgumentException("wrap requires exactly one object");
+            }
+            return resolver.wrap(arguments[0]);
         };
-    return new ClassInteropBridge(importClass, wrap, packages, packages.getNetPackage());
-  }
+        return new ClassInteropBridge(importClass, wrap, packages, packages.getNetPackage());
+    }
 }

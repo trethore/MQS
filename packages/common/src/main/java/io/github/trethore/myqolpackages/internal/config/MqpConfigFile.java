@@ -28,53 +28,49 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 final class MqpConfigFile {
-  private static final String CONFIG_FILE_NAME = "config.json";
+    private static final String CONFIG_FILE_NAME = "config.json";
 
-  private final MqpConfigCodec codec;
-  private final Path path;
+    private final MqpConfigCodec codec;
+    private final Path path;
 
-  MqpConfigFile(Path mqpDirectory, MqpConfigCodec codec) {
-    this.path = mqpDirectory.resolve(CONFIG_FILE_NAME);
-    this.codec = codec;
-  }
-
-  MqpConfig read() throws IOException {
-    try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-      return codec.read(reader);
+    MqpConfigFile(Path mqpDirectory, MqpConfigCodec codec) {
+        this.path = mqpDirectory.resolve(CONFIG_FILE_NAME);
+        this.codec = codec;
     }
-  }
 
-  void write(MqpConfig config) throws IOException {
-    Files.createDirectories(path.getParent());
-    Path temporaryConfig = Files.createTempFile(path.getParent(), CONFIG_FILE_NAME + ".", ".tmp");
-    try {
-      try (Writer writer = Files.newBufferedWriter(temporaryConfig, StandardCharsets.UTF_8)) {
-        codec.write(config, writer);
-        writer.write(System.lineSeparator());
-      }
-      moveIntoPlace(temporaryConfig);
-    } finally {
-      Files.deleteIfExists(temporaryConfig);
+    MqpConfig read() throws IOException {
+        try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            return codec.read(reader);
+        }
     }
-  }
 
-  boolean exists() {
-    return Files.exists(path);
-  }
-
-  Path path() {
-    return path;
-  }
-
-  private void moveIntoPlace(Path temporaryConfig) throws IOException {
-    try {
-      Files.move(
-          temporaryConfig,
-          path,
-          StandardCopyOption.ATOMIC_MOVE,
-          StandardCopyOption.REPLACE_EXISTING);
-    } catch (AtomicMoveNotSupportedException exception) {
-      Files.move(temporaryConfig, path, StandardCopyOption.REPLACE_EXISTING);
+    void write(MqpConfig config) throws IOException {
+        Files.createDirectories(path.getParent());
+        Path temporaryConfig = Files.createTempFile(path.getParent(), CONFIG_FILE_NAME + ".", ".tmp");
+        try {
+            try (Writer writer = Files.newBufferedWriter(temporaryConfig, StandardCharsets.UTF_8)) {
+                codec.write(config, writer);
+                writer.write(System.lineSeparator());
+            }
+            moveIntoPlace(temporaryConfig);
+        } finally {
+            Files.deleteIfExists(temporaryConfig);
+        }
     }
-  }
+
+    boolean exists() {
+        return Files.exists(path);
+    }
+
+    Path path() {
+        return path;
+    }
+
+    private void moveIntoPlace(Path temporaryConfig) throws IOException {
+        try {
+            Files.move(temporaryConfig, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException exception) {
+            Files.move(temporaryConfig, path, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
 }

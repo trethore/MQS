@@ -20,15 +20,12 @@ package io.github.trethore.myqolpackages.api.packages;
 import java.util.List;
 
 public record PackageOperationResult(
-    boolean successful, PackageOperationCode code, List<PackageDiagnostic> diagnostics) {
-  public PackageOperationResult {
-    diagnostics = List.copyOf(diagnostics);
-  }
+        boolean successful, PackageOperationCode code, List<PackageDiagnostic> diagnostics) {
+    public PackageOperationResult {
+        diagnostics = List.copyOf(diagnostics);
+    }
 
-  public PackageOperationResult(boolean successful, List<PackageDiagnostic> diagnostics) {
-    this(
-        successful,
-        successful ? PackageOperationCode.SUCCESS : PackageOperationCode.FAILED,
-        diagnostics);
-  }
+    public PackageOperationResult(boolean successful, List<PackageDiagnostic> diagnostics) {
+        this(successful, successful ? PackageOperationCode.SUCCESS : PackageOperationCode.FAILED, diagnostics);
+    }
 }

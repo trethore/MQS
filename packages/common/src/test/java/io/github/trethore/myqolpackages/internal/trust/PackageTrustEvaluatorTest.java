@@ -34,111 +34,103 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class PackageTrustEvaluatorTest {
-  @TempDir Path temporaryDirectory;
+    @TempDir
+    Path temporaryDirectory;
 
-  @Test
-  void blocksUntrustedAndOutOfRangePackages() throws Exception {
-    Path packageDirectory = createPackage();
-    PackageTrustEvaluator evaluator = evaluator();
+    @Test
+    void blocksUntrustedAndOutOfRangePackages() throws Exception {
+        Path packageDirectory = createPackage();
+        PackageTrustEvaluator evaluator = evaluator();
 
-    assertFalse(
-        evaluator
-            .evaluate(
-                "example", SemanticVersion.parse("1.0.0"), packageDirectory, MqpConfig.defaults())
-            .allowed());
-    assertFalse(
-        evaluator
-            .evaluate(
-                "example",
-                SemanticVersion.parse("2.0.0"),
-                packageDirectory,
-                config("=1.0.0", false, FingerprintMismatchBehavior.BLOCK, null))
-            .allowed());
-  }
+        assertFalse(evaluator
+                .evaluate("example", SemanticVersion.parse("1.0.0"), packageDirectory, MqpConfig.defaults())
+                .allowed());
+        assertFalse(evaluator
+                .evaluate(
+                        "example",
+                        SemanticVersion.parse("2.0.0"),
+                        packageDirectory,
+                        config("=1.0.0", false, FingerprintMismatchBehavior.BLOCK, null))
+                .allowed());
+    }
 
-  @Test
-  void allowsDisabledAndMatchingFingerprints() throws Exception {
-    Path packageDirectory = createPackage();
-    PackageFingerprintService service = new PackageFingerprintService();
-    String digest = service.fingerprint(packageDirectory);
+    @Test
+    void allowsDisabledAndMatchingFingerprints() throws Exception {
+        Path packageDirectory = createPackage();
+        PackageFingerprintService service = new PackageFingerprintService();
+        String digest = service.fingerprint(packageDirectory);
 
-    assertTrue(
-        evaluator()
-            .evaluate(
-                "example",
-                SemanticVersion.parse("1.0.0"),
-                packageDirectory,
-                config("*", false, FingerprintMismatchBehavior.BLOCK, null))
-            .allowed());
-    assertTrue(
-        evaluator()
-            .evaluate(
-                "example",
-                SemanticVersion.parse("1.0.0"),
-                packageDirectory,
-                config("*", true, FingerprintMismatchBehavior.BLOCK, digest))
-            .allowed());
-  }
+        assertTrue(evaluator()
+                .evaluate(
+                        "example",
+                        SemanticVersion.parse("1.0.0"),
+                        packageDirectory,
+                        config("*", false, FingerprintMismatchBehavior.BLOCK, null))
+                .allowed());
+        assertTrue(evaluator()
+                .evaluate(
+                        "example",
+                        SemanticVersion.parse("1.0.0"),
+                        packageDirectory,
+                        config("*", true, FingerprintMismatchBehavior.BLOCK, digest))
+                .allowed());
+    }
 
-  @Test
-  void appliesAllMismatchBehaviors() throws Exception {
-    Path packageDirectory = createPackage();
+    @Test
+    void appliesAllMismatchBehaviors() throws Exception {
+        Path packageDirectory = createPackage();
 
-    PackageTrustEvaluation logOnly =
-        evaluator()
-            .evaluate(
-                "example",
-                SemanticVersion.parse("1.0.0"),
-                packageDirectory,
-                config("*", true, FingerprintMismatchBehavior.LOG_ONLY, invalidDigest()));
-    PackageTrustEvaluation chatWarning =
-        evaluator()
-            .evaluate(
-                "example",
-                SemanticVersion.parse("1.0.0"),
-                packageDirectory,
-                config("*", true, FingerprintMismatchBehavior.CHAT_WARNING, invalidDigest()));
-    PackageTrustEvaluation block =
-        evaluator()
-            .evaluate(
-                "example",
-                SemanticVersion.parse("1.0.0"),
-                packageDirectory,
-                config("*", true, FingerprintMismatchBehavior.BLOCK, invalidDigest()));
+        PackageTrustEvaluation logOnly = evaluator()
+                .evaluate(
+                        "example",
+                        SemanticVersion.parse("1.0.0"),
+                        packageDirectory,
+                        config("*", true, FingerprintMismatchBehavior.LOG_ONLY, invalidDigest()));
+        PackageTrustEvaluation chatWarning = evaluator()
+                .evaluate(
+                        "example",
+                        SemanticVersion.parse("1.0.0"),
+                        packageDirectory,
+                        config("*", true, FingerprintMismatchBehavior.CHAT_WARNING, invalidDigest()));
+        PackageTrustEvaluation block = evaluator()
+                .evaluate(
+                        "example",
+                        SemanticVersion.parse("1.0.0"),
+                        packageDirectory,
+                        config("*", true, FingerprintMismatchBehavior.BLOCK, invalidDigest()));
 
-    assertTrue(logOnly.allowed());
-    assertFalse(logOnly.chatVisible());
-    assertTrue(chatWarning.allowed());
-    assertTrue(chatWarning.chatVisible());
-    assertFalse(block.allowed());
-  }
+        assertTrue(logOnly.allowed());
+        assertFalse(logOnly.chatVisible());
+        assertTrue(chatWarning.allowed());
+        assertTrue(chatWarning.chatVisible());
+        assertFalse(block.allowed());
+    }
 
-  private Path createPackage() throws Exception {
-    Path packageDirectory = temporaryDirectory.resolve("example");
-    Files.createDirectories(packageDirectory);
-    Files.writeString(packageDirectory.resolve("index.js"), "source");
-    return packageDirectory;
-  }
+    private Path createPackage() throws Exception {
+        Path packageDirectory = temporaryDirectory.resolve("example");
+        Files.createDirectories(packageDirectory);
+        Files.writeString(packageDirectory.resolve("index.js"), "source");
+        return packageDirectory;
+    }
 
-  private PackageTrustEvaluator evaluator() {
-    return new PackageTrustEvaluator(new PackageFingerprintService());
-  }
+    private PackageTrustEvaluator evaluator() {
+        return new PackageTrustEvaluator(new PackageFingerprintService());
+    }
 
-  private MqpConfig config(
-      String range, boolean enabled, FingerprintMismatchBehavior behavior, String digest) {
-    return new MqpConfig(
-        MqpConfig.CURRENT_CONFIG_VERSION,
-        List.of(),
-        List.of(),
-        new TrustConfig(
-            new FingerprintDefaultsConfig(true, FingerprintMismatchBehavior.BLOCK),
-            Map.of(
-                "example",
-                new PackageTrustConfig(
-                    range, new PackageFingerprintConfig(enabled, behavior, digest)))));
-  }
+    private MqpConfig config(String range, boolean enabled, FingerprintMismatchBehavior behavior, String digest) {
+        return new MqpConfig(
+                MqpConfig.CURRENT_CONFIG_VERSION,
+                List.of(),
+                List.of(),
+                new TrustConfig(
+                        new FingerprintDefaultsConfig(true, FingerprintMismatchBehavior.BLOCK),
+                        Map.of(
+                                "example",
+                                new PackageTrustConfig(
+                                        range, new PackageFingerprintConfig(enabled, behavior, digest)))));
+    }
 
-  private String invalidDigest() {
-    return "sha256:" + "0".repeat(64);
-  }
+    private String invalidDigest() {
+        return "sha256:" + "0".repeat(64);
+    }
 }

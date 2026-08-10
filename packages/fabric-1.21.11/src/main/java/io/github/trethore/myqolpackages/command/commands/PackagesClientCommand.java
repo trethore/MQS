@@ -29,52 +29,50 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class PackagesClientCommand {
-  private final DisablePackageClientCommand disablePackageClientCommand;
-  private final EnablePackageClientCommand enablePackageClientCommand;
-  private final InfoPackageClientCommand infoPackageClientCommand;
-  private final ListPackagesClientCommand listPackagesClientCommand;
-  private final RefreshPackagesClientCommand refreshPackagesClientCommand;
-  private final ReloadPackagesClientCommand reloadPackagesClientCommand;
-  private final TrustPackageClientCommand trustPackageClientCommand;
-  private final UntrustPackageClientCommand untrustPackageClientCommand;
-  private final PackageFingerprintClientCommand packageFingerprintClientCommand;
+    private final DisablePackageClientCommand disablePackageClientCommand;
+    private final EnablePackageClientCommand enablePackageClientCommand;
+    private final InfoPackageClientCommand infoPackageClientCommand;
+    private final ListPackagesClientCommand listPackagesClientCommand;
+    private final RefreshPackagesClientCommand refreshPackagesClientCommand;
+    private final ReloadPackagesClientCommand reloadPackagesClientCommand;
+    private final TrustPackageClientCommand trustPackageClientCommand;
+    private final UntrustPackageClientCommand untrustPackageClientCommand;
+    private final PackageFingerprintClientCommand packageFingerprintClientCommand;
 
-  public PackagesClientCommand(PackageManager packageManager) {
-    trustPackageClientCommand = new TrustPackageClientCommand(packageManager);
-    disablePackageClientCommand = new DisablePackageClientCommand(packageManager);
-    enablePackageClientCommand =
-        new EnablePackageClientCommand(packageManager, trustPackageClientCommand);
-    infoPackageClientCommand = new InfoPackageClientCommand(packageManager);
-    listPackagesClientCommand = new ListPackagesClientCommand(packageManager);
-    refreshPackagesClientCommand = new RefreshPackagesClientCommand(packageManager);
-    reloadPackagesClientCommand =
-        new ReloadPackagesClientCommand(packageManager, trustPackageClientCommand);
-    untrustPackageClientCommand = new UntrustPackageClientCommand(packageManager);
-    packageFingerprintClientCommand =
-        new PackageFingerprintClientCommand(packageManager, trustPackageClientCommand);
-  }
+    public PackagesClientCommand(PackageManager packageManager) {
+        trustPackageClientCommand = new TrustPackageClientCommand(packageManager);
+        disablePackageClientCommand = new DisablePackageClientCommand(packageManager);
+        enablePackageClientCommand = new EnablePackageClientCommand(packageManager, trustPackageClientCommand);
+        infoPackageClientCommand = new InfoPackageClientCommand(packageManager);
+        listPackagesClientCommand = new ListPackagesClientCommand(packageManager);
+        refreshPackagesClientCommand = new RefreshPackagesClientCommand(packageManager);
+        reloadPackagesClientCommand = new ReloadPackagesClientCommand(packageManager, trustPackageClientCommand);
+        untrustPackageClientCommand = new UntrustPackageClientCommand(packageManager);
+        packageFingerprintClientCommand =
+                new PackageFingerprintClientCommand(packageManager, trustPackageClientCommand);
+    }
 
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("packages")
-        .executes(this::execute)
-        .then(enablePackageClientCommand.buildCommand())
-        .then(disablePackageClientCommand.buildCommand())
-        .then(listPackagesClientCommand.buildCommand())
-        .then(infoPackageClientCommand.buildCommand())
-        .then(refreshPackagesClientCommand.buildCommand())
-        .then(reloadPackagesClientCommand.buildCommand())
-        .then(trustPackageClientCommand.buildCommand())
-        .then(untrustPackageClientCommand.buildCommand())
-        .then(packageFingerprintClientCommand.buildCommand())
-        .then(trustPackageClientCommand.buildVersionCallbackCommand())
-        .then(trustPackageClientCommand.buildFingerprintCallbackCommand())
-        .then(packageFingerprintClientCommand.buildAcceptCallbackCommand());
-  }
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("packages")
+                .executes(this::execute)
+                .then(enablePackageClientCommand.buildCommand())
+                .then(disablePackageClientCommand.buildCommand())
+                .then(listPackagesClientCommand.buildCommand())
+                .then(infoPackageClientCommand.buildCommand())
+                .then(refreshPackagesClientCommand.buildCommand())
+                .then(reloadPackagesClientCommand.buildCommand())
+                .then(trustPackageClientCommand.buildCommand())
+                .then(untrustPackageClientCommand.buildCommand())
+                .then(packageFingerprintClientCommand.buildCommand())
+                .then(trustPackageClientCommand.buildVersionCallbackCommand())
+                .then(trustPackageClientCommand.buildFingerprintCallbackCommand())
+                .then(packageFingerprintClientCommand.buildAcceptCallbackCommand());
+    }
 
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    MqpCommandFeedback.sendInfo(
-        context.getSource(),
-        "Available actions: enable, disable, trust, untrust, fingerprint, list, info, refresh, reload.");
-    return ClientCommandResult.SUCCESS;
-  }
+    private int execute(CommandContext<FabricClientCommandSource> context) {
+        MqpCommandFeedback.sendInfo(
+                context.getSource(),
+                "Available actions: enable, disable, trust, untrust, fingerprint, list, info, refresh, reload.");
+        return ClientCommandResult.SUCCESS;
+    }
 }

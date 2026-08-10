@@ -19,5 +19,4 @@ package io.github.trethore.myqolpackages.api.packages;
 
 import java.nio.file.Path;
 
-public record PackageTrustSnapshot(
-    String id, String name, String version, Path packageDirectory, String fingerprint) {}
+public record PackageTrustSnapshot(String id, String name, String version, Path packageDirectory, String fingerprint) {}

@@ -22,11 +22,11 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
 public record ClassInteropBridge(
-    ProxyExecutable importClass, ProxyExecutable wrap, ProxyObject packages, ProxyObject net) {
-  public ClassInteropBridge {
-    Objects.requireNonNull(importClass, "importClass");
-    Objects.requireNonNull(wrap, "wrap");
-    Objects.requireNonNull(packages, "packages");
-    Objects.requireNonNull(net, "net");
-  }
+        ProxyExecutable importClass, ProxyExecutable wrap, ProxyObject packages, ProxyObject net) {
+    public ClassInteropBridge {
+        Objects.requireNonNull(importClass, "importClass");
+        Objects.requireNonNull(wrap, "wrap");
+        Objects.requireNonNull(packages, "packages");
+        Objects.requireNonNull(net, "net");
+    }
 }

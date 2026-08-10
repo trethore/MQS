@@ -17,5 +17,4 @@
  */
 package io.github.trethore.myqolpackages.internal.packages;
 
-record PackageManifest(
-    String id, String name, String description, String version, String entrypoint) {}
+record PackageManifest(String id, String name, String description, String version, String entrypoint) {}

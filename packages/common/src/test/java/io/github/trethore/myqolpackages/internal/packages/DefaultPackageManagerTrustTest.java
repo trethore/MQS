@@ -41,144 +41,131 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class DefaultPackageManagerTrustTest {
-  @TempDir Path temporaryDirectory;
+    @TempDir
+    Path temporaryDirectory;
 
-  @Test
-  void blocksUntrustedPackagesBeforeContextCreation() throws IOException {
-    createPackage();
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createManager(contextFactory)) {
-      packageManager.refresh();
+    @Test
+    void blocksUntrustedPackagesBeforeContextCreation() throws IOException {
+        createPackage();
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createManager(contextFactory)) {
+            packageManager.refresh();
 
-      PackageOperationResult result = packageManager.enablePackage("example-package");
+            PackageOperationResult result = packageManager.enablePackage("example-package");
 
-      assertFalse(result.successful());
-      assertEquals(PackageOperationCode.TRUST_REQUIRED, result.code());
-      assertTrue(contextFactory.events.isEmpty());
+            assertFalse(result.successful());
+            assertEquals(PackageOperationCode.TRUST_REQUIRED, result.code());
+            assertTrue(contextFactory.events.isEmpty());
+        }
     }
-  }
 
-  @Test
-  void commitsTrustThenEnablesAndUntrustsPackage() throws IOException {
-    createPackage();
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createManager(contextFactory)) {
-      packageManager.refresh();
-      PackageTrustSnapshot snapshot =
-          packageManager.captureTrustSnapshot("example-package").orElseThrow();
+    @Test
+    void commitsTrustThenEnablesAndUntrustsPackage() throws IOException {
+        createPackage();
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createManager(contextFactory)) {
+            packageManager.refresh();
+            PackageTrustSnapshot snapshot =
+                    packageManager.captureTrustSnapshot("example-package").orElseThrow();
 
-      assertTrue(
-          packageManager
-              .trustPackage(
-                  new PackageTrustRequest(
-                      snapshot, TrustVersionScope.EXACT, false, FingerprintMismatchBehavior.BLOCK))
-              .successful());
-      assertTrue(packageManager.enablePackage("example-package").successful());
-      assertEquals(List.of("enable:example-package"), contextFactory.events);
+            assertTrue(packageManager
+                    .trustPackage(new PackageTrustRequest(
+                            snapshot, TrustVersionScope.EXACT, false, FingerprintMismatchBehavior.BLOCK))
+                    .successful());
+            assertTrue(packageManager.enablePackage("example-package").successful());
+            assertEquals(List.of("enable:example-package"), contextFactory.events);
 
-      assertTrue(packageManager.untrustPackage("example-package").successful());
-      assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
-      assertTrue(packageManager.getTrustedPackageIds().isEmpty());
-      assertEquals(
-          List.of("enable:example-package", "disable:example-package", "close:example-package"),
-          contextFactory.events);
+            assertTrue(packageManager.untrustPackage("example-package").successful());
+            assertTrue(packageManager.getConfiguredEnabledPackageIds().isEmpty());
+            assertTrue(packageManager.getTrustedPackageIds().isEmpty());
+            assertEquals(
+                    List.of("enable:example-package", "disable:example-package", "close:example-package"),
+                    contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void blocksChangedFingerprintWithoutCreatingContext() throws IOException {
-    Path packageDirectory = createPackage();
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createManager(contextFactory)) {
-      packageManager.refresh();
-      PackageTrustSnapshot snapshot =
-          packageManager.captureTrustSnapshot("example-package").orElseThrow();
-      assertTrue(
-          packageManager
-              .trustPackage(
-                  new PackageTrustRequest(
-                      snapshot,
-                      TrustVersionScope.ALL_VERSIONS,
-                      true,
-                      FingerprintMismatchBehavior.BLOCK))
-              .successful());
-      Files.writeString(packageDirectory.resolve("src/index.js"), "changed");
+    @Test
+    void blocksChangedFingerprintWithoutCreatingContext() throws IOException {
+        Path packageDirectory = createPackage();
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createManager(contextFactory)) {
+            packageManager.refresh();
+            PackageTrustSnapshot snapshot =
+                    packageManager.captureTrustSnapshot("example-package").orElseThrow();
+            assertTrue(packageManager
+                    .trustPackage(new PackageTrustRequest(
+                            snapshot, TrustVersionScope.ALL_VERSIONS, true, FingerprintMismatchBehavior.BLOCK))
+                    .successful());
+            Files.writeString(packageDirectory.resolve("src/index.js"), "changed");
 
-      PackageOperationResult result = packageManager.enablePackage("example-package");
+            PackageOperationResult result = packageManager.enablePackage("example-package");
 
-      assertFalse(result.successful());
-      assertEquals(PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED, result.code());
-      assertTrue(contextFactory.events.isEmpty());
+            assertFalse(result.successful());
+            assertEquals(PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED, result.code());
+            assertTrue(contextFactory.events.isEmpty());
+        }
     }
-  }
 
-  @Test
-  void chatWarningRunsWithVisibleWarning() throws IOException {
-    Path packageDirectory = createPackage();
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createManager(contextFactory)) {
-      packageManager.refresh();
-      PackageTrustSnapshot snapshot =
-          packageManager.captureTrustSnapshot("example-package").orElseThrow();
-      packageManager.trustPackage(
-          new PackageTrustRequest(
-              snapshot,
-              TrustVersionScope.ALL_VERSIONS,
-              true,
-              FingerprintMismatchBehavior.CHAT_WARNING));
-      Files.writeString(packageDirectory.resolve("src/index.js"), "changed");
+    @Test
+    void chatWarningRunsWithVisibleWarning() throws IOException {
+        Path packageDirectory = createPackage();
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createManager(contextFactory)) {
+            packageManager.refresh();
+            PackageTrustSnapshot snapshot =
+                    packageManager.captureTrustSnapshot("example-package").orElseThrow();
+            packageManager.trustPackage(new PackageTrustRequest(
+                    snapshot, TrustVersionScope.ALL_VERSIONS, true, FingerprintMismatchBehavior.CHAT_WARNING));
+            Files.writeString(packageDirectory.resolve("src/index.js"), "changed");
 
-      PackageOperationResult result = packageManager.enablePackage("example-package");
+            PackageOperationResult result = packageManager.enablePackage("example-package");
 
-      assertTrue(result.successful());
-      assertEquals(1, result.diagnostics().size());
-      assertTrue(result.diagnostics().getFirst().chatVisible());
-      assertEquals(List.of("enable:example-package"), contextFactory.events);
+            assertTrue(result.successful());
+            assertEquals(1, result.diagnostics().size());
+            assertTrue(result.diagnostics().getFirst().chatVisible());
+            assertEquals(List.of("enable:example-package"), contextFactory.events);
+        }
     }
-  }
 
-  @Test
-  void refreshStopsBlockedPackageAndKeepsEnabledIntent() throws IOException {
-    Path packageDirectory = createPackage();
-    RecordingContextFactory contextFactory = new RecordingContextFactory();
-    try (DefaultPackageManager packageManager = createManager(contextFactory)) {
-      packageManager.refresh();
-      PackageTrustSnapshot snapshot =
-          packageManager.captureTrustSnapshot("example-package").orElseThrow();
-      packageManager.trustPackage(
-          new PackageTrustRequest(
-              snapshot, TrustVersionScope.ALL_VERSIONS, true, FingerprintMismatchBehavior.BLOCK));
-      assertTrue(packageManager.enablePackage("example-package").successful());
-      Files.writeString(packageDirectory.resolve("src/index.js"), "changed");
+    @Test
+    void refreshStopsBlockedPackageAndKeepsEnabledIntent() throws IOException {
+        Path packageDirectory = createPackage();
+        RecordingContextFactory contextFactory = new RecordingContextFactory();
+        try (DefaultPackageManager packageManager = createManager(contextFactory)) {
+            packageManager.refresh();
+            PackageTrustSnapshot snapshot =
+                    packageManager.captureTrustSnapshot("example-package").orElseThrow();
+            packageManager.trustPackage(new PackageTrustRequest(
+                    snapshot, TrustVersionScope.ALL_VERSIONS, true, FingerprintMismatchBehavior.BLOCK));
+            assertTrue(packageManager.enablePackage("example-package").successful());
+            Files.writeString(packageDirectory.resolve("src/index.js"), "changed");
 
-      packageManager.refresh();
+            packageManager.refresh();
 
-      assertEquals(
-          PackageState.DISABLED,
-          packageManager.findPackage("example-package").orElseThrow().state());
-      assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
-      assertEquals(
-          List.of("enable:example-package", "disable:example-package", "close:example-package"),
-          contextFactory.events);
+            assertEquals(
+                    PackageState.DISABLED,
+                    packageManager.findPackage("example-package").orElseThrow().state());
+            assertEquals(List.of("example-package"), packageManager.getConfiguredEnabledPackageIds());
+            assertEquals(
+                    List.of("enable:example-package", "disable:example-package", "close:example-package"),
+                    contextFactory.events);
+        }
     }
-  }
 
-  private DefaultPackageManager createManager(PackageContextFactory contextFactory) {
-    FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
-    return new DefaultPackageManager(
-        new PackageDiscoveryService(
-            new ConfiguredPackageRootResolver(temporaryDirectory, configManager.getConfigPath()),
-            new FileSystemPackageDiscovery()),
-        configManager,
-        contextFactory);
-  }
+    private DefaultPackageManager createManager(PackageContextFactory contextFactory) {
+        FileMqpConfigStore configManager = new FileMqpConfigStore(temporaryDirectory);
+        return new DefaultPackageManager(
+                new PackageDiscoveryService(
+                        new ConfiguredPackageRootResolver(temporaryDirectory, configManager.getConfigPath()),
+                        new FileSystemPackageDiscovery()),
+                configManager,
+                contextFactory);
+    }
 
-  private Path createPackage() throws IOException {
-    Path packageDirectory = temporaryDirectory.resolve("example-package");
-    Files.createDirectories(packageDirectory.resolve("src"));
-    Files.writeString(
-        packageDirectory.resolve("manifest.json"),
-        """
+    private Path createPackage() throws IOException {
+        Path packageDirectory = temporaryDirectory.resolve("example-package");
+        Files.createDirectories(packageDirectory.resolve("src"));
+        Files.writeString(packageDirectory.resolve("manifest.json"), """
         {
           "id": "example-package",
           "name": "Example Package",
@@ -187,36 +174,36 @@ class DefaultPackageManagerTrustTest {
           "entrypoint": "src/index.js"
         }
         """);
-    Files.writeString(packageDirectory.resolve("src/index.js"), "source");
-    return packageDirectory;
-  }
-
-  private static final class RecordingContextFactory implements PackageContextFactory {
-    private final List<String> events = new ArrayList<>();
-
-    @Override
-    public PackageScriptContext create(PackageContextSpec spec) {
-      return new PackageScriptContext() {
-        @Override
-        public void invokeEnable() {
-          events.add("enable:" + spec.packageId());
-        }
-
-        @Override
-        public void invokeDisable() {
-          events.add("disable:" + spec.packageId());
-        }
-
-        @Override
-        public void tick() {
-          events.add("tick:" + spec.packageId());
-        }
-
-        @Override
-        public void close() {
-          events.add("close:" + spec.packageId());
-        }
-      };
+        Files.writeString(packageDirectory.resolve("src/index.js"), "source");
+        return packageDirectory;
     }
-  }
+
+    private static final class RecordingContextFactory implements PackageContextFactory {
+        private final List<String> events = new ArrayList<>();
+
+        @Override
+        public PackageScriptContext create(PackageContextSpec spec) {
+            return new PackageScriptContext() {
+                @Override
+                public void invokeEnable() {
+                    events.add("enable:" + spec.packageId());
+                }
+
+                @Override
+                public void invokeDisable() {
+                    events.add("disable:" + spec.packageId());
+                }
+
+                @Override
+                public void tick() {
+                    events.add("tick:" + spec.packageId());
+                }
+
+                @Override
+                public void close() {
+                    events.add("close:" + spec.packageId());
+                }
+            };
+        }
+    }
 }

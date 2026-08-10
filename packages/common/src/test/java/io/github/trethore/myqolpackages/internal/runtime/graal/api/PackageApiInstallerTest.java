@@ -29,76 +29,71 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class PackageApiInstallerTest {
-  @TempDir Path temporaryDirectory;
+    @TempDir
+    Path temporaryDirectory;
 
-  @Test
-  void installsTicksAndClosesModulesInLifecycleOrder() {
-    List<String> events = new ArrayList<>();
-    PackageApiInstaller installer =
-        new PackageApiInstaller(
-            List.of(recordingModule("first", events), recordingModule("second", events)));
+    @Test
+    void installsTicksAndClosesModulesInLifecycleOrder() {
+        List<String> events = new ArrayList<>();
+        PackageApiInstaller installer =
+                new PackageApiInstaller(List.of(recordingModule("first", events), recordingModule("second", events)));
 
-    try (Context context = createContext();
-        PackageApiSession session = installer.install(context, createSpec())) {
-      session.tick();
+        try (Context context = createContext();
+                PackageApiSession session = installer.install(context, createSpec())) {
+            session.tick();
+        }
+
+        assertEquals(
+                List.of("install:first", "install:second", "tick:first", "tick:second", "close:second", "close:first"),
+                events);
     }
 
-    assertEquals(
-        List.of(
-            "install:first",
-            "install:second",
-            "tick:first",
-            "tick:second",
-            "close:second",
-            "close:first"),
-        events);
-  }
-
-  @Test
-  void closesInstalledModulesWhenInstallationFails() {
-    List<String> events = new ArrayList<>();
-    PackageApiModule failingModule =
-        (bridge, spec) -> {
-          events.add("install:failing");
-          throw new IllegalStateException("failed");
+    @Test
+    void closesInstalledModulesWhenInstallationFails() {
+        List<String> events = new ArrayList<>();
+        PackageApiModule failingModule = (bridge, spec) -> {
+            events.add("install:failing");
+            throw new IllegalStateException("failed");
         };
-    PackageApiInstaller installer =
-        new PackageApiInstaller(List.of(recordingModule("first", events), failingModule));
-    PackageContextSpec spec = createSpec();
+        PackageApiInstaller installer =
+                new PackageApiInstaller(List.of(recordingModule("first", events), failingModule));
+        PackageContextSpec spec = createSpec();
 
-    try (Context context = createContext()) {
-      assertThrows(IllegalStateException.class, () -> installer.install(context, spec));
+        try (Context context = createContext()) {
+            assertThrows(IllegalStateException.class, () -> installer.install(context, spec));
+        }
+
+        assertEquals(List.of("install:first", "install:failing", "close:first"), events);
     }
 
-    assertEquals(List.of("install:first", "install:failing", "close:first"), events);
-  }
+    private PackageContextSpec createSpec() {
+        return new PackageContextSpec(
+                "test-package",
+                temporaryDirectory,
+                temporaryDirectory.resolve("index.js"),
+                temporaryDirectory.resolve("data"));
+    }
 
-  private PackageContextSpec createSpec() {
-    return new PackageContextSpec(
-        "test-package",
-        temporaryDirectory,
-        temporaryDirectory.resolve("index.js"),
-        temporaryDirectory.resolve("data"));
-  }
+    private static Context createContext() {
+        return Context.newBuilder("js")
+                .option("js.esm-eval-returns-exports", "true")
+                .build();
+    }
 
-  private static Context createContext() {
-    return Context.newBuilder("js").option("js.esm-eval-returns-exports", "true").build();
-  }
+    private static PackageApiModule recordingModule(String name, List<String> events) {
+        return (bridge, spec) -> {
+            events.add("install:" + name);
+            return new PackageApiSession() {
+                @Override
+                public void tick() {
+                    events.add("tick:" + name);
+                }
 
-  private static PackageApiModule recordingModule(String name, List<String> events) {
-    return (bridge, spec) -> {
-      events.add("install:" + name);
-      return new PackageApiSession() {
-        @Override
-        public void tick() {
-          events.add("tick:" + name);
-        }
-
-        @Override
-        public void close() {
-          events.add("close:" + name);
-        }
-      };
-    };
-  }
+                @Override
+                public void close() {
+                    events.add("close:" + name);
+                }
+            };
+        };
+    }
 }

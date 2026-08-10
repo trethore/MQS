@@ -36,47 +36,46 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class EnablePackageClientCommand {
-  private final PackageManager packageManager;
-  private final TrustPackageClientCommand trustPackageClientCommand;
+    private final PackageManager packageManager;
+    private final TrustPackageClientCommand trustPackageClientCommand;
 
-  public EnablePackageClientCommand(
-      PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
-    this.packageManager = packageManager;
-    this.trustPackageClientCommand = trustPackageClientCommand;
-  }
-
-  public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-    return ClientCommandManager.literal("enable")
-        .then(
-            ClientCommandManager.argument("id", StringArgumentType.word())
-                .suggests((context, builder) -> suggestPackageIds(builder))
-                .executes(this::execute));
-  }
-
-  private int execute(CommandContext<FabricClientCommandSource> context) {
-    FabricClientCommandSource source = context.getSource();
-    String packageId = StringArgumentType.getString(context, "id");
-    PackageOperationResult result = packageManager.enablePackage(packageId);
-    if (result.code() == PackageOperationCode.TRUST_REQUIRED) {
-      return trustPackageClientCommand.start(source, packageId, OriginalOperation.ENABLE);
+    public EnablePackageClientCommand(
+            PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
+        this.packageManager = packageManager;
+        this.trustPackageClientCommand = trustPackageClientCommand;
     }
-    if (result.code() == PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED) {
-      trustPackageClientCommand.sendFingerprintReview(source, packageId, OriginalOperation.ENABLE);
-      return ClientCommandResult.FAILURE;
-    }
-    PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
-    if (result.successful()) {
-      PackageCommandSupport.sendEnabled(source, packageId);
-      return ClientCommandResult.SUCCESS;
-    }
-    return ClientCommandResult.FAILURE;
-  }
 
-  private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
-    return PackageCommandSupport.suggestPackageIds(
-        builder,
-        packageManager.getPackages(),
-        PackageInfo::id,
-        packageInfo -> packageInfo.state() == PackageState.DISABLED);
-  }
+    public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
+        return ClientCommandManager.literal("enable")
+                .then(ClientCommandManager.argument("id", StringArgumentType.word())
+                        .suggests((context, builder) -> suggestPackageIds(builder))
+                        .executes(this::execute));
+    }
+
+    private int execute(CommandContext<FabricClientCommandSource> context) {
+        FabricClientCommandSource source = context.getSource();
+        String packageId = StringArgumentType.getString(context, "id");
+        PackageOperationResult result = packageManager.enablePackage(packageId);
+        if (result.code() == PackageOperationCode.TRUST_REQUIRED) {
+            return trustPackageClientCommand.start(source, packageId, OriginalOperation.ENABLE);
+        }
+        if (result.code() == PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED) {
+            trustPackageClientCommand.sendFingerprintReview(source, packageId, OriginalOperation.ENABLE);
+            return ClientCommandResult.FAILURE;
+        }
+        PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+        if (result.successful()) {
+            PackageCommandSupport.sendEnabled(source, packageId);
+            return ClientCommandResult.SUCCESS;
+        }
+        return ClientCommandResult.FAILURE;
+    }
+
+    private CompletableFuture<Suggestions> suggestPackageIds(SuggestionsBuilder builder) {
+        return PackageCommandSupport.suggestPackageIds(
+                builder,
+                packageManager.getPackages(),
+                PackageInfo::id,
+                packageInfo -> packageInfo.state() == PackageState.DISABLED);
+    }
 }

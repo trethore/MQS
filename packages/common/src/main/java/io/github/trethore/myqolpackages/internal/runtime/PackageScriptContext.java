@@ -18,12 +18,12 @@
 package io.github.trethore.myqolpackages.internal.runtime;
 
 public interface PackageScriptContext extends AutoCloseable {
-  void invokeEnable() throws PackageLifecycleException;
+    void invokeEnable() throws PackageLifecycleException;
 
-  void invokeDisable() throws PackageLifecycleException;
+    void invokeDisable() throws PackageLifecycleException;
 
-  void tick() throws PackageLifecycleException;
+    void tick() throws PackageLifecycleException;
 
-  @Override
-  void close() throws PackageLifecycleException;
+    @Override
+    void close() throws PackageLifecycleException;
 }

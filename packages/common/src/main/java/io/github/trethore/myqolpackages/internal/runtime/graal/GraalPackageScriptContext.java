@@ -24,64 +24,60 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 final class GraalPackageScriptContext implements PackageScriptContext {
-  private final Value onDisable;
-  private final Value onEnable;
-  private final Path packageDirectory;
-  private final GraalPackageContextResources resources;
+    private final Value onDisable;
+    private final Value onEnable;
+    private final Path packageDirectory;
+    private final GraalPackageContextResources resources;
 
-  private boolean closed;
+    private boolean closed;
 
-  GraalPackageScriptContext(
-      GraalPackageContextResources resources,
-      Value onEnable,
-      Value onDisable,
-      Path packageDirectory) {
-    this.resources = resources;
-    this.onEnable = onEnable;
-    this.onDisable = onDisable;
-    this.packageDirectory = packageDirectory;
-  }
-
-  @Override
-  public void invokeEnable() throws PackageLifecycleException {
-    invokeLifecycleHook(onEnable, "onEnable");
-  }
-
-  @Override
-  public void invokeDisable() throws PackageLifecycleException {
-    invokeLifecycleHook(onDisable, "onDisable");
-  }
-
-  @Override
-  public void tick() throws PackageLifecycleException {
-    if (closed) {
-      return;
+    GraalPackageScriptContext(
+            GraalPackageContextResources resources, Value onEnable, Value onDisable, Path packageDirectory) {
+        this.resources = resources;
+        this.onEnable = onEnable;
+        this.onDisable = onDisable;
+        this.packageDirectory = packageDirectory;
     }
-    resources.tick();
-  }
 
-  @Override
-  public void close() throws PackageLifecycleException {
-    if (closed) {
-      return;
+    @Override
+    public void invokeEnable() throws PackageLifecycleException {
+        invokeLifecycleHook(onEnable, "onEnable");
     }
-    closed = true;
-    resources.close();
-  }
 
-  private void invokeLifecycleHook(Value hook, String hookName) throws PackageLifecycleException {
-    if (closed) {
-      throw new PackageLifecycleException("JavaScript context is already closed");
+    @Override
+    public void invokeDisable() throws PackageLifecycleException {
+        invokeLifecycleHook(onDisable, "onDisable");
     }
-    try {
-      Value result = hook.execute();
-      if (result.hasMember("then") && result.getMember("then").canExecute()) {
-        throw new PackageLifecycleException(
-            hookName + " returned a Promise; asynchronous lifecycle hooks are not supported");
-      }
-    } catch (PolyglotException exception) {
-      throw GraalPackageExceptionSupport.createFailure(
-          hookName + " failed", exception, packageDirectory);
+
+    @Override
+    public void tick() throws PackageLifecycleException {
+        if (closed) {
+            return;
+        }
+        resources.tick();
     }
-  }
+
+    @Override
+    public void close() throws PackageLifecycleException {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        resources.close();
+    }
+
+    private void invokeLifecycleHook(Value hook, String hookName) throws PackageLifecycleException {
+        if (closed) {
+            throw new PackageLifecycleException("JavaScript context is already closed");
+        }
+        try {
+            Value result = hook.execute();
+            if (result.hasMember("then") && result.getMember("then").canExecute()) {
+                throw new PackageLifecycleException(
+                        hookName + " returned a Promise; asynchronous lifecycle hooks are not supported");
+            }
+        } catch (PolyglotException exception) {
+            throw GraalPackageExceptionSupport.createFailure(hookName + " failed", exception, packageDirectory);
+        }
+    }
 }

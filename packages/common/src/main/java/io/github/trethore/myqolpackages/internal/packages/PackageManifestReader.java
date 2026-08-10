@@ -25,21 +25,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 final class PackageManifestReader {
-  private final Gson gson;
+    private final Gson gson;
 
-  PackageManifestReader() {
-    gson = new GsonBuilder().create();
-  }
-
-  PackageManifest read(Path manifestPath) throws IOException, PackageValidationException {
-    try (Reader reader = Files.newBufferedReader(manifestPath)) {
-      PackageManifest manifest = gson.fromJson(reader, PackageManifest.class);
-      if (manifest == null) {
-        throw new PackageValidationException("Manifest must contain a JSON object");
-      }
-      return manifest;
-    } catch (RuntimeException exception) {
-      throw new PackageValidationException("Invalid manifest.json: " + exception.getMessage());
+    PackageManifestReader() {
+        gson = new GsonBuilder().create();
     }
-  }
+
+    PackageManifest read(Path manifestPath) throws IOException, PackageValidationException {
+        try (Reader reader = Files.newBufferedReader(manifestPath)) {
+            PackageManifest manifest = gson.fromJson(reader, PackageManifest.class);
+            if (manifest == null) {
+                throw new PackageValidationException("Manifest must contain a JSON object");
+            }
+            return manifest;
+        } catch (RuntimeException exception) {
+            throw new PackageValidationException("Invalid manifest.json: " + exception.getMessage());
+        }
+    }
 }

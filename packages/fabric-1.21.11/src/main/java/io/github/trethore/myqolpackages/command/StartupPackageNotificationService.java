@@ -26,35 +26,28 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.network.chat.Component;
 
 public final class StartupPackageNotificationService {
-  private final List<PackageDiagnostic> diagnostics;
-  private boolean delivered;
+    private final List<PackageDiagnostic> diagnostics;
+    private boolean delivered;
 
-  public StartupPackageNotificationService(PackageDiscoveryResult startupResult) {
-    diagnostics =
-        startupResult.diagnostics().stream()
-            .filter(PackageDiagnostic::chatVisible)
-            .filter(
-                diagnostic ->
-                    diagnostic.code() == PackageDiagnosticCode.TRUST_REQUIRED
+    public StartupPackageNotificationService(PackageDiscoveryResult startupResult) {
+        diagnostics = startupResult.diagnostics().stream()
+                .filter(PackageDiagnostic::chatVisible)
+                .filter(diagnostic -> diagnostic.code() == PackageDiagnosticCode.TRUST_REQUIRED
                         || diagnostic.code() == PackageDiagnosticCode.FINGERPRINT_BLOCKED
                         || diagnostic.code() == PackageDiagnosticCode.FINGERPRINT_WARNING)
-            .toList();
-  }
+                .toList();
+    }
 
-  public void register() {
-    ClientPlayConnectionEvents.JOIN.register(
-        (handler, sender, client) -> {
-          if (delivered || diagnostics.isEmpty()) {
-            return;
-          }
-          delivered = true;
-          client.gui.getChat().addMessage(Component.literal("[MQP] Package trust review:"));
-          for (PackageDiagnostic diagnostic : diagnostics) {
-            client
-                .gui
-                .getChat()
-                .addMessage(PackageCommandSupport.createDiagnosticMessage(diagnostic));
-          }
+    public void register() {
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            if (delivered || diagnostics.isEmpty()) {
+                return;
+            }
+            delivered = true;
+            client.gui.getChat().addMessage(Component.literal("[MQP] Package trust review:"));
+            for (PackageDiagnostic diagnostic : diagnostics) {
+                client.gui.getChat().addMessage(PackageCommandSupport.createDiagnosticMessage(diagnostic));
+            }
         });
-  }
+    }
 }

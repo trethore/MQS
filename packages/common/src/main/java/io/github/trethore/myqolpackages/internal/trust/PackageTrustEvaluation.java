@@ -19,5 +19,4 @@ package io.github.trethore.myqolpackages.internal.trust;
 
 import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
 
-public record PackageTrustEvaluation(
-    PackageTrustInfo info, boolean allowed, boolean warning, boolean chatVisible) {}
+public record PackageTrustEvaluation(PackageTrustInfo info, boolean allowed, boolean warning, boolean chatVisible) {}

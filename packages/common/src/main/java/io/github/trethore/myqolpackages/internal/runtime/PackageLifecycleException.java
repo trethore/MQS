@@ -18,11 +18,11 @@
 package io.github.trethore.myqolpackages.internal.runtime;
 
 public final class PackageLifecycleException extends Exception {
-  public PackageLifecycleException(String message) {
-    super(message);
-  }
+    public PackageLifecycleException(String message) {
+        super(message);
+    }
 
-  public PackageLifecycleException(String message, Throwable cause) {
-    super(message, cause);
-  }
+    public PackageLifecycleException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

@@ -24,29 +24,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class SemanticVersionTest {
-  @Test
-  void parsesAndFormatsCompleteVersions() {
-    SemanticVersion version = SemanticVersion.parse("1.2.3-alpha.1+build.5");
+    @Test
+    void parsesAndFormatsCompleteVersions() {
+        SemanticVersion version = SemanticVersion.parse("1.2.3-alpha.1+build.5");
 
-    assertEquals(1, version.major());
-    assertEquals(2, version.minor());
-    assertEquals(3, version.patch());
-    assertEquals("1.2.3-alpha.1+build.5", version.toString());
-  }
+        assertEquals(1, version.major());
+        assertEquals(2, version.minor());
+        assertEquals(3, version.patch());
+        assertEquals("1.2.3-alpha.1+build.5", version.toString());
+    }
 
-  @Test
-  void comparesPrereleasesAccordingToSemver() {
-    assertTrue(
-        SemanticVersion.parse("1.0.0-alpha").compareTo(SemanticVersion.parse("1.0.0-alpha.1")) < 0);
-    assertTrue(
-        SemanticVersion.parse("1.0.0-beta.11").compareTo(SemanticVersion.parse("1.0.0-rc.1")) < 0);
-    assertTrue(SemanticVersion.parse("1.0.0-rc.1").compareTo(SemanticVersion.parse("1.0.0")) < 0);
-  }
+    @Test
+    void comparesPrereleasesAccordingToSemver() {
+        assertTrue(SemanticVersion.parse("1.0.0-alpha").compareTo(SemanticVersion.parse("1.0.0-alpha.1")) < 0);
+        assertTrue(SemanticVersion.parse("1.0.0-beta.11").compareTo(SemanticVersion.parse("1.0.0-rc.1")) < 0);
+        assertTrue(SemanticVersion.parse("1.0.0-rc.1").compareTo(SemanticVersion.parse("1.0.0")) < 0);
+    }
 
-  @Test
-  void rejectsInvalidVersions() {
-    assertThrows(IllegalArgumentException.class, () -> SemanticVersion.parse("1.2"));
-    assertThrows(IllegalArgumentException.class, () -> SemanticVersion.parse("01.2.3"));
-    assertThrows(IllegalArgumentException.class, () -> SemanticVersion.parse("1.2.3-01"));
-  }
+    @Test
+    void rejectsInvalidVersions() {
+        assertThrows(IllegalArgumentException.class, () -> SemanticVersion.parse("1.2"));
+        assertThrows(IllegalArgumentException.class, () -> SemanticVersion.parse("01.2.3"));
+        assertThrows(IllegalArgumentException.class, () -> SemanticVersion.parse("1.2.3-01"));
+    }
 }
