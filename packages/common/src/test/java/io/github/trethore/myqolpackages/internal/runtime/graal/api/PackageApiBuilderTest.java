@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptApiSupport;
 import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
 import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptRuntimeSupport;
 import org.graalvm.polyglot.Context;
@@ -115,9 +116,10 @@ class PackageApiBuilderTest {
 
         try (Context context = createContext()) {
             JavaScriptRuntimeSupport runtime = createRuntime(context);
-            builder.install(runtime.api());
+            JavaScriptApiSupport api = runtime.api();
+            builder.install(api);
 
-            assertThrows(IllegalStateException.class, () -> builder.install(runtime.api()));
+            assertThrows(IllegalStateException.class, () -> builder.install(api));
             assertThrows(IllegalStateException.class, () -> builder.defineGlobal("other", "value"));
             assertThrows(IllegalStateException.class, () -> mqp.define("other", "value"));
             assertThrows(IllegalStateException.class, () -> nested.defineObject("other"));
@@ -132,10 +134,10 @@ class PackageApiBuilderTest {
 
         try (Context context = createContext()) {
             JavaScriptRuntimeSupport runtime = createRuntime(context);
+            JavaScriptApiSupport api = runtime.api();
             context.eval("js", "Object.defineProperty(globalThis, 'occupied', { value: true })");
 
-            IllegalStateException exception =
-                    assertThrows(IllegalStateException.class, () -> builder.install(runtime.api()));
+            IllegalStateException exception = assertThrows(IllegalStateException.class, () -> builder.install(api));
 
             assertEquals(
                     "Cannot install package API global because globalThis already contains: occupied",
