@@ -16,7 +16,7 @@ for (const name of Object.getOwnPropertyNames(globalThis)) {
 }
 for (const name of [
   "createJavaScriptRuntimeSupport",
-  "createMqp",
+  "createFrozenObject",
   "createJavaApi",
   "createFetch"
 ]) {

@@ -36,7 +36,7 @@ public final class FetchApiModule implements PackageApiModule {
         PackageHttpClient packageHttpClient = new PackageHttpClient(httpClient);
         try {
             FetchApi fetchApi = new FetchApi(context.javaScriptValues(), packageHttpClient);
-            context.globals().define("fetch", FetchApiScript.create(context.javaScriptModules(), fetchApi));
+            context.api().defineGlobal("fetch", FetchApiScript.create(context.javaScriptModules(), fetchApi));
             return new FetchApiSession(fetchApi, packageHttpClient);
         } catch (RuntimeException exception) {
             packageHttpClient.close();

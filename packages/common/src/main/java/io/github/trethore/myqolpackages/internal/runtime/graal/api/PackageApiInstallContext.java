@@ -26,13 +26,15 @@ public record PackageApiInstallContext(
         PackageContextSpec spec,
         JavaScriptModuleLoader javaScriptModules,
         JavaScriptValueSupport javaScriptValues,
-        GlobalApiRegistry globals,
-        MqpApiBuilder mqp) {
+        PackageApiBuilder api) {
     public PackageApiInstallContext {
         Objects.requireNonNull(spec, "spec");
         Objects.requireNonNull(javaScriptModules, "javaScriptModules");
         Objects.requireNonNull(javaScriptValues, "javaScriptValues");
-        Objects.requireNonNull(globals, "globals");
-        Objects.requireNonNull(mqp, "mqp");
+        Objects.requireNonNull(api, "api");
+    }
+
+    public ApiObjectBuilder mqp() {
+        return api.objectGlobal("mqp");
     }
 }

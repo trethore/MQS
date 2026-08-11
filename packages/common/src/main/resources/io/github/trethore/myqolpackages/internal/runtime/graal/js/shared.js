@@ -1,5 +1,18 @@
 export default function createJavaScriptRuntimeSupport() {
   return Object.freeze({
+    createFrozenObject(members) {
+      const object = {};
+      for (const name of Object.keys(members)) {
+        Object.defineProperty(object, name, {
+          value: members[name],
+          configurable: true,
+          enumerable: true,
+          writable: true,
+        });
+      }
+      return Object.freeze(object);
+    },
+
     defineGlobal(name, value) {
       Object.defineProperty(globalThis, name, {
         value,

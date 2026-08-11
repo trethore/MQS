@@ -35,10 +35,10 @@ public final class JavaApiModule implements PackageApiModule {
     public PackageApiSession install(PackageApiInstallContext context) {
         ClassInteropBridge interopBridge = bridgeFactory.create();
         context.mqp().define("java", JavaApiScript.create(context.javaScriptModules()));
-        context.globals().define("importClass", interopBridge.importClass());
-        context.globals().define("wrap", interopBridge.wrap());
-        context.globals().define("packages", interopBridge.packages());
-        context.globals().define("net", interopBridge.net());
+        context.api().defineGlobal("importClass", interopBridge.importClass());
+        context.api().defineGlobal("wrap", interopBridge.wrap());
+        context.api().defineGlobal("packages", interopBridge.packages());
+        context.api().defineGlobal("net", interopBridge.net());
         return PackageApiSession.empty();
     }
 }

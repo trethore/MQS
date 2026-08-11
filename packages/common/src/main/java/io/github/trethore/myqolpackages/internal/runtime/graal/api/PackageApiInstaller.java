@@ -18,7 +18,6 @@
 package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.mqp.MqpApiScript;
 import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
 import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptRuntimeSupport;
 import java.util.ArrayList;
@@ -40,16 +39,20 @@ public final class PackageApiInstaller {
         Objects.requireNonNull(spec, "spec");
         JavaScriptModuleLoader moduleLoader = new JavaScriptModuleLoader(context);
         JavaScriptRuntimeSupport javaScriptRuntime = new JavaScriptRuntimeSupport(moduleLoader);
-        GlobalApiRegistry globals = new GlobalApiRegistry(javaScriptRuntime.globals());
-        MqpApiBuilder mqp = new MqpApiBuilder();
+        PackageApiBuilder api = new PackageApiBuilder();
+        ApiObjectBuilder mqp = api.defineObjectGlobal("mqp");
+        mqp.define("version", mqpVersion);
+        mqp.define("dataDirectory", spec.dataDirectory().toString());
+        ApiObjectBuilder packageApi = mqp.defineObject("package");
+        packageApi.define("id", spec.packageId());
         PackageApiInstallContext installContext =
-                new PackageApiInstallContext(spec, moduleLoader, javaScriptRuntime.values(), globals, mqp);
+                new PackageApiInstallContext(spec, moduleLoader, javaScriptRuntime.values(), api);
         List<PackageApiSession> sessions = new ArrayList<>();
         try {
             for (PackageApiModule module : modules) {
                 sessions.add(Objects.requireNonNull(module.install(installContext), "module session"));
             }
-            globals.install(MqpApiScript.create(moduleLoader, mqpVersion, spec, mqp.members()));
+            api.install(javaScriptRuntime.api());
             return new CompositePackageApiSession(sessions);
         } catch (RuntimeException exception) {
             try {
