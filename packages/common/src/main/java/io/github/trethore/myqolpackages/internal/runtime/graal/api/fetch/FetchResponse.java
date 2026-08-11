@@ -17,7 +17,7 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch;
 
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpResponse;
+import io.github.trethore.myqolpackages.internal.runtime.graal.http.PackageHttpResponse;
 import java.nio.charset.StandardCharsets;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;

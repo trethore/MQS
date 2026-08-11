@@ -17,14 +17,10 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 
-import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.FetchApiModule;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.JavaApiModule;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptModuleLoader;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptRuntimeSupport;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.mqp.MqpApiScript;
-import java.net.http.HttpClient;
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptRuntimeSupport;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -33,14 +29,6 @@ import org.graalvm.polyglot.Context;
 public final class PackageApiInstaller {
     private final String mqpVersion;
     private final List<PackageApiModule> modules;
-
-    public PackageApiInstaller(String mqpVersion, MqpRuntimeEnvironment environment, HttpClient httpClient) {
-        this(
-                Objects.requireNonNull(mqpVersion, "mqpVersion"),
-                List.of(
-                        new JavaApiModule(Objects.requireNonNull(environment, "environment")),
-                        new FetchApiModule(Objects.requireNonNull(httpClient, "httpClient"))));
-    }
 
     public PackageApiInstaller(String mqpVersion, List<PackageApiModule> modules) {
         this.mqpVersion = Objects.requireNonNull(mqpVersion, "mqpVersion");

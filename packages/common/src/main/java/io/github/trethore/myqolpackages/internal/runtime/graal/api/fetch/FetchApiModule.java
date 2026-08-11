@@ -20,7 +20,7 @@ package io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiInstallContext;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiModule;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiSession;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpClient;
+import io.github.trethore.myqolpackages.internal.runtime.graal.http.PackageHttpClient;
 import java.net.http.HttpClient;
 import java.util.Objects;
 

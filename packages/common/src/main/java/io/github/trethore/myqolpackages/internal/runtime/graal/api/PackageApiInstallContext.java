@@ -18,8 +18,8 @@
 package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptModuleLoader;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptValueSupport;
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptValueSupport;
 import java.util.Objects;
 
 public record PackageApiInstallContext(

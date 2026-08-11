@@ -24,12 +24,15 @@ import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleExcepti
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiInstaller;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiSession;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.FetchApiModule;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.JavaApiModule;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -72,8 +75,9 @@ public final class GraalPackageContextFactory implements PackageContextFactory {
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
-        this.apiInstaller =
-                new PackageApiInstaller(Objects.requireNonNull(mqpVersion, "mqpVersion"), environment, httpClient);
+        this.apiInstaller = new PackageApiInstaller(
+                Objects.requireNonNull(mqpVersion, "mqpVersion"),
+                List.of(new JavaApiModule(environment), new FetchApiModule(httpClient)));
         this.engine = Engine.newBuilder(JAVASCRIPT_LANGUAGE_ID)
                 .option("engine.WarnInterpreterOnly", "false")
                 .build();

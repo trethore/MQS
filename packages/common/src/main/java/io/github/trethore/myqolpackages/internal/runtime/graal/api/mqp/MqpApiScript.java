@@ -18,7 +18,7 @@
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.mqp;
 
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptModuleLoader;
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
 import java.util.Map;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;

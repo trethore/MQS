@@ -21,8 +21,8 @@ import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiInstallContext;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiModule;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiSession;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.interop.ClassInteropBridge;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.interop.ClassInteropBridgeFactory;
+import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridge;
+import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridgeFactory;
 
 public final class JavaApiModule implements PackageApiModule {
     private final ClassInteropBridgeFactory bridgeFactory;

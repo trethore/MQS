@@ -17,10 +17,10 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch;
 
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpClient;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpRequest;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpResponse;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptValueSupport;
+import io.github.trethore.myqolpackages.internal.runtime.graal.http.PackageHttpClient;
+import io.github.trethore.myqolpackages.internal.runtime.graal.http.PackageHttpRequest;
+import io.github.trethore.myqolpackages.internal.runtime.graal.http.PackageHttpResponse;
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptValueSupport;
 import java.util.Objects;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentLinkedQueue;

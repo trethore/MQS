@@ -17,7 +17,7 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch;
 
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptModuleLoader;
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 

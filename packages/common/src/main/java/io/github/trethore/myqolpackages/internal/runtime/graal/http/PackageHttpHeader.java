@@ -15,25 +15,13 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api.java;
+package io.github.trethore.myqolpackages.internal.runtime.graal.http;
 
-import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
-import org.graalvm.polyglot.Value;
+import java.util.Objects;
 
-final class JavaApiScript {
-    private JavaApiScript() {}
-
-    static Value create(JavaScriptModuleLoader moduleLoader) {
-        Value createJavaApi = moduleLoader.loadFunction(JavaApiScript.class, "java.js");
-        return createJavaApi.execute(
-                Void.TYPE,
-                Boolean.TYPE,
-                Byte.TYPE,
-                Short.TYPE,
-                Integer.TYPE,
-                Long.TYPE,
-                Float.TYPE,
-                Double.TYPE,
-                Character.TYPE);
+public record PackageHttpHeader(String name, String value) {
+    public PackageHttpHeader {
+        name = Objects.requireNonNull(name, "name").trim();
+        value = Objects.requireNonNull(value, "value").trim();
     }
 }

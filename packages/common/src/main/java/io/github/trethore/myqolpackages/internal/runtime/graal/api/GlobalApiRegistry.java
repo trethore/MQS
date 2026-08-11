@@ -17,7 +17,7 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptGlobalSupport;
+import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptGlobalSupport;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
