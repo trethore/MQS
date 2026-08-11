@@ -24,6 +24,8 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 final class GraalPackageScriptContext implements PackageScriptContext {
+    private static final String THEN_MEMBER = "then";
+
     private final Value onDisable;
     private final Value onEnable;
     private final Path packageDirectory;
@@ -72,7 +74,7 @@ final class GraalPackageScriptContext implements PackageScriptContext {
         }
         try {
             Value result = hook.execute();
-            if (result.hasMember("then") && result.getMember("then").canExecute()) {
+            if (result.hasMember(THEN_MEMBER) && result.getMember(THEN_MEMBER).canExecute()) {
                 throw new PackageLifecycleException(
                         hookName + " returned a Promise; asynchronous lifecycle hooks are not supported");
             }

@@ -62,6 +62,7 @@ public final class JavaScriptApiBridge {
         return createFetch.execute(fetchBridge);
     }
 
+    @SuppressWarnings("java:S107")
     public Value createJavaApi(
             Class<?> voidType,
             Class<?> booleanType,
