@@ -31,11 +31,16 @@ import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleExcepti
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -187,6 +192,110 @@ class GraalPackageContextFactoryTest {
         try (GraalPackageContextFactory contextFactory = createContextFactory();
                 PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
             assertDoesNotThrow(context::invokeEnable);
+        }
+    }
+
+    @Test
+    void reusesGeneratedTypesAndInvalidatesClosedCallbacks() throws Exception {
+        GeneratedTypeFixture.setStoredValue(null);
+        try (GraalPackageContextFactory contextFactory = createContextFactory()) {
+            Path firstEntrypoint = createEntrypoint(generatedLifecycleScript(1));
+            Object firstInstance;
+            try (PackageScriptContext ignored = contextFactory.create(createSpec(firstEntrypoint))) {
+                firstInstance = GeneratedTypeFixture.getStoredValue();
+            }
+            assertEquals(getClass().getClassLoader(), firstInstance.getClass().getClassLoader());
+            Method valueMethod = firstInstance.getClass().getMethod("value");
+            InvocationTargetException closedFailure =
+                    assertThrows(InvocationTargetException.class, () -> valueMethod.invoke(firstInstance));
+            assertTrue(closedFailure.getCause().getMessage().contains("closed"));
+
+            Path secondEntrypoint = createEntrypoint(generatedLifecycleScript(2));
+            Object secondInstance;
+            try (PackageScriptContext ignored = contextFactory.create(createSpec(secondEntrypoint))) {
+                secondInstance = GeneratedTypeFixture.getStoredValue();
+                assertEquals(firstInstance.getClass(), secondInstance.getClass());
+                assertEquals(2, valueMethod.invoke(secondInstance));
+            }
+            closedFailure = assertThrows(InvocationTargetException.class, () -> valueMethod.invoke(secondInstance));
+            assertTrue(closedFailure.getCause().getMessage().contains("closed"));
+        }
+    }
+
+    @Test
+    void rejectsGeneratedTypeOwnershipAndStructuralChanges() throws Exception {
+        String sharedTypeScript = generatedEmptyTypeScript("test.generated.CrossPackageClaim");
+        Path sharedEntrypoint = createEntrypoint(sharedTypeScript);
+        try (GraalPackageContextFactory contextFactory = createContextFactory()) {
+            try (PackageScriptContext context = contextFactory.create(createSpec(sharedEntrypoint))) {
+                assertDoesNotThrow(context::invokeEnable);
+            }
+
+            PackageLifecycleException ownershipFailure = assertThrows(
+                    PackageLifecycleException.class,
+                    () -> contextFactory.create(createSpec(sharedEntrypoint, "other-package")));
+            assertTrue(ownershipFailure.getMessage().contains("owned by package"));
+
+            Path structuralEntrypoint = createEntrypoint(generatedEmptyTypeScript("test.generated.StructuralClaim"));
+            try (PackageScriptContext context = contextFactory.create(createSpec(structuralEntrypoint))) {
+                assertDoesNotThrow(context::invokeEnable);
+            }
+            Files.writeString(structuralEntrypoint, """
+                    mqp.java
+                      .defineClass("test.generated.StructuralClaim")
+                      .field({ name: "changed", type: mqp.java.type.int })
+                      .build();
+                    export function onEnable() {}
+                    export function onDisable() {}
+                    """);
+            PackageLifecycleException structuralFailure = assertThrows(
+                    PackageLifecycleException.class, () -> contextFactory.create(createSpec(structuralEntrypoint)));
+            assertTrue(structuralFailure.getMessage().contains("restart the game"));
+        }
+    }
+
+    @Test
+    void serializesGeneratedCallbacksAcrossJavaThreads() throws Exception {
+        GeneratedTypeFixture.setStoredValue(null);
+        Path entrypoint = createEntrypoint("""
+            const Fixture = importClass(
+              "io.github.trethore.myqolpackages.internal.runtime.graal.GeneratedTypeFixture"
+            );
+            const Thread = Java.type("java.lang.Thread");
+            let active = 0;
+            const Generated = mqp.java
+              .defineClass("ConcurrentGenerated")
+              .method({
+                name: "run",
+                returnType: mqp.java.type.int,
+                argTypes: mqp.java.type.int,
+                visibility: mqp.java.visibility.PUBLIC,
+                implementation: function($self, $super, value) {
+                  active++;
+                  if (active !== 1) throw new Error("concurrent callback entry");
+                  try {
+                    Thread.sleep(20);
+                    return value;
+                  } finally {
+                    active--;
+                  }
+                },
+              })
+              .build();
+            Fixture.setStoredValue(new Generated());
+            export function onEnable() {}
+            export function onDisable() {}
+            """);
+        try (GraalPackageContextFactory contextFactory = createContextFactory();
+                PackageScriptContext ignored = contextFactory.create(createSpec(entrypoint))) {
+            Object instance = GeneratedTypeFixture.getStoredValue();
+            Method runMethod = instance.getClass().getMethod("run", int.class);
+            try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+                Future<Object> first = executor.submit(() -> runMethod.invoke(instance, 1));
+                Future<Object> second = executor.submit(() -> runMethod.invoke(instance, 2));
+                assertEquals(1, first.get());
+                assertEquals(2, second.get());
+            }
         }
     }
 
@@ -362,6 +471,37 @@ class GraalPackageContextFactoryTest {
         return entrypoint;
     }
 
+    private static String generatedLifecycleScript(int value) {
+        return """
+            const Fixture = importClass(
+              "io.github.trethore.myqolpackages.internal.runtime.graal.GeneratedTypeFixture"
+            );
+            const Generated = mqp.java
+              .defineClass("LifecycleGenerated")
+              .method({
+                name: "value",
+                returnType: mqp.java.type.int,
+                visibility: mqp.java.visibility.PUBLIC,
+                implementation: function($self, $super) {
+                  return %d;
+                },
+              })
+              .build();
+            Fixture.setStoredValue(new Generated());
+
+            export function onEnable() {}
+            export function onDisable() {}
+            """.formatted(value);
+    }
+
+    private static String generatedEmptyTypeScript(String binaryName) {
+        return """
+            mqp.java.defineClass("%s").build();
+            export function onEnable() {}
+            export function onDisable() {}
+            """.formatted(binaryName);
+    }
+
     private GraalPackageContextFactory createContextFactory() {
         return new GraalPackageContextFactory(temporaryDirectory, "0.0.1");
     }
@@ -383,8 +523,19 @@ class GraalPackageContextFactoryTest {
     }
 
     private PackageContextSpec createSpec(Path entrypoint) {
+        return createSpec(entrypoint, "example-package");
+    }
+
+    private PackageContextSpec createSpec(Path entrypoint, String packageId) {
         return new PackageContextSpec(
-                "example-package", entrypoint.getParent().getParent(), entrypoint, getDataDirectory());
+                packageId,
+                entrypoint.getParent().getParent(),
+                entrypoint,
+                temporaryDirectory
+                        .resolve(PackageDirectories.DATA_DIRECTORY_NAME)
+                        .resolve(packageId)
+                        .toAbsolutePath()
+                        .normalize());
     }
 
     private Path getDataDirectory() {

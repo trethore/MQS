@@ -21,24 +21,35 @@ import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiInstallContext;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiModule;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiSession;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation.JavaTypeGenerationService;
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridge;
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridgeFactory;
 
 public final class JavaApiModule implements PackageApiModule {
     private final ClassInteropBridgeFactory bridgeFactory;
+    private final MqpRuntimeEnvironment environment;
 
     public JavaApiModule(MqpRuntimeEnvironment environment) {
+        this.environment = environment;
         bridgeFactory = new ClassInteropBridgeFactory(environment);
     }
 
     @Override
     public PackageApiSession install(PackageApiInstallContext context) {
         ClassInteropBridge interopBridge = bridgeFactory.create();
-        context.mqp().define("java", JavaApiScript.create(context.javaScriptModules()));
+        JavaTypeGenerationService typeGeneration =
+                new JavaTypeGenerationService(environment, context.spec().packageId(), interopBridge.interopAccess());
+        context.mqp()
+                .define(
+                        "java",
+                        JavaApiScript.create(
+                                context.javaScriptModules(),
+                                typeGeneration.defineClass(),
+                                typeGeneration.defineInterface()));
         context.api().defineGlobal("importClass", interopBridge.importClass());
         context.api().defineGlobal("wrap", interopBridge.wrap());
         context.api().defineGlobal("packages", interopBridge.packages());
         context.api().defineGlobal("net", interopBridge.net());
-        return PackageApiSession.empty();
+        return typeGeneration;
     }
 }

@@ -135,6 +135,24 @@ final class JavaInteropService {
         return wrapReturn(value.asHostObject(), null);
     }
 
+    Object convertValue(Value value, Class<?> targetType) {
+        return executableResolver.convertValue(value, targetType);
+    }
+
+    JavaExecutableResolver.ResolvedExecutable<Constructor<?>> resolveConstructor(
+            Class<?> targetClass, List<Constructor<?>> candidates, Value[] arguments) {
+        return executableResolver.resolveConstructor(targetClass, candidates, arguments);
+    }
+
+    JavaExecutableResolver.ResolvedExecutable<Method> resolveMethod(
+            String methodName, List<Method> candidates, Value[] arguments) {
+        return executableResolver.resolveMethod(methodName, candidates, arguments);
+    }
+
+    Object wrapJavaValue(Object value, String preferredNamedClassName) {
+        return wrapReturn(value, preferredNamedClassName);
+    }
+
     boolean objectsEqual(Object instance, Value other) {
         return instance.equals(executableResolver.convertValue(other, Object.class));
     }

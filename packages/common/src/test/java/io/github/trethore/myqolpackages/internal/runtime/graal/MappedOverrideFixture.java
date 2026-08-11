@@ -15,23 +15,10 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.interop;
+package io.github.trethore.myqolpackages.internal.runtime.graal;
 
-import java.util.Objects;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyObject;
-
-public record ClassInteropBridge(
-        ProxyExecutable importClass,
-        ProxyExecutable wrap,
-        ProxyObject packages,
-        ProxyObject net,
-        JavaInteropAccess interopAccess) {
-    public ClassInteropBridge {
-        Objects.requireNonNull(importClass, "importClass");
-        Objects.requireNonNull(wrap, "wrap");
-        Objects.requireNonNull(packages, "packages");
-        Objects.requireNonNull(net, "net");
-        Objects.requireNonNull(interopAccess, "interopAccess");
+public class MappedOverrideFixture {
+    public String runtimeSpeak(String value) {
+        return "base:" + value;
     }
 }

@@ -147,5 +147,30 @@ if (!finalWriteRejected || Fixture.staticFinalValue !== "static-final") {
   throw new Error("final static field was writable");
 }
 
+// Generated mapped override
+
+const MappedOverrideBase = importClass("net.minecraft.test.MappedOverrideBase");
+const GeneratedMappedOverride = mqp.java
+  .defineClass("GeneratedMappedOverride")
+  .extends(MappedOverrideBase)
+  .method({
+    name: "speak",
+    returnType: Java.type("java.lang.String"),
+    argTypes: Java.type("java.lang.String"),
+    visibility: mqp.java.visibility.PUBLIC,
+    override: true,
+    implementation: function ($self, $super, value) {
+      return `${$super.speak(value)}:generated`;
+    },
+  })
+  .build();
+const generatedMappedOverride = new GeneratedMappedOverride();
+if (generatedMappedOverride.speak("mapped") !== "base:mapped:generated") {
+  throw new Error("generated mapped override failed");
+}
+if (GeneratedMappedOverride._class.getDeclaredMethod("runtimeSpeak", Java.type("java.lang.String")) === null) {
+  throw new Error("generated mapped override did not use the runtime method name");
+}
+
 export function onEnable() {}
 export function onDisable() {}

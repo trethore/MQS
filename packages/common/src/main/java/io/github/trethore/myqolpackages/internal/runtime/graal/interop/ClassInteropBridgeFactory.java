@@ -45,6 +45,7 @@ public final class ClassInteropBridgeFactory {
             }
             return resolver.wrap(arguments[0]);
         };
-        return new ClassInteropBridge(importClass, wrap, packages, packages.getNetPackage());
+        return new ClassInteropBridge(
+                importClass, wrap, packages, packages.getNetPackage(), new JavaInteropAccess(resolver));
     }
 }

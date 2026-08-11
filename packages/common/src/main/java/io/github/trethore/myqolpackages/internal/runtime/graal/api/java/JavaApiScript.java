@@ -17,15 +17,20 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.java;
 
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation.JavaVisibility;
 import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 
 final class JavaApiScript {
     private JavaApiScript() {}
 
-    static Value create(JavaScriptModuleLoader moduleLoader) {
+    static Value create(
+            JavaScriptModuleLoader moduleLoader, ProxyExecutable defineClass, ProxyExecutable defineInterface) {
         Value createJavaApi = moduleLoader.loadFunction(JavaApiScript.class, "java.js");
         return createJavaApi.execute(
+                defineClass,
+                defineInterface,
                 Void.TYPE,
                 Boolean.TYPE,
                 Byte.TYPE,
@@ -34,6 +39,10 @@ final class JavaApiScript {
                 Long.TYPE,
                 Float.TYPE,
                 Double.TYPE,
-                Character.TYPE);
+                Character.TYPE,
+                JavaVisibility.PRIVATE,
+                JavaVisibility.PACKAGE,
+                JavaVisibility.PROTECTED,
+                JavaVisibility.PUBLIC);
     }
 }

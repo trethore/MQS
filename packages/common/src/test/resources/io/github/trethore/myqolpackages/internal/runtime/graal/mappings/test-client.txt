@@ -28,3 +28,5 @@ net.minecraft.alpha.Component -> io.github.trethore.myqolpackages.internal.runti
     java.lang.String alphaValue -> hiddenStaticValue
 net.minecraft.beta.Component -> io.github.trethore.myqolpackages.internal.runtime.graal.MappedClassFixture:
     java.lang.String betaValue -> hiddenStaticValue
+net.minecraft.test.MappedOverrideBase -> io.github.trethore.myqolpackages.internal.runtime.graal.MappedOverrideFixture:
+    java.lang.String speak(java.lang.String) -> runtimeSpeak

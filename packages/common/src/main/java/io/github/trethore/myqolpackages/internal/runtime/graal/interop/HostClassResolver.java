@@ -73,6 +73,33 @@ final class HostClassResolver {
         return interopService.wrap(value);
     }
 
+    Class<?> resolveClass(Value value) {
+        if (value == null || value.isNull()) {
+            throw new IllegalArgumentException("Java type must not be null");
+        }
+        if (value.isProxyObject()) {
+            Object proxy = value.asProxyObject();
+            if (proxy instanceof JavaClassProxy classProxy) {
+                return classProxy.getTargetClass();
+            }
+        }
+        if (value.isHostObject()) {
+            Object hostObject = value.asHostObject();
+            if (hostObject instanceof Class<?> targetClass) {
+                return targetClass;
+            }
+        }
+        throw new IllegalArgumentException("Expected a Java class or MQP class proxy");
+    }
+
+    JavaInteropService getInteropService() {
+        return interopService;
+    }
+
+    io.github.trethore.myqolpackages.internal.runtime.graal.interop.mapping.MappingIndex getMappings() {
+        return metadata.mappings();
+    }
+
     private Class<?> resolveExactClass(String namedClassName) {
         Class<?> identityClass = loadClass(namedClassName);
         if (identityClass != null) {
@@ -93,7 +120,7 @@ final class HostClassResolver {
         }
     }
 
-    private JavaClassProxy getOrCreateProxy(String namedClassName, Class<?> targetClass) {
+    JavaClassProxy getOrCreateProxy(String namedClassName, Class<?> targetClass) {
         ClassProxyKey key = new ClassProxyKey(namedClassName, targetClass);
         return classProxies.computeIfAbsent(
                 key, ignored -> new JavaClassProxy(namedClassName, targetClass, interopService));

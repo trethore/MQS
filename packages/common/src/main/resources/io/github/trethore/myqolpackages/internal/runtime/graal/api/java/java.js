@@ -1,4 +1,6 @@
 export default function createJavaApi(
+  defineClass,
+  defineInterface,
   voidType,
   booleanType,
   byteType,
@@ -8,8 +10,14 @@ export default function createJavaApi(
   floatType,
   doubleType,
   charType,
+  privateVisibility,
+  packageVisibility,
+  protectedVisibility,
+  publicVisibility,
 ) {
   return Object.freeze({
+    defineClass,
+    defineInterface,
     type: Object.freeze({
       void: voidType,
       boolean: booleanType,
@@ -20,6 +28,12 @@ export default function createJavaApi(
       float: floatType,
       double: doubleType,
       char: charType,
+    }),
+    visibility: Object.freeze({
+      PRIVATE: privateVisibility,
+      PACKAGE: packageVisibility,
+      PROTECTED: protectedVisibility,
+      PUBLIC: publicVisibility,
     }),
   });
 }
