@@ -30,7 +30,7 @@ public final class PackageApiInstaller {
 
     public PackageApiInstaller(String mqpVersion, MqpRuntimeEnvironment environment, HttpClient httpClient) {
         this(List.of(
-                new MetadataApiModule(Objects.requireNonNull(mqpVersion, "mqpVersion")),
+                new MqpApiModule(Objects.requireNonNull(mqpVersion, "mqpVersion")),
                 new JavaInteropApiModule(Objects.requireNonNull(environment, "environment")),
                 new FetchApiModule(Objects.requireNonNull(httpClient, "httpClient"))));
     }

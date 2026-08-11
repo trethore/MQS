@@ -27,7 +27,8 @@ public final class JavaScriptApiBridge {
     private static final Source SOURCE = PackageApiSourceLoader.load();
 
     private final Value createFetch;
-    private final Value createMetadata;
+    private final Value createJavaApi;
+    private final Value createMqp;
     private final Value defineGlobal;
     private final Value isArray;
     private final Value isObject;
@@ -43,7 +44,8 @@ public final class JavaScriptApiBridge {
         }
         Value adapter = factory.execute();
         this.createFetch = requireFunction(adapter, "createFetch");
-        this.createMetadata = requireFunction(adapter, "createMetadata");
+        this.createJavaApi = requireFunction(adapter, "createJavaApi");
+        this.createMqp = requireFunction(adapter, "createMqp");
         this.defineGlobal = requireFunction(adapter, "defineGlobal");
         this.isArray = requireFunction(adapter, "isArray");
         this.isObject = requireFunction(adapter, "isObject");
@@ -60,8 +62,22 @@ public final class JavaScriptApiBridge {
         return createFetch.execute(fetchBridge);
     }
 
-    public Value createMetadata(String version, String dataDirectory, String packageId) {
-        return createMetadata.execute(version, dataDirectory, packageId);
+    public Value createJavaApi(
+            Class<?> voidType,
+            Class<?> booleanType,
+            Class<?> byteType,
+            Class<?> shortType,
+            Class<?> intType,
+            Class<?> longType,
+            Class<?> floatType,
+            Class<?> doubleType,
+            Class<?> charType) {
+        return createJavaApi.execute(
+                voidType, booleanType, byteType, shortType, intType, longType, floatType, doubleType, charType);
+    }
+
+    public Value createMqp(String version, String dataDirectory, String packageId, Value javaApi) {
+        return createMqp.execute(version, dataDirectory, packageId, javaApi);
     }
 
     public boolean isArray(Value value) {

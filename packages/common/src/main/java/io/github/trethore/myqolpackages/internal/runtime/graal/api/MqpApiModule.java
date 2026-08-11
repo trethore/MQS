@@ -21,17 +21,27 @@ import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import java.util.Objects;
 import org.graalvm.polyglot.Value;
 
-final class MetadataApiModule implements PackageApiModule {
+final class MqpApiModule implements PackageApiModule {
     private final String mqpVersion;
 
-    MetadataApiModule(String mqpVersion) {
+    MqpApiModule(String mqpVersion) {
         this.mqpVersion = Objects.requireNonNull(mqpVersion, "mqpVersion");
     }
 
     @Override
     public PackageApiSession install(JavaScriptApiBridge bridge, PackageContextSpec spec) {
-        Value metadata = bridge.createMetadata(mqpVersion, spec.dataDirectory().toString(), spec.packageId());
-        bridge.defineGlobal("mqp", metadata);
+        Value javaApi = bridge.createJavaApi(
+                Void.TYPE,
+                Boolean.TYPE,
+                Byte.TYPE,
+                Short.TYPE,
+                Integer.TYPE,
+                Long.TYPE,
+                Float.TYPE,
+                Double.TYPE,
+                Character.TYPE);
+        Value mqp = bridge.createMqp(mqpVersion, spec.dataDirectory().toString(), spec.packageId(), javaApi);
+        bridge.defineGlobal("mqp", mqp);
         return PackageApiSession.empty();
     }
 }

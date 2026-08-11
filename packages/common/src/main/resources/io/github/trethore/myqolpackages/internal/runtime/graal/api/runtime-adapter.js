@@ -115,11 +115,38 @@ export default function createRuntimeAdapter() {
       });
     },
 
-    createMetadata(version, dataDirectory, packageId) {
+    createJavaApi(
+      voidType,
+      booleanType,
+      byteType,
+      shortType,
+      intType,
+      longType,
+      floatType,
+      doubleType,
+      charType,
+    ) {
+      return Object.freeze({
+        type: Object.freeze({
+          void: voidType,
+          boolean: booleanType,
+          byte: byteType,
+          short: shortType,
+          int: intType,
+          long: longType,
+          float: floatType,
+          double: doubleType,
+          char: charType,
+        }),
+      });
+    },
+
+    createMqp(version, dataDirectory, packageId, javaApi) {
       return Object.freeze({
         version: String(version),
         dataDirectory: String(dataDirectory),
         package: Object.freeze({ id: String(packageId) }),
+        java: javaApi,
       });
     },
 
