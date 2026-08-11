@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDirectories;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -226,6 +227,30 @@ class FileSystemPackageDiscoveryTest {
     }
 
     @Test
+    void rejectsEntrypointSymlinkOutsidePackageDirectory() throws IOException {
+        Path outsideEntrypoint = temporaryDirectory.resolve("outside.js");
+        Files.writeString(outsideEntrypoint, "");
+        Path packageDirectory = temporaryDirectory.resolve("symlink-entrypoint");
+        Files.createDirectories(packageDirectory.resolve("src"));
+        Files.createSymbolicLink(packageDirectory.resolve("src/index.js"), outsideEntrypoint);
+        Files.writeString(packageDirectory.resolve("manifest.json"), """
+        {
+          "name": "Symlink Entrypoint",
+          "description": "A package with an entrypoint symlink outside its directory.",
+          "version": "1.0.0",
+          "entrypoint": "src/index.js"
+        }
+        """);
+
+        PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
+
+        assertTrue(result.packages().isEmpty());
+        assertEquals(
+                "Entrypoint must be inside the package directory",
+                result.diagnostics().getFirst().message());
+    }
+
+    @Test
     void ignoresLegacyPackagePermissions() throws IOException {
         createPackage("package-directory", """
         {
@@ -256,7 +281,9 @@ class FileSystemPackageDiscoveryTest {
 
     @Test
     void ignoresPackageDataDirectory() throws IOException {
-        Files.createDirectories(temporaryDirectory.resolve(".package-data/example-package"));
+        Files.createDirectories(temporaryDirectory
+                .resolve(PackageDirectories.DATA_DIRECTORY_NAME)
+                .resolve("example-package"));
 
         PackageDiscoverySnapshot result = new FileSystemPackageDiscovery().discover(temporaryDirectory);
 

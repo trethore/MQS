@@ -19,6 +19,7 @@ package io.github.trethore.myqolpackages.internal.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
@@ -69,6 +70,7 @@ class FileMqpConfigStoreTest {
         assertTrue(result.config().additionalPackageRoots().isEmpty());
         assertTrue(result.config().enabledPackages().isEmpty());
         assertEquals(1, result.diagnostics().size());
+        assertThrows(IOException.class, () -> configManager.addEnabledPackage("example-package"));
         assertEquals("{", Files.readString(configPath));
     }
 

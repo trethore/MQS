@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDirectories;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageManifest;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
@@ -74,7 +75,8 @@ class PackageInstanceTest {
 
         assertEquals(
                 additionalRoot
-                        .resolve(".package-data/example-package")
+                        .resolve(PackageDirectories.DATA_DIRECTORY_NAME)
+                        .resolve("example-package")
                         .toAbsolutePath()
                         .normalize(),
                 contextFactory.dataDirectory);

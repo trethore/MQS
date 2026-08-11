@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDirectories;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,8 +57,11 @@ class PackageFingerprintServiceTest {
         PackageFingerprintService service = new PackageFingerprintService();
         String before = service.fingerprint(packageDirectory);
 
-        Files.createDirectories(temporaryDirectory.resolve("package-data/example"));
-        Files.writeString(temporaryDirectory.resolve("package-data/example/state.json"), "state");
+        Path dataDirectory = temporaryDirectory
+                .resolve(PackageDirectories.DATA_DIRECTORY_NAME)
+                .resolve("example");
+        Files.createDirectories(dataDirectory);
+        Files.writeString(dataDirectory.resolve("state.json"), "state");
 
         assertEquals(before, service.fingerprint(packageDirectory));
     }

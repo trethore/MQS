@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDirectories;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;
@@ -388,7 +389,8 @@ class GraalPackageContextFactoryTest {
 
     private Path getDataDirectory() {
         return temporaryDirectory
-                .resolve("package-data/example-package")
+                .resolve(PackageDirectories.DATA_DIRECTORY_NAME)
+                .resolve("example-package")
                 .toAbsolutePath()
                 .normalize();
     }
