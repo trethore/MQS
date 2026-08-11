@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.trethore.myqolpackages.internal.network.http.PackageHttpResponse;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.graalvm.polyglot.proxy.ProxyArray;

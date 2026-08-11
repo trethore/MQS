@@ -15,8 +15,27 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api;
+package io.github.trethore.myqolpackages.internal.runtime.graal.api.js;
 
-public interface PackageApiModule {
-    PackageApiSession install(PackageApiInstallContext context);
+import org.graalvm.polyglot.Value;
+
+public final class JavaScriptRuntimeSupport {
+    private final JavaScriptGlobalSupport globals;
+    private final JavaScriptValueSupport values;
+
+    public JavaScriptRuntimeSupport(JavaScriptModuleLoader moduleLoader) {
+        Value support = moduleLoader
+                .loadFunction(JavaScriptRuntimeSupport.class, "shared.js")
+                .execute();
+        this.globals = new JavaScriptGlobalSupport(support);
+        this.values = new JavaScriptValueSupport(support);
+    }
+
+    public JavaScriptGlobalSupport globals() {
+        return globals;
+    }
+
+    public JavaScriptValueSupport values() {
+        return values;
+    }
 }

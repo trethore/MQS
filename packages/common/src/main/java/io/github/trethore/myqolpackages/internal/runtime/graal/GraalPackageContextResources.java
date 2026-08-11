@@ -85,7 +85,7 @@ final class GraalPackageContextResources implements AutoCloseable {
             apiSession.tick();
         } catch (RuntimeException exception) {
             throw GraalPackageExceptionSupport.createFailure(
-                    "Could not process an HTTP completion", exception, packageDirectory);
+                    "Could not process package API updates", exception, packageDirectory);
         }
     }
 }

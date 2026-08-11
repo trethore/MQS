@@ -15,8 +15,18 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api;
+package io.github.trethore.myqolpackages.internal.runtime.graal.api.java.interop;
 
-public interface PackageApiModule {
-    PackageApiSession install(PackageApiInstallContext context);
+import java.util.Objects;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
+
+public record ClassInteropBridge(
+        ProxyExecutable importClass, ProxyExecutable wrap, ProxyObject packages, ProxyObject net) {
+    public ClassInteropBridge {
+        Objects.requireNonNull(importClass, "importClass");
+        Objects.requireNonNull(wrap, "wrap");
+        Objects.requireNonNull(packages, "packages");
+        Objects.requireNonNull(net, "net");
+    }
 }

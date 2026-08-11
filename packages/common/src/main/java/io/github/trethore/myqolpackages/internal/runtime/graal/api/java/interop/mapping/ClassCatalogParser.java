@@ -15,8 +15,25 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api;
+package io.github.trethore.myqolpackages.internal.runtime.graal.api.java.interop.mapping;
 
-public interface PackageApiModule {
-    PackageApiSession install(PackageApiInstallContext context);
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.Reader;
+
+public final class ClassCatalogParser {
+    private static final String COMMENT_PREFIX = "#";
+
+    public ClassCatalog parse(Reader source) throws IOException {
+        ClassCatalog.Builder catalog = ClassCatalog.builder();
+        BufferedReader reader = new BufferedReader(source);
+        String line;
+        while ((line = reader.readLine()) != null) {
+            String className = line.trim();
+            if (!className.isEmpty() && !className.startsWith(COMMENT_PREFIX)) {
+                catalog.add(className);
+            }
+        }
+        return catalog.build();
+    }
 }

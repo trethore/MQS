@@ -19,6 +19,11 @@ package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.FetchApiModule;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.JavaApiModule;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptModuleLoader;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptRuntimeSupport;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.mqp.MqpApiScript;
 import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,26 +31,37 @@ import java.util.Objects;
 import org.graalvm.polyglot.Context;
 
 public final class PackageApiInstaller {
+    private final String mqpVersion;
     private final List<PackageApiModule> modules;
 
     public PackageApiInstaller(String mqpVersion, MqpRuntimeEnvironment environment, HttpClient httpClient) {
-        this(List.of(
-                new MqpApiModule(Objects.requireNonNull(mqpVersion, "mqpVersion")),
-                new JavaInteropApiModule(Objects.requireNonNull(environment, "environment")),
-                new FetchApiModule(Objects.requireNonNull(httpClient, "httpClient"))));
+        this(
+                Objects.requireNonNull(mqpVersion, "mqpVersion"),
+                List.of(
+                        new JavaApiModule(Objects.requireNonNull(environment, "environment")),
+                        new FetchApiModule(Objects.requireNonNull(httpClient, "httpClient"))));
     }
 
-    public PackageApiInstaller(List<PackageApiModule> modules) {
+    public PackageApiInstaller(String mqpVersion, List<PackageApiModule> modules) {
+        this.mqpVersion = Objects.requireNonNull(mqpVersion, "mqpVersion");
         this.modules = List.copyOf(modules);
     }
 
     public PackageApiSession install(Context context, PackageContextSpec spec) {
-        JavaScriptApiBridge bridge = new JavaScriptApiBridge(context);
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(spec, "spec");
+        JavaScriptModuleLoader moduleLoader = new JavaScriptModuleLoader(context);
+        JavaScriptRuntimeSupport javaScriptRuntime = new JavaScriptRuntimeSupport(moduleLoader);
+        GlobalApiRegistry globals = new GlobalApiRegistry(javaScriptRuntime.globals());
+        MqpApiBuilder mqp = new MqpApiBuilder();
+        PackageApiInstallContext installContext =
+                new PackageApiInstallContext(spec, moduleLoader, javaScriptRuntime.values(), globals, mqp);
         List<PackageApiSession> sessions = new ArrayList<>();
         try {
             for (PackageApiModule module : modules) {
-                sessions.add(module.install(bridge, spec));
+                sessions.add(Objects.requireNonNull(module.install(installContext), "module session"));
             }
+            globals.install(MqpApiScript.create(moduleLoader, mqpVersion, spec, mqp.members()));
             return new CompositePackageApiSession(sessions);
         } catch (RuntimeException exception) {
             try {

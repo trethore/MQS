@@ -15,8 +15,13 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api;
+package io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http;
 
-public interface PackageApiModule {
-    PackageApiSession install(PackageApiInstallContext context);
+import java.util.Objects;
+
+public record PackageHttpHeader(String name, String value) {
+    public PackageHttpHeader {
+        name = Objects.requireNonNull(name, "name").trim();
+        value = Objects.requireNonNull(value, "value").trim();
+    }
 }

@@ -17,10 +17,10 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch;
 
-import io.github.trethore.myqolpackages.internal.network.http.PackageHttpClient;
-import io.github.trethore.myqolpackages.internal.network.http.PackageHttpRequest;
-import io.github.trethore.myqolpackages.internal.network.http.PackageHttpResponse;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.JavaScriptApiBridge;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpClient;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpRequest;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpResponse;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptValueSupport;
 import java.util.Objects;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -36,8 +36,8 @@ public final class FetchApi implements ProxyExecutable, AutoCloseable {
 
     private volatile boolean closed;
 
-    public FetchApi(JavaScriptApiBridge adapter, PackageHttpClient httpClient) {
-        this.requestParser = new FetchRequestParser(Objects.requireNonNull(adapter, "adapter"));
+    FetchApi(JavaScriptValueSupport javaScriptValues, PackageHttpClient httpClient) {
+        this.requestParser = new FetchRequestParser(Objects.requireNonNull(javaScriptValues, "javaScriptValues"));
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
     }
 

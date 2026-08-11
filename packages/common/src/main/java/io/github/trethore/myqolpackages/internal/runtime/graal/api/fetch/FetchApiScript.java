@@ -15,8 +15,17 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api;
+package io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch;
 
-public interface PackageApiModule {
-    PackageApiSession install(PackageApiInstallContext context);
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptModuleLoader;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+
+final class FetchApiScript {
+    private FetchApiScript() {}
+
+    static Value create(JavaScriptModuleLoader moduleLoader, ProxyExecutable fetchBridge) {
+        Value createFetch = moduleLoader.loadFunction(FetchApiScript.class, "fetch.js");
+        return createFetch.execute(fetchBridge);
+    }
 }

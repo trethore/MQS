@@ -19,6 +19,7 @@ package io.github.trethore.myqolpackages.internal.runtime.graal.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import java.nio.file.Path;
@@ -36,7 +37,7 @@ class PackageApiInstallerTest {
     void installsTicksAndClosesModulesInLifecycleOrder() {
         List<String> events = new ArrayList<>();
         PackageApiInstaller installer =
-                new PackageApiInstaller(List.of(recordingModule("first", events), recordingModule("second", events)));
+                createInstaller(List.of(recordingModule("first", events), recordingModule("second", events)));
 
         try (Context context = createContext();
                 PackageApiSession session = installer.install(context, createSpec())) {
@@ -51,12 +52,11 @@ class PackageApiInstallerTest {
     @Test
     void closesInstalledModulesWhenInstallationFails() {
         List<String> events = new ArrayList<>();
-        PackageApiModule failingModule = (bridge, spec) -> {
+        PackageApiModule failingModule = context -> {
             events.add("install:failing");
             throw new IllegalStateException("failed");
         };
-        PackageApiInstaller installer =
-                new PackageApiInstaller(List.of(recordingModule("first", events), failingModule));
+        PackageApiInstaller installer = createInstaller(List.of(recordingModule("first", events), failingModule));
         PackageContextSpec spec = createSpec();
 
         try (Context context = createContext()) {
@@ -64,6 +64,110 @@ class PackageApiInstallerTest {
         }
 
         assertEquals(List.of("install:first", "install:failing", "close:first"), events);
+    }
+
+    @Test
+    void installsContributedGlobalsAndMqpMembers() {
+        PackageApiModule module = context -> {
+            context.globals().define("exampleGlobal", "global-value");
+            context.mqp().define("example", "mqp-value");
+            return PackageApiSession.empty();
+        };
+        PackageApiInstaller installer = new PackageApiInstaller("1.2.3", List.of(module));
+
+        try (Context context = createContext()) {
+            PackageApiSession session = installer.install(context, createSpec());
+            try (session) {
+                assertEquals("global-value", context.eval("js", "exampleGlobal").asString());
+                assertEquals("mqp-value", context.eval("js", "mqp.example").asString());
+                assertEquals("1.2.3", context.eval("js", "mqp.version").asString());
+                assertTrue(context.eval("js", "Object.isFrozen(mqp)").asBoolean());
+            }
+        }
+    }
+
+    @Test
+    void rejectsDuplicateGlobalContributionsAndClosesInstalledModules() {
+        List<String> events = new ArrayList<>();
+        PackageApiModule first = context -> {
+            context.globals().define("duplicate", "first");
+            return recordingSession("first", events);
+        };
+        PackageApiModule second = context -> {
+            context.globals().define("duplicate", "second");
+            return PackageApiSession.empty();
+        };
+        PackageApiInstaller installer = createInstaller(List.of(first, second));
+        PackageContextSpec spec = createSpec();
+
+        try (Context context = createContext()) {
+            IllegalArgumentException exception =
+                    assertThrows(IllegalArgumentException.class, () -> installer.install(context, spec));
+
+            assertTrue(exception.getMessage().contains("Duplicate package API global"));
+        }
+        assertEquals(List.of("close:first"), events);
+    }
+
+    @Test
+    void rejectsDuplicateMqpMembersAndClosesInstalledModules() {
+        List<String> events = new ArrayList<>();
+        PackageApiModule first = context -> {
+            context.mqp().define("duplicate", "first");
+            return recordingSession("first", events);
+        };
+        PackageApiModule second = context -> {
+            context.mqp().define("duplicate", "second");
+            return PackageApiSession.empty();
+        };
+        PackageApiInstaller installer = createInstaller(List.of(first, second));
+        PackageContextSpec spec = createSpec();
+
+        try (Context context = createContext()) {
+            IllegalArgumentException exception =
+                    assertThrows(IllegalArgumentException.class, () -> installer.install(context, spec));
+
+            assertTrue(exception.getMessage().contains("Duplicate MQP API member"));
+        }
+        assertEquals(List.of("close:first"), events);
+    }
+
+    @Test
+    void closesInstalledModulesWhenGlobalFinalizationFails() {
+        List<String> events = new ArrayList<>();
+        PackageApiModule module = context -> {
+            context.globals().define("occupied", "value");
+            return recordingSession("module", events);
+        };
+        PackageApiInstaller installer = createInstaller(List.of(module));
+        PackageContextSpec spec = createSpec();
+
+        try (Context context = createContext()) {
+            context.eval("js", "Object.defineProperty(globalThis, 'occupied', { value: true })");
+
+            IllegalStateException exception =
+                    assertThrows(IllegalStateException.class, () -> installer.install(context, spec));
+
+            assertTrue(exception.getMessage().contains("globalThis already contains it: occupied"));
+        }
+        assertEquals(List.of("close:module"), events);
+    }
+
+    @Test
+    void rejectsReservedMqpMembers() {
+        PackageApiModule module = context -> {
+            context.mqp().define("version", "invalid");
+            return PackageApiSession.empty();
+        };
+        PackageApiInstaller installer = createInstaller(List.of(module));
+        PackageContextSpec spec = createSpec();
+
+        try (Context context = createContext()) {
+            IllegalArgumentException exception =
+                    assertThrows(IllegalArgumentException.class, () -> installer.install(context, spec));
+
+            assertTrue(exception.getMessage().contains("member name is reserved"));
+        }
     }
 
     private PackageContextSpec createSpec() {
@@ -80,20 +184,28 @@ class PackageApiInstallerTest {
                 .build();
     }
 
-    private static PackageApiModule recordingModule(String name, List<String> events) {
-        return (bridge, spec) -> {
-            events.add("install:" + name);
-            return new PackageApiSession() {
-                @Override
-                public void tick() {
-                    events.add("tick:" + name);
-                }
+    private static PackageApiInstaller createInstaller(List<PackageApiModule> modules) {
+        return new PackageApiInstaller("test", modules);
+    }
 
-                @Override
-                public void close() {
-                    events.add("close:" + name);
-                }
-            };
+    private static PackageApiModule recordingModule(String name, List<String> events) {
+        return context -> {
+            events.add("install:" + name);
+            return recordingSession(name, events);
+        };
+    }
+
+    private static PackageApiSession recordingSession(String name, List<String> events) {
+        return new PackageApiSession() {
+            @Override
+            public void tick() {
+                events.add("tick:" + name);
+            }
+
+            @Override
+            public void close() {
+                events.add("close:" + name);
+            }
         };
     }
 }

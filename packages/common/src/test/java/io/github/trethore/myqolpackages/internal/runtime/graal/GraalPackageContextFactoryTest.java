@@ -158,7 +158,6 @@ class GraalPackageContextFactoryTest {
 
     @Test
     void exposesRuntimeApis() throws IOException, PackageLifecycleException {
-        Path dataDirectory = getDataDirectory();
         Path entrypoint = createEntrypointFromResource("exposes-runtime-apis.js");
         Files.writeString(entrypoint.resolveSibling("value.js"), readScriptResource("value.js"));
 
@@ -166,7 +165,28 @@ class GraalPackageContextFactoryTest {
                 PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
             assertDoesNotThrow(context::invokeEnable);
         }
+    }
+
+    @Test
+    void exposesMqpApi() throws IOException, PackageLifecycleException {
+        Path dataDirectory = getDataDirectory();
+        Path entrypoint = createEntrypointFromResource("mqp-api.js");
+
+        try (GraalPackageContextFactory contextFactory = createContextFactory();
+                PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
+            assertDoesNotThrow(context::invokeEnable);
+        }
         assertTrue(Files.isRegularFile(dataDirectory.resolve("created-during-load.txt")));
+    }
+
+    @Test
+    void exposesJavaApi() throws IOException, PackageLifecycleException {
+        Path entrypoint = createEntrypointFromResource("java-api.js");
+
+        try (GraalPackageContextFactory contextFactory = createContextFactory();
+                PackageScriptContext context = contextFactory.create(createSpec(entrypoint))) {
+            assertDoesNotThrow(context::invokeEnable);
+        }
     }
 
     @Test

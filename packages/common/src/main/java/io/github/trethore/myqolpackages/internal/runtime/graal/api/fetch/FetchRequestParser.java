@@ -17,9 +17,9 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch;
 
-import io.github.trethore.myqolpackages.internal.network.http.PackageHttpHeader;
-import io.github.trethore.myqolpackages.internal.network.http.PackageHttpRequest;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.JavaScriptApiBridge;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpHeader;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.fetch.http.PackageHttpRequest;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.js.JavaScriptValueSupport;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -34,17 +34,17 @@ final class FetchRequestParser {
     private static final String METHOD_OPTION = "method";
     private static final Set<String> SUPPORTED_OPTIONS = Set.of(METHOD_OPTION, HEADERS_OPTION, BODY_OPTION);
 
-    private final JavaScriptApiBridge adapter;
+    private final JavaScriptValueSupport javaScriptValues;
 
-    FetchRequestParser(JavaScriptApiBridge adapter) {
-        this.adapter = adapter;
+    FetchRequestParser(JavaScriptValueSupport javaScriptValues) {
+        this.javaScriptValues = javaScriptValues;
     }
 
     PackageHttpRequest parse(Value input, Value init) {
         if (input == null || !input.isString()) {
             throw new IllegalArgumentException("fetch URL must be a string");
         }
-        if (init == null || !adapter.isObject(init)) {
+        if (init == null || !javaScriptValues.isObject(init)) {
             throw new IllegalArgumentException("fetch options must be an object");
         }
         validateOptions(init);
@@ -55,7 +55,7 @@ final class FetchRequestParser {
     }
 
     private void validateOptions(Value init) {
-        Value keys = adapter.ownKeys(init);
+        Value keys = javaScriptValues.ownKeys(init);
         for (long index = 0; index < keys.getArraySize(); index++) {
             String option = keys.getArrayElement(index).asString();
             if (!SUPPORTED_OPTIONS.contains(option)) {
@@ -65,30 +65,30 @@ final class FetchRequestParser {
     }
 
     private String parseMethod(Value method) {
-        return isUndefined(method) ? "GET" : adapter.stringify(method).toUpperCase(Locale.ROOT);
+        return isUndefined(method) ? "GET" : javaScriptValues.stringify(method).toUpperCase(Locale.ROOT);
     }
 
     private List<PackageHttpHeader> parseHeaders(Value headers) {
         if (isNullish(headers)) {
             return List.of();
         }
-        if (adapter.isArray(headers)) {
+        if (javaScriptValues.isArray(headers)) {
             List<PackageHttpHeader> result = new ArrayList<>();
             for (long index = 0; index < headers.getArraySize(); index++) {
                 Value entry = headers.getArrayElement(index);
-                if (!adapter.isArray(entry) || entry.getArraySize() != 2) {
+                if (!javaScriptValues.isArray(entry) || entry.getArraySize() != 2) {
                     throw new IllegalArgumentException("Invalid header entry");
                 }
                 result.add(createHeader(entry.getArrayElement(0), entry.getArrayElement(1)));
             }
             return List.copyOf(result);
         }
-        if (adapter.isObject(headers)) {
+        if (javaScriptValues.isObject(headers)) {
             List<PackageHttpHeader> result = new ArrayList<>();
-            Value keys = adapter.ownKeys(headers);
+            Value keys = javaScriptValues.ownKeys(headers);
             for (long index = 0; index < keys.getArraySize(); index++) {
                 String name = keys.getArrayElement(index).asString();
-                result.add(new PackageHttpHeader(name, adapter.stringify(headers.getMember(name))));
+                result.add(new PackageHttpHeader(name, javaScriptValues.stringify(headers.getMember(name))));
             }
             return List.copyOf(result);
         }
@@ -96,22 +96,22 @@ final class FetchRequestParser {
     }
 
     private PackageHttpHeader createHeader(Value name, Value value) {
-        return new PackageHttpHeader(adapter.stringify(name), adapter.stringify(value));
+        return new PackageHttpHeader(javaScriptValues.stringify(name), javaScriptValues.stringify(value));
     }
 
     private PackageHttpRequest createRequest(URI uri, String method, List<PackageHttpHeader> headers, Value body) {
         if (isNullish(body)) {
             return PackageHttpRequest.withoutBody(uri, method, headers);
         }
-        byte[] bodyBytes = adapter.stringify(body).getBytes(StandardCharsets.UTF_8);
+        byte[] bodyBytes = javaScriptValues.stringify(body).getBytes(StandardCharsets.UTF_8);
         return PackageHttpRequest.withBody(uri, method, headers, bodyBytes);
     }
 
     private boolean isNullish(Value value) {
-        return value == null || value.isNull() || adapter.isUndefined(value);
+        return value == null || value.isNull() || javaScriptValues.isUndefined(value);
     }
 
     private boolean isUndefined(Value value) {
-        return value == null || adapter.isUndefined(value);
+        return value == null || javaScriptValues.isUndefined(value);
     }
 }
