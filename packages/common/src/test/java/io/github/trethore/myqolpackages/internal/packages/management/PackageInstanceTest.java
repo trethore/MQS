@@ -15,13 +15,15 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.packages.management;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.trethore.myqolpackages.api.packages.PackageState;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageManifest;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;

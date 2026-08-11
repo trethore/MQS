@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.packages.management;
 
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
@@ -29,6 +29,8 @@ import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustState;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigLoadResult;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigStore;
+import io.github.trethore.myqolpackages.internal.packages.discovery.PackageDiscoveryService;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageLifecycleException;
 import io.github.trethore.myqolpackages.internal.trust.PackageFingerprintService;

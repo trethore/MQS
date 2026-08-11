@@ -15,10 +15,13 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.packages.discovery;
 
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
+import io.github.trethore.myqolpackages.internal.packages.root.PackageRootResolution;
+import io.github.trethore.myqolpackages.internal.packages.root.PackageRootResolver;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,7 +39,7 @@ public final class PackageDiscoveryService {
         this.fileSystemDiscovery = Objects.requireNonNull(fileSystemDiscovery, "fileSystemDiscovery");
     }
 
-    Result discover(MqpConfig config) {
+    public Result discover(MqpConfig config) {
         PackageRootResolution rootResolution = rootResolver.resolvePackageRoots(config);
         List<PackageDiagnostic> diagnostics = new ArrayList<>(rootResolution.diagnostics());
         Map<String, List<PackageDescriptor>> packagesById = new LinkedHashMap<>();
@@ -67,8 +70,8 @@ public final class PackageDiscoveryService {
         return new Result(discoveredPackages, diagnostics);
     }
 
-    record Result(Map<String, PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
-        Result {
+    public record Result(Map<String, PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
+        public Result {
             packages = Collections.unmodifiableMap(new LinkedHashMap<>(packages));
             diagnostics = List.copyOf(diagnostics);
         }

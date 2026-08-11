@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.packages.management;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -29,6 +29,9 @@ import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
 import io.github.trethore.myqolpackages.api.packages.TrustVersionScope;
 import io.github.trethore.myqolpackages.internal.config.FileMqpConfigStore;
+import io.github.trethore.myqolpackages.internal.packages.discovery.FileSystemPackageDiscovery;
+import io.github.trethore.myqolpackages.internal.packages.discovery.PackageDiscoveryService;
+import io.github.trethore.myqolpackages.internal.packages.root.ConfiguredPackageRootResolver;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;
 import io.github.trethore.myqolpackages.internal.runtime.PackageScriptContext;

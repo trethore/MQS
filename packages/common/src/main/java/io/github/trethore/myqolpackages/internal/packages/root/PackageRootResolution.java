@@ -15,21 +15,15 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.packages.root;
 
+import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import java.nio.file.Path;
+import java.util.List;
 
-final class PackageDirectories {
-    static final String DATA_DIRECTORY_NAME = ".package-data";
-
-    private PackageDirectories() {}
-
-    static Path resolveDataDirectory(Path packageDirectory, String packageId) {
-        Path normalizedPackageDirectory = packageDirectory.toAbsolutePath().normalize();
-        Path packageRoot = normalizedPackageDirectory.getParent();
-        if (packageRoot == null) {
-            throw new IllegalArgumentException("Package directory must have a parent directory");
-        }
-        return packageRoot.resolve(DATA_DIRECTORY_NAME).resolve(packageId).normalize();
+public record PackageRootResolution(List<Path> packageRoots, List<PackageDiagnostic> diagnostics) {
+    public PackageRootResolution {
+        packageRoots = List.copyOf(packageRoots);
+        diagnostics = List.copyOf(diagnostics);
     }
 }

@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.packages.model;
 
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
@@ -23,17 +23,17 @@ import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
 import io.github.trethore.myqolpackages.internal.trust.SemanticVersion;
 import java.nio.file.Path;
 
-record PackageDescriptor(
+public record PackageDescriptor(
         String id, Path packageDirectory, Path entrypoint, PackageManifest manifest, SemanticVersion semanticVersion) {
-    PackageDescriptor(String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
+    public PackageDescriptor(String id, Path packageDirectory, Path entrypoint, PackageManifest manifest) {
         this(id, packageDirectory, entrypoint, manifest, SemanticVersion.parse(manifest.version()));
     }
 
-    Path dataDirectory() {
+    public Path dataDirectory() {
         return PackageDirectories.resolveDataDirectory(packageDirectory, id);
     }
 
-    PackageInfo toInfo(PackageState state, PackageTrustInfo trustInfo) {
+    public PackageInfo toInfo(PackageState state, PackageTrustInfo trustInfo) {
         return new PackageInfo(
                 id,
                 manifest.name(),

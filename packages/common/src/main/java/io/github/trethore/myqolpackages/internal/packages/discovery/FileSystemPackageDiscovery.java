@@ -15,9 +15,12 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.packages.discovery;
 
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageDirectories;
+import io.github.trethore.myqolpackages.internal.packages.model.PackageManifest;
 import io.github.trethore.myqolpackages.internal.trust.SemanticVersion;
 import java.io.IOException;
 import java.nio.file.Files;

@@ -15,14 +15,10 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages;
+package io.github.trethore.myqolpackages.internal.packages.root;
 
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
-import java.util.List;
+import io.github.trethore.myqolpackages.api.config.MqpConfig;
 
-record PackageDiscoverySnapshot(List<PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
-    PackageDiscoverySnapshot {
-        packages = List.copyOf(packages);
-        diagnostics = List.copyOf(diagnostics);
-    }
+public interface PackageRootResolver {
+    PackageRootResolution resolvePackageRoots(MqpConfig config);
 }
