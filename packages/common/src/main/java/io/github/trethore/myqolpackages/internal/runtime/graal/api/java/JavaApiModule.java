@@ -58,6 +58,8 @@ public final class JavaApiModule implements PackageApiModule {
         }
     }
 
+    // Sessions have lifecycle and identity semantics, not value semantics.
+    @SuppressWarnings("ClassCanBeRecord")
     private static final class JavaApiSession implements PackageApiSession {
         private final JavaTypeGenerationService typeGeneration;
 

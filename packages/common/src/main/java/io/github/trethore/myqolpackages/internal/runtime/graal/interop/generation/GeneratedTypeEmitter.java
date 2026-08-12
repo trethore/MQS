@@ -164,6 +164,8 @@ final class GeneratedTypeEmitter {
         return builder;
     }
 
+    // Bytecode appenders use identity semantics as behavioral strategy objects.
+    @SuppressWarnings("ClassCanBeRecord")
     private static final class StaticFieldInitializer implements ByteCodeAppender {
         private final GeneratedTypeDefinition definition;
 

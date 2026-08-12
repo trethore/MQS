@@ -108,6 +108,8 @@ final class GeneratedTypeRegistry {
         }
     }
 
+    // Registry keys must compare class loaders by identity.
+    @SuppressWarnings("ClassCanBeRecord")
     private static final class RegistryKey {
         private final ClassLoader classLoader;
         private final String binaryName;
