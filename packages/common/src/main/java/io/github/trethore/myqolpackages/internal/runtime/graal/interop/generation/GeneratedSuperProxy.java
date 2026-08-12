@@ -220,11 +220,7 @@ final class GeneratedSuperProxy implements ProxyObject {
     }
 
     private boolean isMemberAccessible(Class<?> declaringClass, int modifiers) {
-        if (Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers)) {
-            return true;
-        }
-        return !Modifier.isPrivate(modifiers)
-                && packageName(declaringClass.getName()).equals(packageName(generatedClass.getName()));
+        return GeneratedTypeAccess.isMemberAccessible(declaringClass, modifiers, generatedClass.getName());
     }
 
     private void requireActive() {
@@ -234,11 +230,6 @@ final class GeneratedSuperProxy implements ProxyObject {
         if (Thread.currentThread() != scope.thread) {
             throw new IllegalStateException("$super cannot be used from another thread");
         }
-    }
-
-    private static String packageName(String binaryName) {
-        int separator = binaryName.lastIndexOf('.');
-        return separator < 0 ? "" : binaryName.substring(0, separator);
     }
 
     private static IllegalStateException invocationFailure(String operation, Throwable throwable) {

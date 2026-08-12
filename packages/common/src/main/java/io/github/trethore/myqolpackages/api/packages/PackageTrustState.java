@@ -25,5 +25,9 @@ public enum PackageTrustState {
     FINGERPRINT_MISSING,
     FINGERPRINT_MISMATCH_ALLOWED,
     FINGERPRINT_MISMATCH_BLOCKED,
-    FINGERPRINT_ERROR
+    FINGERPRINT_ERROR;
+
+    public boolean requiresTrust() {
+        return this == UNTRUSTED || this == VERSION_NOT_TRUSTED;
+    }
 }

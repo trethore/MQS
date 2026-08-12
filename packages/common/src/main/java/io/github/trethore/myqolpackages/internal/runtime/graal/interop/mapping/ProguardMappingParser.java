@@ -23,12 +23,12 @@ import java.io.Reader;
 import java.util.Arrays;
 import java.util.List;
 
-public final class ProguardMappingParser {
+final class ProguardMappingParser {
     private static final String CLASS_MAPPING_SUFFIX = ":";
     private static final String COMMENT_PREFIX = "#";
     private static final String MAPPING_SEPARATOR = "->";
 
-    public ParsedMappings parse(Reader source) throws IOException {
+    ParsedMappings parse(Reader source) throws IOException {
         ClassCatalog.Builder catalog = ClassCatalog.builder();
         MappingIndex.Builder mappings = MappingIndex.builder();
         BufferedReader reader = new BufferedReader(source);
@@ -121,5 +121,5 @@ public final class ProguardMappingParser {
         return className.trim().replace('/', '.');
     }
 
-    public record ParsedMappings(ClassCatalog catalog, MappingIndex mappings) {}
+    record ParsedMappings(ClassCatalog catalog, MappingIndex mappings) {}
 }

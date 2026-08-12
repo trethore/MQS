@@ -17,6 +17,26 @@
  */
 package io.github.trethore.myqolpackages.internal.trust;
 
+import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
 
-public record PackageTrustEvaluation(PackageTrustInfo info, boolean allowed, boolean warning, boolean chatVisible) {}
+public record PackageTrustEvaluation(PackageTrustInfo info, Outcome outcome) {
+    public boolean allowed() {
+        return outcome != Outcome.BLOCKED;
+    }
+
+    public boolean warning() {
+        return outcome == Outcome.WARNING;
+    }
+
+    public boolean chatVisible() {
+        return outcome == Outcome.BLOCKED
+                || (warning() && info.mismatchBehavior() == FingerprintMismatchBehavior.CHAT_WARNING);
+    }
+
+    public enum Outcome {
+        ALLOWED,
+        WARNING,
+        BLOCKED
+    }
+}

@@ -30,4 +30,8 @@ public record TrustConfig(FingerprintDefaultsConfig fingerprintDefaults, Map<Str
     public static TrustConfig defaults() {
         return new TrustConfig(FingerprintDefaultsConfig.defaults(), Map.of());
     }
+
+    public TrustConfig withPackages(Map<String, PackageTrustConfig> updatedPackages) {
+        return new TrustConfig(fingerprintDefaults, updatedPackages);
+    }
 }

@@ -21,6 +21,7 @@ import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
@@ -45,19 +46,20 @@ public record ClassInteropMetadata(ClassCatalog catalog, MappingIndex mappings) 
     }
 
     private static ClassCatalog loadCatalog(MqpRuntimeEnvironment environment, String resourceName) {
-        try (InputStream input = openResource(environment, resourceName)) {
-            return new ClassCatalogParser().parse(new InputStreamReader(input, StandardCharsets.UTF_8));
-        } catch (IOException | RuntimeException exception) {
-            throw new IllegalStateException("Could not load class catalog " + resourceName, exception);
-        }
+        return loadResource(environment, resourceName, "class catalog", new ClassCatalogParser()::parse);
     }
 
     private static ProguardMappingParser.ParsedMappings loadMappings(
             MqpRuntimeEnvironment environment, String resourceName) {
+        return loadResource(environment, resourceName, "class mappings", new ProguardMappingParser()::parse);
+    }
+
+    private static <T> T loadResource(
+            MqpRuntimeEnvironment environment, String resourceName, String description, ResourceParser<T> parser) {
         try (InputStream input = openResource(environment, resourceName)) {
-            return new ProguardMappingParser().parse(new InputStreamReader(input, StandardCharsets.UTF_8));
+            return parser.parse(new InputStreamReader(input, StandardCharsets.UTF_8));
         } catch (IOException | RuntimeException exception) {
-            throw new IllegalStateException("Could not load class mappings " + resourceName, exception);
+            throw new IllegalStateException("Could not load " + description + " " + resourceName, exception);
         }
     }
 
@@ -67,5 +69,10 @@ public record ClassInteropMetadata(ClassCatalog catalog, MappingIndex mappings) 
             throw new IllegalStateException("Missing resource " + resourceName);
         }
         return input;
+    }
+
+    @FunctionalInterface
+    private interface ResourceParser<T> {
+        T parse(Reader reader) throws IOException;
     }
 }

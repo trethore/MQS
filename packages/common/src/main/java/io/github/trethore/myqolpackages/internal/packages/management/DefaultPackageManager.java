@@ -26,7 +26,6 @@ import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustState;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigLoadResult;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigStore;
 import io.github.trethore.myqolpackages.internal.packages.discovery.PackageDiscoveryService;
@@ -132,7 +131,7 @@ public final class DefaultPackageManager implements PackageManager {
             packages.remove(id);
             diagnostics.add(new PackageDiagnostic(
                     id, configStore.getConfigPath(), "Configured enabled package could not be found"));
-            return new PackageOperationResult(false, PackageOperationCode.FAILED, diagnostics);
+            return new PackageOperationResult(PackageOperationCode.FAILED, diagnostics);
         }
         if (packageInstance == null) {
             packageInstance = new PackageInstance(descriptor, contextFactory);
@@ -148,8 +147,7 @@ public final class DefaultPackageManager implements PackageManager {
         }
         rebuildEnabledPackageOrder();
         boolean successful = enableResult.successful() && diagnostics.stream().noneMatch(PackageDiagnostic::error);
-        return new PackageOperationResult(
-                successful, successful ? enableResult.code() : PackageOperationCode.FAILED, diagnostics);
+        return new PackageOperationResult(successful ? enableResult.code() : PackageOperationCode.FAILED, diagnostics);
     }
 
     @Override
@@ -183,7 +181,7 @@ public final class DefaultPackageManager implements PackageManager {
                 diagnostics.add(createLifecycleDiagnostic(packageInstance, disableException));
             }
             enabledPackageOrder.remove(id);
-            return new PackageOperationResult(false, PackageOperationCode.FAILED, diagnostics);
+            return new PackageOperationResult(PackageOperationCode.FAILED, diagnostics);
         }
     }
 
@@ -220,9 +218,7 @@ public final class DefaultPackageManager implements PackageManager {
             }
         }
         return new PackageOperationResult(
-                diagnostics.isEmpty(),
-                diagnostics.isEmpty() ? PackageOperationCode.SUCCESS : PackageOperationCode.FAILED,
-                diagnostics);
+                diagnostics.isEmpty() ? PackageOperationCode.SUCCESS : PackageOperationCode.FAILED, diagnostics);
     }
 
     @Override
@@ -261,9 +257,7 @@ public final class DefaultPackageManager implements PackageManager {
             trustService.updateTrustInfo(packageInstance);
         }
         return new PackageOperationResult(
-                diagnostics.isEmpty(),
-                diagnostics.isEmpty() ? PackageOperationCode.SUCCESS : PackageOperationCode.FAILED,
-                diagnostics);
+                diagnostics.isEmpty() ? PackageOperationCode.SUCCESS : PackageOperationCode.FAILED, diagnostics);
     }
 
     @Override
@@ -425,22 +419,21 @@ public final class DefaultPackageManager implements PackageManager {
     private PackageOperationResult enablePackageInstance(PackageInstance packageInstance) {
         PackageTrustEvaluation evaluation = trustService.evaluate(packageInstance);
         if (!evaluation.allowed()) {
-            PackageOperationCode code = evaluation.info().state() == PackageTrustState.UNTRUSTED
-                            || evaluation.info().state() == PackageTrustState.VERSION_NOT_TRUSTED
+            PackageOperationCode code = evaluation.info().state().requiresTrust()
                     ? PackageOperationCode.TRUST_REQUIRED
                     : PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED;
             return new PackageOperationResult(
-                    false, code, List.of(trustService.createBlockedDiagnostic(packageInstance, evaluation)));
+                    code, List.of(trustService.createBlockedDiagnostic(packageInstance, evaluation)));
         }
 
         List<PackageDiagnostic> diagnostics = new ArrayList<>();
         trustService.addWarning(packageInstance, evaluation, diagnostics);
         try {
             packageInstance.enable();
-            return new PackageOperationResult(true, PackageOperationCode.SUCCESS, diagnostics);
+            return new PackageOperationResult(PackageOperationCode.SUCCESS, diagnostics);
         } catch (PackageLifecycleException exception) {
             diagnostics.add(createLifecycleDiagnostic(packageInstance, exception));
-            return new PackageOperationResult(false, PackageOperationCode.FAILED, diagnostics);
+            return new PackageOperationResult(PackageOperationCode.FAILED, diagnostics);
         }
     }
 
@@ -469,7 +462,7 @@ public final class DefaultPackageManager implements PackageManager {
 
     private PackageOperationResult failedOperation(String id, Path path, String message) {
         return new PackageOperationResult(
-                false, PackageOperationCode.FAILED, List.of(new PackageDiagnostic(id, path, message)));
+                PackageOperationCode.FAILED, List.of(new PackageDiagnostic(id, path, message)));
     }
 
     private PackageDiagnostic createLifecycleDiagnostic(

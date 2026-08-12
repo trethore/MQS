@@ -18,7 +18,6 @@
 package io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -28,22 +27,8 @@ final class GeneratedConstructorSupport {
 
     static List<Constructor<?>> accessibleConstructors(Class<?> superclass, String generatedBinaryName) {
         return Arrays.stream(superclass.getDeclaredConstructors())
-                .filter(constructor -> isAccessible(constructor, generatedBinaryName))
+                .filter(constructor -> GeneratedTypeAccess.isConstructorAccessible(constructor, generatedBinaryName))
                 .sorted(Comparator.comparing(Constructor::toGenericString))
                 .toList();
-    }
-
-    private static boolean isAccessible(Constructor<?> constructor, String generatedBinaryName) {
-        int modifiers = constructor.getModifiers();
-        if (Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers)) {
-            return true;
-        }
-        return !Modifier.isPrivate(modifiers)
-                && packageName(constructor.getDeclaringClass().getName()).equals(packageName(generatedBinaryName));
-    }
-
-    private static String packageName(String binaryName) {
-        int separator = binaryName.lastIndexOf('.');
-        return separator < 0 ? "" : binaryName.substring(0, separator);
     }
 }

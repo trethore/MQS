@@ -20,7 +20,6 @@ package io.github.trethore.myqolpackages.internal.config;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
 import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
-import io.github.trethore.myqolpackages.api.config.TrustConfig;
 import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -99,12 +98,7 @@ public final class FileMqpConfigStore implements MqpConfigStore {
         Map<String, PackageTrustConfig> trustedPackages =
                 new LinkedHashMap<>(currentConfig.trust().packages());
         trustedPackages.put(packageId, packageTrustConfig);
-        TrustConfig trustConfig = new TrustConfig(currentConfig.trust().fingerprintDefaults(), trustedPackages);
-        saveConfig(new MqpConfig(
-                currentConfig.configVersion(),
-                currentConfig.additionalPackageRoots(),
-                currentConfig.enabledPackages(),
-                trustConfig));
+        saveConfig(currentConfig.withTrust(currentConfig.trust().withPackages(trustedPackages)));
     }
 
     @Override
@@ -116,10 +110,9 @@ public final class FileMqpConfigStore implements MqpConfigStore {
             throw new IOException("Package is not trusted");
         }
         PackageFingerprintConfig currentFingerprint = currentPackageTrust.fingerprint();
-        PackageFingerprintConfig updatedFingerprint = new PackageFingerprintConfig(
-                currentFingerprint == null ? null : currentFingerprint.enabled(),
-                currentFingerprint == null ? null : currentFingerprint.mismatchBehavior(),
-                fingerprint);
+        PackageFingerprintConfig updatedFingerprint = currentFingerprint == null
+                ? new PackageFingerprintConfig(null, null, fingerprint)
+                : currentFingerprint.withDigest(fingerprint);
         putTrustedPackage(packageId, new PackageTrustConfig(currentPackageTrust.versions(), updatedFingerprint));
     }
 
@@ -131,18 +124,14 @@ public final class FileMqpConfigStore implements MqpConfigStore {
         Map<String, PackageTrustConfig> trustedPackages =
                 new LinkedHashMap<>(currentConfig.trust().packages());
         trustedPackages.remove(packageId);
-        TrustConfig trustConfig = new TrustConfig(currentConfig.trust().fingerprintDefaults(), trustedPackages);
-        saveConfig(new MqpConfig(
-                currentConfig.configVersion(), currentConfig.additionalPackageRoots(), enabledPackages, trustConfig));
+        saveConfig(currentConfig
+                .withEnabledPackages(enabledPackages)
+                .withTrust(currentConfig.trust().withPackages(trustedPackages)));
     }
 
     private void saveEnabledPackages(List<String> enabledPackages) throws IOException {
         MqpConfig currentConfig = config.get();
-        saveConfig(new MqpConfig(
-                currentConfig.configVersion(),
-                currentConfig.additionalPackageRoots(),
-                enabledPackages,
-                currentConfig.trust()));
+        saveConfig(currentConfig.withEnabledPackages(enabledPackages));
     }
 
     private void saveConfig(MqpConfig updatedConfig) throws IOException {

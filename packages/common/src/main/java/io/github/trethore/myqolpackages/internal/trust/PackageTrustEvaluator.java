@@ -144,16 +144,14 @@ public final class PackageTrustEvaluator {
                         expectedFingerprint,
                         currentFingerprint,
                         message),
-                true,
-                true,
-                behavior == FingerprintMismatchBehavior.CHAT_WARNING);
+                PackageTrustEvaluation.Outcome.WARNING);
     }
 
     private static PackageTrustEvaluation allowed(PackageTrustInfo info) {
-        return new PackageTrustEvaluation(info, true, false, false);
+        return new PackageTrustEvaluation(info, PackageTrustEvaluation.Outcome.ALLOWED);
     }
 
     private static PackageTrustEvaluation blocked(PackageTrustInfo info) {
-        return new PackageTrustEvaluation(info, false, false, true);
+        return new PackageTrustEvaluation(info, PackageTrustEvaluation.Outcome.BLOCKED);
     }
 }

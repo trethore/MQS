@@ -15,7 +15,6 @@ fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-l
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
-graal-sdk = { module = "org.graalvm.sdk:graal-sdk", version.ref = "graal" }
 graal-collections = { module = "org.graalvm.sdk:collections", version.ref = "graal" }
 graal-nativeimage = { module = "org.graalvm.sdk:nativeimage", version.ref = "graal" }
 graal-word = { module = "org.graalvm.sdk:word", version.ref = "graal" }
@@ -24,12 +23,10 @@ graal-polyglot = { module = "org.graalvm.polyglot:polyglot", version.ref = "graa
 graal-truffle-api = { module = "org.graalvm.truffle:truffle-api", version.ref = "graal" }
 graal-js-core = { module = "org.graalvm.js:js", version.ref = "graal" }
 graal-js-language = { module = "org.graalvm.js:js-language", version.ref = "graal" }
-graal-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "graal" }
 graal-regex = { module = "org.graalvm.regex:regex", version.ref = "graal" }
 graal-shadowed-icu4j = { module = "org.graalvm.shadowed:icu4j", version.ref = "graal" }
 graal-shadowed-xz = { module = "org.graalvm.shadowed:xz", version.ref = "graal" }
 bytebuddy-core = { module = "net.bytebuddy:byte-buddy", version.ref = "byte-buddy" }
-bytebuddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version.ref = "byte-buddy" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 
 [plugins]

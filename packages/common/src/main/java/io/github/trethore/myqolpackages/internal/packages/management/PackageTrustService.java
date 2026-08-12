@@ -25,7 +25,6 @@ import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
 import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustState;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigStore;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
 import io.github.trethore.myqolpackages.internal.trust.PackageFingerprintException;
@@ -94,14 +93,12 @@ final class PackageTrustService {
                 configStore.getConfig().trust().packages().get(id);
         if (packageTrustConfig == null) {
             return new PackageOperationResult(
-                    false,
                     PackageOperationCode.TRUST_REQUIRED,
                     List.of(createTrustRequiredDiagnostic(packageInstance, "Package is not trusted")));
         }
         if (!TrustedVersionRange.parse(packageTrustConfig.versions())
                 .matches(packageInstance.getDescriptor().semanticVersion())) {
             return new PackageOperationResult(
-                    false,
                     PackageOperationCode.TRUST_REQUIRED,
                     List.of(createTrustRequiredDiagnostic(
                             packageInstance, "Package version is outside its trusted range")));
@@ -176,8 +173,7 @@ final class PackageTrustService {
                 "Blocked package {}: {}",
                 packageInstance.getId(),
                 evaluation.info().message());
-        PackageDiagnosticCode code = evaluation.info().state() == PackageTrustState.UNTRUSTED
-                        || evaluation.info().state() == PackageTrustState.VERSION_NOT_TRUSTED
+        PackageDiagnosticCode code = evaluation.info().state().requiresTrust()
                 ? PackageDiagnosticCode.TRUST_REQUIRED
                 : PackageDiagnosticCode.FINGERPRINT_BLOCKED;
         return new PackageDiagnostic(
@@ -209,7 +205,7 @@ final class PackageTrustService {
     }
 
     private static PackageOperationResult successfulOperation() {
-        return new PackageOperationResult(true, PackageOperationCode.SUCCESS, List.of());
+        return new PackageOperationResult(PackageOperationCode.SUCCESS, List.of());
     }
 
     private PackageOperationResult failedOperation(PackageInstance packageInstance, String message) {
@@ -219,6 +215,6 @@ final class PackageTrustService {
 
     private static PackageOperationResult failedOperation(String id, Path path, String message) {
         return new PackageOperationResult(
-                false, PackageOperationCode.FAILED, List.of(new PackageDiagnostic(id, path, message)));
+                PackageOperationCode.FAILED, List.of(new PackageDiagnostic(id, path, message)));
     }
 }

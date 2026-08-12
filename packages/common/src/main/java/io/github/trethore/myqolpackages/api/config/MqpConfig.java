@@ -41,11 +41,15 @@ public record MqpConfig(
         trust = trust == null ? TrustConfig.defaults() : trust;
     }
 
-    public MqpConfig(List<String> additionalPackageRoots, List<String> enabledPackages) {
-        this(CURRENT_CONFIG_VERSION, additionalPackageRoots, enabledPackages, TrustConfig.defaults());
-    }
-
     public static MqpConfig defaults() {
         return new MqpConfig(CURRENT_CONFIG_VERSION, List.of(), List.of(), TrustConfig.defaults());
+    }
+
+    public MqpConfig withEnabledPackages(List<String> updatedEnabledPackages) {
+        return new MqpConfig(configVersion, additionalPackageRoots, updatedEnabledPackages, trust);
+    }
+
+    public MqpConfig withTrust(TrustConfig updatedTrust) {
+        return new MqpConfig(configVersion, additionalPackageRoots, enabledPackages, updatedTrust);
     }
 }

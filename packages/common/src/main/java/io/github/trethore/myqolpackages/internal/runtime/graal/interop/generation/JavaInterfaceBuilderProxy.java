@@ -61,35 +61,7 @@ final class JavaInterfaceBuilderProxy extends AbstractTypeBuilderProxy {
 
     private Object addMethod(Value... arguments) {
         requireMutable();
-        Value definition = BuilderValueReader.requireDefinition(arguments, "method");
-        String name = BuilderValueReader.requireString(definition, "name");
-        Class<?> returnType =
-                typeResolver.resolve(BuilderValueReader.requireMember(definition, "returnType"), "return type", true);
-        List<Class<?>> argumentTypes = definition.hasMember("argTypes")
-                ? typeResolver.resolveSingleOrArray(definition.getMember("argTypes"), "method argument types")
-                : List.of();
-        boolean isAbstract = BuilderValueReader.optionalBoolean(definition, "isAbstract");
-        Value implementation = null;
-        if (definition.hasMember("implementation")) {
-            implementation = definition.getMember("implementation");
-            if (!implementation.canExecute()) {
-                throw new IllegalArgumentException("implementation must be a JavaScript function");
-            }
-        }
-        JavaVisibility visibility = JavaVisibility.read(definition, "visibility", JavaVisibility.PUBLIC);
-        boolean isStatic = BuilderValueReader.optionalBoolean(definition, "isStatic");
-        boolean override = BuilderValueReader.optionalBoolean(definition, "override");
-        methods.add(new GeneratedTypeDefinition.MethodDefinition(
-                name,
-                name,
-                returnType,
-                argumentTypes,
-                implementation,
-                visibility,
-                isStatic,
-                false,
-                isAbstract,
-                override));
+        methods.add(GeneratedMethodDefinitionReader.read(typeResolver, arguments, JavaVisibility.PUBLIC, false));
         return this;
     }
 

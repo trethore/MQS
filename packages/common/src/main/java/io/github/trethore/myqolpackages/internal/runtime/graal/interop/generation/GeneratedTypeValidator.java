@@ -66,7 +66,7 @@ final class GeneratedTypeValidator {
             if (!directInterfaces.add(interfaceType)) {
                 throw new IllegalArgumentException("Duplicate interface: " + interfaceType.getTypeName());
             }
-            requireAccessible(interfaceType, definition.binaryName());
+            GeneratedTypeAccess.requireTypeAccessible(interfaceType, definition.binaryName());
         }
         if (definition.kind() == GeneratedTypeDefinition.Kind.INTERFACE) {
             return;
@@ -78,7 +78,7 @@ final class GeneratedTypeValidator {
         if (Modifier.isFinal(superclass.getModifiers())) {
             throw new IllegalArgumentException("Cannot extend final class " + superclass.getTypeName());
         }
-        requireAccessible(superclass, definition.binaryName());
+        GeneratedTypeAccess.requireTypeAccessible(superclass, definition.binaryName());
         if (definition.isFinal() && definition.isAbstract()) {
             throw new IllegalArgumentException("Generated class cannot be both final and abstract");
         }
@@ -91,7 +91,7 @@ final class GeneratedTypeValidator {
             if (!names.add(field.name())) {
                 throw new IllegalArgumentException("Duplicate field: " + field.name());
             }
-            requireAccessible(field.type(), definition.binaryName());
+            GeneratedTypeAccess.requireTypeAccessible(field.type(), definition.binaryName());
         }
     }
 
@@ -102,10 +102,8 @@ final class GeneratedTypeValidator {
             }
             return;
         }
-        List<Constructor<?>> superConstructors = Arrays.stream(
-                        definition.superclass().getDeclaredConstructors())
-                .filter(constructor -> isConstructorAccessible(constructor, definition.binaryName()))
-                .toList();
+        List<Constructor<?>> superConstructors =
+                GeneratedConstructorSupport.accessibleConstructors(definition.superclass(), definition.binaryName());
         if (definition.constructors().isEmpty()) {
             boolean noArgumentConstructor =
                     superConstructors.stream().anyMatch(constructor -> constructor.getParameterCount() == 0);
@@ -125,7 +123,9 @@ final class GeneratedTypeValidator {
             if (!descriptors.add(constructor.argumentTypes())) {
                 throw new IllegalArgumentException("Duplicate constructor descriptor: " + constructor.argumentTypes());
             }
-            constructor.argumentTypes().forEach(type -> requireAccessible(type, definition.binaryName()));
+            constructor
+                    .argumentTypes()
+                    .forEach(type -> GeneratedTypeAccess.requireTypeAccessible(type, definition.binaryName()));
             constructorValidator.validate(constructor.implementation());
         }
     }
@@ -139,8 +139,9 @@ final class GeneratedTypeValidator {
             if (!descriptors.add(descriptor)) {
                 throw new IllegalArgumentException("Duplicate method descriptor: " + method.exposedName());
             }
-            requireAccessible(method.returnType(), definition.binaryName());
-            method.argumentTypes().forEach(type -> requireAccessible(type, definition.binaryName()));
+            GeneratedTypeAccess.requireTypeAccessible(method.returnType(), definition.binaryName());
+            method.argumentTypes()
+                    .forEach(type -> GeneratedTypeAccess.requireTypeAccessible(type, definition.binaryName()));
             normalized.add(
                     definition.kind() == GeneratedTypeDefinition.Kind.CLASS
                             ? validateClassMethod(definition, method)
@@ -387,7 +388,7 @@ final class GeneratedTypeValidator {
         return Modifier.isAbstract(modifiers)
                 && !Modifier.isPrivate(modifiers)
                 && !Modifier.isStatic(modifiers)
-                && isMemberAccessible(method.getDeclaringClass(), modifiers, generatedBinaryName);
+                && GeneratedTypeAccess.isMemberAccessible(method.getDeclaringClass(), modifiers, generatedBinaryName);
     }
 
     private static void validateInheritedInterfaceMethods(
@@ -442,7 +443,8 @@ final class GeneratedTypeValidator {
                 return !Modifier.isAbstract(modifiers)
                         && !Modifier.isPrivate(modifiers)
                         && !Modifier.isStatic(modifiers)
-                        && isMemberAccessible(method.getDeclaringClass(), modifiers, definition.binaryName());
+                        && GeneratedTypeAccess.isMemberAccessible(
+                                method.getDeclaringClass(), modifiers, definition.binaryName());
             } catch (NoSuchMethodException ignored) {
                 currentClass = currentClass.getSuperclass();
             }
@@ -463,14 +465,6 @@ final class GeneratedTypeValidator {
             }
         }
         return methods;
-    }
-
-    private static boolean isMemberAccessible(Class<?> declaringClass, int modifiers, String generatedBinaryName) {
-        if (Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers)) {
-            return true;
-        }
-        return !Modifier.isPrivate(modifiers)
-                && packageName(declaringClass.getName()).equals(packageName(generatedBinaryName));
     }
 
     private static GeneratedTypeDefinition.MethodDefinition copyWithRuntimeName(
@@ -501,34 +495,6 @@ final class GeneratedTypeValidator {
                 || name.codePoints().skip(1).anyMatch(codePoint -> !Character.isJavaIdentifierPart(codePoint))) {
             throw new IllegalArgumentException("Invalid " + kind + " name: " + name);
         }
-    }
-
-    private static void requireAccessible(Class<?> type, String generatedBinaryName) {
-        Class<?> componentType = type;
-        while (componentType.isArray()) {
-            componentType = componentType.getComponentType();
-        }
-        if (componentType.isPrimitive() || Modifier.isPublic(componentType.getModifiers())) {
-            return;
-        }
-        if (!packageName(componentType.getName()).equals(packageName(generatedBinaryName))) {
-            throw new IllegalArgumentException(
-                    "Type is not accessible to generated type: " + componentType.getTypeName());
-        }
-    }
-
-    private static boolean isConstructorAccessible(Constructor<?> constructor, String generatedBinaryName) {
-        int modifiers = constructor.getModifiers();
-        if (Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers)) {
-            return true;
-        }
-        return !Modifier.isPrivate(modifiers)
-                && packageName(constructor.getDeclaringClass().getName()).equals(packageName(generatedBinaryName));
-    }
-
-    private static String packageName(String binaryName) {
-        int separator = binaryName.lastIndexOf('.');
-        return separator < 0 ? "" : binaryName.substring(0, separator);
     }
 
     private static int visibilityRank(JavaVisibility visibility) {

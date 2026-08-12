@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
-public final class FetchApi implements ProxyExecutable, AutoCloseable {
+final class FetchApi implements ProxyExecutable, AutoCloseable {
     private static final int MAX_COMPLETIONS_PER_TICK = 64;
 
     private final ConcurrentLinkedQueue<Runnable> completions = new ConcurrentLinkedQueue<>();

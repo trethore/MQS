@@ -23,4 +23,8 @@ public record PackageFingerprintConfig(Boolean enabled, FingerprintMismatchBehav
     public PackageFingerprintConfig {
         digest = digest == null || digest.isBlank() ? null : digest;
     }
+
+    public PackageFingerprintConfig withDigest(String updatedDigest) {
+        return new PackageFingerprintConfig(enabled, mismatchBehavior, updatedDigest);
+    }
 }

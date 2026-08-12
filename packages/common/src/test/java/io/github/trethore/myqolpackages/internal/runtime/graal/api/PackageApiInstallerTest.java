@@ -74,7 +74,7 @@ class PackageApiInstallerTest {
             ApiObjectBuilder example = context.mqp().defineObject("example");
             example.define("first", "first-value");
             context.mqp().object("example").define("second", "second-value");
-            return PackageApiSession.empty();
+            return () -> {};
         };
         PackageApiInstaller installer = new PackageApiInstaller("1.2.3", List.of(module));
 
@@ -109,7 +109,7 @@ class PackageApiInstallerTest {
         };
         PackageApiModule second = context -> {
             context.api().defineGlobal("duplicate", "second");
-            return PackageApiSession.empty();
+            return () -> {};
         };
         PackageApiInstaller installer = createInstaller(List.of(first, second));
         PackageContextSpec spec = createSpec();
@@ -132,7 +132,7 @@ class PackageApiInstallerTest {
         };
         PackageApiModule second = context -> {
             context.mqp().define("duplicate", "second");
-            return PackageApiSession.empty();
+            return () -> {};
         };
         PackageApiInstaller installer = createInstaller(List.of(first, second));
         PackageContextSpec spec = createSpec();
@@ -177,7 +177,7 @@ class PackageApiInstallerTest {
     void rejectsDuplicateCoreMqpMembers() {
         PackageApiModule module = context -> {
             context.mqp().define("version", "invalid");
-            return PackageApiSession.empty();
+            return () -> {};
         };
         PackageApiInstaller installer = createInstaller(List.of(module));
         PackageContextSpec spec = createSpec();
@@ -194,7 +194,7 @@ class PackageApiInstallerTest {
     void rejectsDuplicateCoreMqpGlobal() {
         PackageApiModule module = context -> {
             context.api().defineGlobal("mqp", "invalid");
-            return PackageApiSession.empty();
+            return () -> {};
         };
         PackageApiInstaller installer = createInstaller(List.of(module));
         PackageContextSpec spec = createSpec();

@@ -22,8 +22,4 @@ public interface PackageApiSession extends AutoCloseable {
 
     @Override
     void close();
-
-    static PackageApiSession empty() {
-        return () -> {};
-    }
 }

@@ -131,37 +131,7 @@ final class JavaClassBuilderProxy extends AbstractTypeBuilderProxy {
 
     private Object addMethod(Value... arguments) {
         requireMutable();
-        Value definition = BuilderValueReader.requireDefinition(arguments, METHOD_METHOD);
-        String name = BuilderValueReader.requireString(definition, NAME_MEMBER);
-        Class<?> returnType =
-                typeResolver.resolve(BuilderValueReader.requireMember(definition, "returnType"), "return type", true);
-        List<Class<?>> argumentTypes = definition.hasMember(ARGUMENT_TYPES_MEMBER)
-                ? typeResolver.resolveSingleOrArray(
-                        definition.getMember(ARGUMENT_TYPES_MEMBER), "method argument types")
-                : List.of();
-        boolean isAbstract = BuilderValueReader.optionalBoolean(definition, "isAbstract");
-        Value implementation = null;
-        if (definition.hasMember(IMPLEMENTATION_MEMBER)) {
-            implementation = definition.getMember(IMPLEMENTATION_MEMBER);
-            if (!implementation.canExecute()) {
-                throw new IllegalArgumentException("implementation must be a JavaScript function");
-            }
-        }
-        JavaVisibility visibility = JavaVisibility.read(definition, VISIBILITY_MEMBER, JavaVisibility.PACKAGE);
-        boolean isStatic = BuilderValueReader.optionalBoolean(definition, STATIC_MEMBER);
-        boolean isFinal = BuilderValueReader.optionalBoolean(definition, FINAL_MEMBER);
-        boolean override = BuilderValueReader.optionalBoolean(definition, "override");
-        methods.add(new GeneratedTypeDefinition.MethodDefinition(
-                name,
-                name,
-                returnType,
-                argumentTypes,
-                implementation,
-                visibility,
-                isStatic,
-                isFinal,
-                isAbstract,
-                override));
+        methods.add(GeneratedMethodDefinitionReader.read(typeResolver, arguments, JavaVisibility.PACKAGE, true));
         return this;
     }
 

@@ -21,10 +21,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 
-public final class ClassCatalogParser {
+final class ClassCatalogParser {
     private static final String COMMENT_PREFIX = "#";
 
-    public ClassCatalog parse(Reader source) throws IOException {
+    ClassCatalog parse(Reader source) throws IOException {
         ClassCatalog.Builder catalog = ClassCatalog.builder();
         BufferedReader reader = new BufferedReader(source);
         String line;
