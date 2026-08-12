@@ -17,7 +17,6 @@ for (const name of Object.getOwnPropertyNames(globalThis)) {
 for (const name of [
   "createJavaScriptRuntimeSupport",
   "createFrozenObject",
-  "createJavaApi",
   "createFetch"
 ]) {
   if (Object.hasOwn(globalThis, name)) throw new Error(`leaked API installer: ${name}`);

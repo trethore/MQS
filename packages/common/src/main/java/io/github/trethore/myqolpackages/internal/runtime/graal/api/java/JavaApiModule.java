@@ -18,12 +18,14 @@
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.java;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
+import io.github.trethore.myqolpackages.internal.runtime.graal.api.ApiObjectBuilder;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiInstallContext;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiModule;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiSession;
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridge;
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridgeFactory;
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation.JavaTypeGenerationService;
+import io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation.JavaVisibility;
 
 public final class JavaApiModule implements PackageApiModule {
     private final ClassInteropBridgeFactory bridgeFactory;
@@ -40,13 +42,7 @@ public final class JavaApiModule implements PackageApiModule {
         JavaTypeGenerationService typeGeneration =
                 new JavaTypeGenerationService(environment, context.spec().packageId(), interopBridge.interopAccess());
         try {
-            context.mqp()
-                    .define(
-                            "java",
-                            JavaApiScript.create(
-                                    context.javaScriptModules(),
-                                    typeGeneration.defineClass(),
-                                    typeGeneration.defineInterface()));
+            defineJavaApi(context, typeGeneration);
             context.api().defineGlobal("importClass", interopBridge.importClass());
             context.api().defineGlobal("wrap", interopBridge.wrap());
             context.api().defineGlobal("packages", interopBridge.packages());
@@ -56,6 +52,29 @@ public final class JavaApiModule implements PackageApiModule {
             typeGeneration.close();
             throw exception;
         }
+    }
+
+    private static void defineJavaApi(PackageApiInstallContext context, JavaTypeGenerationService typeGeneration) {
+        ApiObjectBuilder javaApi = context.mqp().defineObject("java");
+        javaApi.define("defineClass", typeGeneration.defineClass());
+        javaApi.define("defineInterface", typeGeneration.defineInterface());
+
+        ApiObjectBuilder types = javaApi.defineObject("type");
+        types.define("void", Void.TYPE);
+        types.define("boolean", Boolean.TYPE);
+        types.define("byte", Byte.TYPE);
+        types.define("short", Short.TYPE);
+        types.define("int", Integer.TYPE);
+        types.define("long", Long.TYPE);
+        types.define("float", Float.TYPE);
+        types.define("double", Double.TYPE);
+        types.define("char", Character.TYPE);
+
+        ApiObjectBuilder visibility = javaApi.defineObject("visibility");
+        visibility.define("PRIVATE", JavaVisibility.PRIVATE);
+        visibility.define("PACKAGE", JavaVisibility.PACKAGE);
+        visibility.define("PROTECTED", JavaVisibility.PROTECTED);
+        visibility.define("PUBLIC", JavaVisibility.PUBLIC);
     }
 
     // Sessions have lifecycle and identity semantics, not value semantics.
