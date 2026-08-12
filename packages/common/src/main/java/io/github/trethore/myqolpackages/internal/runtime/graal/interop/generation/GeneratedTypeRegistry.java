@@ -39,7 +39,7 @@ final class GeneratedTypeRegistry {
                 throw new IllegalStateException(
                         "Generated type " + definition.binaryName() + " is owned by package " + existing.packageId);
             }
-            if (existing.binding.belongsTo(binding.session())) {
+            if (existing.binding != null && existing.binding.belongsTo(binding.session())) {
                 throw new IllegalStateException(
                         "Generated type was already defined by this package context: " + definition.binaryName());
             }
@@ -87,7 +87,21 @@ final class GeneratedTypeRegistry {
         if (entry == null || (entry.loadedClass != null && entry.loadedClass != generatedClass)) {
             throw new IllegalStateException("No generated callback binding for " + generatedClass.getName());
         }
+        if (entry.binding == null) {
+            throw new IllegalStateException("Generated callbacks are closed for " + generatedClass.getName());
+        }
         return entry.binding;
+    }
+
+    synchronized void releaseBinding(GeneratedCallbackBinding binding) {
+        Class<?> generatedClass = binding.generatedClass();
+        if (generatedClass == null) {
+            return;
+        }
+        RegistryEntry entry = entries.get(new RegistryKey(generatedClass.getClassLoader(), generatedClass.getName()));
+        if (entry != null && entry.loadedClass == generatedClass && entry.binding == binding) {
+            entry.binding = null;
+        }
     }
 
     private static final class RegistryEntry {

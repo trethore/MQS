@@ -69,7 +69,10 @@ final class JavaTypeGenerationSession implements AutoCloseable {
                 return;
             }
             active = false;
-            bindings.forEach(GeneratedCallbackBinding::close);
+            for (GeneratedCallbackBinding binding : bindings) {
+                binding.close();
+                GeneratedTypeRegistry.INSTANCE.releaseBinding(binding);
+            }
             bindings.clear();
         } finally {
             callbackLock.unlock();

@@ -208,7 +208,7 @@ class GraalPackageContextFactoryTest {
             Method valueMethod = firstInstance.getClass().getMethod("value");
             InvocationTargetException closedFailure =
                     assertThrows(InvocationTargetException.class, () -> valueMethod.invoke(firstInstance));
-            assertTrue(closedFailure.getCause().getMessage().contains("closed"));
+            assertTrue(closedFailure.getCause().getMessage().contains("Generated callbacks are closed for"));
 
             Path secondEntrypoint = createEntrypoint(generatedLifecycleScript(2));
             Object secondInstance;
@@ -218,7 +218,7 @@ class GraalPackageContextFactoryTest {
                 assertEquals(2, valueMethod.invoke(secondInstance));
             }
             closedFailure = assertThrows(InvocationTargetException.class, () -> valueMethod.invoke(secondInstance));
-            assertTrue(closedFailure.getCause().getMessage().contains("closed"));
+            assertTrue(closedFailure.getCause().getMessage().contains("Generated callbacks are closed for"));
         }
     }
 

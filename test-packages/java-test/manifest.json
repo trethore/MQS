@@ -1,0 +1,7 @@
+{
+  "id": "java-test",
+  "name": "Java Test",
+  "description": "A Java test MQP package used during development.",
+  "version": "1.0.0",
+  "entrypoint": "src/index.js"
+}

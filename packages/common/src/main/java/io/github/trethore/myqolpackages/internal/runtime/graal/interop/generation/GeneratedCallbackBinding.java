@@ -60,6 +60,10 @@ final class GeneratedCallbackBinding {
         this.generatedClass = generatedClass;
     }
 
+    Class<?> generatedClass() {
+        return generatedClass;
+    }
+
     Object invoke(Method method, Object receiver, Object[] arguments) {
         return session.execute(() -> {
             requireActive();
