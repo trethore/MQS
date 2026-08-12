@@ -15,9 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation;
+package io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation;
 
-import static io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation.BuilderValueReader.requireArgumentCount;
+import static io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation.BuilderValueReader.requireArgumentCount;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +82,7 @@ final class JavaClassBuilderProxy extends AbstractTypeBuilderProxy {
     private Object implement(Value... arguments) {
         requireMutable();
         requireArgumentCount(arguments, 1, IMPLEMENTS_METHOD);
-        interfaces.addAll(typeResolver.resolveSingleOrArray(arguments[0], "interfaces", false));
+        interfaces.addAll(typeResolver.resolveSingleOrArray(arguments[0], "interfaces"));
         return this;
     }
 
@@ -109,8 +109,8 @@ final class JavaClassBuilderProxy extends AbstractTypeBuilderProxy {
         boolean hasValue = definition.hasMember(VALUE_MEMBER);
         Value value = hasValue ? definition.getMember(VALUE_MEMBER) : null;
         JavaVisibility visibility = JavaVisibility.read(definition, VISIBILITY_MEMBER, JavaVisibility.PACKAGE);
-        boolean isStatic = BuilderValueReader.optionalBoolean(definition, STATIC_MEMBER, false);
-        boolean isFinal = BuilderValueReader.optionalBoolean(definition, FINAL_MEMBER, false);
+        boolean isStatic = BuilderValueReader.optionalBoolean(definition, STATIC_MEMBER);
+        boolean isFinal = BuilderValueReader.optionalBoolean(definition, FINAL_MEMBER);
         fields.add(new GeneratedTypeDefinition.FieldDefinition(
                 name, type, value, hasValue, visibility, isStatic, isFinal));
         return this;
@@ -121,7 +121,7 @@ final class JavaClassBuilderProxy extends AbstractTypeBuilderProxy {
         Value definition = BuilderValueReader.requireDefinition(arguments, CONSTRUCTOR_METHOD);
         List<Class<?>> argumentTypes = definition.hasMember(ARGUMENT_TYPES_MEMBER)
                 ? typeResolver.resolveSingleOrArray(
-                        definition.getMember(ARGUMENT_TYPES_MEMBER), "constructor argument types", false)
+                        definition.getMember(ARGUMENT_TYPES_MEMBER), "constructor argument types")
                 : List.of();
         Value implementation = BuilderValueReader.requireFunction(definition, IMPLEMENTATION_MEMBER);
         JavaVisibility visibility = JavaVisibility.read(definition, VISIBILITY_MEMBER, JavaVisibility.PACKAGE);
@@ -137,9 +137,9 @@ final class JavaClassBuilderProxy extends AbstractTypeBuilderProxy {
                 typeResolver.resolve(BuilderValueReader.requireMember(definition, "returnType"), "return type", true);
         List<Class<?>> argumentTypes = definition.hasMember(ARGUMENT_TYPES_MEMBER)
                 ? typeResolver.resolveSingleOrArray(
-                        definition.getMember(ARGUMENT_TYPES_MEMBER), "method argument types", false)
+                        definition.getMember(ARGUMENT_TYPES_MEMBER), "method argument types")
                 : List.of();
-        boolean isAbstract = BuilderValueReader.optionalBoolean(definition, "isAbstract", false);
+        boolean isAbstract = BuilderValueReader.optionalBoolean(definition, "isAbstract");
         Value implementation = null;
         if (definition.hasMember(IMPLEMENTATION_MEMBER)) {
             implementation = definition.getMember(IMPLEMENTATION_MEMBER);
@@ -148,9 +148,9 @@ final class JavaClassBuilderProxy extends AbstractTypeBuilderProxy {
             }
         }
         JavaVisibility visibility = JavaVisibility.read(definition, VISIBILITY_MEMBER, JavaVisibility.PACKAGE);
-        boolean isStatic = BuilderValueReader.optionalBoolean(definition, STATIC_MEMBER, false);
-        boolean isFinal = BuilderValueReader.optionalBoolean(definition, FINAL_MEMBER, false);
-        boolean override = BuilderValueReader.optionalBoolean(definition, "override", false);
+        boolean isStatic = BuilderValueReader.optionalBoolean(definition, STATIC_MEMBER);
+        boolean isFinal = BuilderValueReader.optionalBoolean(definition, FINAL_MEMBER);
+        boolean override = BuilderValueReader.optionalBoolean(definition, "override");
         methods.add(new GeneratedTypeDefinition.MethodDefinition(
                 name,
                 name,

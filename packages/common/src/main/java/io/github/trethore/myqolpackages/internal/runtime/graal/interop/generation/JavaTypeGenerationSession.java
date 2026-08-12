@@ -15,14 +15,13 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation;
+package io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation;
 
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-final class JavaTypeGenerationSession implements PackageApiSession {
+final class JavaTypeGenerationSession implements AutoCloseable {
     private final List<GeneratedCallbackBinding> bindings = new ArrayList<>();
     private final ReentrantLock callbackLock = new ReentrantLock(true);
     private final String packageId;

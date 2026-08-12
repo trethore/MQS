@@ -15,15 +15,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation;
+package io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation;
 
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiSession;
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.JavaInteropAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 
-public final class JavaTypeGenerationService implements PackageApiSession {
+public final class JavaTypeGenerationService implements AutoCloseable {
     private final ClassLoader classLoader;
     private final ProxyExecutable defineClass;
     private final ProxyExecutable defineInterface;

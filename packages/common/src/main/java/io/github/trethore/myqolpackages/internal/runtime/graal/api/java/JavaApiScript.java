@@ -17,7 +17,7 @@
  */
 package io.github.trethore.myqolpackages.internal.runtime.graal.api.java;
 
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation.JavaVisibility;
+import io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation.JavaVisibility;
 import io.github.trethore.myqolpackages.internal.runtime.graal.js.JavaScriptModuleLoader;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;

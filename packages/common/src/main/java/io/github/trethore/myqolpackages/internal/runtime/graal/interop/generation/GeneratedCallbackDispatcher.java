@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation;
+package io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation;
 
 import java.lang.reflect.Method;
 import net.bytebuddy.implementation.bind.annotation.AllArguments;
@@ -26,6 +26,7 @@ import net.bytebuddy.implementation.bind.annotation.This;
 public final class GeneratedCallbackDispatcher {
     private GeneratedCallbackDispatcher() {}
 
+    @SuppressWarnings("unused")
     @RuntimeType
     public static Object invoke(
             @Origin Method method, @This(optional = true) Object receiver, @AllArguments Object[] arguments) {

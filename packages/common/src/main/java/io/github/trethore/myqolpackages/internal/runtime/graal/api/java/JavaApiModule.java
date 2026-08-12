@@ -21,9 +21,9 @@ import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiInstallContext;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiModule;
 import io.github.trethore.myqolpackages.internal.runtime.graal.api.PackageApiSession;
-import io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation.JavaTypeGenerationService;
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridge;
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.ClassInteropBridgeFactory;
+import io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation.JavaTypeGenerationService;
 
 public final class JavaApiModule implements PackageApiModule {
     private final ClassInteropBridgeFactory bridgeFactory;
@@ -39,17 +39,35 @@ public final class JavaApiModule implements PackageApiModule {
         ClassInteropBridge interopBridge = bridgeFactory.create();
         JavaTypeGenerationService typeGeneration =
                 new JavaTypeGenerationService(environment, context.spec().packageId(), interopBridge.interopAccess());
-        context.mqp()
-                .define(
-                        "java",
-                        JavaApiScript.create(
-                                context.javaScriptModules(),
-                                typeGeneration.defineClass(),
-                                typeGeneration.defineInterface()));
-        context.api().defineGlobal("importClass", interopBridge.importClass());
-        context.api().defineGlobal("wrap", interopBridge.wrap());
-        context.api().defineGlobal("packages", interopBridge.packages());
-        context.api().defineGlobal("net", interopBridge.net());
-        return typeGeneration;
+        try {
+            context.mqp()
+                    .define(
+                            "java",
+                            JavaApiScript.create(
+                                    context.javaScriptModules(),
+                                    typeGeneration.defineClass(),
+                                    typeGeneration.defineInterface()));
+            context.api().defineGlobal("importClass", interopBridge.importClass());
+            context.api().defineGlobal("wrap", interopBridge.wrap());
+            context.api().defineGlobal("packages", interopBridge.packages());
+            context.api().defineGlobal("net", interopBridge.net());
+            return new JavaApiSession(typeGeneration);
+        } catch (RuntimeException exception) {
+            typeGeneration.close();
+            throw exception;
+        }
+    }
+
+    private static final class JavaApiSession implements PackageApiSession {
+        private final JavaTypeGenerationService typeGeneration;
+
+        private JavaApiSession(JavaTypeGenerationService typeGeneration) {
+            this.typeGeneration = typeGeneration;
+        }
+
+        @Override
+        public void close() {
+            typeGeneration.close();
+        }
     }
 }

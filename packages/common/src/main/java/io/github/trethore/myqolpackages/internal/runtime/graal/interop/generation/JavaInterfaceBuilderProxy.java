@@ -15,9 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation;
+package io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation;
 
-import static io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation.BuilderValueReader.requireArgumentCount;
+import static io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation.BuilderValueReader.requireArgumentCount;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +44,7 @@ final class JavaInterfaceBuilderProxy extends AbstractTypeBuilderProxy {
     private Object extend(Value... arguments) {
         requireMutable();
         requireArgumentCount(arguments, 1, "extends");
-        parentInterfaces.addAll(typeResolver.resolveSingleOrArray(arguments[0], "parent interfaces", false));
+        parentInterfaces.addAll(typeResolver.resolveSingleOrArray(arguments[0], "parent interfaces"));
         return this;
     }
 
@@ -66,9 +66,9 @@ final class JavaInterfaceBuilderProxy extends AbstractTypeBuilderProxy {
         Class<?> returnType =
                 typeResolver.resolve(BuilderValueReader.requireMember(definition, "returnType"), "return type", true);
         List<Class<?>> argumentTypes = definition.hasMember("argTypes")
-                ? typeResolver.resolveSingleOrArray(definition.getMember("argTypes"), "method argument types", false)
+                ? typeResolver.resolveSingleOrArray(definition.getMember("argTypes"), "method argument types")
                 : List.of();
-        boolean isAbstract = BuilderValueReader.optionalBoolean(definition, "isAbstract", false);
+        boolean isAbstract = BuilderValueReader.optionalBoolean(definition, "isAbstract");
         Value implementation = null;
         if (definition.hasMember("implementation")) {
             implementation = definition.getMember("implementation");
@@ -77,8 +77,8 @@ final class JavaInterfaceBuilderProxy extends AbstractTypeBuilderProxy {
             }
         }
         JavaVisibility visibility = JavaVisibility.read(definition, "visibility", JavaVisibility.PUBLIC);
-        boolean isStatic = BuilderValueReader.optionalBoolean(definition, "isStatic", false);
-        boolean override = BuilderValueReader.optionalBoolean(definition, "override", false);
+        boolean isStatic = BuilderValueReader.optionalBoolean(definition, "isStatic");
+        boolean override = BuilderValueReader.optionalBoolean(definition, "override");
         methods.add(new GeneratedTypeDefinition.MethodDefinition(
                 name,
                 name,

@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.runtime.graal.api.java.generation;
+package io.github.trethore.myqolpackages.internal.runtime.graal.interop.generation;
 
 import io.github.trethore.myqolpackages.internal.runtime.graal.interop.JavaInteropAccess;
 import java.util.ArrayList;
@@ -42,12 +42,12 @@ final class GeneratedJavaTypeResolver {
         return type;
     }
 
-    List<Class<?>> resolveSingleOrArray(Value value, String description, boolean allowVoid) {
+    List<Class<?>> resolveSingleOrArray(Value value, String description) {
         if (value == null || value.isNull()) {
             return List.of();
         }
         if (!value.hasArrayElements()) {
-            return List.of(resolve(value, description, allowVoid));
+            return List.of(resolve(value, description, false));
         }
         long size = value.getArraySize();
         if (size > Integer.MAX_VALUE) {
@@ -55,7 +55,7 @@ final class GeneratedJavaTypeResolver {
         }
         List<Class<?>> types = new ArrayList<>((int) size);
         for (long index = 0; index < size; index++) {
-            types.add(resolve(value.getArrayElement(index), description + "[" + index + "]", allowVoid));
+            types.add(resolve(value.getArrayElement(index), description + "[" + index + "]", false));
         }
         return List.copyOf(types);
     }
