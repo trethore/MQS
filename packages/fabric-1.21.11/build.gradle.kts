@@ -1,13 +1,12 @@
-import io.github.trethore.buildlogic.unpack
-
 plugins {
   alias(libs.plugins.fabric.loom.remap)
   `maven-publish`
 }
 
-val minecraftVersion = "1.21.11"
-val loaderVersion = libs.versions.fabric.loader.get()
-val fabricApiVersion = "0.141.6+1.21.11"
+val javaVersion = JavaLanguageVersion.of(21)
+val targetMinecraftVersion = libs.versions.minecraft.v12111.get()
+val loaderVersion = libs.versions.fabric.loader.v12111.get()
+val fabricApiVersion = libs.versions.fabric.api.v12111.get()
 
 base {
   archivesName = rootProject.name
@@ -16,14 +15,14 @@ base {
 loom {
   runs {
     named("client") {
-      displayName.set("Minecraft Client 1.21.11")
+      displayName.set("Minecraft Client (Fabric $targetMinecraftVersion)")
       appendProjectPathToDisplayName.set(false)
       generateRunConfig.set(true)
       runDirectory.set(layout.projectDirectory.dir("run/client"))
     }
 
     named("server") {
-      displayName.set("Minecraft Server 1.21.11")
+      displayName.set("Minecraft Server (Fabric $targetMinecraftVersion)")
       appendProjectPathToDisplayName.set(false)
       generateRunConfig.set(true)
       runDirectory.set(layout.projectDirectory.dir("run/server"))
@@ -36,10 +35,10 @@ configurations.implementation {
 }
 
 dependencies {
-  unpack(minecraft("com.mojang:minecraft:$minecraftVersion"))
+  minecraft(libs.minecraft.v12111)
   mappings(loom.officialMojangMappings())
-  modImplementation(libs.fabric.loader)
-  unpack(modImplementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion"))
+  modImplementation(libs.fabric.loader.v12111)
+  modImplementation(libs.fabric.api.v12111)
 
   include(project(":packages:common"))
   include(libs.bytebuddy.core)
@@ -61,7 +60,7 @@ tasks.processResources {
   val properties =
       mapOf(
           "version" to version,
-          "minecraftVersion" to minecraftVersion,
+          "minecraftVersion" to targetMinecraftVersion,
           "loaderVersion" to loaderVersion,
           "fabricApiVersion" to fabricApiVersion,
       )
@@ -72,15 +71,9 @@ tasks.processResources {
   }
 }
 
-tasks.withType<JavaCompile>().configureEach {
-  options.release = 21
-}
-
 java {
   withSourcesJar()
-
-  sourceCompatibility = JavaVersion.VERSION_21
-  targetCompatibility = JavaVersion.VERSION_21
+  toolchain.languageVersion.set(javaVersion)
 }
 
 tasks.jar {

@@ -5,8 +5,14 @@ pluginManagement {
   }
 }
 
-rootProject.name = "build-logic"
+dependencyResolutionManagement {
+  versionCatalogs {
+    create("libs") {
+      from(files("../gradle/libs.versions.toml"))
+    }
+  }
+}
 
-include("unpack-sources")
+rootProject.name = "build-logic"
 
 include("sonar-analysis")

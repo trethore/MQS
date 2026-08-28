@@ -2,7 +2,6 @@
   "properties": {
     "sonar.inclusions": ["**/*.java"],
     "sonar.exclusions": [
-      "references/**",
       "**/build/**",
       "**/*Mixin*.java"
     ],

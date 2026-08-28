@@ -10,14 +10,23 @@ class SonarClientTest {
     fun `reads component tree pages and transforms components`() {
         val client = FakeSonarClient { request ->
             when (request.parameters["p"]) {
-                "1" -> mapOf("components" to listOf(mapOf("name" to "one")), "paging" to mapOf("total" to 2))
-                "2" -> mapOf("components" to listOf(mapOf("name" to "two")), "paging" to mapOf("total" to 2))
+                "1" -> mapOf(
+                    "components" to listOf(mapOf("name" to "one")),
+                    "paging" to mapOf("total" to 2),
+                )
+                "2" -> mapOf(
+                    "components" to listOf(mapOf("name" to "two")),
+                    "paging" to mapOf("total" to 2),
+                )
                 else -> error("Unexpected request: $request")
             }
         }
-        val names = client.getComponentTreeComponents(mapOf("component" to "mqp"), "files") {
-            it["name"]?.toString()
-        }
+
+        val names = client.getComponentTreeComponents(
+            parameters = mapOf("component" to "graphene"),
+            responseName = "files",
+        ) { component -> component["name"]?.toString() }
+
         assertEquals(listOf("one", "two"), names)
         assertEquals(SonarConstants.PAGE_SIZE.toString(), client.requests.first().parameters["ps"])
     }
@@ -25,8 +34,12 @@ class SonarClientTest {
     @Test
     fun `rejects an empty component page before the reported total`() {
         val client = FakeSonarClient {
-            mapOf("components" to emptyList<Any>(), "paging" to mapOf("total" to 1))
+            mapOf(
+                "components" to emptyList<Any>(),
+                "paging" to mapOf("total" to 1),
+            )
         }
+
         assertFailsWith<GradleException> {
             client.getComponentTreeComponents(emptyMap(), "files") { it }
         }
@@ -39,10 +52,14 @@ class SonarClientTest {
                 "measures" to listOf(
                     mapOf("metric" to "coverage", "value" to "80.0"),
                     mapOf("metric" to "new_coverage", "period" to mapOf("value" to "90.0")),
-                    mapOf("value" to "ignored"),
                 )
-            )
+            ),
+            "measures",
         )
-        assertEquals(mapOf("coverage" to "80.0", "new_coverage" to "90.0"), values)
+
+        assertEquals(
+            mapOf("coverage" to "80.0", "new_coverage" to "90.0"),
+            values,
+        )
     }
 }

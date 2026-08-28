@@ -1,21 +1,23 @@
 import net.fabricmc.loom.api.LoomGradleExtensionAPI
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.testing.Test
+import org.gradle.kotlin.dsl.named
+import org.jetbrains.qodana.tasks.QodanaScanTask
 
 val modVersion = libs.versions.mod.get()
 
 plugins {
   alias(libs.plugins.fabric.loom.remap) apply false
+  alias(libs.plugins.qodana)
+  alias(libs.plugins.spotless)
   `maven-publish`
-  id("com.diffplug.spotless") version "8.8.0"
-  id("example.unpack-sources")
   id("example.sonar")
 }
 
 spotless {
   java {
     target("**/src/**/*.java")
-    targetExclude("references/**", "**/build/**")
+    targetExclude("**/build/**")
     licenseHeaderFile(rootProject.file("HEADER"))
     importOrder()
     removeUnusedImports()
@@ -27,13 +29,13 @@ spotless {
 
   format("javaPackageInfo") {
     target("**/src/**/package-info.java")
-    targetExclude("references/**", "**/build/**")
+    targetExclude("**/build/**")
     licenseHeaderFile(rootProject.file("HEADER"), "(?=/\\*\\*)")
   }
 
   kotlinGradle {
     target("**/*.gradle.kts")
-    targetExclude("references/**", "**/build/**", ".gradle/**")
+    targetExclude("**/build/**", ".gradle/**")
     ktfmt()
   }
 
@@ -46,7 +48,7 @@ spotless {
 
   format("misc") {
     target("**/*.md", ".gitignore")
-    targetExclude("references/**", "**/build/**", ".gradle/**")
+    targetExclude("**/build/**", ".gradle/**")
     trimTrailingWhitespace()
     leadingTabsToSpaces()
     endWithNewline()
@@ -70,11 +72,23 @@ allprojects {
   }
 }
 
+tasks.named<QodanaScanTask>("qodanaScan") {
+  arguments.addAll(
+      "--config",
+      "config/qodana/qodana.yaml",
+      "--env",
+      "JAVA_TOOL_OPTIONS=-Dorg.gradle.projectcachedir=/data/cache/gradle/project-cache",
+      "--print-problems",
+      "--disable-update-checks",
+  )
+}
+
 subprojects {
   pluginManager.withPlugin("net.fabricmc.fabric-loom-remap") {
     extensions.configure<LoomGradleExtensionAPI> {
       runs.configureEach {
         preferGradleTask.set(true)
+        systemProperties.put("fabric.log.disableAnsi", "false")
       }
     }
   }
@@ -82,22 +96,11 @@ subprojects {
   plugins.withType<JavaPlugin> {
     dependencies {
       "testImplementation"(libs.junit.jupiter)
-      "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+      "testRuntimeOnly"(libs.junit.platform.launcher)
     }
 
     tasks.withType<Test>().configureEach {
       useJUnitPlatform()
     }
   }
-}
-
-references {
-  unpackNestedJars = true
-
-  // Optional Git references can be added like this:
-  // git(
-  //     url = "https://github.com/FabricMC/fabric.git",
-  //     branch = "main",
-  //     commit = null,
-  // )
 }

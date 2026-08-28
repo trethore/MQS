@@ -18,9 +18,6 @@ out/
 # local environment
 .env
 
-# generated references
-references/
-
 # idea
 .idea/
 *.iml

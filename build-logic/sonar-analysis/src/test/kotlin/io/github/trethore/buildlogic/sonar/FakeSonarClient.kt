@@ -14,7 +14,11 @@ internal class FakeSonarClient(
     val requests = mutableListOf<SonarRequest>()
     val waitedForFiles = mutableListOf<File>()
 
-    override fun get(path: String, parameters: Map<String, String>, responseName: String): Map<*, *> {
+    override fun get(
+        path: String,
+        parameters: Map<String, String>,
+        responseName: String,
+    ): Map<*, *> {
         val request = SonarRequest(path, parameters, responseName)
         requests += request
         return responder(request)

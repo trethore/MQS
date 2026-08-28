@@ -14,7 +14,7 @@ class SonarConventionsPluginFunctionalTest {
     lateinit var projectDirectory: Path
 
     @Test
-    fun `wires reporting tasks aliases and java subproject coverage`() {
+    fun `wires reporting tasks and java subproject coverage`() {
         projectDirectory.resolve("settings.gradle").writeText(
             """
             rootProject.name = 'test-project'
@@ -35,14 +35,28 @@ class SonarConventionsPluginFunctionalTest {
                         sonarCoverage: 'Runs SonarQube analysis and shows coverage for this project.',
                         sonarDuplicates: 'Runs SonarQube analysis and reports duplicated code for this project.'
                     ]
+                    def expectedReportKinds = [
+                        sonarIssues: 'ISSUES',
+                        sonarCoverage: 'COVERAGE',
+                        sonarDuplicates: 'DUPLICATES'
+                    ]
                     expectedTasks.each { name, expectedDescription ->
                         def reportTask = tasks.named(name).get()
                         assert reportTask.group == 'verification'
                         assert reportTask.description == expectedDescription
+                        assert reportTask.reportKind.get().name() == expectedReportKinds[name]
                         assert reportTask.taskDependencies.getDependencies(reportTask).contains(sonarTask)
                     }
-                    def aliasTask = tasks.named('sonarDuplicate').get()
-                    assert aliasTask.taskDependencies.getDependencies(aliasTask).contains(tasks.named('sonarDuplicates').get())
+
+                    def sonarComposeFile = rootProject.file('compose.sonar.yml').absolutePath
+                    def sonarUp = tasks.named('sonarUp').get()
+                    assert sonarUp.group == 'sonar'
+                    assert sonarUp.description == 'Starts the local SonarQube instance.'
+                    assert sonarUp.commandLine == ['docker', 'compose', '-f', sonarComposeFile, 'up', '-d']
+                    def sonarDown = tasks.named('sonarDown').get()
+                    assert sonarDown.group == 'sonar'
+                    assert sonarDown.description == 'Stops the local SonarQube instance.'
+                    assert sonarDown.commandLine == ['docker', 'compose', '-f', sonarComposeFile, 'down']
 
                     def appProject = project(':app')
                     assert appProject.plugins.hasPlugin('jacoco')
@@ -66,6 +80,7 @@ class SonarConventionsPluginFunctionalTest {
             .withPluginClasspath()
             .withArguments("verifySonarWiring", "--stacktrace")
             .build()
+
         assertEquals(TaskOutcome.SUCCESS, result.task(":verifySonarWiring")?.outcome)
     }
 }

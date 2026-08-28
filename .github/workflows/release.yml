@@ -100,7 +100,7 @@ jobs:
         run: ./gradlew check
 
       - name: verify build logic
-        run: ./gradlew -p build-logic :sonar-analysis:check :unpack-sources:check
+        run: ./gradlew -p build-logic :sonar-analysis:check
 
   build:
     needs:
