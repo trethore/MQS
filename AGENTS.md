@@ -11,6 +11,7 @@ Here is an overview of the project:
 myqolpackages/
   .github/
   build-logic/sonar-analysis/                    # Gradle plugin for running SonarQube analysis.
+  config/                                        # SonarQube and Qodana configuration files.
   docs/
   gradle/libs.versions.toml
   packages/
