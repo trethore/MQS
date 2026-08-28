@@ -1,7 +1,7 @@
 [versions]
 mod = "0.0.1"
+fabric-loader = "0.19.3"
 fabric-api-v12111 = "0.141.6+1.21.11"
-fabric-loader-v12111 = "0.19.3"
 fabric-loom = "1.17-SNAPSHOT"
 minecraft-v12111 = "1.21.11"
 byte-buddy = "1.18.11"
@@ -17,7 +17,7 @@ spotless = "8.8.0"
 
 [libraries]
 fabric-api-v12111 = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api-v12111" }
-fabric-loader-v12111 = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader-v12111" }
+fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
 minecraft-v12111 = { module = "com.mojang:minecraft", version.ref = "minecraft-v12111" }
 bytebuddy-core = { module = "net.bytebuddy:byte-buddy", version.ref = "byte-buddy" }
 graal-collections = { module = "org.graalvm.sdk:collections", version.ref = "graal" }

@@ -4,8 +4,8 @@ plugins {
 }
 
 val javaVersion = JavaLanguageVersion.of(21)
+val loaderVersion = libs.versions.fabric.loader.get()
 val targetMinecraftVersion = libs.versions.minecraft.v12111.get()
-val loaderVersion = libs.versions.fabric.loader.v12111.get()
 val fabricApiVersion = libs.versions.fabric.api.v12111.get()
 
 base {
@@ -37,7 +37,7 @@ configurations.implementation {
 dependencies {
   minecraft(libs.minecraft.v12111)
   mappings(loom.officialMojangMappings())
-  modImplementation(libs.fabric.loader.v12111)
+  modImplementation(libs.fabric.loader)
   modImplementation(libs.fabric.api.v12111)
 
   include(project(":packages:common"))
