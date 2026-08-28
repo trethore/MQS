@@ -15,7 +15,7 @@ tasks.test {
 gradlePlugin {
   plugins {
     register("sonarConventions") {
-      id = "example.sonar"
+      id = "io.github.trethore.sonar"
       implementationClass = "io.github.trethore.buildlogic.sonar.SonarConventionsPlugin"
     }
   }

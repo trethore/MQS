@@ -11,7 +11,7 @@ plugins {
   alias(libs.plugins.qodana)
   alias(libs.plugins.spotless)
   `maven-publish`
-  id("example.sonar")
+  id("io.github.trethore.sonar")
 }
 
 spotless {
