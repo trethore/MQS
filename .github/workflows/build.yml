@@ -1,7 +1,9 @@
 # Build the project.
 
 name: build
-on: [workflow_dispatch]
+on:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
