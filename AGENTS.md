@@ -31,8 +31,8 @@ packages/
         FabricBootstrap.java                   # Fabric ModInitializer that boots common code.
       resources/
         assets/myqolpackages/
-        myqolpackages.mixins.json
         fabric.mod.json
+        myqolpackages.mixins.json
     build.gradle.kts
 scripts/release/                               # Release preparation and publishing scripts.
 test-packages/                                 # Example packages for development and testing.
