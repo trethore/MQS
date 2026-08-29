@@ -8,43 +8,42 @@ distributing packages that modify the game at runtime.
 Here is an overview of the project:
 
 ```text
-myqolpackages/
-  .github/
-  build-logic/sonar-analysis/                    # Gradle plugin for running SonarQube analysis.
-  config/                                        # SonarQube and Qodana configuration files.
-  docs/
-  gradle/libs.versions.toml
-  packages/
-    common/                                      # Shared mod logic with no Minecraft or Fabric dependencies.
-      src/
-        main/
-          java/io/github/trethore/myqolpackages/
-            api/                                 # Public entry points used by loader/version implementations.
-            internal/                            # Private common implementation details.
-        test/
-          java/io/github/trethore/myqolpackages/
-          resources/
-      build.gradle.kts
-    fabric-1.21.11/                              # Fabric implementation for Minecraft 1.21.11.
-      src/main/
+.github/
+build-logic/sonar-analysis/                    # Gradle plugin for running SonarQube analysis.
+config/                                        # SonarQube and Qodana configuration files.
+docs/
+gradle/libs.versions.toml
+packages/
+  common/                                      # Shared mod logic with no Minecraft or Fabric dependencies.
+    src/
+      main/
         java/io/github/trethore/myqolpackages/
-          mixin/
-          FabricBootstrap.java                   # Fabric ModInitializer that boots common code.
+          api/                                 # Public entry points used by loader/version implementations.
+          internal/                            # Private common implementation details.
+      test/
+        java/io/github/trethore/myqolpackages/
         resources/
-          assets/myqolpackages/
-          myqolpackages.mixins.json
-          fabric.mod.json
-      build.gradle.kts
-  scripts/release/                               # Release preparation and publishing scripts.
-  test-packages/                                 # Example packages for development and testing.
-  .gitignore
-  build.gradle.kts
-  CHANGELOG.md
-  gradle.properties
-  HEADER
-  LICENSE
-  README.md
-  settings.gradle.kts
+    build.gradle.kts
+  fabric-1.21.11/                              # Fabric implementation for Minecraft 1.21.11.
+    src/main/
+      java/io/github/trethore/myqolpackages/
+        mixin/
+        FabricBootstrap.java                   # Fabric ModInitializer that boots common code.
+      resources/
+        assets/myqolpackages/
+        myqolpackages.mixins.json
+        fabric.mod.json
+    build.gradle.kts
+scripts/release/                               # Release preparation and publishing scripts.
+test-packages/                                 # Example packages for development and testing.
+.gitignore
+build.gradle.kts
+CHANGELOG.md
+gradle.properties
+HEADER
+LICENSE
+README.md
+settings.gradle.kts
 ```
 
 ## General Coding Conventions
