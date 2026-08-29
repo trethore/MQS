@@ -1,5 +1,4 @@
 [versions]
-mod = "0.0.1"
 fabric-loader = "0.19.3"
 fabric-api-v12111 = "0.141.6+1.21.11"
 fabric-loom = "1.17-SNAPSHOT"

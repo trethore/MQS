@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: Target to release
+        description: Version to release
         required: true
         type: choice
         default: all
@@ -30,7 +30,6 @@ jobs:
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       targets: ${{ steps.release.outputs.targets }}
-      version: ${{ steps.release.outputs.version }}
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
@@ -40,72 +39,11 @@ jobs:
       - name: prepare release
         id: release
         env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-          GH_TOKEN: ${{ github.token }}
           TARGET: ${{ inputs.target }}
-        run: |
-          set -euo pipefail
-
-          if [[ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]]; then
-            echo "Releases must run from the default branch ($DEFAULT_BRANCH), not $GITHUB_REF_NAME." >&2
-            exit 1
-          fi
-
-          version="$(python -c 'import tomllib; print(tomllib.load(open("gradle/libs.versions.toml", "rb"))["versions"]["mod"])')"
-          if [[ -z "$version" ]]; then
-            echo "The mod version is empty." >&2
-            exit 1
-          fi
-
-          tag="v$version"
-          if git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null; then
-            echo "Tag $tag already exists." >&2
-            exit 1
-          fi
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release $tag already exists." >&2
-            exit 1
-          fi
-
-          if [[ "$TARGET" == "all" ]]; then
-            targets='["fabric-1.21.11"]'
-          else
-            targets="[\"$TARGET\"]"
-          fi
-
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "targets=$targets" >> "$GITHUB_OUTPUT"
-
-  verify:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v6
-
-      - name: validate gradle wrapper
-        uses: gradle/actions/wrapper-validation@v6
-
-      - name: setup jdk
-        uses: actions/setup-java@v5
-        with:
-          java-version: '25'
-          distribution: microsoft
-          cache: gradle
-
-      - name: make gradle wrapper executable
-        run: chmod +x ./gradlew
-
-      - name: verify project
-        run: ./gradlew check
-
-      - name: verify build logic
-        run: ./gradlew -p build-logic :sonar-analysis:check
+        run: ./scripts/release/prepare.sh "$TARGET" >> "$GITHUB_OUTPUT"
 
   build:
-    needs:
-      - prepare
-      - verify
+    needs: prepare
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -134,25 +72,7 @@ jobs:
       - name: stage release artifact
         env:
           TARGET: ${{ matrix.target }}
-        run: |
-          set -euo pipefail
-
-          mapfile -t jars < <(
-            find "packages/$TARGET/build/libs" -maxdepth 1 -type f -name '*.jar' \
-              ! -name '*-sources.jar' \
-              ! -name '*-dev.jar' \
-              -print | sort
-          )
-
-          if [[ ${#jars[@]} -ne 1 ]]; then
-            echo "Expected one release JAR for $TARGET, found ${#jars[@]}." >&2
-            printf '%s\n' "${jars[@]}" >&2
-            exit 1
-          fi
-
-          mkdir -p release-artifacts
-          filename="$(basename "${jars[0]}" .jar)"
-          cp "${jars[0]}" "release-artifacts/$filename-$TARGET.jar"
+        run: ./scripts/release/stage-artifact.sh "$TARGET"
 
       - name: upload release artifact
         uses: actions/upload-artifact@v7
@@ -175,7 +95,7 @@ jobs:
           fetch-depth: 0
 
       - name: download release artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v7
         with:
           pattern: release-*
           path: release-artifacts
@@ -184,69 +104,11 @@ jobs:
       - name: create release notes
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          set -euo pipefail
-
-          python <<'PY'
-          import os
-          import re
-          import subprocess
-          from pathlib import Path
-
-          changelog = Path("CHANGELOG.md").read_text()
-          version = re.escape(os.environ["VERSION"])
-          match = re.search(
-              rf"^## \[{version}\](?:\s+-\s+[^\n]+)?\s*$\n(.*?)(?=^## |\Z)",
-              changelog,
-              flags=re.MULTILINE | re.DOTALL,
-          )
-          if match is None:
-              raise SystemExit(f"CHANGELOG.md does not contain a section for {os.environ['VERSION']}")
-
-          notes = match.group(1).strip()
-          if not notes:
-              raise SystemExit(f"The {os.environ['VERSION']} section in CHANGELOG.md is empty")
-
-          previous_tags = subprocess.run(
-              ["git", "tag", "--merged", "HEAD", "--list", "v*", "--sort=-version:refname"],
-              check=True,
-              capture_output=True,
-              text=True,
-          ).stdout.splitlines()
-
-          if previous_tags:
-              previous_tag = previous_tags[0]
-              tag = os.environ["TAG"]
-              repository = os.environ["GITHUB_REPOSITORY"]
-              server_url = os.environ["GITHUB_SERVER_URL"]
-              notes += (
-                  f"\n\n**Full Changelog:** "
-                  f"[`{previous_tag}...{tag}`]"
-                  f"({server_url}/{repository}/compare/{previous_tag}...{tag})"
-              )
-
-          Path("release-notes.md").write_text(notes + "\n")
-          PY
+        run: ./scripts/release/create-notes.sh "$TAG"
 
       - name: create github release
         env:
           DRAFT: ${{ inputs.draft }}
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.prepare.outputs.tag }}
-        run: |
-          set -euo pipefail
-
-          arguments=(
-            release create "$TAG"
-            release-artifacts/*
-            --target "$GITHUB_SHA"
-            --title "$TAG"
-            --notes-file release-notes.md
-          )
-
-          if [[ "$DRAFT" == "true" ]]; then
-            arguments+=(--draft)
-          fi
-
-          gh "${arguments[@]}"
+        run: ./scripts/release/publish.sh "$TAG" "$DRAFT"

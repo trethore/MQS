@@ -35,6 +35,8 @@ myqolpackages/
           myqolpackages.mixins.json
           fabric.mod.json
       build.gradle.kts
+  scripts/release/                               # Release preparation and publishing scripts.
+  test-packages/                                 # Example packages for development and testing.
   .gitignore
   build.gradle.kts
   CHANGELOG.md

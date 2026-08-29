@@ -1,10 +1,9 @@
 import net.fabricmc.loom.api.LoomGradleExtensionAPI
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.testing.Test
-import org.gradle.kotlin.dsl.named
 import org.jetbrains.qodana.tasks.QodanaScanTask
 
-val modVersion = libs.versions.mod.get()
+val modVersion = providers.gradleProperty("mod_version").get()
 
 plugins {
   alias(libs.plugins.fabric.loom.remap) apply false
