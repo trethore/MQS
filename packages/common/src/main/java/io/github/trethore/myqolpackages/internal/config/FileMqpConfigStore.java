@@ -17,10 +17,10 @@
  */
 package io.github.trethore.myqolpackages.internal.config;
 
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
 import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,7 +56,7 @@ public final class FileMqpConfigStore implements MqpConfigStore {
             MqpConfig defaultConfig = MqpConfig.defaults();
             config.set(defaultConfig);
             configLoadedSuccessfully = false;
-            PackageDiagnostic diagnostic = new PackageDiagnostic(
+            MqpDiagnostic diagnostic = new MqpDiagnostic(
                     CONFIG_DIAGNOSTIC_ID, configFile.path(), "Could not load config.json: " + exception.getMessage());
             return new MqpConfigLoadResult(defaultConfig, List.of(diagnostic));
         }

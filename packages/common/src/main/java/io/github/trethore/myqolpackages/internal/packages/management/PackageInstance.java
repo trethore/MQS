@@ -19,7 +19,7 @@ package io.github.trethore.myqolpackages.internal.packages.management;
 
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustInfo;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextFactory;
 import io.github.trethore.myqolpackages.internal.runtime.PackageContextSpec;

@@ -15,10 +15,15 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.packages;
+package io.github.trethore.myqolpackages.api.packages.management;
 
-public record PackageTrustRequest(
-        PackageTrustSnapshot expectedPackage,
-        TrustVersionScope versionScope,
-        boolean fingerprintEnabled,
-        FingerprintMismatchBehavior mismatchBehavior) {}
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
+import io.github.trethore.myqolpackages.api.packages.PackageInfo;
+import java.util.List;
+
+public record PackageDiscoveryResult(List<PackageInfo> packages, List<MqpDiagnostic> diagnostics) {
+    public PackageDiscoveryResult {
+        packages = List.copyOf(packages);
+        diagnostics = List.copyOf(diagnostics);
+    }
+}

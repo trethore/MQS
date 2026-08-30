@@ -25,7 +25,7 @@ import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
 import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
 import io.github.trethore.myqolpackages.api.config.TrustConfig;
-import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
+import io.github.trethore.myqolpackages.api.packages.trust.FingerprintMismatchBehavior;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;

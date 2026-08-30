@@ -15,18 +15,20 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.packages;
+package io.github.trethore.myqolpackages.api.packages.trust;
 
+import io.github.trethore.myqolpackages.api.packages.management.PackageOperationResult;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 
-public record PackageOperationResult(PackageOperationCode code, List<PackageDiagnostic> diagnostics) {
-    public PackageOperationResult {
-        Objects.requireNonNull(code, "code");
-        diagnostics = List.copyOf(diagnostics);
-    }
+public interface PackageTrustManager {
+    PackageOperationResult trustPackage(PackageTrustRequest request);
 
-    public boolean successful() {
-        return code == PackageOperationCode.SUCCESS;
-    }
+    PackageOperationResult untrustPackage(String id);
+
+    PackageOperationResult acceptPackageFingerprint(String id, String expectedFingerprint);
+
+    List<String> getTrustedPackageIds();
+
+    Optional<PackageTrustSnapshot> captureTrustSnapshot(String id);
 }

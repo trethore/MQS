@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
 import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
-import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
+import io.github.trethore.myqolpackages.api.packages.trust.FingerprintMismatchBehavior;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

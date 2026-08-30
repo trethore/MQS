@@ -17,7 +17,7 @@
  */
 package io.github.trethore.myqolpackages.internal.packages.discovery;
 
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDirectories;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageManifest;
@@ -47,7 +47,7 @@ public final class FileSystemPackageDiscovery {
 
     PackageDiscoverySnapshot discover(Path packageDirectory) {
         List<PackageDescriptor> packages = new ArrayList<>();
-        List<PackageDiagnostic> diagnostics = new ArrayList<>();
+        List<MqpDiagnostic> diagnostics = new ArrayList<>();
 
         try {
             if (!Files.isDirectory(packageDirectory)) {
@@ -57,7 +57,7 @@ public final class FileSystemPackageDiscovery {
                 discoverPackage(candidate, packages, diagnostics);
             }
         } catch (IOException exception) {
-            diagnostics.add(new PackageDiagnostic(
+            diagnostics.add(new MqpDiagnostic(
                     packageDirectory.getFileName().toString(),
                     packageDirectory,
                     "Could not read package directory: " + exception.getMessage()));
@@ -76,7 +76,7 @@ public final class FileSystemPackageDiscovery {
     }
 
     private void discoverPackage(
-            Path packageDirectory, List<PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
+            Path packageDirectory, List<PackageDescriptor> packages, List<MqpDiagnostic> diagnostics) {
         String diagnosticId = packageDirectory.getFileName().toString();
         try {
             Path manifestPath = packageDirectory.resolve(MANIFEST_FILE_NAME);
@@ -91,7 +91,7 @@ public final class FileSystemPackageDiscovery {
             Path entrypoint = resolveEntrypoint(packageDirectory, manifest.entrypoint());
             packages.add(new PackageDescriptor(packageId, packageDirectory, entrypoint, manifest, semanticVersion));
         } catch (IOException | PackageValidationException exception) {
-            diagnostics.add(new PackageDiagnostic(diagnosticId, packageDirectory, exception.getMessage()));
+            diagnostics.add(new MqpDiagnostic(diagnosticId, packageDirectory, exception.getMessage()));
         }
     }
 

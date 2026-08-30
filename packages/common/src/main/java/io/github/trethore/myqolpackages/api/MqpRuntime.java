@@ -18,9 +18,8 @@
 package io.github.trethore.myqolpackages.api;
 
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
-import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
-import io.github.trethore.myqolpackages.api.packages.PackageManager;
+import io.github.trethore.myqolpackages.api.packages.management.PackageDiscoveryResult;
+import io.github.trethore.myqolpackages.api.packages.management.PackageManager;
 import io.github.trethore.myqolpackages.internal.config.FileMqpConfigStore;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigStore;
 import io.github.trethore.myqolpackages.internal.packages.discovery.FileSystemPackageDiscovery;
@@ -68,7 +67,7 @@ public final class MqpRuntime {
                 "Discovered {} package(s) with {} diagnostic(s)",
                 result.packages().size(),
                 result.diagnostics().size());
-        for (PackageDiagnostic diagnostic : result.diagnostics()) {
+        for (MqpDiagnostic diagnostic : result.diagnostics()) {
             LOGGER.warn(
                     "MQP diagnostic for {} at {}: {}",
                     diagnostic.packageId(),

@@ -17,7 +17,7 @@
  */
 package io.github.trethore.myqolpackages.api.config;
 
-import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
+import io.github.trethore.myqolpackages.api.packages.trust.FingerprintMismatchBehavior;
 
 public record FingerprintDefaultsConfig(Boolean enabled, FingerprintMismatchBehavior mismatchBehavior) {
     public FingerprintDefaultsConfig {

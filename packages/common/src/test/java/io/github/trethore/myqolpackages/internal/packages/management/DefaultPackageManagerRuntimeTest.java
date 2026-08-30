@@ -23,10 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
 import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
-import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
-import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
+import io.github.trethore.myqolpackages.api.packages.management.PackageDiscoveryResult;
+import io.github.trethore.myqolpackages.api.packages.management.PackageOperationResult;
+import io.github.trethore.myqolpackages.api.packages.trust.FingerprintMismatchBehavior;
 import io.github.trethore.myqolpackages.internal.config.FileMqpConfigStore;
 import io.github.trethore.myqolpackages.internal.packages.discovery.FileSystemPackageDiscovery;
 import io.github.trethore.myqolpackages.internal.packages.discovery.PackageDiscoveryService;

@@ -17,6 +17,7 @@
  */
 package io.github.trethore.myqolpackages.api.packages;
 
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustInfo;
 import java.nio.file.Path;
 
 public record PackageInfo(

@@ -17,11 +17,11 @@
  */
 package io.github.trethore.myqolpackages.internal.packages.discovery;
 
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
 import java.util.List;
 
-record PackageDiscoverySnapshot(List<PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
+record PackageDiscoverySnapshot(List<PackageDescriptor> packages, List<MqpDiagnostic> diagnostics) {
     PackageDiscoverySnapshot {
         packages = List.copyOf(packages);
         diagnostics = List.copyOf(diagnostics);

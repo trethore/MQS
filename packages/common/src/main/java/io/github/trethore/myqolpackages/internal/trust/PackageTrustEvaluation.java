@@ -17,8 +17,8 @@
  */
 package io.github.trethore.myqolpackages.internal.trust;
 
-import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
+import io.github.trethore.myqolpackages.api.packages.trust.FingerprintMismatchBehavior;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustInfo;
 
 public record PackageTrustEvaluation(PackageTrustInfo info, Outcome outcome) {
     public boolean allowed() {

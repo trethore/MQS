@@ -19,7 +19,7 @@ package io.github.trethore.myqolpackages.internal.packages.model;
 
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustInfo;
 import io.github.trethore.myqolpackages.internal.trust.SemanticVersion;
 import java.nio.file.Path;
 

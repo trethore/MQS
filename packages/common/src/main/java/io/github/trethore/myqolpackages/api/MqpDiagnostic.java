@@ -15,11 +15,18 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.packages;
+package io.github.trethore.myqolpackages.api;
 
-public enum PackageDiagnosticCode {
-    GENERAL,
-    TRUST_REQUIRED,
-    FINGERPRINT_WARNING,
-    FINGERPRINT_BLOCKED
+import java.nio.file.Path;
+
+public record MqpDiagnostic(
+        MqpDiagnosticCode code,
+        String packageId,
+        Path packageDirectory,
+        String message,
+        boolean chatVisible,
+        boolean error) {
+    public MqpDiagnostic(String packageId, Path packageDirectory, String message) {
+        this(MqpDiagnosticCode.GENERAL, packageId, packageDirectory, message, true, true);
+    }
 }

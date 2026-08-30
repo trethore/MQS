@@ -17,14 +17,14 @@
  */
 package io.github.trethore.myqolpackages.internal.packages.management;
 
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
+import io.github.trethore.myqolpackages.api.MqpDiagnosticCode;
 import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
 import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnosticCode;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
+import io.github.trethore.myqolpackages.api.packages.management.PackageOperationCode;
+import io.github.trethore.myqolpackages.api.packages.management.PackageOperationResult;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustRequest;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustSnapshot;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigStore;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
 import io.github.trethore.myqolpackages.internal.trust.PackageFingerprintException;
@@ -148,7 +148,7 @@ final class PackageTrustService {
     }
 
     void addWarning(
-            PackageInstance packageInstance, PackageTrustEvaluation evaluation, List<PackageDiagnostic> diagnostics) {
+            PackageInstance packageInstance, PackageTrustEvaluation evaluation, List<MqpDiagnostic> diagnostics) {
         if (!evaluation.warning()) {
             return;
         }
@@ -158,8 +158,8 @@ final class PackageTrustService {
                 evaluation.info().expectedFingerprint(),
                 evaluation.info().currentFingerprint());
         if (evaluation.chatVisible()) {
-            diagnostics.add(new PackageDiagnostic(
-                    PackageDiagnosticCode.FINGERPRINT_WARNING,
+            diagnostics.add(new MqpDiagnostic(
+                    MqpDiagnosticCode.FINGERPRINT_WARNING,
                     packageInstance.getId(),
                     packageInstance.getDescriptor().packageDirectory(),
                     evaluation.info().message(),
@@ -168,15 +168,15 @@ final class PackageTrustService {
         }
     }
 
-    PackageDiagnostic createBlockedDiagnostic(PackageInstance packageInstance, PackageTrustEvaluation evaluation) {
+    MqpDiagnostic createBlockedDiagnostic(PackageInstance packageInstance, PackageTrustEvaluation evaluation) {
         LOGGER.warn(
                 "Blocked package {}: {}",
                 packageInstance.getId(),
                 evaluation.info().message());
-        PackageDiagnosticCode code = evaluation.info().state().requiresTrust()
-                ? PackageDiagnosticCode.TRUST_REQUIRED
-                : PackageDiagnosticCode.FINGERPRINT_BLOCKED;
-        return new PackageDiagnostic(
+        MqpDiagnosticCode code = evaluation.info().state().requiresTrust()
+                ? MqpDiagnosticCode.TRUST_REQUIRED
+                : MqpDiagnosticCode.FINGERPRINT_BLOCKED;
+        return new MqpDiagnostic(
                 code,
                 packageInstance.getId(),
                 packageInstance.getDescriptor().packageDirectory(),
@@ -185,9 +185,9 @@ final class PackageTrustService {
                 true);
     }
 
-    private PackageDiagnostic createTrustRequiredDiagnostic(PackageInstance packageInstance, String message) {
-        return new PackageDiagnostic(
-                PackageDiagnosticCode.TRUST_REQUIRED,
+    private MqpDiagnostic createTrustRequiredDiagnostic(PackageInstance packageInstance, String message) {
+        return new MqpDiagnostic(
+                MqpDiagnosticCode.TRUST_REQUIRED,
                 packageInstance.getId(),
                 packageInstance.getDescriptor().packageDirectory(),
                 message,
@@ -214,7 +214,6 @@ final class PackageTrustService {
     }
 
     private static PackageOperationResult failedOperation(String id, Path path, String message) {
-        return new PackageOperationResult(
-                PackageOperationCode.FAILED, List.of(new PackageDiagnostic(id, path, message)));
+        return new PackageOperationResult(PackageOperationCode.FAILED, List.of(new MqpDiagnostic(id, path, message)));
     }
 }

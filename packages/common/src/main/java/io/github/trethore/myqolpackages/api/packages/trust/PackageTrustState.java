@@ -15,18 +15,19 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.packages;
+package io.github.trethore.myqolpackages.api.packages.trust;
 
-import java.nio.file.Path;
+public enum PackageTrustState {
+    UNTRUSTED,
+    VERSION_NOT_TRUSTED,
+    FINGERPRINT_DISABLED,
+    FINGERPRINT_MATCH,
+    FINGERPRINT_MISSING,
+    FINGERPRINT_MISMATCH_ALLOWED,
+    FINGERPRINT_MISMATCH_BLOCKED,
+    FINGERPRINT_ERROR;
 
-public record PackageDiagnostic(
-        PackageDiagnosticCode code,
-        String packageId,
-        Path packageDirectory,
-        String message,
-        boolean chatVisible,
-        boolean error) {
-    public PackageDiagnostic(String packageId, Path packageDirectory, String message) {
-        this(PackageDiagnosticCode.GENERAL, packageId, packageDirectory, message, true, true);
+    public boolean requiresTrust() {
+        return this == UNTRUSTED || this == VERSION_NOT_TRUSTED;
     }
 }

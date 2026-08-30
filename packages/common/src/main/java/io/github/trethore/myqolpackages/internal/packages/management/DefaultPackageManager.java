@@ -17,15 +17,16 @@
  */
 package io.github.trethore.myqolpackages.internal.packages.management;
 
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
-import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
-import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
+import io.github.trethore.myqolpackages.api.packages.management.PackageDiscoveryResult;
+import io.github.trethore.myqolpackages.api.packages.management.PackageManager;
+import io.github.trethore.myqolpackages.api.packages.management.PackageOperationCode;
+import io.github.trethore.myqolpackages.api.packages.management.PackageOperationResult;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustManager;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustRequest;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustSnapshot;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigLoadResult;
 import io.github.trethore.myqolpackages.internal.config.MqpConfigStore;
 import io.github.trethore.myqolpackages.internal.packages.discovery.PackageDiscoveryService;
@@ -46,7 +47,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class DefaultPackageManager implements PackageManager {
+public final class DefaultPackageManager implements PackageManager, PackageTrustManager {
     private static final String UNKNOWN_PACKAGE_MESSAGE = "Unknown package";
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultPackageManager.class);
 
@@ -80,7 +81,7 @@ public final class DefaultPackageManager implements PackageManager {
     public synchronized PackageDiscoveryResult refresh() {
         MqpConfigLoadResult configResult = configStore.load();
         PackageDiscoveryService.Result discovery = discoveryService.discover(configResult.config());
-        List<PackageDiagnostic> diagnostics = new ArrayList<>(discovery.diagnostics());
+        List<MqpDiagnostic> diagnostics = new ArrayList<>(discovery.diagnostics());
         diagnostics.addAll(0, configResult.diagnostics());
         reconcilePackages(discovery.packages(), diagnostics);
         enforceTrustForActivePackages(diagnostics);
@@ -94,7 +95,7 @@ public final class DefaultPackageManager implements PackageManager {
 
     @Override
     public synchronized PackageDiscoveryResult reload() {
-        List<PackageDiagnostic> diagnostics = disableAllPackages();
+        List<MqpDiagnostic> diagnostics = disableAllPackages();
         PackageDiscoveryResult discoveryResult = refresh();
         diagnostics.addAll(discoveryResult.diagnostics());
         for (String packageId : configStore.getConfig().enabledPackages()) {
@@ -109,7 +110,7 @@ public final class DefaultPackageManager implements PackageManager {
             return failedOperation(id, configStore.getConfigPath(), "Package is not configured as enabled");
         }
 
-        List<PackageDiagnostic> diagnostics = new ArrayList<>();
+        List<MqpDiagnostic> diagnostics = new ArrayList<>();
         PackageInstance packageInstance = packages.get(id);
         Path previousPackageDirectory =
                 packageInstance == null ? null : packageInstance.getDescriptor().packageDirectory();
@@ -129,7 +130,7 @@ public final class DefaultPackageManager implements PackageManager {
         PackageDescriptor descriptor = discovery.packages().get(id);
         if (descriptor == null) {
             packages.remove(id);
-            diagnostics.add(new PackageDiagnostic(
+            diagnostics.add(new MqpDiagnostic(
                     id, configStore.getConfigPath(), "Configured enabled package could not be found"));
             return new PackageOperationResult(PackageOperationCode.FAILED, diagnostics);
         }
@@ -146,7 +147,7 @@ public final class DefaultPackageManager implements PackageManager {
             enabledPackageOrder.add(id);
         }
         rebuildEnabledPackageOrder();
-        boolean successful = enableResult.successful() && diagnostics.stream().noneMatch(PackageDiagnostic::error);
+        boolean successful = enableResult.successful() && diagnostics.stream().noneMatch(MqpDiagnostic::error);
         return new PackageOperationResult(successful ? enableResult.code() : PackageOperationCode.FAILED, diagnostics);
     }
 
@@ -170,8 +171,8 @@ public final class DefaultPackageManager implements PackageManager {
             enabledPackageOrder.add(id);
             return enableResult;
         } catch (IOException exception) {
-            List<PackageDiagnostic> diagnostics = new ArrayList<>(enableResult.diagnostics());
-            diagnostics.add(new PackageDiagnostic(
+            List<MqpDiagnostic> diagnostics = new ArrayList<>(enableResult.diagnostics());
+            diagnostics.add(new MqpDiagnostic(
                     id,
                     configStore.getConfigPath(),
                     "Could not save enabled package state: " + exception.getMessage()));
@@ -187,7 +188,7 @@ public final class DefaultPackageManager implements PackageManager {
 
     @Override
     public synchronized PackageOperationResult disablePackage(String id) {
-        List<PackageDiagnostic> diagnostics = new ArrayList<>();
+        List<MqpDiagnostic> diagnostics = new ArrayList<>();
         PackageInstance packageInstance = packages.get(id);
         boolean configuredEnabled = configStore.getConfig().enabledPackages().contains(id);
         if (packageInstance == null && !configuredEnabled) {
@@ -246,7 +247,7 @@ public final class DefaultPackageManager implements PackageManager {
                     id, configStore.getConfigPath(), "Could not save package trust: " + exception.getMessage());
         }
 
-        List<PackageDiagnostic> diagnostics = new ArrayList<>();
+        List<MqpDiagnostic> diagnostics = new ArrayList<>();
         enabledPackageOrder.remove(id);
         if (packageInstance != null) {
             try {
@@ -283,6 +284,11 @@ public final class DefaultPackageManager implements PackageManager {
     @Override
     public List<String> getConfiguredEnabledPackageIds() {
         return configStore.getConfig().enabledPackages();
+    }
+
+    @Override
+    public PackageTrustManager getTrustManager() {
+        return this;
     }
 
     @Override
@@ -326,8 +332,7 @@ public final class DefaultPackageManager implements PackageManager {
         }
     }
 
-    private void reconcilePackages(
-            Map<String, PackageDescriptor> discoveredPackages, List<PackageDiagnostic> diagnostics) {
+    private void reconcilePackages(Map<String, PackageDescriptor> discoveredPackages, List<MqpDiagnostic> diagnostics) {
         Map<String, PackageInstance> reconciledPackages = new LinkedHashMap<>();
         for (PackageDescriptor descriptor : discoveredPackages.values()) {
             PackageInstance packageInstance = packages.get(descriptor.id());
@@ -346,7 +351,7 @@ public final class DefaultPackageManager implements PackageManager {
             if (packageInstance.getState() == PackageState.ENABLED) {
                 packageInstance.markUnavailable();
                 reconciledPackages.put(packageInstance.getId(), packageInstance);
-                diagnostics.add(new PackageDiagnostic(
+                diagnostics.add(new MqpDiagnostic(
                         packageInstance.getId(),
                         packageInstance.getDescriptor().packageDirectory(),
                         "Enabled package is no longer discoverable and remains active until disabled or reloaded"));
@@ -357,7 +362,7 @@ public final class DefaultPackageManager implements PackageManager {
         packages.putAll(reconciledPackages);
     }
 
-    private void enforceTrustForActivePackages(List<PackageDiagnostic> diagnostics) {
+    private void enforceTrustForActivePackages(List<MqpDiagnostic> diagnostics) {
         for (String packageId : List.copyOf(enabledPackageOrder)) {
             PackageInstance packageInstance = packages.get(packageId);
             if (packageInstance != null && packageInstance.getState() == PackageState.ENABLED) {
@@ -385,8 +390,8 @@ public final class DefaultPackageManager implements PackageManager {
         }
     }
 
-    private List<PackageDiagnostic> disableAllPackages() {
-        List<PackageDiagnostic> diagnostics = new ArrayList<>();
+    private List<MqpDiagnostic> disableAllPackages() {
+        List<MqpDiagnostic> diagnostics = new ArrayList<>();
         for (String packageId : enabledPackageOrder.reversed()) {
             PackageInstance packageInstance = packages.get(packageId);
             if (packageInstance == null) {
@@ -402,10 +407,10 @@ public final class DefaultPackageManager implements PackageManager {
         return diagnostics;
     }
 
-    private void enableConfiguredPackage(String packageId, List<PackageDiagnostic> diagnostics) {
+    private void enableConfiguredPackage(String packageId, List<MqpDiagnostic> diagnostics) {
         PackageInstance packageInstance = packages.get(packageId);
         if (packageInstance == null || !packageInstance.isAvailable()) {
-            diagnostics.add(new PackageDiagnostic(
+            diagnostics.add(new MqpDiagnostic(
                     packageId, configStore.getConfigPath(), "Configured enabled package could not be found"));
             return;
         }
@@ -426,7 +431,7 @@ public final class DefaultPackageManager implements PackageManager {
                     code, List.of(trustService.createBlockedDiagnostic(packageInstance, evaluation)));
         }
 
-        List<PackageDiagnostic> diagnostics = new ArrayList<>();
+        List<MqpDiagnostic> diagnostics = new ArrayList<>();
         trustService.addWarning(packageInstance, evaluation, diagnostics);
         try {
             packageInstance.enable();
@@ -447,8 +452,8 @@ public final class DefaultPackageManager implements PackageManager {
         }
     }
 
-    private List<PackageDiagnostic> getPackageDiagnostics(
-            String packageId, Path previousPackageDirectory, List<PackageDiagnostic> diagnostics) {
+    private List<MqpDiagnostic> getPackageDiagnostics(
+            String packageId, Path previousPackageDirectory, List<MqpDiagnostic> diagnostics) {
         return diagnostics.stream()
                 .filter(diagnostic -> diagnostic.packageId().equals(packageId)
                         || diagnostic.packageDirectory().equals(previousPackageDirectory))
@@ -461,14 +466,13 @@ public final class DefaultPackageManager implements PackageManager {
     }
 
     private PackageOperationResult failedOperation(String id, Path path, String message) {
-        return new PackageOperationResult(
-                PackageOperationCode.FAILED, List.of(new PackageDiagnostic(id, path, message)));
+        return new PackageOperationResult(PackageOperationCode.FAILED, List.of(new MqpDiagnostic(id, path, message)));
     }
 
-    private PackageDiagnostic createLifecycleDiagnostic(
+    private MqpDiagnostic createLifecycleDiagnostic(
             PackageInstance packageInstance, PackageLifecycleException exception) {
         LOGGER.atError().setCause(exception).log("Package {} lifecycle operation failed", packageInstance.getId());
-        return new PackageDiagnostic(
+        return new MqpDiagnostic(
                 packageInstance.getId(), packageInstance.getDescriptor().packageDirectory(), exception.getMessage());
     }
 }

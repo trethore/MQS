@@ -15,15 +15,10 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.internal.packages.root;
+package io.github.trethore.myqolpackages.api.packages.trust;
 
-import io.github.trethore.myqolpackages.api.MqpDiagnostic;
-import java.nio.file.Path;
-import java.util.List;
-
-public record PackageRootResolution(List<Path> packageRoots, List<MqpDiagnostic> diagnostics) {
-    public PackageRootResolution {
-        packageRoots = List.copyOf(packageRoots);
-        diagnostics = List.copyOf(diagnostics);
-    }
-}
+public record PackageTrustRequest(
+        PackageTrustSnapshot expectedPackage,
+        TrustVersionScope versionScope,
+        boolean fingerprintEnabled,
+        FingerprintMismatchBehavior mismatchBehavior) {}

@@ -20,9 +20,9 @@ package io.github.trethore.myqolpackages.internal.packages.management;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
-import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
+import io.github.trethore.myqolpackages.api.packages.management.PackageDiscoveryResult;
 import io.github.trethore.myqolpackages.internal.config.FileMqpConfigStore;
 import io.github.trethore.myqolpackages.internal.packages.discovery.FileSystemPackageDiscovery;
 import io.github.trethore.myqolpackages.internal.packages.discovery.PackageDiscoveryService;
@@ -79,7 +79,7 @@ class DefaultPackageManagerTest {
             assertEquals(
                     List.of(defaultRoot.resolve("first-directory"), additionalRoot.resolve("second-directory")),
                     result.diagnostics().stream()
-                            .map(PackageDiagnostic::packageDirectory)
+                            .map(MqpDiagnostic::packageDirectory)
                             .toList());
             assertTrue(result.diagnostics().stream()
                     .allMatch(diagnostic -> diagnostic

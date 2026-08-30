@@ -17,8 +17,8 @@
  */
 package io.github.trethore.myqolpackages.internal.packages.root;
 
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -41,7 +41,7 @@ public final class ConfiguredPackageRootResolver implements PackageRootResolver 
 
     @Override
     public PackageRootResolution resolvePackageRoots(MqpConfig config) {
-        List<PackageDiagnostic> diagnostics = new ArrayList<>();
+        List<MqpDiagnostic> diagnostics = new ArrayList<>();
         Set<Path> packageRoots = new LinkedHashSet<>();
         addDefaultPackageRoot(packageRoots, diagnostics);
 
@@ -52,12 +52,12 @@ public final class ConfiguredPackageRootResolver implements PackageRootResolver 
         return new PackageRootResolution(List.copyOf(packageRoots), diagnostics);
     }
 
-    private void addDefaultPackageRoot(Set<Path> packageRoots, List<PackageDiagnostic> diagnostics) {
+    private void addDefaultPackageRoot(Set<Path> packageRoots, List<MqpDiagnostic> diagnostics) {
         try {
             Files.createDirectories(mqpDirectory);
             packageRoots.add(mqpDirectory.toRealPath());
         } catch (IOException exception) {
-            diagnostics.add(new PackageDiagnostic(
+            diagnostics.add(new MqpDiagnostic(
                     CONFIG_DIAGNOSTIC_ID,
                     mqpDirectory,
                     "Could not prepare the default package root: " + exception.getMessage()));
@@ -65,10 +65,10 @@ public final class ConfiguredPackageRootResolver implements PackageRootResolver 
     }
 
     private void addConfiguredPackageRoot(
-            String configuredRoot, Set<Path> packageRoots, List<PackageDiagnostic> diagnostics) {
+            String configuredRoot, Set<Path> packageRoots, List<MqpDiagnostic> diagnostics) {
         if (configuredRoot == null || configuredRoot.isBlank()) {
-            diagnostics.add(new PackageDiagnostic(
-                    CONFIG_DIAGNOSTIC_ID, configPath, "Additional package root must not be empty"));
+            diagnostics.add(
+                    new MqpDiagnostic(CONFIG_DIAGNOSTIC_ID, configPath, "Additional package root must not be empty"));
             return;
         }
 
@@ -79,7 +79,7 @@ public final class ConfiguredPackageRootResolver implements PackageRootResolver 
             }
             packageRoot = packageRoot.toAbsolutePath().normalize();
             if (!Files.isDirectory(packageRoot)) {
-                diagnostics.add(new PackageDiagnostic(
+                diagnostics.add(new MqpDiagnostic(
                         CONFIG_DIAGNOSTIC_ID,
                         packageRoot,
                         "Additional package root does not exist or is not a directory"));
@@ -87,12 +87,12 @@ public final class ConfiguredPackageRootResolver implements PackageRootResolver 
             }
             packageRoots.add(packageRoot.toRealPath());
         } catch (InvalidPathException exception) {
-            diagnostics.add(new PackageDiagnostic(
+            diagnostics.add(new MqpDiagnostic(
                     CONFIG_DIAGNOSTIC_ID,
                     configPath,
                     "Invalid additional package root '" + configuredRoot + "': " + exception.getMessage()));
         } catch (IOException exception) {
-            diagnostics.add(new PackageDiagnostic(
+            diagnostics.add(new MqpDiagnostic(
                     CONFIG_DIAGNOSTIC_ID,
                     configPath,
                     "Could not resolve additional package root '" + configuredRoot + "': " + exception.getMessage()));

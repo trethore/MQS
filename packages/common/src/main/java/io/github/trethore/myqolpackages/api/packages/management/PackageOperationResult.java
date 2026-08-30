@@ -15,11 +15,19 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.packages;
+package io.github.trethore.myqolpackages.api.packages.management;
 
-public enum PackageOperationCode {
-    SUCCESS,
-    FAILED,
-    TRUST_REQUIRED,
-    FINGERPRINT_REVIEW_REQUIRED
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
+import java.util.List;
+import java.util.Objects;
+
+public record PackageOperationResult(PackageOperationCode code, List<MqpDiagnostic> diagnostics) {
+    public PackageOperationResult {
+        Objects.requireNonNull(code, "code");
+        diagnostics = List.copyOf(diagnostics);
+    }
+
+    public boolean successful() {
+        return code == PackageOperationCode.SUCCESS;
+    }
 }

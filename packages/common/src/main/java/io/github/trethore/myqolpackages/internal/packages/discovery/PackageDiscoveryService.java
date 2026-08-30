@@ -17,8 +17,8 @@
  */
 package io.github.trethore.myqolpackages.internal.packages.discovery;
 
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import io.github.trethore.myqolpackages.internal.packages.model.PackageDescriptor;
 import io.github.trethore.myqolpackages.internal.packages.root.PackageRootResolution;
 import io.github.trethore.myqolpackages.internal.packages.root.PackageRootResolver;
@@ -41,7 +41,7 @@ public final class PackageDiscoveryService {
 
     public Result discover(MqpConfig config) {
         PackageRootResolution rootResolution = rootResolver.resolvePackageRoots(config);
-        List<PackageDiagnostic> diagnostics = new ArrayList<>(rootResolution.diagnostics());
+        List<MqpDiagnostic> diagnostics = new ArrayList<>(rootResolution.diagnostics());
         Map<String, List<PackageDescriptor>> packagesById = new LinkedHashMap<>();
         for (Path packageRoot : rootResolution.packageRoots()) {
             PackageDiscoverySnapshot snapshot = fileSystemDiscovery.discover(packageRoot);
@@ -61,7 +61,7 @@ public final class PackageDiscoveryService {
                 continue;
             }
             for (PackageDescriptor descriptor : matchingPackages) {
-                diagnostics.add(new PackageDiagnostic(
+                diagnostics.add(new MqpDiagnostic(
                         descriptor.id(),
                         descriptor.packageDirectory(),
                         "Duplicate package ID; all packages with this ID were ignored"));
@@ -70,7 +70,7 @@ public final class PackageDiscoveryService {
         return new Result(discoveredPackages, diagnostics);
     }
 
-    public record Result(Map<String, PackageDescriptor> packages, List<PackageDiagnostic> diagnostics) {
+    public record Result(Map<String, PackageDescriptor> packages, List<MqpDiagnostic> diagnostics) {
         public Result {
             packages = Collections.unmodifiableMap(new LinkedHashMap<>(packages));
             diagnostics = List.copyOf(diagnostics);

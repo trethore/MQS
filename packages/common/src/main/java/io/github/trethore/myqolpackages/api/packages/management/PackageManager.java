@@ -15,8 +15,10 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.packages;
+package io.github.trethore.myqolpackages.api.packages.management;
 
+import io.github.trethore.myqolpackages.api.packages.PackageInfo;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustManager;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,21 +33,13 @@ public interface PackageManager extends AutoCloseable {
 
     PackageOperationResult disablePackage(String id);
 
-    PackageOperationResult trustPackage(PackageTrustRequest request);
-
-    PackageOperationResult untrustPackage(String id);
-
-    PackageOperationResult acceptPackageFingerprint(String id, String expectedFingerprint);
-
     List<PackageInfo> getPackages();
 
     Optional<PackageInfo> findPackage(String id);
 
     List<String> getConfiguredEnabledPackageIds();
 
-    List<String> getTrustedPackageIds();
-
-    Optional<PackageTrustSnapshot> captureTrustSnapshot(String id);
+    PackageTrustManager getTrustManager();
 
     default void tick() {}
 

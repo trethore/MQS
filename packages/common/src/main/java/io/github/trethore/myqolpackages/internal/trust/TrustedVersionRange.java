@@ -17,7 +17,7 @@
  */
 package io.github.trethore.myqolpackages.internal.trust;
 
-import io.github.trethore.myqolpackages.api.packages.TrustVersionScope;
+import io.github.trethore.myqolpackages.api.packages.trust.TrustVersionScope;
 import java.util.Objects;
 
 public final class TrustedVersionRange {

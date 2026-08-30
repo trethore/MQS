@@ -17,11 +17,11 @@
  */
 package io.github.trethore.myqolpackages.internal.config;
 
+import io.github.trethore.myqolpackages.api.MqpDiagnostic;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
-import io.github.trethore.myqolpackages.api.packages.PackageDiagnostic;
 import java.util.List;
 
-public record MqpConfigLoadResult(MqpConfig config, List<PackageDiagnostic> diagnostics) {
+public record MqpConfigLoadResult(MqpConfig config, List<MqpDiagnostic> diagnostics) {
     public MqpConfigLoadResult {
         diagnostics = List.copyOf(diagnostics);
     }

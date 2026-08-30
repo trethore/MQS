@@ -20,9 +20,9 @@ package io.github.trethore.myqolpackages.internal.trust;
 import io.github.trethore.myqolpackages.api.config.MqpConfig;
 import io.github.trethore.myqolpackages.api.config.PackageFingerprintConfig;
 import io.github.trethore.myqolpackages.api.config.PackageTrustConfig;
-import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustInfo;
-import io.github.trethore.myqolpackages.api.packages.PackageTrustState;
+import io.github.trethore.myqolpackages.api.packages.trust.FingerprintMismatchBehavior;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustInfo;
+import io.github.trethore.myqolpackages.api.packages.trust.PackageTrustState;
 import java.nio.file.Path;
 
 public final class PackageTrustEvaluator {

@@ -15,19 +15,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.api.packages;
+package io.github.trethore.myqolpackages.api.packages.trust;
 
-public enum PackageTrustState {
-    UNTRUSTED,
-    VERSION_NOT_TRUSTED,
-    FINGERPRINT_DISABLED,
-    FINGERPRINT_MATCH,
-    FINGERPRINT_MISSING,
-    FINGERPRINT_MISMATCH_ALLOWED,
-    FINGERPRINT_MISMATCH_BLOCKED,
-    FINGERPRINT_ERROR;
-
-    public boolean requiresTrust() {
-        return this == UNTRUSTED || this == VERSION_NOT_TRUSTED;
-    }
+public enum TrustVersionScope {
+    EXACT,
+    PATCH_UPDATES,
+    COMPATIBLE_UPDATES,
+    ALL_VERSIONS
 }
