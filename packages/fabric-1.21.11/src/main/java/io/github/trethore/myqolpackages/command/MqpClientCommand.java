@@ -21,15 +21,18 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.trethore.myqolpackages.api.MqpRuntime;
 import io.github.trethore.myqolpackages.command.commands.PackagesClientCommand;
+import io.github.trethore.myqolpackages.command.commands.TrustClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class MqpClientCommand {
     private final PackagesClientCommand packagesClientCommand;
+    private final TrustClientCommand trustClientCommand;
 
     public MqpClientCommand(MqpRuntime runtime) {
         packagesClientCommand = new PackagesClientCommand(runtime.getPackageManager());
+        trustClientCommand = new TrustClientCommand(runtime.getPackageManager());
     }
 
     public void register() {
@@ -38,11 +41,14 @@ public final class MqpClientCommand {
     }
 
     private LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-        return ClientCommandManager.literal("mqp").executes(this::execute).then(packagesClientCommand.buildCommand());
+        return ClientCommandManager.literal("mqp")
+                .executes(this::execute)
+                .then(packagesClientCommand.buildCommand())
+                .then(trustClientCommand.buildCommand());
     }
 
     private int execute(CommandContext<FabricClientCommandSource> context) {
-        MqpCommandFeedback.sendInfo(context.getSource(), "Available actions: packages.");
+        MqpCommandFeedback.sendInfo(context.getSource(), "Available actions: packages, trust.");
         return ClientCommandResult.SUCCESS;
     }
 }

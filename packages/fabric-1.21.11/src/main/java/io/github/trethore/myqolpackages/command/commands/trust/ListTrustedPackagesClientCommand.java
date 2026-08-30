@@ -15,24 +15,21 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.commands.packages;
+package io.github.trethore.myqolpackages.command.commands.trust;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
-import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
 import java.util.List;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.network.chat.Component;
 
-public final class ListPackagesClientCommand {
+public final class ListTrustedPackagesClientCommand {
     private final PackageManager packageManager;
 
-    public ListPackagesClientCommand(PackageManager packageManager) {
+    public ListTrustedPackagesClientCommand(PackageManager packageManager) {
         this.packageManager = packageManager;
     }
 
@@ -42,22 +39,17 @@ public final class ListPackagesClientCommand {
 
     private int execute(CommandContext<FabricClientCommandSource> context) {
         FabricClientCommandSource source = context.getSource();
-        List<PackageInfo> packages = packageManager.getPackages();
-        if (packages.isEmpty()) {
-            MqpCommandFeedback.sendInfo(source, "No packages discovered.");
+        List<String> trustedPackageIds = packageManager.getTrustedPackageIds();
+        if (trustedPackageIds.isEmpty()) {
+            MqpCommandFeedback.sendInfo(source, "No packages are trusted.");
             return ClientCommandResult.SUCCESS;
         }
 
         MqpCommandFeedback.sendHeader(source);
-        MqpCommandFeedback.sendLine(source, "Packages discovered: " + packages.size());
-        for (PackageInfo packageInfo : packages) {
-            MqpCommandFeedback.sendLine(
-                    source,
-                    Component.empty()
-                            .append(Component.literal(packageInfo.name() + " - " + packageInfo.version() + " ["))
-                            .append(PackageCommandSupport.formatState(packageInfo.state()))
-                            .append(Component.literal("]")));
+        MqpCommandFeedback.sendLine(source, "Trusted packages: " + trustedPackageIds.size());
+        for (String packageId : trustedPackageIds) {
+            MqpCommandFeedback.sendLine(source, packageId);
         }
-        return packages.size();
+        return trustedPackageIds.size();
     }
 }

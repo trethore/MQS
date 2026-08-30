@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.commands.packages;
+package io.github.trethore.myqolpackages.command.commands.trust;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -24,21 +24,16 @@ import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
-import io.github.trethore.myqolpackages.command.HiddenClientCommand;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
-import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class PackageFingerprintClientCommand {
     private final PackageManager packageManager;
-    private final TrustPackageClientCommand trustPackageClientCommand;
 
-    public PackageFingerprintClientCommand(
-            PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
+    public PackageFingerprintClientCommand(PackageManager packageManager) {
         this.packageManager = packageManager;
-        this.trustPackageClientCommand = trustPackageClientCommand;
     }
 
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
@@ -48,13 +43,6 @@ public final class PackageFingerprintClientCommand {
                                 .suggests((context, builder) -> PackageCommandSupport.suggestPackageIds(
                                         builder, packageManager.getPackages(), PackageInfo::id))
                                 .executes(this::executeAccept)));
-    }
-
-    public LiteralArgumentBuilder<FabricClientCommandSource> buildAcceptCallbackCommand() {
-        return HiddenClientCommand.literal("_accept-fingerprint")
-                .then(ClientCommandManager.argument("token", StringArgumentType.word())
-                        .executes(context -> trustPackageClientCommand.acceptFingerprint(
-                                context.getSource(), StringArgumentType.getString(context, "token"))));
     }
 
     private int executeAccept(CommandContext<FabricClientCommandSource> context) {

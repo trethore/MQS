@@ -23,8 +23,6 @@ import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import io.github.trethore.myqolpackages.command.commands.packages.*;
-import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
-import io.github.trethore.myqolpackages.command.commands.trust.UntrustPackageClientCommand;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
@@ -35,21 +33,14 @@ public final class PackagesClientCommand {
     private final ListPackagesClientCommand listPackagesClientCommand;
     private final RefreshPackagesClientCommand refreshPackagesClientCommand;
     private final ReloadPackagesClientCommand reloadPackagesClientCommand;
-    private final TrustPackageClientCommand trustPackageClientCommand;
-    private final UntrustPackageClientCommand untrustPackageClientCommand;
-    private final PackageFingerprintClientCommand packageFingerprintClientCommand;
 
     public PackagesClientCommand(PackageManager packageManager) {
-        trustPackageClientCommand = new TrustPackageClientCommand(packageManager);
         disablePackageClientCommand = new DisablePackageClientCommand(packageManager);
-        enablePackageClientCommand = new EnablePackageClientCommand(packageManager, trustPackageClientCommand);
+        enablePackageClientCommand = new EnablePackageClientCommand(packageManager);
         infoPackageClientCommand = new InfoPackageClientCommand(packageManager);
         listPackagesClientCommand = new ListPackagesClientCommand(packageManager);
         refreshPackagesClientCommand = new RefreshPackagesClientCommand(packageManager);
-        reloadPackagesClientCommand = new ReloadPackagesClientCommand(packageManager, trustPackageClientCommand);
-        untrustPackageClientCommand = new UntrustPackageClientCommand(packageManager);
-        packageFingerprintClientCommand =
-                new PackageFingerprintClientCommand(packageManager, trustPackageClientCommand);
+        reloadPackagesClientCommand = new ReloadPackagesClientCommand(packageManager);
     }
 
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
@@ -60,19 +51,12 @@ public final class PackagesClientCommand {
                 .then(listPackagesClientCommand.buildCommand())
                 .then(infoPackageClientCommand.buildCommand())
                 .then(refreshPackagesClientCommand.buildCommand())
-                .then(reloadPackagesClientCommand.buildCommand())
-                .then(trustPackageClientCommand.buildCommand())
-                .then(untrustPackageClientCommand.buildCommand())
-                .then(packageFingerprintClientCommand.buildCommand())
-                .then(trustPackageClientCommand.buildVersionCallbackCommand())
-                .then(trustPackageClientCommand.buildFingerprintCallbackCommand())
-                .then(packageFingerprintClientCommand.buildAcceptCallbackCommand());
+                .then(reloadPackagesClientCommand.buildCommand());
     }
 
     private int execute(CommandContext<FabricClientCommandSource> context) {
         MqpCommandFeedback.sendInfo(
-                context.getSource(),
-                "Available actions: enable, disable, trust, untrust, fingerprint, list, info, refresh, reload.");
+                context.getSource(), "Available actions: enable, disable, list, info, refresh, reload.");
         return ClientCommandResult.SUCCESS;
     }
 }

@@ -15,52 +15,56 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package io.github.trethore.myqolpackages.command.commands.packages;
+package io.github.trethore.myqolpackages.command.commands.trust;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
+import io.github.trethore.myqolpackages.api.packages.FingerprintMismatchBehavior;
+import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
+import io.github.trethore.myqolpackages.api.packages.PackageTrustRequest;
+import io.github.trethore.myqolpackages.api.packages.PackageTrustSnapshot;
+import io.github.trethore.myqolpackages.api.packages.TrustVersionScope;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.MqpCommandFeedback;
 import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
-import java.util.function.Function;
+import java.util.Optional;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
-public final class ReloadPackagesClientCommand {
+public final class EnablePackageTrustClientCommand {
     private final PackageManager packageManager;
 
-    public ReloadPackagesClientCommand(PackageManager packageManager) {
+    public EnablePackageTrustClientCommand(PackageManager packageManager) {
         this.packageManager = packageManager;
     }
 
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-        return ClientCommandManager.literal("reload")
-                .executes(this::executeAll)
+        return ClientCommandManager.literal("enable")
                 .then(ClientCommandManager.argument("id", StringArgumentType.word())
                         .suggests((context, builder) -> PackageCommandSupport.suggestPackageIds(
-                                builder, packageManager.getConfiguredEnabledPackageIds(), Function.identity()))
-                        .executes(this::executePackage));
+                                builder, packageManager.getPackages(), PackageInfo::id))
+                        .executes(this::execute));
     }
 
-    private int executeAll(CommandContext<FabricClientCommandSource> context) {
-        FabricClientCommandSource source = context.getSource();
-        PackageDiscoveryResult result = packageManager.reload();
-        return PackageCommandSupport.sendDiscoveryResult(source, "Reloaded", result);
-    }
-
-    private int executePackage(CommandContext<FabricClientCommandSource> context) {
+    private int execute(CommandContext<FabricClientCommandSource> context) {
         FabricClientCommandSource source = context.getSource();
         String packageId = StringArgumentType.getString(context, "id");
-        PackageOperationResult result = packageManager.reloadPackage(packageId);
-        PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
-        if (result.successful()) {
-            MqpCommandFeedback.sendInfo(source, "Reloaded " + packageId + ".");
-            return ClientCommandResult.SUCCESS;
+        Optional<PackageTrustSnapshot> optionalSnapshot = packageManager.captureTrustSnapshot(packageId);
+        if (optionalSnapshot.isEmpty()) {
+            MqpCommandFeedback.sendError(source, "Unknown package: " + packageId);
+            return ClientCommandResult.FAILURE;
         }
-        return ClientCommandResult.FAILURE;
+
+        PackageOperationResult result = packageManager.trustPackage(new PackageTrustRequest(
+                optionalSnapshot.get(), TrustVersionScope.ALL_VERSIONS, true, FingerprintMismatchBehavior.BLOCK));
+        PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
+        if (!result.successful()) {
+            return ClientCommandResult.FAILURE;
+        }
+        MqpCommandFeedback.sendInfo(source, "Trust is now enabled for " + packageId);
+        return ClientCommandResult.SUCCESS;
     }
 }

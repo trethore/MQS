@@ -29,15 +29,15 @@ import java.util.function.Function;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
-public final class UntrustPackageClientCommand {
+public final class DisablePackageTrustClientCommand {
     private final PackageManager packageManager;
 
-    public UntrustPackageClientCommand(PackageManager packageManager) {
+    public DisablePackageTrustClientCommand(PackageManager packageManager) {
         this.packageManager = packageManager;
     }
 
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
-        return ClientCommandManager.literal("untrust")
+        return ClientCommandManager.literal("disable")
                 .then(ClientCommandManager.argument("id", StringArgumentType.word())
                         .suggests((context, builder) -> PackageCommandSupport.suggestPackageIds(
                                 builder, packageManager.getTrustedPackageIds(), Function.identity()))
@@ -51,7 +51,9 @@ public final class UntrustPackageClientCommand {
         if (!result.successful()) {
             return ClientCommandResult.FAILURE;
         }
-        MqpCommandFeedback.sendInfo(context.getSource(), packageId + " is now untrusted, disabled, and stopped");
+        MqpCommandFeedback.sendInfo(
+                context.getSource(),
+                "Trust is now disabled for " + packageId + "; the package was disabled and stopped");
         return ClientCommandResult.SUCCESS;
     }
 }

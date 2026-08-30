@@ -24,25 +24,19 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.trethore.myqolpackages.api.packages.PackageInfo;
 import io.github.trethore.myqolpackages.api.packages.PackageManager;
-import io.github.trethore.myqolpackages.api.packages.PackageOperationCode;
 import io.github.trethore.myqolpackages.api.packages.PackageOperationResult;
 import io.github.trethore.myqolpackages.api.packages.PackageState;
 import io.github.trethore.myqolpackages.command.ClientCommandResult;
 import io.github.trethore.myqolpackages.command.commands.PackageCommandSupport;
-import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand;
-import io.github.trethore.myqolpackages.command.commands.trust.TrustPackageClientCommand.OriginalOperation;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 public final class EnablePackageClientCommand {
     private final PackageManager packageManager;
-    private final TrustPackageClientCommand trustPackageClientCommand;
 
-    public EnablePackageClientCommand(
-            PackageManager packageManager, TrustPackageClientCommand trustPackageClientCommand) {
+    public EnablePackageClientCommand(PackageManager packageManager) {
         this.packageManager = packageManager;
-        this.trustPackageClientCommand = trustPackageClientCommand;
     }
 
     public LiteralArgumentBuilder<FabricClientCommandSource> buildCommand() {
@@ -56,13 +50,6 @@ public final class EnablePackageClientCommand {
         FabricClientCommandSource source = context.getSource();
         String packageId = StringArgumentType.getString(context, "id");
         PackageOperationResult result = packageManager.enablePackage(packageId);
-        if (result.code() == PackageOperationCode.TRUST_REQUIRED) {
-            return trustPackageClientCommand.start(source, packageId, OriginalOperation.ENABLE);
-        }
-        if (result.code() == PackageOperationCode.FINGERPRINT_REVIEW_REQUIRED) {
-            trustPackageClientCommand.sendFingerprintReview(source, packageId, OriginalOperation.ENABLE);
-            return ClientCommandResult.FAILURE;
-        }
         PackageCommandSupport.sendDiagnostics(source, result.diagnostics());
         if (result.successful()) {
             PackageCommandSupport.sendEnabled(source, packageId);

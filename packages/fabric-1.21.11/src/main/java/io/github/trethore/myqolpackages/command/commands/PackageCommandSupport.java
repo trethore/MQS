@@ -59,14 +59,15 @@ public final class PackageCommandSupport {
     public static Component createDiagnosticMessage(PackageDiagnostic diagnostic) {
         String message = diagnostic.packageId() + ": " + diagnostic.message();
         Component action = null;
-        if (diagnostic.code() == PackageDiagnosticCode.TRUST_REQUIRED
+        if (diagnostic.code() == PackageDiagnosticCode.TRUST_REQUIRED) {
+            String command = "mqp trust enable " + diagnostic.packageId();
+            message += ". Run '" + command + "'";
+            action = MqpCommandFeedback.action("ENABLE TRUST", command, "Run " + command);
+        } else if (diagnostic.code() == PackageDiagnosticCode.FINGERPRINT_WARNING
                 || diagnostic.code() == PackageDiagnosticCode.FINGERPRINT_BLOCKED) {
             action = MqpCommandFeedback.action(
-                    "REVIEW", "mqp packages enable " + diagnostic.packageId(), "Review package trust");
-        } else if (diagnostic.code() == PackageDiagnosticCode.FINGERPRINT_WARNING) {
-            action = MqpCommandFeedback.action(
                     "ACCEPT FINGERPRINT",
-                    "mqp packages fingerprint accept " + diagnostic.packageId(),
+                    "mqp trust fingerprint accept " + diagnostic.packageId(),
                     "Accept the current package fingerprint");
         }
         if (action == null) {
