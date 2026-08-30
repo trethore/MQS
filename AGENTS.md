@@ -37,6 +37,7 @@ packages/
 scripts/release/                               # Release preparation and publishing scripts.
 test-packages/                                 # Example packages for development and testing.
 .gitignore
+.ignore
 build.gradle.kts
 CHANGELOG.md
 gradle.properties
