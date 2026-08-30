@@ -19,9 +19,6 @@ package io.github.trethore.myqolpackages;
 
 import io.github.trethore.myqolpackages.api.MqpRuntime;
 import io.github.trethore.myqolpackages.api.MqpRuntimeEnvironment;
-import io.github.trethore.myqolpackages.api.packages.PackageDiscoveryResult;
-import io.github.trethore.myqolpackages.command.MqpClientCommand;
-import io.github.trethore.myqolpackages.command.StartupPackageNotificationService;
 import java.nio.file.Path;
 import java.util.Optional;
 import net.fabricmc.api.ClientModInitializer;
@@ -50,9 +47,7 @@ public final class FabricBootstrap implements ClientModInitializer {
                 Optional.empty(),
                 Optional.of("assets/myqolpackages/mappings/client.txt"));
         MqpRuntime runtime = MqpRuntime.create(mqpDirectory, mqpVersion, environment);
-        new MqpClientCommand(runtime).register();
-        PackageDiscoveryResult startupResult = runtime.start();
-        new StartupPackageNotificationService(startupResult).register();
+        runtime.start();
         ClientTickEvents.END_CLIENT_TICK.register(client -> runtime.tick());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> runtime.stop());
         LOGGER.info("Initialized {} with data directory {}", MOD_ID, mqpDirectory);
